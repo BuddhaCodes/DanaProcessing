@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia.Desktop" Version="12.0.0" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.0.0" />
+	  <PackageReference Include="AvaloniaEdit.TextMate" Version="12.0.0" />
+	  <PackageReference Include="TextMateSharp.Grammars" Version="2.0.3" />
+	  <PackageReference Include="Avalonia.AvaloniaEdit" Version="12.0.0" />
+	  <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.11.0" />
+    <ProjectReference Include="..\DanaProcessing.AvaloniaHost\DanaProcessing.AvaloniaHost.csproj" />
+  </ItemGroup>
+</Project>

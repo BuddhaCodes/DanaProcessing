@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>DanaProcessing</RootNamespace>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <PackageId>DanaProcessing.Wpf</PackageId>
+    <Version>0.1.0</Version>
+    <Description>Host de WPF para DanaProcessing: SketchCanvas (UserControl embebible) y SketchWindow (ventana standalone).</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="SkiaSharp.Views.WPF" Version="2.88.8" />
+    <ProjectReference Include="..\DanaProcessing\DanaProcessing.csproj" />
+  </ItemGroup>
+
+</Project>

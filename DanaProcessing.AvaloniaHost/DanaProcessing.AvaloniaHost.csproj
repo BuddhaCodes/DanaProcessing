@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>DanaProcessing.AvaloniaHost</RootNamespace>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <PackageId>DanaProcessing.AvaloniaHost</PackageId>
+    <Version>0.1.0</Version>
+    <Description>Host de Avalonia para DanaProcessing: AvaloniaSketchCanvas (control embebible) y AvaloniaSketchWindow (ventana standalone), multiplataforma.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      No SkiaSharp.Views.Avalonia here: that package doesn't exist. Avalonia's
+      Skia interop comes from Avalonia.Skia (pulled in transitively by
+      Avalonia.Desktop below), which exposes ISkiaSharpApiLeaseFeature.
+      We still need plain SkiaSharp for the SKCanvas/SKPaint types themselves.
+    -->
+    <!--
+      Avalonia.Desktop 12 -> Avalonia.Skia 12 requires SkiaSharp >= 3.119.3-preview.1.1.
+      Pinning it explicitly here (only in this project) satisfies that floor
+      without touching the core library or the WPF host, which stay on the
+      2.88.8 series for SkiaSharp.Views.WPF compatibility.
+    -->
+    <PackageReference Include="SkiaSharp" Version="3.119.3-preview.1.1" />
+    <PackageReference Include="Avalonia" Version="12.0.0" />
+    <PackageReference Include="Avalonia.Desktop" Version="12.0.0" />
+    <ProjectReference Include="..\DanaProcessing\DanaProcessing.csproj" />
+  </ItemGroup>
+
+</Project>
