@@ -5,6 +5,7 @@ using Avalonia.Controls.Presenters;
 using Avalonia.Controls.Primitives;
 using Avalonia.Media;
 using Avalonia.Styling;
+using AvaloniaEdit.CodeCompletion;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -546,7 +547,80 @@ namespace DanaProcessing.Ide.Theme
             },
         };
 
+        /// <summary>
+        /// Estilos para el popup de autocompletado (AvaloniaEdit.CodeCompletion).
+        ///
+        /// IMPORTANTE: CompletionWindow es una Window propia — no vive dentro
+        /// del árbol visual de SketchEditorView — así que Avalonia no la
+        /// alcanza si estos estilos se agregan solo a los Styles locales del
+        /// UserControl (como se hace con ButtonEffectStyles/TabStripStates).
+        /// Tienen que agregarse a Application.Styles (en App.cs) para que
+        /// lleguen a cualquier Window nueva, incluida esta.
+        ///
+        /// Los selectores para CompletionListBox / sus ListBoxItem apuntan a
+        /// tipos públicos de AvaloniaEdit; el popup de descripción (el que
+        /// muestra "objeto (Keyword)" al fondo) no se toca acá porque no hay
+        /// forma de confirmar su nombre de control exacto sin el código fuente
+        /// de AvaloniaEdit a mano — si querés que combine también, conviene
+        /// revisarlo con el DevTools de Avalonia (F12 con la app corriendo)
+        /// para ver el árbol visual real y ajustar el selector.
+        /// </summary>
+        public static Style[] CompletionWindowStyles() => new[]
+        {
+            new Style(x => x.OfType<CompletionWindow>())
+            {
+                Setters =
+                {
+                    new Setter(Window.BackgroundProperty, SurfaceRaised),
+                }
+            },
+            new Style(x => x.OfType<CompletionListBox>())
+            {
+                Setters =
+                {
+                    // El fondo real y opaco tiene que ir acá, no solo en la
+                    // Window: CompletionWindow se renderiza con transparencia
+                    // de verdad a nivel de píxel (para permitir sombra/bordes
+                    // redondeados), así que Window.Background de arriba no
+                    // garantiza nada visible — sin esto, el popup queda
+                    // literalmente transparente sobre el código de atrás.
+                    new Setter(TemplatedControl.BackgroundProperty, SurfaceRaised),
+                    new Setter(TemplatedControl.BorderBrushProperty, new SolidColorBrush(Avalonia.Media.Color.Parse("#E8E2DA"))),
+                    new Setter(TemplatedControl.BorderThicknessProperty, new Thickness(1)),
+                    new Setter(TemplatedControl.CornerRadiusProperty, RadiusChrome),
+                    new Setter(TemplatedControl.FontFamilyProperty, FontMono),
+                    new Setter(TemplatedControl.FontSizeProperty, 13.0),
+                    new Setter(TemplatedControl.PaddingProperty, new Thickness(4)),
+                }
+            },
+            new Style(x => x.OfType<CompletionListBox>().Descendant().OfType<ListBoxItem>())
+            {
+                Setters =
+                {
+                    new Setter(TemplatedControl.PaddingProperty, new Thickness(10, 5)),
+                    new Setter(TemplatedControl.ForegroundProperty, TextPrimary),
+                    new Setter(TemplatedControl.CornerRadiusProperty, RadiusChrome),
+                    new Setter(TemplatedControl.MarginProperty, new Thickness(2, 1)),
+                }
+            },
+            new Style(x => x.OfType<CompletionListBox>().Descendant().OfType<ListBoxItem>().Class(":pointerover"))
+            {
+                Setters =
+                {
+                    new Setter(TemplatedControl.BackgroundProperty, SurfaceHover),
+                }
+            },
+            new Style(x => x.OfType<CompletionListBox>().Descendant().OfType<ListBoxItem>().Class(":selected"))
+            {
+                Setters =
+                {
+                    new Setter(TemplatedControl.BackgroundProperty, Accent),
+                    new Setter(TemplatedControl.ForegroundProperty, OnAccent),
+                }
+            },
+        };
+
         /// <summary>Todos los estilos combinados.</summary>
-        public static Style[] AllStyles() => ButtonEffectStyles().Concat(TabStripStates()).ToArray();
+        public static Style[] AllStyles() => ButtonEffectStyles().Concat(TabStripStates()).Concat(CompletionWindowStyles()).ToArray();
     }
 }

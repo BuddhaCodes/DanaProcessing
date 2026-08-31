@@ -5,13 +5,17 @@ using Avalonia.Controls.Templates;
 using Avalonia.Data;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.Input;
 using Avalonia.Platform.Storage;
 using AvaloniaEdit;
+using AvaloniaEdit.CodeCompletion;
 using AvaloniaEdit.TextMate;
+using DanaProcessing.Ide.Compilation;
 using DanaProcessing.Ide.Theme;
 using System;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using TextMateSharp.Grammars;
 
@@ -36,6 +40,12 @@ namespace DanaProcessing.Ide.Editor
         private readonly RegistryOptions _registryOptions = new(ThemeName.LightPlus);
         private readonly TextMate.Installation _textMate;
         private EditorTab? _activeTab;
+
+        // Un solo engine para todas las tabs, igual que hay un solo TextEditor
+        // compartido: su documento interno se re-sincroniza con el texto de la
+        // tab activa (ver ActivateTab) en vez de crear un workspace por tab.
+        private readonly RoslynCompletionEngine _completionEngine = new();
+        private CompletionWindow? _completionWindow;
 
         public SketchEditorView()
         {
@@ -257,6 +267,14 @@ namespace DanaProcessing.Ide.Editor
                 CaretPositionChanged?.Invoke(_editor.TextArea.Caret.Line, _editor.TextArea.Caret.Column);
 
             // ================================================================
+            // AUTOCOMPLETADO (Roslyn CompletionService, no una lista de palabras)
+            // ================================================================
+
+            _editor.TextArea.TextEntered += OnEditorTextEntered;
+            _editor.TextArea.TextEntering += OnEditorTextEntering;
+            _editor.TextArea.KeyDown += OnEditorKeyDown;
+
+            // ================================================================
             // LAYOUT FINAL
             // ================================================================
 
@@ -296,6 +314,103 @@ namespace DanaProcessing.Ide.Editor
                 _textMate.SetGrammar(_registryOptions.GetScopeByLanguageId(language.Id));
         }
 
+        private void OnEditorTextEntered(object? sender, TextInputEventArgs e)
+        {
+            if (string.IsNullOrEmpty(e.Text))
+                return;
+
+            var c = e.Text[0];
+
+            // '.' siempre reabre completions (nuevo contexto: miembros de lo que
+            // sea que esté antes del punto). Una letra/'_' abre la lista solo si
+            // todavía no hay una abierta — si ya hay una, AvaloniaEdit filtra sola
+            // a medida que se sigue escribiendo, sin volver a llamar a Roslyn.
+            if (c == '.' || ((char.IsLetter(c) || c == '_') && _completionWindow is null))
+                _ = ShowCompletionAsync();
+        }
+
+        private void OnEditorTextEntering(object? sender, TextInputEventArgs e)
+        {
+            // Patrón estándar de AvaloniaEdit: si se está escribiendo un
+            // caracter que no puede formar parte de un identificador mientras
+            // el popup está abierto (paréntesis, punto y coma, espacio, etc.),
+            // se trata como "confirmar la selección actual" en vez de dejar que
+            // se escriba normal y el popup se cierre solo sin insertar nada.
+            if (!string.IsNullOrEmpty(e.Text) && _completionWindow != null)
+            {
+                if (!char.IsLetterOrDigit(e.Text[0]) && e.Text[0] != '_')
+                    _completionWindow.CompletionList.RequestInsertion(e);
+            }
+        }
+
+        private void OnEditorKeyDown(object? sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Space && e.KeyModifiers == KeyModifiers.Control)
+            {
+                e.Handled = true;
+                _ = ShowCompletionAsync();
+            }
+        }
+
+        private async Task ShowCompletionAsync()
+        {
+            if (_activeTab is null)
+                return;
+
+            // Re-sincronizar antes de preguntar: TextEntered se dispara ya con
+            // el caracter insertado en el Document, así que esto siempre le
+            // manda a Roslyn el texto real que se ve en pantalla en este instante.
+            _completionEngine.UpdateText(_editor.Document.Text);
+
+            var caretOffset = _editor.CaretOffset;
+
+            // CLAVE: CompletionWindow por defecto arranca el rango a reemplazar
+            // justo en el caret, SIN mirar hacia atrás. Si ya había texto
+            // tecleado antes de abrir la ventana (ya sea porque se abrió
+            // después de la primera letra, o porque se invocó Ctrl+Espacio a
+            // mitad de palabra), ese prefijo queda "fijo" y la sugerencia se
+            // inserta después de él en vez de reemplazarlo — eso es lo que
+            // causaba "CoColorSpaceMode" y el filtrado roto (sin prefijo que
+            // filtrar, mostraba la lista completa sin acotar). Buscar el
+            // inicio real de la palabra actual y fijarlo como StartOffset
+            // arregla ambos síntomas a la vez.
+            var wordStart = FindWordStart(_editor.Document.Text, caretOffset);
+
+            var items = await _completionEngine.GetCompletionsAsync(caretOffset);
+            if (items.Count == 0)
+                return;
+
+            // El usuario pudo haber seguido escribiendo (o cerrado la tab)
+            // mientras esto era async; si el caret ya no está donde arrancamos,
+            // esta lista quedó obsoleta.
+            if (_editor.CaretOffset != caretOffset)
+                return;
+
+            _completionWindow = new CompletionWindow(_editor.TextArea)
+            {
+                CloseWhenCaretAtBeginning = false,
+                StartOffset = wordStart,
+            };
+
+            var data = _completionWindow.CompletionList.CompletionData;
+            foreach (var item in items)
+                data.Add(new SketchCompletionData(_completionEngine, item, caretOffset));
+
+            _completionWindow.Closed += (_, _) => _completionWindow = null;
+            _completionWindow.Show();
+        }
+
+        /// <summary>Scans back from <paramref name="offset"/> over identifier characters to find where the current word begins.</summary>
+        private static int FindWordStart(string text, int offset)
+        {
+            var start = offset;
+            while (start > 0 && IsIdentifierChar(text[start - 1]))
+                start--;
+            return start;
+        }
+
+        private static bool IsIdentifierChar(char c) => char.IsLetterOrDigit(c) || c == '_';
+
         public EditorTab AddNewTab(string? filePath = null, string? initialText = null)
         {
             var tab = new EditorTab(filePath, initialText ?? DefaultSketchTemplate());
@@ -322,6 +437,7 @@ namespace DanaProcessing.Ide.Editor
         {
             _activeTab = tab;
             _editor.Document = tab.Document;
+            _completionEngine.UpdateText(tab.Document.Text);
         }
 
         public async Task OpenFileAsync()
@@ -429,10 +545,10 @@ public class MySketch : Sketch
 
         StrokeWeight(6);
         Stroke(Red(_paletteRed), Green(_paletteRed), Blue(_paletteRed));
-        Line(0, 0, 0, -120);
+        Line(0, 0, 0, -180);
 
-        Translate(0, -120);
-        Branch(120, 0);
+        Translate(0, -180);
+        Branch(180, 0);
     }
 
     public override void KeyPressed()

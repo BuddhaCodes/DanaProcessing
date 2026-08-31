@@ -6,6 +6,7 @@ using Avalonia.Platform;
 using Avalonia.Themes.Fluent;
 using AvaloniaEdit;
 using DanaProcessing.AvaloniaHost;
+using DanaProcessing.Ide.Theme;
 
 namespace DanaProcessing.Ide
 {
@@ -29,6 +30,12 @@ namespace DanaProcessing.Ide
             {
                 Console.WriteLine($"Error loading AvaloniaEdit theme: {ex.Message}");
             }
+
+            // El popup de autocompletado (CompletionWindow) es una Window
+            // propia, no un control dentro del árbol de SketchEditorView, así
+            // que sus estilos solo la alcanzan si viven en Application.Styles
+            // — agregarlos al UserControl del editor no tendría efecto acá.
+            Styles.AddRange(ClayTheme.CompletionWindowStyles());
         }
 
         public override void OnFrameworkInitializationCompleted()

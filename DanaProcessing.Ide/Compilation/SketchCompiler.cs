@@ -44,7 +44,11 @@ namespace DanaProcessing.Ide.Compilation
         /// leaks an SKColor/SKPoint/etc. into a public method signature,
         /// that's the bug to fix — not a reason to add SkiaSharp back here.
         /// </summary>
-        private const string ImplicitUsingsSource = "global using DanaProcessing;";
+        internal const string ImplicitUsingsSource = "global using DanaProcessing;";
+
+        /// <summary>Language version pinned here too, so a completion-time syntax tree
+        /// and a Run-time syntax tree never disagree about what's valid C#.</summary>
+        internal static readonly CSharpParseOptions SharedParseOptions = ParseOptions;
 
         public static CompileResult Compile(string sourceCode)
         {
@@ -54,7 +58,7 @@ namespace DanaProcessing.Ide.Compilation
             var compilation = CSharpCompilation.Create(
                 assemblyName: "DanaProcessing.Sketch." + Guid.NewGuid().ToString("N"),
                 syntaxTrees: new[] { userTree, implicitUsingsTree },
-                references: GetReferences(),
+                references: GetSharedReferences(),
                 options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 
             using var ms = new MemoryStream();
@@ -89,7 +93,7 @@ namespace DanaProcessing.Ide.Compilation
         /// Sketch/PVector/DanaColor/etc. Note SkiaSharp.dll is deliberately
         /// NOT referenced here — see the remark on ImplicitUsingsSource above.
         /// </summary>
-        private static List<MetadataReference> GetReferences()
+        internal static List<MetadataReference> GetSharedReferences()
         {
             var references = new List<MetadataReference>();
 

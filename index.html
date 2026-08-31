@@ -1,0 +1,1913 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DanaProcessing — Reference Documentation</title>
+<meta name="description" content="Reference documentation for DanaProcessing, a Processing-style creative coding library for C# built on SkiaSharp.">
+
+<!-- Phosphor Icons -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/bold/style.css">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+  /* ============================================================
+     VARIABLES Y TEMAS
+     ============================================================ */
+  :root {
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-mono: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', monospace;
+
+    /* Light theme — using your palette */
+    --bg-primary: #F9F3EF;
+    --bg-secondary: #F0E8E2;
+    --bg-tertiary: #E8DED6;
+    --bg-sidebar: #F9F3EF;
+    --bg-code: #F0E8E2;
+    --bg-hover: #E8DED6;
+    --bg-active: #D2C1B6;
+
+    --text-primary: #1B3C53;
+    --text-secondary: #456882;
+    --text-muted: #7A9AAE;
+    --text-inverse: #F9F3EF;
+
+    --border-light: #D2C1B6;
+    --border-medium: #B8A699;
+    --border-strong: #9A8A7D;
+
+    --accent: #1B3C53;
+    --accent-hover: #2A5070;
+    --accent-light: #D2C1B6;
+    --accent-glow: rgba(27, 60, 83, 0.12);
+
+    --success: #3B7A5E;
+    --warning: #B8863A;
+    --danger: #A84545;
+
+    --shadow-sm: 0 1px 3px rgba(27,60,83,0.08);
+    --shadow-md: 0 4px 16px rgba(27,60,83,0.10);
+    --shadow-lg: 0 8px 32px rgba(27,60,83,0.14);
+    --shadow-xl: 0 16px 48px rgba(27,60,83,0.18);
+
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 16px;
+    --radius-xl: 24px;
+
+    --sidebar-w: 260px;
+    --toc-w: 310px;
+    --content-max: 1050px;
+
+    --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* Icon colors */
+    --icon-color: #456882;
+    --icon-active: #1B3C53;
+  }
+
+  /* Dark theme — chromatic opposite of your palette */
+  [data-theme="dark"] {
+    --bg-primary: #1B2C38;
+    --bg-secondary: #243A48;
+    --bg-tertiary: #2D4858;
+    --bg-sidebar: #1B2C38;
+    --bg-code: #243A48;
+    --bg-hover: #2D4858;
+    --bg-active: #3A5A6C;
+
+    --text-primary: #E8E0DA;
+    --text-secondary: #B8AEA6;
+    --text-muted: #8A7E76;
+    --text-inverse: #1B2C38;
+
+    --border-light: #3A5A6C;
+    --border-medium: #4A6A7C;
+    --border-strong: #5A7A8C;
+
+    --accent: #D2C1B6;
+    --accent-hover: #E0D2C8;
+    --accent-light: #3A5A6C;
+    --accent-glow: rgba(210, 193, 182, 0.12);
+
+    --success: #5A9A7E;
+    --warning: #D4A64A;
+    --danger: #C85A5A;
+
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+    --shadow-md: 0 4px 16px rgba(0,0,0,0.4);
+    --shadow-lg: 0 8px 32px rgba(0,0,0,0.5);
+    --shadow-xl: 0 16px 48px rgba(0,0,0,0.6);
+
+    --icon-color: #B8AEA6;
+    --icon-active: #D2C1B6;
+  }
+
+  /* ============================================================
+     RESET Y BASE
+     ============================================================ */
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html{scroll-behavior:smooth;}
+
+  body{
+    font-family:var(--font-sans);
+    background:var(--bg-primary);
+    color:var(--text-primary);
+    line-height:1.6;
+    transition:background var(--transition), color var(--transition);
+    -webkit-font-smoothing:antialiased;
+  }
+
+  a{color:var(--accent);text-decoration:none;transition:color var(--transition);}
+  a:hover{color:var(--accent-hover);text-decoration:underline;}
+
+  /* ============================================================
+     SCROLLBAR
+     ============================================================ */
+  ::-webkit-scrollbar{width:6px;height:6px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+  ::-webkit-scrollbar-thumb{background:var(--border-medium);border-radius:3px;}
+  ::-webkit-scrollbar-thumb:hover{background:var(--border-strong);}
+
+  /* ============================================================
+     LAYOUT SHELL
+     ============================================================ */
+  .app{display:flex;min-height:100vh;}
+
+  /* ---------- SIDEBAR ---------- */
+  .sidebar{
+    position:sticky;
+    top:0;
+    width:var(--sidebar-w);
+    height:100vh;
+    flex-shrink:0;
+    background:var(--bg-sidebar);
+    border-right:1px solid var(--border-light);
+    padding:20px 16px 32px;
+    overflow-y:auto;
+    transition:background var(--transition), border var(--transition), transform 0.3s ease;
+    z-index:100;
+  }
+
+  .sidebar-header{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:0 4px 20px;
+    margin-bottom:20px;
+    border-bottom:1px solid var(--border-light);
+    transition:border var(--transition);
+  }
+  .sidebar-logo{
+    width:36px;height:36px;
+    background:var(--accent);
+    border-radius:var(--radius-sm);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-weight:700;
+    font-size:18px;
+    color:var(--text-inverse);
+    flex-shrink:0;
+    transition:background var(--transition), color var(--transition);
+  }
+  .sidebar-brand{
+    font-weight:700;
+    font-size:18px;
+    letter-spacing:-0.02em;
+    color:var(--text-primary);
+  }
+  .sidebar-brand small{
+    font-weight:400;
+    font-size:12px;
+    color:var(--text-muted);
+    display:block;
+    margin-top:-2px;
+  }
+
+  .sidebar-nav{display:flex;flex-direction:column;gap:2px;}
+  .sidebar-nav .group{margin-bottom:4px;}
+  .sidebar-nav .group-title{
+    font-size:10.5px;
+    font-weight:600;
+    text-transform:uppercase;
+    letter-spacing:0.08em;
+    color:var(--text-muted);
+    padding:12px 4px 6px;
+  }
+  .sidebar-nav a{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:6px 10px;
+    border-radius:var(--radius-sm);
+    font-size:13.5px;
+    color:var(--text-secondary);
+    transition:all var(--transition);
+    text-decoration:none;
+  }
+  .sidebar-nav a:hover{
+    background:var(--bg-hover);
+    color:var(--text-primary);
+    text-decoration:none;
+  }
+  .sidebar-nav a.active{
+    background:var(--bg-active);
+    color:var(--text-primary);
+    font-weight:500;
+  }
+  .sidebar-nav a .ph{
+    font-size:18px;
+    color:var(--icon-color);
+    width:20px;
+    text-align:center;
+    flex-shrink:0;
+    transition:color var(--transition);
+  }
+  .sidebar-nav a.active .ph{color:var(--icon-active);}
+
+  /* Theme toggle in sidebar */
+  .sidebar-footer{
+    margin-top:24px;
+    padding-top:16px;
+    border-top:1px solid var(--border-light);
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    transition:border var(--transition);
+  }
+  .theme-toggle{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    background:var(--bg-tertiary);
+    border:none;
+    border-radius:20px;
+    padding:4px 6px 4px 12px;
+    cursor:pointer;
+    font-size:13px;
+    color:var(--text-secondary);
+    transition:all var(--transition);
+    font-family:var(--font-sans);
+  }
+  .theme-toggle:hover{background:var(--bg-hover);color:var(--text-primary);}
+  .theme-toggle .track{
+    position:relative;
+    width:36px;
+    height:20px;
+    background:var(--border-medium);
+    border-radius:10px;
+    transition:background var(--transition);
+  }
+  .theme-toggle .track .thumb{
+    position:absolute;
+    top:2px;
+    left:2px;
+    width:16px;
+    height:16px;
+    background:var(--bg-primary);
+    border-radius:50%;
+    transition:transform 0.25s ease, background var(--transition);
+    box-shadow:0 1px 4px rgba(0,0,0,0.15);
+  }
+  [data-theme="dark"] .theme-toggle .track{background:var(--accent);}
+  [data-theme="dark"] .theme-toggle .track .thumb{transform:translateX(16px);}
+
+  /* Mobile menu toggle */
+  .menu-toggle{
+    display:none;
+    position:fixed;
+    top:14px;left:14px;
+    z-index:200;
+    background:var(--bg-primary);
+    border:1px solid var(--border-light);
+    border-radius:var(--radius-sm);
+    padding:8px 12px;
+    font-size:20px;
+    cursor:pointer;
+    color:var(--text-primary);
+    box-shadow:var(--shadow-md);
+    transition:all var(--transition);
+  }
+  .menu-toggle:hover{background:var(--bg-hover);}
+
+  /* ---------- MAIN CONTENT ---------- */
+  .main{
+    flex:1;
+    min-width:0;
+    padding:0 48px 80px;
+    transition:padding 0.3s ease;
+  }
+
+  .main-inner{max-width:var(--content-max);margin:0 auto;}
+
+  /* ---------- TOP BAR ---------- */
+  .topbar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:20px 0 16px;
+    border-bottom:1px solid var(--border-light);
+    margin-bottom:32px;
+    transition:border var(--transition);
+  }
+  .topbar .page-title{
+    font-size:20px;
+    font-weight:600;
+    letter-spacing:-0.01em;
+  }
+  .topbar .page-title span{color:var(--text-muted);font-weight:400;}
+  .topbar .badge{
+    font-size:11px;
+    background:var(--bg-tertiary);
+    color:var(--text-muted);
+    padding:4px 14px;
+    border-radius:20px;
+    font-weight:500;
+    letter-spacing:0.02em;
+  }
+
+  /* ---------- HERO ---------- */
+  .hero{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:40px;
+    padding:24px 0 40px;
+    margin-bottom:8px;
+  }
+  .hero-content h1{
+    font-size:38px;
+    font-weight:700;
+    letter-spacing:-0.02em;
+    margin:0 0 12px;
+    line-height:1.2;
+    color:var(--text-primary);
+  }
+  .hero-content .lede{
+    font-size:17px;
+    color:var(--text-secondary);
+    max-width:44ch;
+    margin:0 0 20px;
+    line-height:1.7;
+  }
+  .hero-actions{display:flex;gap:10px;flex-wrap:wrap;}
+  .btn{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    padding:10px 22px;
+    border-radius:var(--radius-sm);
+    font-weight:500;
+    font-size:14px;
+    border:1px solid var(--border-light);
+    background:var(--bg-primary);
+    color:var(--text-primary);
+    cursor:pointer;
+    transition:all var(--transition);
+    text-decoration:none;
+    font-family:var(--font-sans);
+  }
+  .btn:hover{text-decoration:none;transform:translateY(-2px);box-shadow:var(--shadow-md);}
+  .btn-primary{
+    background:var(--accent);
+    color:var(--text-inverse);
+    border-color:var(--accent);
+  }
+  .btn-primary:hover{background:var(--accent-hover);border-color:var(--accent-hover);color:var(--text-inverse);}
+  .btn-ghost{border-color:var(--border-medium);}
+  .btn-ghost:hover{background:var(--bg-hover);border-color:var(--border-strong);}
+  .btn .ph{font-size:18px;}
+
+  .hero-canvas{
+    background:var(--bg-secondary);
+    border-radius:var(--radius-lg);
+    border:1px solid var(--border-light);
+    padding:8px;
+    position:relative;
+    transition:all var(--transition);
+  }
+  .hero-canvas .label{
+    position:absolute;
+    top:-10px;left:16px;
+    background:var(--bg-primary);
+    padding:0 10px;
+    font-size:11px;
+    font-weight:500;
+    color:var(--text-muted);
+    border:1px solid var(--border-light);
+    border-radius:4px;
+    font-family:var(--font-mono);
+    transition:background var(--transition), border var(--transition), color var(--transition);
+  }
+  #hero-canvas{display:block;width:100%;height:240px;border-radius:var(--radius-md);background:#1B2C38;}
+
+  @media (max-width:860px){
+    .hero{grid-template-columns:1fr;}
+    .hero-content h1{font-size:30px;}
+  }
+
+  /* ---------- PAGE BODY (two-column) ---------- */
+  .page-body{
+    display:flex;
+    gap:48px;
+    align-items:flex-start;
+  }
+  .page-body .main-col{flex:1;min-width:0;}
+  .page-body .toc-col{
+    width:var(--toc-w);
+    flex-shrink:0;
+    position:sticky;
+    top:24px;
+    max-height:calc(100vh - 48px);
+    overflow-y:auto;
+    padding-left:4px;
+  }
+  .page-body .toc-col .toc-title{
+    font-size:10.5px;
+    font-weight:600;
+    text-transform:uppercase;
+    letter-spacing:0.08em;
+    color:var(--text-muted);
+    padding-bottom:8px;
+    border-bottom:1px solid var(--border-light);
+    margin-bottom:10px;
+    transition:border var(--transition), color var(--transition);
+  }
+  .page-body .toc-col ul{list-style:none;}
+  .page-body .toc-col li{margin:0;}
+  .page-body .toc-col a{
+    display:block;
+    padding:3px 0 3px 12px;
+    font-size:12.5px;
+    font-family:var(--font-mono);
+    color:var(--text-muted);
+    border-left:2px solid transparent;
+    transition:all var(--transition);
+    line-height:1.5;
+  }
+  .page-body .toc-col a:hover{
+    color:var(--text-primary);
+    border-left-color:var(--border-medium);
+    text-decoration:none;
+  }
+  .page-body .toc-col a.active{
+    color:var(--accent);
+    border-left-color:var(--accent);
+    font-weight:500;
+  }
+  @media (max-width:1024px){.page-body .toc-col{display:none;}}
+
+  /* ---------- DOC SECTIONS ---------- */
+  .doc-section{
+    padding:40px 0;
+    border-bottom:1px solid var(--border-light);
+    transition:border var(--transition);
+  }
+  .doc-section:last-of-type{border-bottom:none;}
+  .doc-section .section-kicker{
+    font-size:10.5px;
+    font-weight:600;
+    text-transform:uppercase;
+    letter-spacing:0.08em;
+    color:var(--accent);
+    margin-bottom:4px;
+    opacity:0.7;
+  }
+  .doc-section h2{
+    font-size:28px;
+    font-weight:700;
+    letter-spacing:-0.01em;
+    margin:0 0 4px;
+    color:var(--text-primary);
+  }
+  .doc-section .section-intro{
+    color:var(--text-secondary);
+    max-width:60ch;
+    margin:0 0 24px;
+    font-size:15px;
+  }
+
+  .entry-title{
+    font-size:16px;
+    font-weight:600;
+    font-family:var(--font-mono);
+    margin:28px 0 4px;
+    padding-bottom:8px;
+    border-bottom:1px solid var(--border-light);
+    color:var(--text-primary);
+    transition:border var(--transition);
+  }
+  .entry-title .sig-return{
+    font-weight:400;
+    color:var(--text-muted);
+    font-size:14px;
+  }
+  .entry-desc{
+    color:var(--text-secondary);
+    font-size:14.5px;
+    margin:4px 0 10px;
+  }
+  .entry-desc p{margin:0 0 8px;}
+
+  /* ---------- TABLES ---------- */
+  .table-wrap{
+    overflow-x:auto;
+    margin:12px 0 20px;
+    border-radius:var(--radius-sm);
+    border:1px solid var(--border-light);
+    transition:border var(--transition);
+  }
+  .table-wrap table{
+    width:100%;
+    border-collapse:collapse;
+    font-size:14px;
+  }
+  .table-wrap th,.table-wrap td{
+    padding:8px 14px;
+    text-align:left;
+    border-bottom:1px solid var(--border-light);
+    vertical-align:top;
+  }
+  .table-wrap tr:last-child td{border-bottom:none;}
+  .table-wrap th{
+    font-size:10.5px;
+    font-weight:600;
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+    color:var(--text-muted);
+    background:var(--bg-secondary);
+    transition:background var(--transition), color var(--transition);
+  }
+  .table-wrap td:first-child{
+    font-family:var(--font-mono);
+    font-size:13px;
+    color:var(--accent);
+    white-space:nowrap;
+  }
+  .table-wrap td .ptype{
+    font-family:var(--font-mono);
+    font-size:12px;
+    color:var(--text-muted);
+    white-space:nowrap;
+  }
+
+  /* ---------- ENUM TABLES ---------- */
+  .enum-table{
+    width:100%;
+    border-collapse:collapse;
+    margin:12px 0 24px;
+    font-size:14px;
+    border:1px solid var(--border-light);
+    border-radius:var(--radius-sm);
+    overflow:hidden;
+    transition:border var(--transition);
+  }
+  .enum-table caption{
+    text-align:left;
+    font-weight:600;
+    font-size:13px;
+    padding:8px 14px;
+    background:var(--bg-secondary);
+    border-bottom:1px solid var(--border-light);
+    font-family:var(--font-mono);
+    color:var(--text-primary);
+    transition:background var(--transition), border var(--transition), color var(--transition);
+  }
+  .enum-table th,.enum-table td{
+    padding:7px 14px;
+    text-align:left;
+    border-bottom:1px solid var(--border-light);
+  }
+  .enum-table tr:last-child td{border-bottom:none;}
+  .enum-table th{
+    font-size:10.5px;
+    font-weight:600;
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+    color:var(--text-muted);
+    background:var(--bg-secondary);
+    transition:background var(--transition), color var(--transition);
+  }
+  .enum-table td:first-child{
+    font-family:var(--font-mono);
+    font-size:13px;
+    color:var(--accent);
+    white-space:nowrap;
+  }
+
+  /* ---------- CODE ---------- */
+  code.inline{
+    background:var(--bg-code);
+    border:1px solid var(--border-light);
+    border-radius:4px;
+    padding:0.05em 0.4em;
+    font-size:0.85em;
+    color:var(--accent);
+    font-family:var(--font-mono);
+    transition:all var(--transition);
+  }
+  pre{
+    background:var(--bg-code);
+    border:1px solid var(--border-light);
+    border-radius:var(--radius-sm);
+    padding:16px 20px;
+    overflow-x:auto;
+    font-size:13px;
+    line-height:1.7;
+    margin:12px 0 20px;
+    font-family:var(--font-mono);
+    transition:all var(--transition);
+  }
+  pre .kw{color:var(--accent);font-weight:600;}
+  pre .str{color:#3B7A5E;}
+  pre .cm{color:var(--text-muted);font-style:italic;}
+  pre .tp{color:#7C3AED;}
+  [data-theme="dark"] pre .str{color:#7DDFA0;}
+  [data-theme="dark"] pre .tp{color:#C792EA;}
+
+  /* ---------- NOTE ---------- */
+  .note{
+    background:var(--bg-active);
+    border-left:4px solid var(--accent);
+    padding:12px 16px;
+    border-radius:0 var(--radius-sm) var(--radius-sm) 0;
+    margin:12px 0 18px;
+    font-size:14px;
+    color:var(--text-secondary);
+    transition:all var(--transition);
+  }
+  .note strong{color:var(--accent);}
+
+  /* ---------- KEYWORD INDEX ---------- */
+  .index-search{
+    width:100%;
+    padding:10px 14px;
+    font-family:var(--font-mono);
+    font-size:14px;
+    border:1px solid var(--border-light);
+    border-radius:var(--radius-sm);
+    background:var(--bg-primary);
+    color:var(--text-primary);
+    margin-bottom:18px;
+    transition:all var(--transition);
+  }
+  .index-search:focus{
+    outline:none;
+    border-color:var(--accent);
+    box-shadow:0 0 0 3px var(--accent-glow);
+  }
+  .index-search::placeholder{color:var(--text-muted);}
+
+  .index-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(200px, 1fr));
+    gap:2px;
+  }
+  .index-entry{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:5px 10px;
+    border-radius:var(--radius-sm);
+    font-size:13.5px;
+    cursor:pointer;
+    transition:background 0.15s ease;
+    gap:8px;
+  }
+  .index-entry:hover{background:var(--bg-hover);}
+  .index-entry .k{
+    font-family:var(--font-mono);
+    color:var(--accent);
+    font-weight:500;
+  }
+  .index-entry .k a{color:var(--accent);}
+  .index-entry .k a:hover{color:var(--accent-hover);text-decoration:none;}
+  .index-entry .cat{
+    font-size:10px;
+    color:var(--text-muted);
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+    font-weight:500;
+    white-space:nowrap;
+  }
+  .index-entry[hidden]{display:none;}
+
+  .back-to-top{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    margin-top:16px;
+    font-size:13px;
+    font-weight:500;
+    color:var(--text-muted);
+    transition:color var(--transition);
+  }
+  .back-to-top:hover{color:var(--accent);text-decoration:none;}
+
+  /* ---------- FOOTER ---------- */
+  .doc-footer{
+    padding:32px 0 16px;
+    border-top:1px solid var(--border-light);
+    color:var(--text-muted);
+    font-size:13px;
+    transition:border var(--transition);
+  }
+
+  /* ============================================================
+     RESPONSIVE
+     ============================================================ */
+  @media (max-width:820px){
+    .menu-toggle{display:flex;}
+    .sidebar{
+      position:fixed;
+      top:0;left:0;
+      transform:translateX(-100%);
+      width:280px !important;
+      height:100vh;
+      box-shadow:var(--shadow-xl);
+      border-right:1px solid var(--border-light);
+    }
+    .sidebar.open{transform:translateX(0);}
+    .main{padding:70px 20px 60px;}
+  }
+
+  @media (max-width:600px){
+    .hero-content h1{font-size:26px;}
+    .index-grid{grid-template-columns:1fr;}
+    .doc-section h2{font-size:22px;}
+  }
+
+  /* ============================================================
+     REDUCED MOTION
+     ============================================================ */
+  @media (prefers-reduced-motion: reduce){
+    *{animation:none !important;transition-duration:0.01ms !important;}
+    html{scroll-behavior:auto;}
+  }
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     MOBILE MENU TOGGLE
+     ============================================================ -->
+<button class="menu-toggle" id="menuToggle" aria-label="Toggle navigation">
+  <i class="ph ph-list"></i>
+</button>
+
+<!-- ============================================================
+     APP SHELL
+     ============================================================ -->
+<div class="app">
+
+  <!-- ===================== SIDEBAR ===================== -->
+  <aside class="sidebar" id="sidebar" aria-label="Documentation navigation">
+    <div class="sidebar-header">
+      <div class="sidebar-logo">◆</div>
+      <div class="sidebar-brand">
+        DanaProcessing
+        <small>v0 · reference</small>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="group">
+        <div class="group-title">Introduction</div>
+        <a href="#intro" class="active"><i class="ph ph-book-open"></i> Overview</a>
+        <a href="#structure"><i class="ph ph-stack"></i> Sketch structure</a>
+      </div>
+
+      <div class="group">
+        <div class="group-title">Drawing</div>
+        <a href="#color"><i class="ph ph-palette"></i> Color</a>
+        <a href="#shape-primitives"><i class="ph ph-shapes"></i> 2D Primitives</a>
+        <a href="#shape-custom"><i class="ph ph-pencil"></i> Custom shapes</a>
+        <a href="#typography"><i class="ph ph-text-aa"></i> Typography</a>
+        <a href="#transform"><i class="ph ph-arrows-counter-clockwise"></i> Transformations</a>
+      </div>
+
+      <div class="group">
+        <div class="group-title">Media</div>
+        <a href="#image"><i class="ph ph-image"></i> PImage</a>
+        <a href="#pgraphics"><i class="ph ph-cube"></i> PGraphics</a>
+        <a href="#pshape"><i class="ph ph-bezier-curve"></i> PShape</a>
+        <a href="#output"><i class="ph ph-floppy-disk"></i> Saving output</a>
+      </div>
+
+      <div class="group">
+        <div class="group-title">Data &amp; Math</div>
+        <a href="#math"><i class="ph ph-calculator"></i> Math &amp; trig</a>
+        <a href="#pvector"><i class="ph ph-arrow-right"></i> PVector</a>
+        <a href="#random-noise"><i class="ph ph-dice-five"></i> Random &amp; noise</a>
+      </div>
+
+      <div class="group">
+        <div class="group-title">Interaction</div>
+        <a href="#input"><i class="ph ph-mouse"></i> Input &amp; time</a>
+      </div>
+
+      <div class="group">
+        <div class="group-title">Reference</div>
+        <a href="#enums"><i class="ph ph-list-bullets"></i> Enumerations</a>
+        <a href="#index"><i class="ph ph-magnifying-glass"></i> Keyword index</a>
+      </div>
+
+      <div class="group">
+        <div class="group-title">Hosting &amp; Tooling</div>
+        <a href="#hosting"><i class="ph ph-desktop"></i> Avalonia host</a>
+        <a href="#ide"><i class="ph ph-gear"></i> The IDE</a>
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <span style="font-size:12px;color:var(--text-muted);">Theme</span>
+      <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
+        <i class="ph ph-sun"></i>
+        <span class="track"><span class="thumb"></span></span>
+        <i class="ph ph-moon"></i>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ===================== MAIN ===================== -->
+  <main class="main">
+
+    <!-- TOP BAR -->
+    <div class="topbar">
+      <div class="page-title">Documentation <span>· Reference</span></div>
+      <div class="badge">v0 · stable</div>
+    </div>
+
+    <div class="main-inner">
+
+      <!-- ========== HERO ========== -->
+      <section class="hero">
+        <div class="hero-content">
+          <h1>DanaProcessing</h1>
+          <p class="lede">A Processing-style creative coding library for C#, built on SkiaSharp. Write a <code class="inline">Sketch</code>, override <code class="inline">Setup()</code> and <code class="inline">Draw()</code>, and get the same drawing vocabulary Processing sketchers already know.</p>
+          <div class="hero-actions">
+            <a class="btn btn-primary" href="#intro"><i class="ph ph-book-open"></i> Read the docs</a>
+            <a class="btn btn-ghost" href="#index"><i class="ph ph-magnifying-glass"></i> Keyword index</a>
+          </div>
+        </div>
+        
+      </section>
+
+      <!-- ========== PAGE BODY ========== -->
+      <div class="page-body">
+
+        <!-- Main content column -->
+        <div class="main-col">
+
+          <!-- ================= INTRO ================= -->
+          <section class="doc-section" id="intro">
+            <div class="section-kicker">01 · Overview</div>
+            <h2>What DanaProcessing is</h2>
+            <p class="section-intro">DanaProcessing ports the shape and feel of the Processing language to C#. Instead of Java's <code class="inline">color()</code> function and bit-packed ints, colors are a real <code class="inline">Color</code> struct. Instead of a fixed window, a <code class="inline">Sketch</code> can be hosted inside WPF, Avalonia, or the bundled IDE. Everything else — the mental model of <code class="inline">Setup()</code> once and <code class="inline">Draw()</code> every frame, fill/stroke state, <code class="inline">beginShape()</code>/<code class="inline">endShape()</code>, <code class="inline">noise()</code> — is carried over on purpose.</p>
+
+            <div class="note"><strong>Where things live.</strong> Drawing state and operations are defined once on <code class="inline">GraphicsContext</code>, inherited by both <code class="inline">Sketch</code> and <code class="inline">PGraphics</code>. Sketch adds lifecycle, input, time, and randomness — things an offscreen buffer doesn't need.</div>
+
+            <h3 class="entry-title" id="minimal-sketch">Minimal sketch</h3>
+            <pre><span class="kw">public class</span> <span class="tp">MySketch</span> : <span class="tp">Sketch</span>
+{
+    <span class="kw">public override void</span> Setup()
+    {
+        Size(<span class="str">600</span>, <span class="str">400</span>);
+    }
+
+    <span class="kw">public override void</span> Draw()
+    {
+        Background(<span class="str">20</span>, <span class="str">20</span>, <span class="str">30</span>);
+        NoStroke();
+        Fill(<span class="str">100</span>, <span class="str">200</span>, <span class="str">255</span>);
+        Ellipse(MouseX, MouseY, <span class="str">60</span>, <span class="str">60</span>);
+    }
+}</pre>
+            <p>Save this in the IDE and press <strong>Run</strong> — <code class="inline">SketchCompiler</code> compiles it in memory with Roslyn and swaps it straight into the canvas.</p>
+          </section>
+
+          <!-- ================= STRUCTURE ================= -->
+          <section class="doc-section" id="structure">
+            <div class="section-kicker">02 · Structure</div>
+            <h2>Sketch structure</h2>
+            <p class="section-intro">Every sketch inherits from <code class="inline">Sketch</code> and implements <code class="inline">Draw()</code>. A host calls <code class="inline">Setup()</code> once, then <code class="inline">Draw()</code> on every frame, at the rate set by <code class="inline">FrameRate()</code>.</p>
+
+            <h3 class="entry-title" id="setup">Setup() <span class="sig-return">→ void</span></h3>
+            <p class="entry-desc">Runs once before the first frame. Use it to set the canvas size and any one-time state.</p>
+
+            <h3 class="entry-title" id="draw">Draw() <span class="sig-return">→ void</span> · abstract</h3>
+            <p class="entry-desc">Runs once per frame while <code class="inline">IsLooping</code> is true. The only member every sketch must implement.</p>
+
+            <h3 class="entry-title" id="size">Size(<span class="tp">int</span> w, <span class="tp">int</span> h)</h3>
+            <p class="entry-desc">Sets the canvas dimensions. Call from <code class="inline">Setup()</code>.</p>
+
+            <h3 class="entry-title" id="framerate">FrameRate(<span class="tp">int</span> fps)</h3>
+            <p class="entry-desc">Sets the target frame rate. Minimum 1.</p>
+
+            <h3 class="entry-title" id="noloop-loop">NoLoop() / Loop()</h3>
+            <p class="entry-desc">Stops or resumes automatic per-frame redraw via <code class="inline">IsLooping</code>.</p>
+
+            <h3 class="entry-title" id="windowresized">WindowResized() <span class="sig-return">→ void</span> · virtual</h3>
+            <p class="entry-desc">Called when the canvas size changes after the first frame.</p>
+
+            <div class="table-wrap">
+              <table>
+                <tr><th>property</th><th>type</th><th>meaning</th></tr>
+                <tr><td>FrameCount</td><td class="ptype">int</td><td>Frames drawn so far.</td></tr>
+                <tr><td>Width / Height</td><td class="ptype">int</td><td>Current canvas size.</td></tr>
+                <tr><td>TargetFrameRate</td><td class="ptype">int</td><td>Set via <code class="inline">FrameRate()</code>.</td></tr>
+                <tr><td>IsLooping</td><td class="ptype">bool</td><td>Whether the host should keep calling <code class="inline">Draw()</code>.</td></tr>
+              </table>
+            </div>
+          </section>
+
+          <!-- ================= COLOR ================= -->
+          <section class="doc-section" id="color">
+            <div class="section-kicker">03 · Drawing</div>
+            <h2>Color</h2>
+            <p class="section-intro">Fill and stroke are persistent state, set before the shape that uses them. All three-argument color methods are interpreted through the current <code class="inline">ColorMode</code> — RGB (0–255) or HSB (hue 0–360, saturation/brightness 0–100).</p>
+
+            <h3 class="entry-title" id="colormode">ColorMode(<span class="tp">ColorSpaceMode</span> mode)</h3>
+            <p class="entry-desc">Chooses how <code class="inline">Fill</code>/<code class="inline">Stroke</code>/<code class="inline">Background</code> interpret arguments.</p>
+
+            <h3 class="entry-title" id="fill">Fill(a1, a2, a3, alpha = 255) / FillHSB(...) / NoFill()</h3>
+            <p class="entry-desc">Sets the fill color. <code class="inline">FillHSB</code> always reads as HSB regardless of <code class="inline">ColorMode</code>.</p>
+
+            <h3 class="entry-title" id="stroke">Stroke(a1, a2, a3, alpha = 255) / StrokeHSB(...) / NoStroke()</h3>
+            <p class="entry-desc">Sets the stroke (outline) color.</p>
+
+            <h3 class="entry-title" id="strokeweight">StrokeWeight(<span class="tp">float</span> w) · StrokeCap(<span class="tp">StrokeCapKind</span>) · StrokeJoin(<span class="tp">StrokeJoinKind</span>)</h3>
+            <p class="entry-desc">Line width, end-cap style, and corner style.</p>
+
+            <div class="note"><strong>Naming collision.</strong> <code class="inline">StrokeCapKind.Square</code> maps to Skia's <em>Butt</em> (flush), and <code class="inline">StrokeCapKind.Project</code> maps to Skia's <em>Square</em> (extends past the endpoint).</div>
+
+            <h3 class="entry-title" id="background">Background(a1, a2, a3) · Clear()</h3>
+            <p class="entry-desc"><code class="inline">Background</code> fills the canvas with an opaque color. <code class="inline">Clear</code> wipes to transparent — useful on <code class="inline">PGraphics</code>.</p>
+
+            <h3 class="entry-title" id="tint">Tint(a1, a2, a3, alpha = 255) · Tint(<span class="tp">byte</span> alpha) · NoTint()</h3>
+            <p class="entry-desc">Sets a color/alpha multiplier applied to images drawn via <code class="inline">Image()</code>.</p>
+
+            <h3 class="entry-title" id="color-channels">Red / Green / Blue / Alpha / Hue / Saturation / Brightness(<span class="tp">Color</span> c)</h3>
+            <p class="entry-desc">Extracts one channel from a <code class="inline">Color</code>.</p>
+
+            <h3 class="entry-title" id="lerpcolor">LerpColor(<span class="tp">Color</span> c1, <span class="tp">Color</span> c2, <span class="tp">float</span> amt) <span class="sig-return">→ Color</span></h3>
+            <p class="entry-desc">Interpolates two colors in RGB space.</p>
+
+            <h3 class="entry-title" id="color-struct">struct Color</h3>
+            <p class="entry-desc">An RGBA value — a real struct built with <code class="inline">new Color(r, g, b, a)</code> or <code class="inline">Color.FromHsb(h, s, br, a)</code>.</p>
+          </section>
+
+          <!-- ================= PRIMITIVES ================= -->
+          <section class="doc-section" id="shape-primitives">
+            <div class="section-kicker">04 · Drawing</div>
+            <h2>2D primitives</h2>
+            <p class="section-intro">Rect, ellipse, arc, and custom-shape drawing all share the same four-argument alignment convention, resolved by <code class="inline">ShapeAlignMode</code>.</p>
+
+            <h3 class="entry-title" id="rectmode">RectMode / EllipseMode / ShapeMode(<span class="tp">ShapeAlignMode</span> mode)</h3>
+            <p class="entry-desc">Sets how the four arguments are interpreted. Default is <code class="inline">Corner</code> for rect and shape, <code class="inline">Center</code> for ellipse.</p>
+
+            <div class="table-wrap">
+              <table>
+                <tr><th>mode</th><th>a, b, c, d mean</th></tr>
+                <tr><td>Corner</td><td>x, y, width, height</td></tr>
+                <tr><td>Corners</td><td>x1, y1, x2, y2 (opposite corners)</td></tr>
+                <tr><td>Center</td><td>center x, center y, width, height</td></tr>
+                <tr><td>Radius</td><td>center x, center y, x-radius, y-radius</td></tr>
+              </table>
+            </div>
+
+            <h3 class="entry-title" id="rect">Rect(a, b, c, d) · Ellipse(a, b, c, d)</h3>
+            <p class="entry-desc">Draws per the active mode, filled and/or stroked.</p>
+
+            <h3 class="entry-title" id="line">Line(x1, y1, x2, y2) · Point(x, y)</h3>
+            <p class="entry-desc">A straight stroked segment, or a single point.</p>
+
+            <h3 class="entry-title" id="triangle">Triangle(x1,y1, x2,y2, x3,y3) · Polygon(...) · Quad(...)</h3>
+            <p class="entry-desc"><code class="inline">Polygon</code> closes and fills/strokes an arbitrary point list.</p>
+
+            <h3 class="entry-title" id="arc">Arc(a, b, c, d, start, stop, mode = ArcMode.Open)</h3>
+            <p class="entry-desc">Draws an arc of the ellipse bounded per <code class="inline">EllipseMode</code>.</p>
+
+            <table class="enum-table">
+              <caption>ArcMode</caption>
+              <tr><td>Open</td><td>Just the curved arc, unconnected.</td></tr>
+              <tr><td>Chord</td><td>Arc closed with a straight line between ends.</td></tr>
+              <tr><td>Pie</td><td>Arc closed through the center — a wedge.</td></tr>
+            </table>
+
+            <h3 class="entry-title" id="bezier">Bezier(x1,y1, cx1,cy1, cx2,cy2, x2,y2)</h3>
+            <p class="entry-desc">Draws a cubic Bézier curve, stroked only.</p>
+
+            <h3 class="entry-title" id="bezierpoint">BezierPoint(...) · BezierTangent(...) <span class="sig-return">→ float</span></h3>
+            <p class="entry-desc">Evaluate one axis of a cubic Bézier at parameter <code class="inline">t</code>.</p>
+
+            <h3 class="entry-title" id="curve">Curve(x1,y1, x2,y2, x3,y3, x4,y4) · CurveTightness(<span class="tp">float</span> t)</h3>
+            <p class="entry-desc">A Catmull-Rom curve through four points.</p>
+          </section>
+
+          <!-- ================= CUSTOM SHAPES ================= -->
+          <section class="doc-section" id="shape-custom">
+            <div class="section-kicker">05 · Drawing</div>
+            <h2>Custom shapes &amp; meshes</h2>
+            <p class="section-intro">Build arbitrary shapes vertex by vertex. There are two render paths at <code class="inline">EndShape()</code>: a <strong>simple path</strong> when every vertex shares one fill color, and a <strong>mesh path</strong> (Gouraud shading and/or texturing) once either varies.</p>
+
+            <h3 class="entry-title" id="beginshape">BeginShape(<span class="tp">ShapeKind</span> kind = Polygon)</h3>
+            <p class="entry-desc">Starts recording vertices. See <a href="#enums">ShapeKind</a> for all interpretations.</p>
+
+            <h3 class="entry-title" id="vertex">Vertex(x, y) · Vertex(x, y, u, v)</h3>
+            <p class="entry-desc">Adds a vertex, colored by the current <code class="inline">Fill()</code> at the moment of the call. The UV overload adds texture coordinates.</p>
+
+            <h3 class="entry-title" id="beziervertex">BezierVertex(...) · QuadraticVertex(...)</h3>
+            <p class="entry-desc">Adds a curved segment to a <code class="inline">Polygon</code>-mode shape.</p>
+
+            <h3 class="entry-title" id="texture">Texture(<span class="tp">PImage</span> img) · NoTexture()</h3>
+            <p class="entry-desc">Sets or clears the texture image for the shape.</p>
+
+            <h3 class="entry-title" id="endshape">EndShape(<span class="tp">bool</span> close = false)</h3>
+            <p class="entry-desc">Finishes and draws the recorded shape.</p>
+          </section>
+
+          <!-- ================= TYPOGRAPHY ================= -->
+          <section class="doc-section" id="typography">
+            <div class="section-kicker">06 · Drawing</div>
+            <h2>Typography</h2>
+
+            <h3 class="entry-title" id="textsize">TextSize(<span class="tp">float</span> size) · TextFont(<span class="tp">string?</span> path, <span class="tp">float?</span> size = null)</h3>
+            <p class="entry-desc"><code class="inline">TextFont(null)</code> resets to the default typeface.</p>
+
+            <h3 class="entry-title" id="textalign">TextAlign(<span class="tp">TextAlignH</span> h, <span class="tp">TextAlignV</span> v = Baseline)</h3>
+            <p class="entry-desc">Sets both axes of alignment.</p>
+
+            <h3 class="entry-title" id="textleading">TextLeading(<span class="tp">float</span> leading)</h3>
+            <p class="entry-desc">Line spacing for multi-line strings.</p>
+
+            <h3 class="entry-title" id="textwidth">TextWidth(<span class="tp">string</span> text) · TextAscent() · TextDescent() <span class="sig-return">→ float</span></h3>
+            <p class="entry-desc"><code class="inline">TextWidth</code> returns the widest line in a multi-line string.</p>
+
+            <h3 class="entry-title" id="text">Text(<span class="tp">string</span> text, x, y)</h3>
+            <p class="entry-desc">Draws text at (x, y) per the current alignment.</p>
+          </section>
+
+          <!-- ================= TRANSFORM ================= -->
+          <section class="doc-section" id="transform">
+            <div class="section-kicker">07 · Drawing</div>
+            <h2>Transformations</h2>
+
+            <h3 class="entry-title" id="pushmatrix">PushMatrix() · PopMatrix()</h3>
+            <p class="entry-desc">Saves and restores the canvas's transform stack.</p>
+
+            <h3 class="entry-title" id="translate">Translate(x, y)</h3>
+            <p class="entry-desc">Shifts the origin.</p>
+
+            <h3 class="entry-title" id="rotate">Rotate(<span class="tp">float</span> degrees)</h3>
+            <p class="entry-desc"><strong>Takes degrees</strong>, not radians — a deliberate deviation from Processing.</p>
+
+            <h3 class="entry-title" id="scale">Scale(<span class="tp">float</span> sx, <span class="tp">float?</span> sy = null)</h3>
+            <p class="entry-desc">Uniform scale when <code class="inline">sy</code> is omitted.</p>
+          </section>
+
+          <!-- ================= IMAGE ================= -->
+          <section class="doc-section" id="image">
+            <div class="section-kicker">08 · Media</div>
+            <h2>PImage</h2>
+            <p class="section-intro">A loaded bitmap. Load one with <code class="inline">Sketch.LoadImage(path)</code>, then draw it with <code class="inline">Image()</code>.</p>
+
+            <h3 class="entry-title" id="loadimage">LoadImage(<span class="tp">string</span> path) <span class="sig-return">→ PImage</span></h3>
+            <p class="entry-desc">Decodes an image file from disk.</p>
+
+            <h3 class="entry-title" id="image">Image(<span class="tp">PImage</span> img, x, y) · Image(img, x, y, w, h)</h3>
+            <p class="entry-desc">Draws the bitmap, respecting the current <code class="inline">Tint()</code>.</p>
+
+            <h3 class="entry-title" id="mask">img.Mask(<span class="tp">PImage</span> maskImage)</h3>
+            <p class="entry-desc">Applies another image as an alpha mask, in place.</p>
+          </section>
+
+          <!-- ================= PGRAPHICS ================= -->
+          <section class="doc-section" id="pgraphics">
+            <div class="section-kicker">09 · Media</div>
+            <h2>PGraphics</h2>
+            <p class="section-intro">An offscreen drawing buffer with the exact same drawing API as <code class="inline">Sketch</code>.</p>
+
+            <h3 class="entry-title" id="creategraphics">CreateGraphics(<span class="tp">int</span> w, <span class="tp">int</span> h) <span class="sig-return">→ PGraphics</span></h3>
+            <p class="entry-desc">Creates a new raster-backed offscreen surface.</p>
+
+            <h3 class="entry-title" id="begindraw">BeginDraw() · EndDraw()</h3>
+            <p class="entry-desc">Brackets a batch of drawing calls.</p>
+
+            <h3 class="entry-title" id="pgraphics-get">Get() <span class="sig-return">→ PImage</span></h3>
+            <p class="entry-desc">Snapshots the current pixels as a standalone <code class="inline">PImage</code>.</p>
+          </section>
+
+          <!-- ================= PSHAPE ================= -->
+          <section class="doc-section" id="pshape">
+            <div class="section-kicker">10 · Media</div>
+            <h2>PShape</h2>
+            <p class="section-intro">A loaded vector shape — SVG only.</p>
+
+            <h3 class="entry-title" id="loadshape">LoadShape(<span class="tp">string</span> path) <span class="sig-return">→ PShape</span></h3>
+            <p class="entry-desc">Loads an SVG file.</p>
+
+            <h3 class="entry-title" id="shape">Shape(<span class="tp">PShape</span> shape, x, y) · Shape(shape, x, y, w, h)</h3>
+            <p class="entry-desc">Draws the shape, positioned/sized per the current <code class="inline">ShapeMode</code>.</p>
+            <div class="note"><strong>Tint doesn't apply here.</strong> To tint a vector shape, render it into a <code class="inline">PGraphics</code> first.</div>
+          </section>
+
+          <!-- ================= OUTPUT ================= -->
+          <section class="doc-section" id="output">
+            <div class="section-kicker">11 · Media</div>
+            <h2>Saving output</h2>
+
+            <h3 class="entry-title" id="save">Save(<span class="tp">string</span> path, <span class="tp">int</span> quality = 100)</h3>
+            <p class="entry-desc">Encodes the current canvas to disk. Format is chosen from the file extension — .png, .jpg/.jpeg, .bmp, or .webp.</p>
+
+            <h3 class="entry-title" id="saveframe">SaveFrame(<span class="tp">string</span> pattern = "screen-####.png")</h3>
+            <p class="entry-desc">Like <code class="inline">Save()</code>, but substitutes <code class="inline">#</code> with <code class="inline">FrameCount</code>.</p>
+          </section>
+
+          <!-- ================= MATH ================= -->
+          <section class="doc-section" id="math">
+            <div class="section-kicker">12 · Data &amp; Math</div>
+            <h2>Math &amp; trig</h2>
+            <p class="section-intro">Free functions on <code class="inline">Sketch</code>, mirroring Processing's globals. All angles are radians, except <code class="inline">Rotate()</code>.</p>
+
+            <div class="table-wrap">
+              <table>
+                <tr><th>constant</th><th>value</th></tr>
+                <tr><td>PI / TWO_PI / TAU</td><td>π, 2π, 2π (alias)</td></tr>
+                <tr><td>HALF_PI / QUARTER_PI</td><td>π/2, π/4</td></tr>
+              </table>
+            </div>
+
+            <div class="table-wrap">
+              <table>
+                <tr><th>function</th><th>does</th></tr>
+                <tr><td>Sin / Cos / Tan / Asin / Acos / Atan / Atan2</td><td>Standard trig</td></tr>
+                <tr><td>Degrees(rad) / Radians(deg)</td><td>Angle unit conversion</td></tr>
+                <tr><td>Constrain(v, min, max)</td><td>Clamps a float or int</td></tr>
+                <tr><td>Dist(...)</td><td>Distance between points</td></tr>
+                <tr><td>Lerp(start, stop, amt)</td><td>Linear interpolation</td></tr>
+                <tr><td>Norm(value, start, stop)</td><td>Normalizes into [0, 1]</td></tr>
+                <tr><td>Map(value, s1, e1, s2, e2)</td><td>Remaps a value</td></tr>
+                <tr><td>Sq / Sqrt / Abs / Ceil / Floor / Round / Pow / Log / Exp</td><td>Scalar math</td></tr>
+                <tr><td>Max(...) / Min(...)</td><td>Two-argument or params-array</td></tr>
+              </table>
+            </div>
+          </section>
+
+          <!-- ================= PVECTOR ================= -->
+          <section class="doc-section" id="pvector">
+            <div class="section-kicker">13 · Data &amp; Math</div>
+            <h2>PVector</h2>
+            <p class="section-intro">A 2D vector struct for position, velocity, and acceleration.</p>
+
+            <div class="table-wrap">
+              <table>
+                <tr><th>instance (mutates)</th><th>static (pure)</th></tr>
+                <tr><td>Add / Sub / Mult / Div</td><td>Add / Sub / Mult / Div</td></tr>
+                <tr><td>Normalize / Limit(max) / SetMag(mag)</td><td>Dist(a, b) / Dot(a, b)</td></tr>
+                <tr><td>Rotate(rad) / Set(x, y)</td><td>FromAngle(rad)</td></tr>
+                <tr><td>Lerp(v, amt)</td><td>Lerp(a, b, amt)</td></tr>
+                <tr><td>Mag() / MagSq() / Heading() / Copy() / Array()</td><td>AngleBetween(a, b)</td></tr>
+              </table>
+            </div>
+          </section>
+
+          <!-- ================= RANDOM & NOISE ================= -->
+          <section class="doc-section" id="random-noise">
+            <div class="section-kicker">14 · Data &amp; Math</div>
+            <h2>Random &amp; noise</h2>
+
+            <h3 class="entry-title" id="random">Random(<span class="tp">float</span> max) · Random(min, max)</h3>
+            <p class="entry-desc">Uniform random float.</p>
+
+            <h3 class="entry-title" id="randomgaussian">RandomGaussian() <span class="sig-return">→ float</span></h3>
+            <p class="entry-desc">Normally distributed (mean 0, standard deviation 1).</p>
+
+            <h3 class="entry-title" id="randomseed">RandomSeed(<span class="tp">int</span> seed)</h3>
+            <p class="entry-desc">Reseeds the shared random generator.</p>
+
+            <h3 class="entry-title" id="noise">Noise(<span class="tp">float</span> x) · Noise(x, y) <span class="sig-return">→ float</span></h3>
+            <p class="entry-desc">Smooth pseudo-random value in [0, 1].</p>
+
+            <h3 class="entry-title" id="noiseseed">NoiseSeed(<span class="tp">int</span> seed) · NoiseDetail(<span class="tp">int</span> octaves, <span class="tp">float</span> falloff = 0.5f)</h3>
+            <p class="entry-desc">Reshuffles the noise permutation table, or changes octaves and falloff.</p>
+          </section>
+
+          <!-- ================= INPUT ================= -->
+          <section class="doc-section" id="input">
+            <div class="section-kicker">15 · Interaction</div>
+            <h2>Mouse, keyboard &amp; time</h2>
+            <p class="section-intro">Position and key state are plain properties; press/release/move are virtual methods.</p>
+
+            <div class="table-wrap">
+              <table>
+                <tr><th>mouse</th><th>keyboard</th></tr>
+                <tr><td>MouseX / MouseY / PMouseX / PMouseY</td><td>Key / KeyCode / IsKeyPressed</td></tr>
+                <tr><td>IsMousePressed / MouseButton</td><td>CODED, BACKSPACE, TAB, ENTER, RETURN, ESC, DELETE</td></tr>
+                <tr><td>MousePressed() / MouseReleased() / MouseClicked()</td><td>UP, DOWN, LEFT, RIGHT, ALT, CONTROL, SHIFT</td></tr>
+                <tr><td>MouseDragged() / MouseMoved() / MouseWheel(delta)</td><td>KeyPressed() / KeyReleased()</td></tr>
+              </table>
+            </div>
+
+            <h3 class="entry-title" id="millis">Millis() <span class="sig-return">→ long</span></h3>
+            <p class="entry-desc">Milliseconds since the sketch started.</p>
+
+            <h3 class="entry-title" id="cursor">Cursor(<span class="tp">CursorKind</span> kind) · NoCursor()</h3>
+            <p class="entry-desc">Raises the <code class="inline">CursorRequested</code> event.</p>
+          </section>
+
+          <!-- ================= ENUMS ================= -->
+          <section class="doc-section" id="enums">
+            <div class="section-kicker">16 · Reference</div>
+            <h2>Enumerations</h2>
+            <p class="section-intro">Shared between <code class="inline">Sketch</code> and <code class="inline">PGraphics</code>.</p>
+
+            <table class="enum-table">
+              <caption>ColorSpaceMode</caption>
+              <tr><td>RGB</td><td>Each argument 0–255 (default).</td></tr>
+              <tr><td>HSB</td><td>Hue 0–360, saturation/brightness 0–100.</td></tr>
+            </table>
+
+            <table class="enum-table">
+              <caption>ShapeAlignMode</caption>
+              <tr><td>Corner</td><td>x, y, width, height (default for rect/shape).</td></tr>
+              <tr><td>Corners</td><td>Two opposite corners.</td></tr>
+              <tr><td>Center</td><td>Center point, width, height (default for ellipse).</td></tr>
+              <tr><td>Radius</td><td>Center point, x-radius, y-radius.</td></tr>
+            </table>
+
+            <table class="enum-table">
+              <caption>ArcMode</caption>
+              <tr><td>Open</td><td>Unconnected arc.</td></tr>
+              <tr><td>Chord</td><td>Closed with a straight line between ends.</td></tr>
+              <tr><td>Pie</td><td>Closed through the center.</td></tr>
+            </table>
+
+            <table class="enum-table">
+              <caption>StrokeCapKind</caption>
+              <tr><td>Round</td><td>Rounded line end.</td></tr>
+              <tr><td>Square</td><td>Flush end (Skia's "Butt").</td></tr>
+              <tr><td>Project</td><td>Extends past the endpoint (Skia's "Square").</td></tr>
+            </table>
+
+            <table class="enum-table">
+              <caption>StrokeJoinKind</caption>
+              <tr><td>Miter</td><td>Sharp corner.</td></tr>
+              <tr><td>Bevel</td><td>Flattened corner.</td></tr>
+              <tr><td>Round</td><td>Rounded corner.</td></tr>
+            </table>
+
+            <table class="enum-table">
+              <caption>ShapeKind</caption>
+              <tr><td>Polygon</td><td>Default — supports curved segments.</td></tr>
+              <tr><td>Points</td><td>Each vertex drawn as a point.</td></tr>
+              <tr><td>Lines</td><td>Vertices grouped in pairs.</td></tr>
+              <tr><td>Triangles</td><td>Grouped in threes; supports mesh rendering.</td></tr>
+              <tr><td>TriangleFan / TriangleStrip</td><td>Shared-vertex triangles.</td></tr>
+              <tr><td>Quads / QuadStrip</td><td>Grouped or shared-vertex quads.</td></tr>
+            </table>
+
+            <table class="enum-table">
+              <caption>TextAlignH / TextAlignV</caption>
+              <tr><td>Left, Center, Right</td><td>Horizontal.</td></tr>
+              <tr><td>Baseline, Top, Center, Bottom</td><td>Vertical.</td></tr>
+            </table>
+
+            <table class="enum-table">
+              <caption>MouseButtonKind / CursorKind</caption>
+              <tr><td>None, Left, Right, Center</td><td>Mouse buttons.</td></tr>
+              <tr><td>Arrow, Cross, Hand, Move, Text, Wait</td><td>Cursor shapes.</td></tr>
+            </table>
+          </section>
+
+          <!-- ================= HOSTING ================= -->
+          <section class="doc-section" id="hosting">
+            <div class="section-kicker">17 · Hosting &amp; Tooling</div>
+            <h2>Avalonia host</h2>
+            <p class="section-intro">Embeds a <code class="inline">Sketch</code> in a cross-platform Avalonia app.</p>
+
+            <h3 class="entry-title" id="avaloniasketchcanvas">AvaloniaSketchCanvas</h3>
+            <p class="entry-desc">A <code class="inline">Control</code> that drives the sketch's <code class="inline">Setup()</code>/<code class="inline">Draw()</code> loop on a <code class="inline">DispatcherTimer</code>.</p>
+            <div class="note"><strong>Why it keeps its own surface.</strong> Avalonia's Skia interop only leases an <code class="inline">SKCanvas</code>, never the <code class="inline">SKSurface</code> — so the control keeps its own offscreen <code class="inline">SKSurface</code> to make <code class="inline">Save()</code> work.</div>
+
+            <h3 class="entry-title" id="avaloniasketchwindow">AvaloniaSketchWindow</h3>
+            <p class="entry-desc">A thin standalone <code class="inline">Window</code> wrapper around <code class="inline">AvaloniaSketchCanvas</code>.</p>
+          </section>
+
+          <!-- ================= IDE ================= -->
+          <section class="doc-section" id="ide">
+            <div class="section-kicker">18 · Hosting &amp; Tooling</div>
+            <h2>The IDE</h2>
+            <p class="section-intro">A self-contained editor + canvas window for iterating on sketches without a separate build step.</p>
+
+            <h3 class="entry-title" id="sketchcompiler-compile">SketchCompiler.Compile(<span class="tp">string</span> sourceCode) <span class="sig-return">→ CompileResult</span></h3>
+            <p class="entry-desc">Parses the editor's text with Roslyn, compiles it in memory, and instantiates the first <code class="inline">Sketch</code> found.</p>
+            <div class="note"><strong>SkiaSharp stays hidden.</strong> The compiler deliberately does not reference <code class="inline">SkiaSharp.dll</code> — sketch code never needs to know SkiaSharp exists.</div>
+
+            <h3 class="entry-title" id="sketcheditorview">SketchEditorView</h3>
+            <p class="entry-desc">A tabbed code editor with C# syntax highlighting.</p>
+
+            <h3 class="entry-title" id="mainwindow">MainWindow</h3>
+            <p class="entry-desc">The full IDE shell: editor and canvas side by side, a custom title bar, status bar, and error panel.</p>
+
+            <h3 class="entry-title" id="claytheme">ClayTheme</h3>
+            <p class="entry-desc">The IDE's visual language — warm off-white surfaces, soft shadows, and an ember-orange accent.</p>
+          </section>
+
+          <!-- ================= INDEX ================= -->
+          <section class="doc-section" id="index">
+            <div class="section-kicker">19 · Reference</div>
+            <h2>Keyword index</h2>
+            <p class="section-intro">Every public member referenced in this document, alphabetically. Type to filter. Click any keyword to jump to its documentation.</p>
+            <input type="text" class="index-search" id="indexSearch" placeholder="Filter keywords…" aria-label="Filter keyword index">
+            <div class="index-grid" id="indexGrid"></div>
+            <a href="#" class="back-to-top" id="backToTop"><i class="ph ph-arrow-up"></i> Back to top</a>
+          </section>
+
+          <!-- ================= FOOTER ================= -->
+          <footer class="doc-footer">
+            DanaProcessing reference documentation. Generated from the current source tree — GraphicsContext, Sketch, PVector, PImage, PGraphics, PShape, PerlinNoise, the Avalonia host, and the IDE.
+          </footer>
+
+        </div><!-- /main-col -->
+
+        <!-- ================= TOC ================= -->
+        <aside class="toc-col" id="pageToc">
+          <div class="toc-title">On this page</div>
+          <ul id="pageTocList"></ul>
+        </aside>
+
+      </div><!-- /page-body -->
+
+    </div><!-- /main-inner -->
+  </main>
+</div><!-- /app -->
+
+<!-- ============================================================
+     SCRIPT
+     ============================================================ -->
+<script>
+(function(){
+  // ---------- Theme toggle ----------
+  var themeToggle = document.getElementById('themeToggle');
+  var stored = localStorage.getItem('dana-theme') || 'light';
+  document.documentElement.setAttribute('data-theme', stored);
+
+  themeToggle.addEventListener('click', function(){
+    var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    var next = isDark ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('dana-theme', next);
+  });
+
+  // ---------- Mobile nav ----------
+  var menuToggle = document.getElementById('menuToggle');
+  var sidebar = document.getElementById('sidebar');
+  menuToggle.addEventListener('click', function(){
+    sidebar.classList.toggle('open');
+  });
+  document.querySelectorAll('.sidebar-nav a').forEach(function(a){
+    a.addEventListener('click', function(){ sidebar.classList.remove('open'); });
+  });
+
+  // ---------- Scroll-spy ----------
+  var navLinks = Array.from(document.querySelectorAll('.sidebar-nav a'));
+  var sections = navLinks.map(function(a){ return document.querySelector(a.getAttribute('href')); }).filter(Boolean);
+  var byId = {};
+  navLinks.forEach(function(a){ byId[a.getAttribute('href').slice(1)] = a; });
+
+  var observer = new IntersectionObserver(function(entries){
+    entries.forEach(function(entry){
+      if(entry.isIntersecting){
+        navLinks.forEach(function(a){ a.classList.remove('active'); });
+        var link = byId[entry.target.id];
+        if(link) link.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-15% 0px -70% 0px', threshold: 0 });
+  sections.forEach(function(s){ observer.observe(s); });
+
+  // ---------- Hero canvas ----------
+  var canvas = document.getElementById('hero-canvas');
+  var ctx = canvas.getContext('2d');
+  var W = canvas.width, H = canvas.height;
+  var palette = { orange:'#D2A86E', green:'#5A8A6E', red:'#A84545' };
+
+  function branch(x, y, len, angleDeg, depth, maxDepth){
+    if(len < 3 || depth > maxDepth) return;
+    var rad = angleDeg * Math.PI / 180;
+    var x2 = x + Math.sin(rad) * len;
+    var y2 = y - Math.cos(rad) * len;
+    var t = depth / maxDepth;
+    ctx.strokeStyle = lerpHex(palette.orange, palette.green, t);
+    ctx.lineWidth = Math.max(1, 5 - t * 4);
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+
+    var next = len * 0.72;
+    if(next > 3){
+      branch(x2, y2, next, angleDeg + swayAngle, depth + 1, maxDepth);
+      branch(x2, y2, next, angleDeg - swayAngle, depth + 1, maxDepth);
+    } else {
+      ctx.fillStyle = palette.green;
+      ctx.beginPath();
+      ctx.arc(x2, y2, 3, 0, Math.PI*2);
+      ctx.fill();
+    }
+  }
+
+  function lerpHex(a, b, t){
+    var pa = hexToRgb(a), pb = hexToRgb(b);
+    var r = Math.round(pa[0] + (pb[0]-pa[0])*t);
+    var g = Math.round(pa[1] + (pb[1]-pa[1])*t);
+    var bch = Math.round(pa[2] + (pb[2]-pa[2])*t);
+    return 'rgb(' + r + ',' + g + ',' + bch + ')';
+  }
+  function hexToRgb(hex){
+    hex = hex.replace('#','');
+    return [parseInt(hex.substring(0,2),16), parseInt(hex.substring(2,4),16), parseInt(hex.substring(4,6),16)];
+  }
+
+  var swayAngle = 24;
+  var t0 = performance.now();
+  var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function frame(now){
+    var elapsed = (now - t0) / 1000;
+    swayAngle = 20 + Math.sin(elapsed * 0.6) * 12;
+
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = '#1B2C38';
+    ctx.fillRect(0, 0, W, H);
+
+    var baseX = W/2, baseY = H - 20;
+    ctx.strokeStyle = palette.red;
+    ctx.lineWidth = 6;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(baseX, baseY);
+    ctx.lineTo(baseX, baseY - 90);
+    ctx.stroke();
+
+    branch(baseX, baseY - 90, 90, swayAngle, 1, 9);
+    branch(baseX, baseY - 90, 90, -swayAngle, 1, 9);
+
+    if(!reduceMotion) requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+
+  // ---------- TOC ----------
+  function slugify(text){
+    return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 60);
+  }
+
+  var tocList = document.getElementById('pageTocList');
+  var entryHeadings = Array.from(document.querySelectorAll('h3.entry-title'));
+  var usedIds = {};
+  var headingToId = {};
+  entryHeadings.forEach(function(h){
+    var label = h.textContent.trim().split('\n')[0].split('→')[0].trim();
+    var base = slugify(label) || 'entry';
+    var id = base, n = 2;
+    while(usedIds[id]){ id = base + '-' + n; n++; }
+    usedIds[id] = true;
+    h.id = id;
+    headingToId[label] = id;
+
+    var li = document.createElement('li');
+    var a = document.createElement('a');
+    a.href = '#' + id;
+    a.textContent = label;
+    li.appendChild(a);
+    tocList.appendChild(li);
+  });
+
+  var tocLinks = Array.from(tocList.querySelectorAll('a'));
+  var tocById = {};
+  tocLinks.forEach(function(a){ tocById[a.getAttribute('href').slice(1)] = a; });
+
+  var tocObserver = new IntersectionObserver(function(entries){
+    entries.forEach(function(entry){
+      if(entry.isIntersecting){
+        tocLinks.forEach(function(a){ a.classList.remove('active'); });
+        var link = tocById[entry.target.id];
+        if(link){
+          link.classList.add('active');
+          var top = link.offsetTop, box = document.getElementById('pageToc');
+          if(top < box.scrollTop || top > box.scrollTop + box.clientHeight - 40){
+            box.scrollTop = Math.max(0, top - 60);
+          }
+        }
+      }
+    });
+  }, { rootMargin: '-10% 0px -75% 0px', threshold: 0 });
+  entryHeadings.forEach(function(h){ tocObserver.observe(h); });
+
+  // ---------- Keyword index ----------
+  var keywordMap = {
+    "Sketch": "minimal-sketch",
+    "PGraphics": "pgraphics",
+    "GraphicsContext": "intro",
+    "Setup": "setup",
+    "Draw": "draw",
+    "Size": "size",
+    "FrameRate": "framerate",
+    "NoLoop": "noloop-loop",
+    "Loop": "noloop-loop",
+    "WindowResized": "windowresized",
+    "FrameCount": "structure",
+    "Width": "structure",
+    "Height": "structure",
+    "TargetFrameRate": "structure",
+    "IsLooping": "structure",
+    "ColorMode": "colormode",
+    "ColorSpaceMode": "enums",
+    "Fill": "fill",
+    "FillHSB": "fill",
+    "NoFill": "fill",
+    "Stroke": "stroke",
+    "StrokeHSB": "stroke",
+    "NoStroke": "stroke",
+    "StrokeWeight": "strokeweight",
+    "StrokeCap": "strokeweight",
+    "StrokeCapKind": "enums",
+    "StrokeJoin": "strokeweight",
+    "StrokeJoinKind": "enums",
+    "Background": "background",
+    "Clear": "background",
+    "Tint": "tint",
+    "NoTint": "tint",
+    "Red": "color-channels",
+    "Green": "color-channels",
+    "Blue": "color-channels",
+    "Alpha": "color-channels",
+    "Hue": "color-channels",
+    "Saturation": "color-channels",
+    "Brightness": "color-channels",
+    "LerpColor": "lerpcolor",
+    "Color": "color-struct",
+    "Color.FromHsb": "color-struct",
+    "RectMode": "rectmode",
+    "EllipseMode": "rectmode",
+    "ShapeMode": "rectmode",
+    "ShapeAlignMode": "enums",
+    "Rect": "rect",
+    "Ellipse": "rect",
+    "Line": "line",
+    "Point": "line",
+    "Triangle": "triangle",
+    "Polygon": "triangle",
+    "Quad": "triangle",
+    "Arc": "arc",
+    "ArcMode": "enums",
+    "Bezier": "bezier",
+    "BezierPoint": "bezierpoint",
+    "BezierTangent": "bezierpoint",
+    "Curve": "curve",
+    "CurveTightness": "curve",
+    "BeginShape": "beginshape",
+    "EndShape": "endshape",
+    "ShapeKind": "enums",
+    "Vertex": "vertex",
+    "BezierVertex": "beziervertex",
+    "QuadraticVertex": "beziervertex",
+    "Texture": "texture",
+    "NoTexture": "texture",
+    "TextSize": "textsize",
+    "TextFont": "textsize",
+    "TextAlign": "textalign",
+    "TextAlignH": "enums",
+    "TextAlignV": "enums",
+    "TextLeading": "textleading",
+    "TextWidth": "textwidth",
+    "TextAscent": "textwidth",
+    "TextDescent": "textwidth",
+    "Text": "text",
+    "PushMatrix": "pushmatrix",
+    "PopMatrix": "pushmatrix",
+    "Translate": "translate",
+    "Rotate": "rotate",
+    "Scale": "scale",
+    "PImage": "image",
+    "LoadImage": "loadimage",
+    "Image": "image",
+    "Mask": "mask",
+    "CreateGraphics": "creategraphics",
+    "BeginDraw": "begindraw",
+    "EndDraw": "begindraw",
+    "Get": "pgraphics-get",
+    "PShape": "pshape",
+    "LoadShape": "loadshape",
+    "Shape": "shape",
+    "Save": "save",
+    "SaveFrame": "saveframe",
+    "PI": "math",
+    "TWO_PI": "math",
+    "TAU": "math",
+    "HALF_PI": "math",
+    "QUARTER_PI": "math",
+    "Sin": "math",
+    "Cos": "math",
+    "Tan": "math",
+    "Asin": "math",
+    "Acos": "math",
+    "Atan": "math",
+    "Atan2": "math",
+    "Degrees": "math",
+    "Radians": "math",
+    "Constrain": "math",
+    "Dist": "math",
+    "Lerp": "math",
+    "Norm": "math",
+    "Map": "math",
+    "Sq": "math",
+    "Sqrt": "math",
+    "Abs": "math",
+    "Ceil": "math",
+    "Floor": "math",
+    "Round": "math",
+    "Pow": "math",
+    "Log": "math",
+    "Exp": "math",
+    "Max": "math",
+    "Min": "math",
+    "PVector": "pvector",
+    "PVector.Add": "pvector",
+    "PVector.Sub": "pvector",
+    "PVector.Mult": "pvector",
+    "PVector.Div": "pvector",
+    "PVector.Mag": "pvector",
+    "PVector.MagSq": "pvector",
+    "PVector.Normalize": "pvector",
+    "PVector.Limit": "pvector",
+    "PVector.SetMag": "pvector",
+    "PVector.Rotate": "pvector",
+    "PVector.Set": "pvector",
+    "PVector.Lerp": "pvector",
+    "PVector.Heading": "pvector",
+    "PVector.Copy": "pvector",
+    "PVector.Array": "pvector",
+    "PVector.Dist": "pvector",
+    "PVector.Dot": "pvector",
+    "PVector.FromAngle": "pvector",
+    "PVector.AngleBetween": "pvector",
+    "Random": "random",
+    "RandomGaussian": "randomgaussian",
+    "RandomSeed": "randomseed",
+    "Noise": "noise",
+    "NoiseSeed": "noiseseed",
+    "NoiseDetail": "noiseseed",
+    "MouseX": "input",
+    "MouseY": "input",
+    "PMouseX": "input",
+    "PMouseY": "input",
+    "IsMousePressed": "input",
+    "MouseButton": "input",
+    "MouseButtonKind": "enums",
+    "MousePressed": "input",
+    "MouseReleased": "input",
+    "MouseClicked": "input",
+    "MouseDragged": "input",
+    "MouseMoved": "input",
+    "MouseWheel": "input",
+    "Key": "input",
+    "KeyCode": "input",
+    "IsKeyPressed": "input",
+    "KeyPressed": "input",
+    "KeyReleased": "input",
+    "Millis": "millis",
+    "Cursor": "cursor",
+    "NoCursor": "cursor",
+    "CursorKind": "enums",
+    "AvaloniaSketchCanvas": "avaloniasketchcanvas",
+    "AvaloniaSketchWindow": "avaloniasketchwindow",
+    "SetCanvas": "avaloniasketchcanvas",
+    "SketchCompiler": "sketchcompiler-compile",
+    "CompileResult": "sketchcompiler-compile",
+    "SketchEditorView": "sketcheditorview",
+    "MainWindow": "mainwindow",
+    "ClayTheme": "claytheme"
+  };
+
+  var keywords = [
+    ["Sketch","class"],
+    ["PGraphics","class"],
+    ["GraphicsContext","abstract class"],
+    ["Setup","method"],
+    ["Draw","method"],
+    ["Size","method"],
+    ["FrameRate","method"],
+    ["NoLoop","method"],
+    ["Loop","method"],
+    ["WindowResized","method"],
+    ["FrameCount","property"],
+    ["Width","property"],
+    ["Height","property"],
+    ["TargetFrameRate","property"],
+    ["IsLooping","property"],
+    ["ColorMode","method"],
+    ["ColorSpaceMode","enum"],
+    ["Fill","method"],
+    ["FillHSB","method"],
+    ["NoFill","method"],
+    ["Stroke","method"],
+    ["StrokeHSB","method"],
+    ["NoStroke","method"],
+    ["StrokeWeight","method"],
+    ["StrokeCap","method"],
+    ["StrokeCapKind","enum"],
+    ["StrokeJoin","method"],
+    ["StrokeJoinKind","enum"],
+    ["Background","method"],
+    ["Clear","method"],
+    ["Tint","method"],
+    ["NoTint","method"],
+    ["Red","method"],
+    ["Green","method"],
+    ["Blue","method"],
+    ["Alpha","method"],
+    ["Hue","method"],
+    ["Saturation","method"],
+    ["Brightness","method"],
+    ["LerpColor","method"],
+    ["Color","struct"],
+    ["Color.FromHsb","static method"],
+    ["RectMode","method"],
+    ["EllipseMode","method"],
+    ["ShapeMode","method"],
+    ["ShapeAlignMode","enum"],
+    ["Rect","method"],
+    ["Ellipse","method"],
+    ["Line","method"],
+    ["Point","method"],
+    ["Triangle","method"],
+    ["Polygon","method"],
+    ["Quad","method"],
+    ["Arc","method"],
+    ["ArcMode","enum"],
+    ["Bezier","method"],
+    ["BezierPoint","method"],
+    ["BezierTangent","method"],
+    ["Curve","method"],
+    ["CurveTightness","method"],
+    ["BeginShape","method"],
+    ["EndShape","method"],
+    ["ShapeKind","enum"],
+    ["Vertex","method"],
+    ["BezierVertex","method"],
+    ["QuadraticVertex","method"],
+    ["Texture","method"],
+    ["NoTexture","method"],
+    ["TextSize","method"],
+    ["TextFont","method"],
+    ["TextAlign","method"],
+    ["TextAlignH","enum"],
+    ["TextAlignV","enum"],
+    ["TextLeading","method"],
+    ["TextWidth","method"],
+    ["TextAscent","method"],
+    ["TextDescent","method"],
+    ["Text","method"],
+    ["PushMatrix","method"],
+    ["PopMatrix","method"],
+    ["Translate","method"],
+    ["Rotate","method"],
+    ["Scale","method"],
+    ["PImage","class"],
+    ["LoadImage","method"],
+    ["Image","method"],
+    ["Mask","method"],
+    ["CreateGraphics","method"],
+    ["BeginDraw","method"],
+    ["EndDraw","method"],
+    ["Get","method"],
+    ["PShape","class"],
+    ["LoadShape","method"],
+    ["Shape","method"],
+    ["Save","method"],
+    ["SaveFrame","method"],
+    ["PI","constant"],
+    ["TWO_PI","constant"],
+    ["TAU","constant"],
+    ["HALF_PI","constant"],
+    ["QUARTER_PI","constant"],
+    ["Sin","method"],
+    ["Cos","method"],
+    ["Tan","method"],
+    ["Asin","method"],
+    ["Acos","method"],
+    ["Atan","method"],
+    ["Atan2","method"],
+    ["Degrees","method"],
+    ["Radians","method"],
+    ["Constrain","method"],
+    ["Dist","method"],
+    ["Lerp","method"],
+    ["Norm","method"],
+    ["Map","method"],
+    ["Sq","method"],
+    ["Sqrt","method"],
+    ["Abs","method"],
+    ["Ceil","method"],
+    ["Floor","method"],
+    ["Round","method"],
+    ["Pow","method"],
+    ["Log","method"],
+    ["Exp","method"],
+    ["Max","method"],
+    ["Min","method"],
+    ["PVector","struct"],
+    ["PVector.Add","method"],
+    ["PVector.Sub","method"],
+    ["PVector.Mult","method"],
+    ["PVector.Div","method"],
+    ["PVector.Mag","method"],
+    ["PVector.MagSq","method"],
+    ["PVector.Normalize","method"],
+    ["PVector.Limit","method"],
+    ["PVector.SetMag","method"],
+    ["PVector.Rotate","method"],
+    ["PVector.Set","method"],
+    ["PVector.Lerp","method"],
+    ["PVector.Heading","method"],
+    ["PVector.Copy","method"],
+    ["PVector.Array","method"],
+    ["PVector.Dist","static method"],
+    ["PVector.Dot","static method"],
+    ["PVector.FromAngle","static method"],
+    ["PVector.AngleBetween","static method"],
+    ["Random","method"],
+    ["RandomGaussian","method"],
+    ["RandomSeed","method"],
+    ["Noise","method"],
+    ["NoiseSeed","method"],
+    ["NoiseDetail","method"],
+    ["MouseX","property"],
+    ["MouseY","property"],
+    ["PMouseX","property"],
+    ["PMouseY","property"],
+    ["IsMousePressed","property"],
+    ["MouseButton","property"],
+    ["MouseButtonKind","enum"],
+    ["MousePressed","method"],
+    ["MouseReleased","method"],
+    ["MouseClicked","method"],
+    ["MouseDragged","method"],
+    ["MouseMoved","method"],
+    ["MouseWheel","method"],
+    ["Key","property"],
+    ["KeyCode","property"],
+    ["IsKeyPressed","property"],
+    ["KeyPressed","method"],
+    ["KeyReleased","method"],
+    ["Millis","method"],
+    ["Cursor","method"],
+    ["NoCursor","method"],
+    ["CursorKind","enum"],
+    ["AvaloniaSketchCanvas","class"],
+    ["AvaloniaSketchWindow","class"],
+    ["SetCanvas","method"],
+    ["SketchCompiler","static class"],
+    ["CompileResult","record"],
+    ["SketchEditorView","class"],
+    ["MainWindow","class"],
+    ["ClayTheme","static class"]
+  ];
+  keywords.sort(function(a,b){ return a[0].localeCompare(b[0]); });
+
+  var grid = document.getElementById('indexGrid');
+  var frag = document.createDocumentFragment();
+  keywords.forEach(function(k){
+    var div = document.createElement('div');
+    div.className = 'index-entry';
+    div.dataset.key = k[0].toLowerCase();
+    var targetId = keywordMap[k[0]] || 'index';
+    div.innerHTML = '<span class="k"><a href="#' + targetId + '">' + k[0] + '</a></span><span class="cat">' + k[1] + '</span>';
+    frag.appendChild(div);
+  });
+  grid.appendChild(frag);
+
+  document.getElementById('indexSearch').addEventListener('input', function(e){
+    var q = e.target.value.trim().toLowerCase();
+    document.querySelectorAll('.index-entry').forEach(function(entry){
+      entry.hidden = q.length > 0 && entry.dataset.key.indexOf(q) === -1;
+    });
+  });
+
+  // ---------- Back to top ----------
+  document.getElementById('backToTop').addEventListener('click', function(e){
+    e.preventDefault();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
+})();
+</script>
+</body>
+</html>

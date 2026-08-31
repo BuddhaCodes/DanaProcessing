@@ -28,6 +28,11 @@ namespace DanaProcessing.Ide
     /// </summary>
     public class MainWindow : Window
     {
+        // Below this client-area width the editor and canvas no longer fit
+        // side by side at a usable size, so we collapse to one pane at a
+        // time with a toggle instead of squeezing both into slivers.
+        private const double NarrowBreakpoint = 900;
+
         private readonly SketchEditorView _editorView;
         private readonly AvaloniaSketchCanvas _canvas;
         private readonly TextBlock _outputText;
@@ -38,6 +43,23 @@ namespace DanaProcessing.Ide
         private readonly TextBlock _statusLabel;
         private readonly TextBlock _caretLabel;
         private readonly Border _statusPill;
+        private readonly Grid _contentGrid;
+        private readonly Border _editorCard;
+        private readonly Border _canvasCard;
+        private readonly GridSplitter _splitter;
+        private readonly Border _paneTogglePill;
+        private readonly Button _codeToggleButton;
+        private readonly Button _resultToggleButton;
+
+        // null until the first layout pass forces it one way or the other.
+        private bool? _isNarrow;
+        private bool _showCanvasInNarrow;
+
+        // Avalonia's base Window/TopLevel constructor can touch ClientSize
+        // before our own constructor body has assigned _contentGrid etc.,
+        // which would fire OnPropertyChanged → UpdateResponsiveLayout against
+        // still-null fields. This stays false until construction finishes.
+        private bool _layoutReady;
 
         public MainWindow()
         {
@@ -54,9 +76,9 @@ namespace DanaProcessing.Ide
             // ExtendClientAreaToDecorationsHint/ChromeHints here — that API's
             // exact shape has moved around across Avalonia versions, and
             // SystemDecorations has been stable since the earliest releases.
-            // Trade-off: the OS no longer gives you edge-drag resize or
-            // snap — CanResize still lets the window be resized via the
-            // maximize toggle and via code, just not by dragging the border.) ---
+            // Trade-off: the OS no longer offers edge-drag resize or snap on
+            // its own — BuildResizeOverlay() below reimplements the edges by
+            // hand via BeginResizeDrag.) ---
             WindowDecorations = WindowDecorations.None;
             CanResize = true;
 
@@ -73,7 +95,10 @@ namespace DanaProcessing.Ide
             };
             runButton.Click += (_, _) => RunCurrentSketch();
 
-            var titleBarRoot = BuildTitleBar(runButton);
+            (_paneTogglePill, _codeToggleButton, _resultToggleButton) = BuildPaneToggle();
+            UpdatePaneToggleVisuals();
+
+            var titleBarRoot = BuildTitleBar(runButton, _paneTogglePill);
 
             _outputText = new TextBlock
             {
@@ -135,7 +160,7 @@ namespace DanaProcessing.Ide
                     new Avalonia.Animation.DoubleTransition { Property = OpacityProperty, Duration = TimeSpan.FromMilliseconds(220) }
                 },
             };
-            var editorCard = new Border
+            _editorCard = new Border
             {
                 Background = ClayTheme.Surface,
                 CornerRadius = ClayTheme.RadiusCard,
@@ -144,8 +169,8 @@ namespace DanaProcessing.Ide
                 Margin = new Avalonia.Thickness(20, 16, 10, 16),
                 Child = _editorView
             };
-            editorCard.AddHandler(GotFocusEvent, (_, _) => SetCardFocused(_editorGlow, true), RoutingStrategies.Bubble);
-            editorCard.AddHandler(LostFocusEvent, (_, _) => SetCardFocused(_editorGlow, false), RoutingStrategies.Bubble);
+            _editorCard.AddHandler(GotFocusEvent, (_, _) => SetCardFocused(_editorGlow, true), RoutingStrategies.Bubble);
+            _editorCard.AddHandler(LostFocusEvent, (_, _) => SetCardFocused(_editorGlow, false), RoutingStrategies.Bubble);
 
             _canvasGlow = new Border
             {
@@ -159,7 +184,7 @@ namespace DanaProcessing.Ide
                     new Avalonia.Animation.DoubleTransition { Property = OpacityProperty, Duration = TimeSpan.FromMilliseconds(220) }
                 },
             };
-            var canvasCard = new Border
+            _canvasCard = new Border
             {
                 Background = ClayTheme.Surface,
                 CornerRadius = ClayTheme.RadiusCard,
@@ -168,18 +193,18 @@ namespace DanaProcessing.Ide
                 Margin = new Avalonia.Thickness(10, 16, 20, 16),
                 Child = _canvas
             };
-            canvasCard.AddHandler(GotFocusEvent, (_, _) => SetCardFocused(_canvasGlow, true), RoutingStrategies.Bubble);
-            canvasCard.AddHandler(LostFocusEvent, (_, _) => SetCardFocused(_canvasGlow, false), RoutingStrategies.Bubble);
+            _canvasCard.AddHandler(GotFocusEvent, (_, _) => SetCardFocused(_canvasGlow, true), RoutingStrategies.Bubble);
+            _canvasCard.AddHandler(LostFocusEvent, (_, _) => SetCardFocused(_canvasGlow, false), RoutingStrategies.Bubble);
 
-            var splitter = new GridSplitter
+            _splitter = new GridSplitter
             {
                 Width = 6,
                 Background = Avalonia.Media.Brushes.Transparent,
                 ResizeDirection = GridResizeDirection.Columns,
                 Margin = new Avalonia.Thickness(0, 16, 0, 16),
             };
-            splitter.PointerEntered += (_, _) => splitter.Background = ClayTheme.AccentDim;
-            splitter.PointerExited += (_, _) => splitter.Background = Avalonia.Media.Brushes.Transparent;
+            _splitter.PointerEntered += (_, _) => _splitter.Background = ClayTheme.AccentDim;
+            _splitter.PointerExited += (_, _) => _splitter.Background = Avalonia.Media.Brushes.Transparent;
 
             // --- Status bar: reports real state instead of decorating. ---
             _statusDot = new Ellipse { Width = 8, Height = 8, Fill = ClayTheme.Success, VerticalAlignment = VerticalAlignment.Center };
@@ -230,21 +255,16 @@ namespace DanaProcessing.Ide
                 Child = statusGrid,
             };
 
-            var contentGrid = new Grid();
-            contentGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(560) });
-            contentGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            contentGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-
-            Grid.SetColumn(_editorGlow, 0);
-            Grid.SetColumn(editorCard, 0);
-            Grid.SetColumn(splitter, 1);
-            Grid.SetColumn(_canvasGlow, 2);
-            Grid.SetColumn(canvasCard, 2);
-            contentGrid.Children.Add(_editorGlow);
-            contentGrid.Children.Add(editorCard);
-            contentGrid.Children.Add(splitter);
-            contentGrid.Children.Add(_canvasGlow);
-            contentGrid.Children.Add(canvasCard);
+            // Column definitions, margins, and per-card visibility are all
+            // owned by UpdateResponsiveLayout — it runs once below to set the
+            // initial state and again on every resize that crosses the
+            // narrow/wide breakpoint.
+            _contentGrid = new Grid();
+            _contentGrid.Children.Add(_editorGlow);
+            _contentGrid.Children.Add(_editorCard);
+            _contentGrid.Children.Add(_splitter);
+            _contentGrid.Children.Add(_canvasGlow);
+            _contentGrid.Children.Add(_canvasCard);
 
             var rootGrid = new Grid();
             rootGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(56) });
@@ -253,16 +273,22 @@ namespace DanaProcessing.Ide
             rootGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
             Grid.SetRow(titleBarRoot, 0);
-            Grid.SetRow(contentGrid, 1);
+            Grid.SetRow(_contentGrid, 1);
             Grid.SetRow(_outputPanel, 2);
             Grid.SetRow(statusBar, 3);
 
             rootGrid.Children.Add(titleBarRoot);
-            rootGrid.Children.Add(contentGrid);
+            rootGrid.Children.Add(_contentGrid);
             rootGrid.Children.Add(_outputPanel);
             rootGrid.Children.Add(statusBar);
 
-            Content = rootGrid;
+            Content = BuildResizeOverlay(rootGrid);
+
+            // Prime the layout once with the constructor's starting Width —
+            // ClientSize isn't reliably available until the window is shown,
+            // and this guarantees a narrow-started window opens correct too.
+            _layoutReady = true;
+            UpdateResponsiveLayout(Width);
 
             // Quiet entrance instead of popping in at full opacity.
             Opacity = 0;
@@ -275,7 +301,210 @@ namespace DanaProcessing.Ide
 
         private void SetCardFocused(Border glow, bool focused) => glow.Opacity = focused ? 1 : 0;
 
-        private Border BuildTitleBar(Button runButton)
+        /// <summary>
+        /// WindowDecorations.None buys us fully custom chrome but also throws
+        /// away the OS's edge-drag resize — there's no border left to grab.
+        /// This lays a handful of invisible strips/corners on top of the real
+        /// content, each just forwarding its PointerPressed into
+        /// Window.BeginResizeDrag for the matching edge, so the window is
+        /// still resizable by dragging exactly where you'd expect.
+        /// </summary>
+        private Grid BuildResizeOverlay(Control content)
+        {
+            const double edgeThickness = 6;
+            const double cornerSize = 12;
+
+            var root = new Grid();
+            root.Children.Add(content);
+
+            void AddGrip(WindowEdge edge, HorizontalAlignment h, VerticalAlignment v, double? width, double? height, StandardCursorType cursorType)
+            {
+                var grip = new Border
+                {
+                    Background = Avalonia.Media.Brushes.Transparent,
+                    HorizontalAlignment = h,
+                    VerticalAlignment = v,
+                    Cursor = new Cursor(cursorType),
+                };
+                if (width.HasValue)
+                    grip.Width = width.Value;
+                if (height.HasValue)
+                    grip.Height = height.Value;
+
+                grip.PointerPressed += (_, e) =>
+                {
+                    if (e.GetCurrentPoint(grip).Properties.IsLeftButtonPressed)
+                        BeginResizeDrag(edge, e);
+                };
+                root.Children.Add(grip);
+            }
+
+            // Edges span the full side, corners are small squares layered on
+            // top so diagonal resize wins right at the corner pixels.
+            AddGrip(WindowEdge.North, HorizontalAlignment.Stretch, VerticalAlignment.Top, null, edgeThickness, StandardCursorType.TopSide);
+            AddGrip(WindowEdge.South, HorizontalAlignment.Stretch, VerticalAlignment.Bottom, null, edgeThickness, StandardCursorType.BottomSide);
+            AddGrip(WindowEdge.West, HorizontalAlignment.Left, VerticalAlignment.Stretch, edgeThickness, null, StandardCursorType.LeftSide);
+            AddGrip(WindowEdge.East, HorizontalAlignment.Right, VerticalAlignment.Stretch, edgeThickness, null, StandardCursorType.RightSide);
+
+            AddGrip(WindowEdge.NorthWest, HorizontalAlignment.Left, VerticalAlignment.Top, cornerSize, cornerSize, StandardCursorType.TopLeftCorner);
+            AddGrip(WindowEdge.NorthEast, HorizontalAlignment.Right, VerticalAlignment.Top, cornerSize, cornerSize, StandardCursorType.TopRightCorner);
+            AddGrip(WindowEdge.SouthWest, HorizontalAlignment.Left, VerticalAlignment.Bottom, cornerSize, cornerSize, StandardCursorType.BottomLeftCorner);
+            AddGrip(WindowEdge.SouthEast, HorizontalAlignment.Right, VerticalAlignment.Bottom, cornerSize, cornerSize, StandardCursorType.BottomRightCorner);
+
+            return root;
+        }
+
+        /// <summary>
+        /// Segmented "Código / Resultado" pill, shown only once the window is
+        /// narrow enough that editor and canvas can't both fit side by side.
+        /// </summary>
+        private (Border pill, Button codeButton, Button resultButton) BuildPaneToggle()
+        {
+            var codeButton = new Button
+            {
+                Content = "Código",
+                Padding = new Avalonia.Thickness(14, 6),
+                FontFamily = ClayTheme.FontBody,
+                FontSize = 12,
+                CornerRadius = ClayTheme.RadiusPill,
+                BorderThickness = new Avalonia.Thickness(0),
+            };
+            var resultButton = new Button
+            {
+                Content = "Resultado",
+                Padding = new Avalonia.Thickness(14, 6),
+                FontFamily = ClayTheme.FontBody,
+                FontSize = 12,
+                CornerRadius = ClayTheme.RadiusPill,
+                BorderThickness = new Avalonia.Thickness(0),
+            };
+            codeButton.Click += (_, _) => SetNarrowPane(showCanvas: false);
+            resultButton.Click += (_, _) => SetNarrowPane(showCanvas: true);
+
+            var pill = new Border
+            {
+                Background = ClayTheme.SurfaceRaised,
+                CornerRadius = ClayTheme.RadiusPill,
+                Padding = new Avalonia.Thickness(3),
+                IsVisible = false,
+                Margin = new Avalonia.Thickness(0, 0, 8, 0),
+                Child = new StackPanel
+                {
+                    Orientation = Orientation.Horizontal,
+                    Spacing = 2,
+                    Children = { codeButton, resultButton }
+                }
+            };
+
+            return (pill, codeButton, resultButton);
+        }
+
+        /// <summary>Which pane is shown while the window is narrow. No-op while wide (both panes are visible then).</summary>
+        private void SetNarrowPane(bool showCanvas)
+        {
+            _showCanvasInNarrow = showCanvas;
+            UpdatePaneToggleVisuals();
+            ApplyPaneVisibility();
+        }
+
+        private void UpdatePaneToggleVisuals()
+        {
+            var activeBg = ClayTheme.Accent;
+            var activeFg = ClayTheme.OnAccent;
+            var inactiveFg = ClayTheme.TextMuted;
+
+            _codeToggleButton.Background = _showCanvasInNarrow ? Avalonia.Media.Brushes.Transparent : activeBg;
+            _codeToggleButton.Foreground = _showCanvasInNarrow ? inactiveFg : activeFg;
+
+            _resultToggleButton.Background = _showCanvasInNarrow ? activeBg : Avalonia.Media.Brushes.Transparent;
+            _resultToggleButton.Foreground = _showCanvasInNarrow ? activeFg : inactiveFg;
+        }
+
+        /// <summary>Shows both cards when wide; shows only the selected one (per <see cref="_showCanvasInNarrow"/>) when narrow.</summary>
+        private void ApplyPaneVisibility()
+        {
+            if (_isNarrow != true)
+            {
+                _editorCard.IsVisible = true;
+                _editorGlow.IsVisible = true;
+                _canvasCard.IsVisible = true;
+                // Canvas glow stays opacity-driven by focus (SetCardFocused), not IsVisible.
+                return;
+            }
+
+            _editorCard.IsVisible = !_showCanvasInNarrow;
+            _editorGlow.IsVisible = !_showCanvasInNarrow;
+            _canvasCard.IsVisible = _showCanvasInNarrow;
+        }
+
+        /// <summary>
+        /// Reflows between the 50/50 split (wide) and single-pane-with-toggle
+        /// (narrow) layouts. Called once at startup and again on every resize
+        /// that crosses <see cref="NarrowBreakpoint"/>.
+        /// </summary>
+        private void UpdateResponsiveLayout(double clientWidth)
+        {
+            if (!_layoutReady)
+                return;
+
+            bool narrow = clientWidth < NarrowBreakpoint;
+            if (_isNarrow.HasValue && _isNarrow.Value == narrow)
+                return;
+            _isNarrow = narrow;
+
+            _paneTogglePill.IsVisible = narrow;
+            _splitter.IsVisible = !narrow;
+
+            _contentGrid.ColumnDefinitions.Clear();
+            if (narrow)
+            {
+                _contentGrid.ColumnDefinitions.Add(new ColumnDefinition(new GridLength(1, GridUnitType.Star)));
+
+                Grid.SetColumn(_editorGlow, 0);
+                Grid.SetColumn(_editorCard, 0);
+                Grid.SetColumn(_canvasGlow, 0);
+                Grid.SetColumn(_canvasCard, 0);
+
+                var fullMargin = new Avalonia.Thickness(20, 16, 20, 16);
+                _editorGlow.Margin = fullMargin;
+                _editorCard.Margin = fullMargin;
+                _canvasGlow.Margin = fullMargin;
+                _canvasCard.Margin = fullMargin;
+            }
+            else
+            {
+                // 50/50: both columns are equal Star widths, so the divider
+                // starts out exactly centered; dragging the GridSplitter is
+                // still free to unbalance it from there.
+                _contentGrid.ColumnDefinitions.Add(new ColumnDefinition(new GridLength(1, GridUnitType.Star)));
+                _contentGrid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
+                _contentGrid.ColumnDefinitions.Add(new ColumnDefinition(new GridLength(1, GridUnitType.Star)));
+
+                Grid.SetColumn(_editorGlow, 0);
+                Grid.SetColumn(_editorCard, 0);
+                Grid.SetColumn(_splitter, 1);
+                Grid.SetColumn(_canvasGlow, 2);
+                Grid.SetColumn(_canvasCard, 2);
+
+                var editorMargin = new Avalonia.Thickness(20, 16, 10, 16);
+                var canvasMargin = new Avalonia.Thickness(10, 16, 20, 16);
+                _editorGlow.Margin = editorMargin;
+                _editorCard.Margin = editorMargin;
+                _canvasGlow.Margin = canvasMargin;
+                _canvasCard.Margin = canvasMargin;
+            }
+
+            ApplyPaneVisibility();
+        }
+
+        protected override void OnPropertyChanged(Avalonia.AvaloniaPropertyChangedEventArgs change)
+        {
+            base.OnPropertyChanged(change);
+            if (_layoutReady && change.Property == ClientSizeProperty)
+                UpdateResponsiveLayout(ClientSize.Width);
+        }
+
+        private Border BuildTitleBar(Button runButton, Border paneTogglePill)
         {
             var logoDot = new Ellipse
             {
@@ -317,7 +546,7 @@ namespace DanaProcessing.Ide
                 Orientation = Orientation.Horizontal,
                 Spacing = 8,
                 Margin = new Avalonia.Thickness(0, 0, 16, 0),
-                Children = { runButton, minButton, maxButton, closeButton }
+                Children = { paneTogglePill, runButton, minButton, maxButton, closeButton }
             };
 
             var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
@@ -362,6 +591,13 @@ namespace DanaProcessing.Ide
                 _statusDot.Fill = ClayTheme.Success;
                 _statusLabel.Text = "Listo";
                 ((Border)_statusPill).Background = ClayTheme.SuccessSurface;
+
+                // On a narrow window the canvas is hidden until you ask for
+                // it — but the whole point of pressing Run is to see the
+                // result, so surface it automatically instead of making the
+                // user tap "Resultado" themselves.
+                if (_isNarrow == true)
+                    SetNarrowPane(showCanvas: true);
             }
             else
             {
@@ -385,7 +621,7 @@ namespace DanaProcessing.Ide
             Background(35, 61, 77);   // matches ClayTheme.Surface (#233D4D)
             Fill(234, 236, 240);      // matches ClayTheme.TextPrimary (#EAECF0)
             TextSize(16);
-            Text("Presiona ▶ Run para ejecutar el sketch del editor.", 20, Height / 2f);
+            Text("Presiona Run para ejecutar el sketch del editor.", 20, Height / 2f);
         }
     }
 }
