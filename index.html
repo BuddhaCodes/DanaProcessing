@@ -773,10 +773,12 @@
         <a href="#pgraphics"><i class="ph ph-cube"></i> PGraphics</a>
         <a href="#pshape"><i class="ph ph-bezier-curve"></i> PShape</a>
         <a href="#output"><i class="ph ph-floppy-disk"></i> Saving output</a>
+        <a href="#pixels"><i class="ph ph-grid-four"></i> Pixels</a>
       </div>
 
       <div class="group">
         <div class="group-title">Data &amp; Math</div>
+        <a href="#files-data"><i class="ph ph-file-text"></i> Files &amp; data</a>
         <a href="#math"><i class="ph ph-calculator"></i> Math &amp; trig</a>
         <a href="#pvector"><i class="ph ph-arrow-right"></i> PVector</a>
         <a href="#random-noise"><i class="ph ph-dice-five"></i> Random &amp; noise</a>
@@ -891,6 +893,15 @@
             <h3 class="entry-title" id="windowresized">WindowResized() <span class="sig-return">→ void</span> · virtual</h3>
             <p class="entry-desc">Called when the canvas size changes after the first frame.</p>
 
+            <h3 class="entry-title" id="redraw">Redraw() <span class="sig-return">→ void</span></h3>
+            <p class="entry-desc">Requests a single extra frame while <code class="inline">NoLoop()</code> is in effect, raising the <code class="inline">RedrawRequested</code> event. Looping sketches don't need this — they're already rendering continuously.</p>
+
+            <h3 class="entry-title" id="exit">Exit() <span class="sig-return">→ void</span></h3>
+            <p class="entry-desc">Raises the <code class="inline">ExitRequested</code> event. DanaProcessing doesn't own a process to terminate — whatever hosts the sketch (a window, a canvas control) should subscribe and close/stop accordingly.</p>
+
+            <h3 class="entry-title" id="print">Print(<span class="tp">object</span> message) · Println(message) · LogWarning(message) · LogError(message)</h3>
+            <p class="entry-desc"><code class="inline">Print</code> writes with no trailing newline and no timestamp/coloring — meant for building a line piece by piece across calls, finished off with a <code class="inline">Println</code>. <code class="inline">Println</code>/<code class="inline">LogWarning</code>/<code class="inline">LogError</code> go through <code class="inline">DanaLogger</code>, timestamped and color-coded by level.</p>
+
             <div class="table-wrap">
               <table>
                 <tr><th>property</th><th>type</th><th>meaning</th></tr>
@@ -898,6 +909,7 @@
                 <tr><td>Width / Height</td><td class="ptype">int</td><td>Current canvas size.</td></tr>
                 <tr><td>TargetFrameRate</td><td class="ptype">int</td><td>Set via <code class="inline">FrameRate()</code>.</td></tr>
                 <tr><td>IsLooping</td><td class="ptype">bool</td><td>Whether the host should keep calling <code class="inline">Draw()</code>.</td></tr>
+                <tr><td>DisplayWidth / DisplayHeight</td><td class="ptype">int</td><td>Size of the screen the sketch runs on. 0 until the host sets it.</td></tr>
               </table>
             </div>
           </section>
@@ -908,13 +920,17 @@
             <h2>Color</h2>
             <p class="section-intro">Fill and stroke are persistent state, set before the shape that uses them. All three-argument color methods are interpreted through the current <code class="inline">ColorMode</code> — RGB (0–255) or HSB (hue 0–360, saturation/brightness 0–100).</p>
 
-            <h3 class="entry-title" id="colormode">ColorMode(<span class="tp">ColorSpaceMode</span> mode)</h3>
-            <p class="entry-desc">Chooses how <code class="inline">Fill</code>/<code class="inline">Stroke</code>/<code class="inline">Background</code> interpret arguments.</p>
+            <h3 class="entry-title" id="colormode">ColorMode(<span class="tp">ColorSpaceMode</span> mode) · ColorMode(mode, max) · ColorMode(mode, max1, max2, max3, maxA?)</h3>
+            <p class="entry-desc">Chooses how <code class="inline">Fill</code>/<code class="inline">Stroke</code>/<code class="inline">Background</code>/<code class="inline">Color</code> interpret arguments. With no range given, both RGB and HSB default to 0–255 on every channel — <strong>same as Processing</strong>, HSB doesn't silently switch to 360/100/100 until you ask for it explicitly, e.g. <code class="inline">ColorMode(HSB, 360, 100, 100)</code>. The 3-max overload leaves alpha's range untouched.</p>
 
-            <h3 class="entry-title" id="fill">Fill(a1, a2, a3, alpha = 255) / FillHSB(...) / NoFill()</h3>
+            <h3 class="entry-title" id="color-function">Color(a1, a2, a3, alpha = 255) · Color(gray, alpha = 255) <span class="sig-return">→ Color</span></h3>
+            <p class="entry-desc">Builds a <code class="inline">Color</code> value, interpreted through the current <code class="inline">ColorMode</code> — the direct equivalent of Processing's <code class="inline">color(...)</code> function. Different from <code class="inline">new Color(r, g, b)</code>, which is always plain 0–255 RGB no matter what <code class="inline">ColorMode</code> is set to.</p>
+            <div class="note"><strong>Why both can coexist.</strong> <code class="inline">Color</code> the struct can't declare a same-named method on itself (C# error CS0542), so <code class="inline">new Color(r, g, b)</code> is the constructor form. <code class="inline">GraphicsContext.Color(...)</code> is a different type entirely, so it's free to use the name — and C# never confuses the two: <code class="inline">new Color(...)</code> always means the constructor, bare <code class="inline">Color(...)</code> always means this method.</div>
+
+            <h3 class="entry-title" id="fill">Fill(a1, a2, a3, alpha = 255) · Fill(gray, alpha = 255) · Fill(<span class="tp">Color</span> c) · FillHSB(...) · NoFill()</h3>
             <p class="entry-desc">Sets the fill color. <code class="inline">FillHSB</code> always reads as HSB regardless of <code class="inline">ColorMode</code>.</p>
 
-            <h3 class="entry-title" id="stroke">Stroke(a1, a2, a3, alpha = 255) / StrokeHSB(...) / NoStroke()</h3>
+            <h3 class="entry-title" id="stroke">Stroke(a1, a2, a3, alpha = 255) · Stroke(gray, alpha = 255) · Stroke(<span class="tp">Color</span> c) · StrokeHSB(...) · NoStroke()</h3>
             <p class="entry-desc">Sets the stroke (outline) color.</p>
 
             <h3 class="entry-title" id="strokeweight">StrokeWeight(<span class="tp">float</span> w) · StrokeCap(<span class="tp">StrokeCapKind</span>) · StrokeJoin(<span class="tp">StrokeJoinKind</span>)</h3>
@@ -922,7 +938,7 @@
 
             <div class="note"><strong>Naming collision.</strong> <code class="inline">StrokeCapKind.Square</code> maps to Skia's <em>Butt</em> (flush), and <code class="inline">StrokeCapKind.Project</code> maps to Skia's <em>Square</em> (extends past the endpoint).</div>
 
-            <h3 class="entry-title" id="background">Background(a1, a2, a3) · Clear()</h3>
+            <h3 class="entry-title" id="background">Background(a1, a2, a3, alpha = 255) · Background(gray, alpha = 255) · Background(<span class="tp">Color</span> c) · Clear()</h3>
             <p class="entry-desc"><code class="inline">Background</code> fills the canvas with an opaque color. <code class="inline">Clear</code> wipes to transparent — useful on <code class="inline">PGraphics</code>.</p>
 
             <h3 class="entry-title" id="tint">Tint(a1, a2, a3, alpha = 255) · Tint(<span class="tp">byte</span> alpha) · NoTint()</h3>
@@ -936,6 +952,16 @@
 
             <h3 class="entry-title" id="color-struct">struct Color</h3>
             <p class="entry-desc">An RGBA value — a real struct built with <code class="inline">new Color(r, g, b, a)</code> or <code class="inline">Color.FromHsb(h, s, br, a)</code>.</p>
+
+            <h3 class="entry-title" id="pushstyle">PushStyle() · PopStyle()</h3>
+            <p class="entry-desc">Saves/restores every drawing style this class tracks — fill/stroke colors, <code class="inline">ColorMode</code> ranges, <code class="inline">RectMode</code>/<code class="inline">EllipseMode</code>/<code class="inline">ShapeMode</code>/<code class="inline">ImageMode</code>, tint, stroke weight/cap/join, text size/align/leading, curve tightness, <code class="inline">Smooth</code>, and <code class="inline">BlendMode</code> — deliberately everything <code class="inline">PushMatrix</code>/<code class="inline">PopMatrix</code> doesn't already cover.</p>
+            <div class="note"><strong>Not restored.</strong> A gradient set via <code class="inline">LinearGradientFill</code>/<code class="inline">RadialGradientFill</code> isn't tracked by <code class="inline">PushStyle</code> — call <code class="inline">Fill()</code> with a plain color afterward if you need to clear one.</div>
+
+            <h3 class="entry-title" id="smooth">Smooth() · NoSmooth()</h3>
+            <p class="entry-desc">Toggles antialiasing for shapes, lines, and text drawn from here on. On by default; <code class="inline">NoSmooth()</code> gives hard, pixelated edges — occasionally wanted for pixel-art-style sketches.</p>
+
+            <h3 class="entry-title" id="blendmode">BlendMode(<span class="tp">BlendModeKind</span> mode)</h3>
+            <p class="entry-desc">Sets the compositing mode for every drawing operation from here on — shapes, images, and text. See <a href="#enums">BlendModeKind</a> for the full list, and <a href="#pixels">Pixels</a> for <code class="inline">Blend()</code>, which takes a mode per call instead of setting it globally.</p>
           </section>
 
           <!-- ================= PRIMITIVES ================= -->
@@ -984,6 +1010,9 @@
 
             <h3 class="entry-title" id="curve">Curve(x1,y1, x2,y2, x3,y3, x4,y4) · CurveTightness(<span class="tp">float</span> t)</h3>
             <p class="entry-desc">A Catmull-Rom curve through four points.</p>
+
+            <h3 class="entry-title" id="curvepoint">CurvePoint(...) · CurveTangent(...) <span class="sig-return">→ float</span></h3>
+            <p class="entry-desc">Evaluate one axis of a Catmull-Rom curve at parameter <code class="inline">t</code>, the way <code class="inline">Curve()</code>/<code class="inline">CurveVertex()</code> shape it. Always uses the standard tension — unlike <code class="inline">Curve()</code> itself, this doesn't read <code class="inline">CurveTightness()</code>, matching Processing's own <code class="inline">curvePoint()</code>.</p>
           </section>
 
           <!-- ================= CUSTOM SHAPES ================= -->
@@ -1001,6 +1030,9 @@
             <h3 class="entry-title" id="beziervertex">BezierVertex(...) · QuadraticVertex(...)</h3>
             <p class="entry-desc">Adds a curved segment to a <code class="inline">Polygon</code>-mode shape.</p>
 
+            <h3 class="entry-title" id="curvevertex">CurveVertex(x, y)</h3>
+            <p class="entry-desc">Adds a Catmull-Rom curve vertex, respecting <code class="inline">CurveTightness()</code>. As in Processing, the curve only passes through the <em>interior</em> points — the very first and very last <code class="inline">CurveVertex()</code> calls shape the tangent at each end but aren't drawn to themselves, so nothing appears until the 4th call. The common pattern is to repeat the first and last point once so the curve visibly starts/ends there.</p>
+
             <h3 class="entry-title" id="texture">Texture(<span class="tp">PImage</span> img) · NoTexture()</h3>
             <p class="entry-desc">Sets or clears the texture image for the shape.</p>
 
@@ -1013,8 +1045,18 @@
             <div class="section-kicker">06 · Drawing</div>
             <h2>Typography</h2>
 
-            <h3 class="entry-title" id="textsize">TextSize(<span class="tp">float</span> size) · TextFont(<span class="tp">string?</span> path, <span class="tp">float?</span> size = null)</h3>
-            <p class="entry-desc"><code class="inline">TextFont(null)</code> resets to the default typeface.</p>
+            <h3 class="entry-title" id="textsize">TextSize(<span class="tp">float</span> size) · TextFont(<span class="tp">string?</span> path, <span class="tp">float?</span> size = null) · TextFont(<span class="tp">PFont</span> font, <span class="tp">float?</span> size = null)</h3>
+            <p class="entry-desc"><code class="inline">TextFont(null)</code> resets to the default typeface. The <code class="inline">string</code> overload loads a font file directly; the <code class="inline">PFont</code> overload activates a font previously obtained via <code class="inline">CreateFont</code>/<code class="inline">LoadFont</code> and reuses its size unless you override it.</p>
+
+            <h3 class="entry-title" id="createfont">CreateFont(<span class="tp">string</span> fontFamily, <span class="tp">float</span> size) <span class="sig-return">→ PFont</span></h3>
+            <p class="entry-desc">Creates a font from an installed system font family, like Processing's <code class="inline">createFont(name, size)</code>. Unknown family names silently fall back to the system default rather than throwing.</p>
+
+            <h3 class="entry-title" id="loadfont">LoadFont(<span class="tp">string</span> path, <span class="tp">float</span> size = 32) <span class="sig-return">→ PFont</span></h3>
+            <p class="entry-desc">Loads a font file (.ttf/.otf/etc.) from disk.</p>
+            <div class="note"><strong>Different from Processing's loadFont().</strong> Processing's own <code class="inline">loadFont()</code> loads a pre-baked <code class="inline">.vlw</code> bitmap font produced by the PDE's Tools&nbsp;&gt;&nbsp;Create&nbsp;Font. DanaProcessing has no equivalent pipeline, so this loads a real font file directly instead — same practical result, one less step.</div>
+
+            <h3 class="entry-title" id="pfont">class PFont</h3>
+            <p class="entry-desc">A loaded/created font. Get one from <code class="inline">CreateFont()</code>/<code class="inline">LoadFont()</code>, then activate it with <code class="inline">TextFont(font)</code>. Implements <code class="inline">IDisposable</code> — dispose it once nothing is drawing with it anymore.</p>
 
             <h3 class="entry-title" id="textalign">TextAlign(<span class="tp">TextAlignH</span> h, <span class="tp">TextAlignV</span> v = Baseline)</h3>
             <p class="entry-desc">Sets both axes of alignment.</p>
@@ -1045,6 +1087,18 @@
 
             <h3 class="entry-title" id="scale">Scale(<span class="tp">float</span> sx, <span class="tp">float?</span> sy = null)</h3>
             <p class="entry-desc">Uniform scale when <code class="inline">sy</code> is omitted.</p>
+
+            <h3 class="entry-title" id="shearx">ShearX(<span class="tp">float</span> angleRadians) · ShearY(<span class="tp">float</span> angleRadians)</h3>
+            <p class="entry-desc">Shears drawing along one axis.</p>
+
+            <h3 class="entry-title" id="resetmatrix">ResetMatrix()</h3>
+            <p class="entry-desc">Replaces the current transform with the identity, discarding <em>every</em> <code class="inline">Translate</code>/<code class="inline">Rotate</code>/<code class="inline">Scale</code>/<code class="inline">Shear</code>/<code class="inline">ApplyMatrix</code> applied so far — including ones from before the innermost <code class="inline">PushMatrix()</code>. Stronger than <code class="inline">PopMatrix()</code>, which only undoes back to the last <code class="inline">PushMatrix()</code>.</p>
+
+            <h3 class="entry-title" id="applymatrix">ApplyMatrix(a, b, c, d, e, f)</h3>
+            <p class="entry-desc">Multiplies the current transform by an arbitrary affine matrix <code class="inline">[[a c e][b d f][0 0 1]]</code> — for effects the named transform calls can't express directly.</p>
+
+            <h3 class="entry-title" id="printmatrix">PrintMatrix()</h3>
+            <p class="entry-desc">Prints the current transformation matrix to the console as a 3×3 row-major matrix — a debugging aid for figuring out what a chain of transform calls actually produced.</p>
           </section>
 
           <!-- ================= IMAGE ================= -->
@@ -1056,8 +1110,11 @@
             <h3 class="entry-title" id="loadimage">LoadImage(<span class="tp">string</span> path) <span class="sig-return">→ PImage</span></h3>
             <p class="entry-desc">Decodes an image file from disk.</p>
 
+            <h3 class="entry-title" id="imagemode">ImageMode(<span class="tp">ShapeAlignMode</span> mode)</h3>
+            <p class="entry-desc">Sets how <code class="inline">Image()</code>'s x/y/w/h are interpreted — <code class="inline">Corner</code> by default (x,y is top-left, w,h is size), <code class="inline">Corners</code> (w,h is the opposite corner instead of a size), or <code class="inline">Center</code>.</p>
+
             <h3 class="entry-title" id="image">Image(<span class="tp">PImage</span> img, x, y) · Image(img, x, y, w, h)</h3>
-            <p class="entry-desc">Draws the bitmap, respecting the current <code class="inline">Tint()</code>.</p>
+            <p class="entry-desc">Draws the bitmap, respecting the current <code class="inline">Tint()</code> and <code class="inline">ImageMode()</code>.</p>
 
             <h3 class="entry-title" id="mask">img.Mask(<span class="tp">PImage</span> maskImage)</h3>
             <p class="entry-desc">Applies another image as an alpha mask, in place.</p>
@@ -1105,9 +1162,58 @@
             <p class="entry-desc">Like <code class="inline">Save()</code>, but substitutes <code class="inline">#</code> with <code class="inline">FrameCount</code>.</p>
           </section>
 
+          <!-- ================= PIXELS ================= -->
+          <section class="doc-section" id="pixels">
+            <div class="section-kicker">12 · Media</div>
+            <h2>Pixels</h2>
+            <p class="section-intro">Direct pixel access and per-pixel operations. Reading pixels back (<code class="inline">LoadPixels</code>, <code class="inline">Get</code>, and everything built on them) requires a CPU-readable <code class="inline">Surface</code> — the same requirement <code class="inline">Save()</code> has.</p>
+
+            <h3 class="entry-title" id="loadpixels">LoadPixels() · Pixels <span class="sig-return">→ Color[]</span> · UpdatePixels()</h3>
+            <p class="entry-desc"><code class="inline">LoadPixels()</code> snapshots the canvas into the <code class="inline">Pixels</code> array (row-major, index = <code class="inline">y * Width + x</code>) for reading or editing. <code class="inline">UpdatePixels()</code> writes it back — verbatim, no blending with what was there. <code class="inline">Pixels</code> throws if <code class="inline">LoadPixels()</code> hasn't been called; it deliberately doesn't auto-load, so it's always clear whether you're looking at a fresh read.</p>
+
+            <h3 class="entry-title" id="pixels-get">Get(x, y) <span class="sig-return">→ Color</span> · Get(x, y, w, h) <span class="sig-return">→ PImage</span> · Get() <span class="sig-return">→ PImage</span></h3>
+            <p class="entry-desc">Reads pixels straight from the canvas — no <code class="inline">LoadPixels()</code> needed. Out-of-bounds coordinates come back transparent rather than throwing.</p>
+
+            <h3 class="entry-title" id="pixels-set">Set(x, y, <span class="tp">Color</span> c) · Set(x, y, <span class="tp">PImage</span> img)</h3>
+            <p class="entry-desc">Writes a single pixel or draws an image with pixels copied verbatim — no tint, no blending. Out-of-bounds coordinates are silently ignored.</p>
+
+            <h3 class="entry-title" id="copy">Copy(sx,sy,sw,sh, dx,dy,dw,dh) · Copy(<span class="tp">PImage</span> src, sx,sy,sw,sh, dx,dy,dw,dh)</h3>
+            <p class="entry-desc">Copies a region (scaling if source/destination sizes differ) — verbatim, no blending. Without a source image, copies from this same canvas onto itself.</p>
+
+            <h3 class="entry-title" id="blend-pixels">Blend(sx,sy,sw,sh, dx,dy,dw,dh, <span class="tp">BlendModeKind</span> mode) · Blend(<span class="tp">PImage</span> src, ...)</h3>
+            <p class="entry-desc">Same as <code class="inline">Copy()</code>, but composites through the given blend mode instead of overwriting. See <a href="#enums">BlendModeKind</a>.</p>
+
+            <h3 class="entry-title" id="filter">Filter(<span class="tp">FilterKind</span> kind, <span class="tp">float</span> param = 0.5f)</h3>
+            <p class="entry-desc">Applies a per-pixel filter to the whole canvas in place. <code class="inline">param</code> means different things per kind: the cutoff for <code class="inline">Threshold</code> (0–1), the levels per channel for <code class="inline">Posterize</code>, the pixel radius for <code class="inline">Blur</code>; ignored otherwise. See <a href="#enums">FilterKind</a>.</p>
+            <div class="note"><strong>Not implemented.</strong> <code class="inline">Erode</code>/<code class="inline">Dilate</code> need neighbor-pixel sampling rather than a per-pixel transform and throw <code class="inline">NotSupportedException</code> for now.</div>
+          </section>
+
+          <!-- ================= FILES & DATA ================= -->
+          <section class="doc-section" id="files-data">
+            <div class="section-kicker">13 · Data &amp; Math</div>
+            <h2>Files &amp; data</h2>
+            <p class="section-intro">Reading and writing plain text, bytes, JSON, XML, and CSV — all on <code class="inline">Sketch</code>, mirroring Processing's <code class="inline">load*</code>/<code class="inline">save*</code> globals.</p>
+
+            <h3 class="entry-title" id="loadstrings">LoadStrings(<span class="tp">string</span> path) <span class="sig-return">→ string[]</span> · SaveStrings(path, lines)</h3>
+            <p class="entry-desc">Reads/writes a text file as an array of lines.</p>
+
+            <h3 class="entry-title" id="loadbytes">LoadBytes(<span class="tp">string</span> path) <span class="sig-return">→ byte[]</span> · SaveBytes(path, data)</h3>
+            <p class="entry-desc">Reads/writes a file's raw bytes.</p>
+
+            <h3 class="entry-title" id="loadjsonobject">LoadJSONObject(path) <span class="sig-return">→ JSONObject</span> · SaveJSONObject(json, path) · LoadJSONArray(path) <span class="sig-return">→ JSONArray</span> · SaveJSONArray(json, path)</h3>
+            <p class="entry-desc">Reads/writes JSON files. <code class="inline">JSONObject</code>/<code class="inline">JSONArray</code> wrap <code class="inline">System.Text.Json</code> with Processing's <code class="inline">Get*</code>/<code class="inline">Set*</code>/<code class="inline">Append*</code> naming (<code class="inline">GetString</code>, <code class="inline">GetInt</code>, <code class="inline">GetFloat</code>, <code class="inline">GetBoolean</code>, <code class="inline">GetJSONObject</code>, <code class="inline">GetJSONArray</code>, and their <code class="inline">Set*</code>/<code class="inline">Append*</code> counterparts).</p>
+
+            <h3 class="entry-title" id="loadxml">LoadXML(<span class="tp">string</span> path) <span class="sig-return">→ XML</span> · SaveXML(xml, path)</h3>
+            <p class="entry-desc">Reads/writes an XML file. <code class="inline">XML</code> wraps <code class="inline">System.Xml.Linq</code> with <code class="inline">GetString</code>/<code class="inline">GetInt</code>/<code class="inline">GetFloat</code> attribute accessors, <code class="inline">GetContent()</code> for text, and <code class="inline">GetChildren()</code>/<code class="inline">GetChild(name)</code>/<code class="inline">AddChild(name)</code> for structure.</p>
+
+            <h3 class="entry-title" id="loadtable">LoadTable(path, options = "") <span class="sig-return">→ Table</span> · SaveTable(table, path)</h3>
+            <p class="entry-desc">Reads/writes a CSV file as a <code class="inline">Table</code>. Pass <code class="inline">"header"</code> for a first line naming the columns. Cell values are stored as text and parsed on demand via <code class="inline">TableRow.GetInt</code>/<code class="inline">GetFloat</code>/<code class="inline">GetString</code>, by index or column name.</p>
+            <div class="note"><strong>CSV only.</strong> Processing's <code class="inline">Table</code> also reads TSV and its own binary <code class="inline">.tbl</code> format; only CSV is implemented here. The parser handles quoted fields with embedded commas, but not escaped double-quotes inside a quoted field — enough for CSV a spreadsheet actually produces, not a full RFC&nbsp;4180 implementation.</div>
+          </section>
+
           <!-- ================= MATH ================= -->
           <section class="doc-section" id="math">
-            <div class="section-kicker">12 · Data &amp; Math</div>
+            <div class="section-kicker">14 · Data &amp; Math</div>
             <h2>Math &amp; trig</h2>
             <p class="section-intro">Free functions on <code class="inline">Sketch</code>, mirroring Processing's globals. All angles are radians, except <code class="inline">Rotate()</code>.</p>
 
@@ -1126,6 +1232,7 @@
                 <tr><td>Degrees(rad) / Radians(deg)</td><td>Angle unit conversion</td></tr>
                 <tr><td>Constrain(v, min, max)</td><td>Clamps a float or int</td></tr>
                 <tr><td>Dist(...)</td><td>Distance between points</td></tr>
+                <tr><td>Mag(x, y) / Mag(x, y, z)</td><td>Distance from the origin — the free-function form of <code class="inline">PVector.Mag()</code></td></tr>
                 <tr><td>Lerp(start, stop, amt)</td><td>Linear interpolation</td></tr>
                 <tr><td>Norm(value, start, stop)</td><td>Normalizes into [0, 1]</td></tr>
                 <tr><td>Map(value, s1, e1, s2, e2)</td><td>Remaps a value</td></tr>
@@ -1137,7 +1244,7 @@
 
           <!-- ================= PVECTOR ================= -->
           <section class="doc-section" id="pvector">
-            <div class="section-kicker">13 · Data &amp; Math</div>
+            <div class="section-kicker">15 · Data &amp; Math</div>
             <h2>PVector</h2>
             <p class="section-intro">A 2D vector struct for position, velocity, and acceleration.</p>
 
@@ -1155,7 +1262,7 @@
 
           <!-- ================= RANDOM & NOISE ================= -->
           <section class="doc-section" id="random-noise">
-            <div class="section-kicker">14 · Data &amp; Math</div>
+            <div class="section-kicker">16 · Data &amp; Math</div>
             <h2>Random &amp; noise</h2>
 
             <h3 class="entry-title" id="random">Random(<span class="tp">float</span> max) · Random(min, max)</h3>
@@ -1176,7 +1283,7 @@
 
           <!-- ================= INPUT ================= -->
           <section class="doc-section" id="input">
-            <div class="section-kicker">15 · Interaction</div>
+            <div class="section-kicker">17 · Interaction</div>
             <h2>Mouse, keyboard &amp; time</h2>
             <p class="section-intro">Position and key state are plain properties; press/release/move are virtual methods.</p>
 
@@ -1193,13 +1300,16 @@
             <h3 class="entry-title" id="millis">Millis() <span class="sig-return">→ long</span></h3>
             <p class="entry-desc">Milliseconds since the sketch started.</p>
 
+            <h3 class="entry-title" id="day">Day() · Month() · Year() · Hour() · Minute() · Second() <span class="sig-return">→ int</span></h3>
+            <p class="entry-desc">Reads the local system clock at call time — unlike <code class="inline">Millis()</code>, which is relative to sketch start.</p>
+
             <h3 class="entry-title" id="cursor">Cursor(<span class="tp">CursorKind</span> kind) · NoCursor()</h3>
             <p class="entry-desc">Raises the <code class="inline">CursorRequested</code> event.</p>
           </section>
 
           <!-- ================= ENUMS ================= -->
           <section class="doc-section" id="enums">
-            <div class="section-kicker">16 · Reference</div>
+            <div class="section-kicker">18 · Reference</div>
             <h2>Enumerations</h2>
             <p class="section-intro">Shared between <code class="inline">Sketch</code> and <code class="inline">PGraphics</code>.</p>
 
@@ -1259,11 +1369,32 @@
               <tr><td>None, Left, Right, Center</td><td>Mouse buttons.</td></tr>
               <tr><td>Arrow, Cross, Hand, Move, Text, Wait</td><td>Cursor shapes.</td></tr>
             </table>
+
+            <table class="enum-table">
+              <caption>BlendModeKind</caption>
+              <tr><td>Blend</td><td>Normal alpha compositing (default).</td></tr>
+              <tr><td>Add</td><td>Additive.</td></tr>
+              <tr><td>Darkest / Lightest</td><td>Per-channel min / max.</td></tr>
+              <tr><td>Difference / Exclusion</td><td>Absolute difference, with/without a flattened midtone.</td></tr>
+              <tr><td>Multiply / Screen</td><td>Darkens / lightens by multiplying.</td></tr>
+              <tr><td>Overlay / HardLight / SoftLight</td><td>Contrast-boosting blends.</td></tr>
+              <tr><td>Dodge / Burn</td><td>Lightens / darkens the base by the blend color.</td></tr>
+            </table>
+            <div class="note"><strong>No SUBTRACT.</strong> Processing's <code class="inline">SUBTRACT</code> has no direct Skia blend-mode equivalent (it isn't a true channel subtraction in Skia's set), so it's deliberately left out rather than approximated poorly.</div>
+
+            <table class="enum-table">
+              <caption>FilterKind</caption>
+              <tr><td>Gray / Invert / Opaque</td><td>Grayscale, invert RGB, force alpha to 255.</td></tr>
+              <tr><td>Threshold</td><td>Black/white split at <code class="inline">param</code> (0–1, default 0.5).</td></tr>
+              <tr><td>Posterize</td><td>Reduces to <code class="inline">param</code> levels per channel.</td></tr>
+              <tr><td>Blur</td><td><code class="inline">param</code> is the pixel radius.</td></tr>
+              <tr><td>Erode / Dilate</td><td>Not implemented — throws <code class="inline">NotSupportedException</code>.</td></tr>
+            </table>
           </section>
 
           <!-- ================= HOSTING ================= -->
           <section class="doc-section" id="hosting">
-            <div class="section-kicker">17 · Hosting &amp; Tooling</div>
+            <div class="section-kicker">19 · Hosting &amp; Tooling</div>
             <h2>Avalonia host</h2>
             <p class="section-intro">Embeds a <code class="inline">Sketch</code> in a cross-platform Avalonia app.</p>
 
@@ -1277,7 +1408,7 @@
 
           <!-- ================= IDE ================= -->
           <section class="doc-section" id="ide">
-            <div class="section-kicker">18 · Hosting &amp; Tooling</div>
+            <div class="section-kicker">20 · Hosting &amp; Tooling</div>
             <h2>The IDE</h2>
             <p class="section-intro">A self-contained editor + canvas window for iterating on sketches without a separate build step.</p>
 
@@ -1297,7 +1428,7 @@
 
           <!-- ================= INDEX ================= -->
           <section class="doc-section" id="index">
-            <div class="section-kicker">19 · Reference</div>
+            <div class="section-kicker">21 · Reference</div>
             <h2>Keyword index</h2>
             <p class="section-intro">Every public member referenced in this document, alphabetically. Type to filter. Click any keyword to jump to its documentation.</p>
             <input type="text" class="index-search" id="indexSearch" placeholder="Filter keywords…" aria-label="Filter keyword index">
@@ -1307,7 +1438,7 @@
 
           <!-- ================= FOOTER ================= -->
           <footer class="doc-footer">
-            DanaProcessing reference documentation. Generated from the current source tree — GraphicsContext, Sketch, PVector, PImage, PGraphics, PShape, PerlinNoise, the Avalonia host, and the IDE.
+            DanaProcessing reference documentation. Generated from the current source tree — GraphicsContext, Sketch, PVector, PImage, PGraphics, PShape, PFont, JSONObject/JSONArray, XML, Table, PerlinNoise, the Avalonia host, and the IDE.
           </footer>
 
         </div><!-- /main-col -->
@@ -1598,7 +1729,66 @@
     "CompileResult": "sketchcompiler-compile",
     "SketchEditorView": "sketcheditorview",
     "MainWindow": "mainwindow",
-    "ClayTheme": "claytheme"
+    "ClayTheme": "claytheme",
+    "Redraw": "redraw",
+    "Exit": "exit",
+    "DisplayWidth": "structure",
+    "DisplayHeight": "structure",
+    "Print": "print",
+    "Println": "print",
+    "LogWarning": "print",
+    "LogError": "print",
+    "Color(...)": "color-function",
+    "PushStyle": "pushstyle",
+    "PopStyle": "pushstyle",
+    "Smooth": "smooth",
+    "NoSmooth": "smooth",
+    "BlendMode": "blendmode",
+    "BlendModeKind": "enums",
+    "CurvePoint": "curvepoint",
+    "CurveTangent": "curvepoint",
+    "CurveVertex": "curvevertex",
+    "PFont": "pfont",
+    "CreateFont": "createfont",
+    "LoadFont": "loadfont",
+    "ShearX": "shearx",
+    "ShearY": "shearx",
+    "ResetMatrix": "resetmatrix",
+    "ApplyMatrix": "applymatrix",
+    "PrintMatrix": "printmatrix",
+    "ImageMode": "imagemode",
+    "LoadPixels": "loadpixels",
+    "Pixels": "loadpixels",
+    "UpdatePixels": "loadpixels",
+    "Set": "pixels-set",
+    "Copy": "copy",
+    "Blend": "blend-pixels",
+    "Filter": "filter",
+    "FilterKind": "enums",
+    "LoadStrings": "loadstrings",
+    "SaveStrings": "loadstrings",
+    "LoadBytes": "loadbytes",
+    "SaveBytes": "loadbytes",
+    "LoadJSONObject": "loadjsonobject",
+    "SaveJSONObject": "loadjsonobject",
+    "LoadJSONArray": "loadjsonobject",
+    "SaveJSONArray": "loadjsonobject",
+    "JSONObject": "loadjsonobject",
+    "JSONArray": "loadjsonobject",
+    "LoadXML": "loadxml",
+    "SaveXML": "loadxml",
+    "XML": "loadxml",
+    "LoadTable": "loadtable",
+    "SaveTable": "loadtable",
+    "Table": "loadtable",
+    "TableRow": "loadtable",
+    "Mag": "math",
+    "Day": "day",
+    "Month": "day",
+    "Year": "day",
+    "Hour": "day",
+    "Minute": "day",
+    "Second": "day"
   };
 
   var keywords = [
@@ -1783,7 +1973,66 @@
     ["CompileResult","record"],
     ["SketchEditorView","class"],
     ["MainWindow","class"],
-    ["ClayTheme","static class"]
+    ["ClayTheme","static class"],
+    ["Redraw","method"],
+    ["Exit","method"],
+    ["DisplayWidth","property"],
+    ["DisplayHeight","property"],
+    ["Print","method"],
+    ["Println","method"],
+    ["LogWarning","method"],
+    ["LogError","method"],
+    ["Color(...)","method"],
+    ["PushStyle","method"],
+    ["PopStyle","method"],
+    ["Smooth","method"],
+    ["NoSmooth","method"],
+    ["BlendMode","method"],
+    ["BlendModeKind","enum"],
+    ["CurvePoint","method"],
+    ["CurveTangent","method"],
+    ["CurveVertex","method"],
+    ["PFont","class"],
+    ["CreateFont","method"],
+    ["LoadFont","method"],
+    ["ShearX","method"],
+    ["ShearY","method"],
+    ["ResetMatrix","method"],
+    ["ApplyMatrix","method"],
+    ["PrintMatrix","method"],
+    ["ImageMode","method"],
+    ["LoadPixels","method"],
+    ["Pixels","property"],
+    ["UpdatePixels","method"],
+    ["Set","method"],
+    ["Copy","method"],
+    ["Blend","method"],
+    ["Filter","method"],
+    ["FilterKind","enum"],
+    ["LoadStrings","method"],
+    ["SaveStrings","method"],
+    ["LoadBytes","method"],
+    ["SaveBytes","method"],
+    ["LoadJSONObject","method"],
+    ["SaveJSONObject","method"],
+    ["LoadJSONArray","method"],
+    ["SaveJSONArray","method"],
+    ["JSONObject","class"],
+    ["JSONArray","class"],
+    ["LoadXML","method"],
+    ["SaveXML","method"],
+    ["XML","class"],
+    ["LoadTable","method"],
+    ["SaveTable","method"],
+    ["Table","class"],
+    ["TableRow","class"],
+    ["Mag","method"],
+    ["Day","method"],
+    ["Month","method"],
+    ["Year","method"],
+    ["Hour","method"],
+    ["Minute","method"],
+    ["Second","method"]
   ];
   keywords.sort(function(a,b){ return a[0].localeCompare(b[0]); });
 

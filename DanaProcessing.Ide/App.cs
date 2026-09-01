@@ -14,6 +14,12 @@ namespace DanaProcessing.Ide
     {
         public override void Initialize()
         {
+            // Has to happen before anything below touches ClayTheme (FluentTheme
+            // itself doesn't, but CompletionWindowStyles() a few lines down does) —
+            // otherwise the completion popup would build its Styles from the
+            // hardcoded defaults instead of whatever the user saved last time.
+            ClayTheme.Initialize(ThemeSettingsStore.Load());
+
             RequestedThemeVariant = Avalonia.Styling.ThemeVariant.Dark;
             Styles.Add(new FluentTheme());
 

@@ -62,6 +62,12 @@ namespace DanaProcessing
             return MathF.Sqrt(dx * dx + dy * dy + dz * dz);
         }
 
+        /// <summary>Magnitude (distance from the origin) of a 2D vector given as loose components, like Processing's free-standing mag(x, y). For a PVector, use PVector.Mag() instead — this is just the same formula exposed as a global for when you have loose floats instead of a PVector.</summary>
+        public float Mag(float x, float y) => MathF.Sqrt(x * x + y * y);
+
+        /// <summary>Magnitude of a 3D vector given as loose components, like Processing's mag(x, y, z).</summary>
+        public float Mag(float x, float y, float z) => MathF.Sqrt(x * x + y * y + z * z);
+
         /// <summary>Linear interpolation between two scalars, like Processing's lerp(). For vectors, see PVector.Lerp.</summary>
         public float Lerp(float start, float stop, float amt) => start + (stop - start) * amt;
 
@@ -88,7 +94,9 @@ namespace DanaProcessing
         public float Max(params float[] values)
         {
             float m = values[0];
-            for (int i = 1; i < values.Length; i++) if (values[i] > m) m = values[i];
+            for (int i = 1; i < values.Length; i++)
+            if (values[i] > m)
+                m = values[i];
             return m;
         }
 
@@ -96,7 +104,9 @@ namespace DanaProcessing
         public float Min(params float[] values)
         {
             float m = values[0];
-            for (int i = 1; i < values.Length; i++) if (values[i] < m) m = values[i];
+            for (int i = 1; i < values.Length; i++)
+            if (values[i] < m)
+                m = values[i];
             return m;
         }
     }

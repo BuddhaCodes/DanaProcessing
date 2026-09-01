@@ -525,7 +525,7 @@ public class MySketch : Sketch
 
     public override void Setup()
     {
-        Size(710, 400);
+        Size(800, 600);
         ColorMode(ColorSpaceMode.RGB);
 
         _paletteRed = new Color(0x8B, 0x26, 0x26);

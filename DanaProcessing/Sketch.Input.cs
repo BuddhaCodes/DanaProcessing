@@ -69,8 +69,10 @@ namespace DanaProcessing
 
         internal void RaiseMouseMoved()
         {
-            if (IsMousePressed) MouseDragged();
-            else MouseMoved();
+            if (IsMousePressed)
+                MouseDragged();
+            else
+                MouseMoved();
         }
 
         internal void RaiseMouseWheel(float delta) => MouseWheel(delta);
@@ -115,6 +117,18 @@ namespace DanaProcessing
 
         /// <summary>Milliseconds since the sketch started, like Processing's millis().</summary>
         public long Millis() => _clock.ElapsedMilliseconds;
+
+        // --- Wall-clock date/time — https://processing.org/reference/day_.html
+        // and siblings (month/year/hour/minute/second). All read the local
+        // system clock at call time, unlike Millis() which is relative to
+        // sketch start. ---
+
+        public int Day() => DateTime.Now.Day;
+        public int Month() => DateTime.Now.Month;
+        public int Year() => DateTime.Now.Year;
+        public int Hour() => DateTime.Now.Hour;
+        public int Minute() => DateTime.Now.Minute;
+        public int Second() => DateTime.Now.Second;
 
         // =====================================================================
         // Cursor — https://processing.org/reference/cursor_.html. DanaProcessing

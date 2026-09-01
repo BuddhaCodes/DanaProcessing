@@ -45,9 +45,24 @@ namespace DanaProcessing.AvaloniaHost
         private int _offscreenWidth = -1;
         private int _offscreenHeight = -1;
 
+        /// <summary>The current width the loaded sketch has requested via Size(w, h) — what this control asks the layout system for, not necessarily what the parent ends up giving it.</summary>
+        public int SketchWidth => _sketch.Width;
+
+        /// <summary>The current height the loaded sketch has requested via Size(w, h).</summary>
+        public int SketchHeight => _sketch.Height;
+
+        /// <summary>
+        /// Raised after Setup() first runs, and again any time the loaded
+        /// sketch calls Size(w, h) afterward — lets a host (like the IDE
+        /// window) react to the sketch's own requested size, e.g. to notice
+        /// it no longer fits the space it's been given.
+        /// </summary>
+        public event Action<int, int>? SketchSizeChanged;
+
         public AvaloniaSketchCanvas(Sketch sketch)
         {
             _sketch = sketch;
+            _sketch.SizeChanged += OnSketchSizeChanged;
             Focusable = true;
 
             PointerMoved += OnPointerMoved;
@@ -80,12 +95,79 @@ namespace DanaProcessing.AvaloniaHost
         /// </summary>
         public void LoadSketch(Sketch newSketch)
         {
+            _sketch.SizeChanged -= OnSketchSizeChanged;
             _sketch = newSketch;
+            _sketch.SizeChanged += OnSketchSizeChanged;
+
             _didSetup = false;
             _crashed = false;
             _crashException = null;
             _crashContext = "";
             _lastKnownFrameRate = -1; // forces the timer interval to resync on the next tick
+
+            // The old sketch's size no longer applies. Ask for a fresh layout
+            // pass now — MeasureOverride below runs the new sketch's Setup()
+            // (which decides its real size) as part of that pass, instead of
+            // us finding out only once the next frame happens to render.
+            InvalidateMeasure();
+        }
+
+        /// <summary>
+        /// Runs Setup() exactly once for the currently loaded sketch — during
+        /// layout (from MeasureOverride) rather than on the first Render pass,
+        /// so this control can report the sketch's own requested size as its
+        /// desired size instead of just accepting whatever space a Stretch-
+        /// aligned parent (e.g. a Grid star column) would otherwise hand it.
+        /// Setup() itself may draw (some Processing-style sketches paint a
+        /// static background once in setup()), so it still needs a real
+        /// surface bound before it runs.
+        /// </summary>
+        private void EnsureSetupRun()
+        {
+            if (_didSetup || _crashed)
+                return;
+
+            EnsureOffscreenSurface(_sketch.Width, _sketch.Height);
+            if (_offscreenSurface != null)
+                _sketch.SetCanvas(_offscreenSurface.Canvas, _offscreenSurface);
+
+            RunSafely(_sketch.Setup, "Setup");
+            _didSetup = true;
+
+            // Notify even if Setup() never called Size() itself (i.e. it kept
+            // the 600x400 default) — listeners still need to learn the final
+            // size once Setup() has had its say.
+            SketchSizeChanged?.Invoke(_sketch.Width, _sketch.Height);
+        }
+
+        /// <summary>
+        /// Keeps the offscreen surface bound to whatever size the sketch
+        /// currently reports, and asks Avalonia to re-measure us against it.
+        /// Runs synchronously off Sketch.SizeChanged, so even a Size() call
+        /// made partway through Setup() (before any drawing) lands on a
+        /// correctly-sized surface for the rest of that same call.
+        /// </summary>
+        private void OnSketchSizeChanged(int w, int h)
+        {
+            EnsureOffscreenSurface(w, h);
+            if (_offscreenSurface != null)
+                _sketch.SetCanvas(_offscreenSurface.Canvas, _offscreenSurface);
+
+            SketchSizeChanged?.Invoke(w, h);
+            InvalidateMeasure();
+        }
+
+        /// <summary>
+        /// Reports the sketch's own requested size as our desired size,
+        /// instead of accepting whatever the parent's layout would otherwise
+        /// stretch us to. Pair this with a non-Stretch alignment (or a
+        /// ScrollViewer) wherever this control is placed, or a Stretch-aligned
+        /// parent will just hand our arranged size back to its own anyway.
+        /// </summary>
+        protected override Size MeasureOverride(Size availableSize)
+        {
+            EnsureSetupRun();
+            return new Size(_sketch.Width, _sketch.Height);
         }
 
         private void RunSafely(Action userCode, string context)
@@ -176,22 +258,25 @@ namespace DanaProcessing.AvaloniaHost
             _offscreenHeight = height;
         }
 
-        /// <summary>Called by SketchDrawOperation once it has a real (leased) SKCanvas in hand.</summary>
-        /// <summary>Called by SketchDrawOperation once it has a real (leased) SKCanvas in hand.</summary>
+        /// <summary>
+        /// Called by SketchDrawOperation once it has a real (leased) SKCanvas
+        /// in hand. `width`/`height` are this control's arranged Bounds —
+        /// under normal layout these already equal _sketch.Width/Height,
+        /// because MeasureOverride reports the sketch's own size as what we
+        /// want. We still draw at _sketch.Width/Height rather than these
+        /// bounds, so a parent that ignores our desired size (clips us
+        /// smaller, say) never makes the sketch silently render at the wrong
+        /// resolution — it'll just get visually clipped instead.
+        /// </summary>
         internal void PaintSketch(SKCanvas leasedCanvas, double scaling, int width, int height)
         {
-            EnsureOffscreenSurface(width, height);
+            if (!_didSetup)
+                EnsureSetupRun(); // fallback: normally already run by MeasureOverride before the first Render
+
             if (_offscreenSurface == null)
-                return; // width/height not yet valid — nothing to draw
+                return; // sketch size not yet valid — nothing to draw
 
             var offscreenCanvas = _offscreenSurface.Canvas;
-
-            // The sketch draws into our own offscreen surface — not the leased
-            // canvas — so Sketch.Surface is real and Save()/SaveFrame() work.
-            _sketch.SetCanvas(offscreenCanvas, _offscreenSurface);
-
-            bool sizeChanged = width != _sketch.Width || height != _sketch.Height;
-            _sketch.Size(width, height);
 
             // IMPORTANT: unlike the leased canvas (fresh matrix every frame),
             // this offscreen canvas is OUR OWN and persists across frames —
@@ -202,16 +287,6 @@ namespace DanaProcessing.AvaloniaHost
             // per-frame draw resets it back to identity for the next frame,
             // the same way a brand-new canvas would each time.
             offscreenCanvas.Save();
-
-            if (!_didSetup)
-            {
-                RunSafely(_sketch.Setup, "Setup");
-                _didSetup = true;
-            }
-            else if (sizeChanged)
-            {
-                RunSafely(_sketch.WindowResized, "WindowResized");
-            }
 
             if (!_crashed)
             {
@@ -226,7 +301,7 @@ namespace DanaProcessing.AvaloniaHost
             {
                 // Drawn into the offscreen surface too, so it gets the same
                 // scaling treatment below and is itself save-able.
-                DrawErrorOverlay(offscreenCanvas, _crashException, _crashContext, width, height);
+                DrawErrorOverlay(offscreenCanvas, _crashException, _crashContext, _sketch.Width, _sketch.Height);
             }
 
             offscreenCanvas.Restore();

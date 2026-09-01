@@ -9,10 +9,18 @@ namespace DanaProcessing
     /// overloading and wanted colors to fit in a primitive. C# has neither
     /// constraint, so this is a proper struct with real constructors instead
     /// — build one with `new Color(r, g, b)` rather than calling a function
-    /// named the same as the type (which C# doesn't allow within the same
-    /// class that also needs to reference the type — see the ShapeMode/
-    /// ShapeAlignMode naming note elsewhere in the codebase for the same
-    /// collision in a different spot).
+    /// named the same as the type. That's specifically because a type can't
+    /// have a member with its own name (C# error CS0542) — this struct
+    /// itself could never declare a method called Color(...) — NOT because
+    /// no class anywhere is allowed to. GraphicsContext (a different type)
+    /// does exactly that: GraphicsContext.Color(r, g, b) is the actual
+    /// ColorMode-aware equivalent of Processing's color(...) function, and
+    /// it coexists with `new Color(...)` here without any ambiguity, since
+    /// `new` always forces the constructor and type-positions never consider
+    /// method groups. See the ShapeMode() declaration in GraphicsContext.cs
+    /// for the actual ShapeMode/ShapeAlignMode naming note — that one really
+    /// was just a naming choice (to keep the enum and the method visually
+    /// distinct), not a hard compiler constraint like this one.
     ///
     /// Wraps SkiaSharp's SKColor internally, but that wrapping is invisible
     /// from sketch code — the Skia property is internal, so a sketch never

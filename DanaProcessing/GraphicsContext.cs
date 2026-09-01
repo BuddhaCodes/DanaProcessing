@@ -31,6 +31,12 @@ namespace DanaProcessing
     /// <summary>Vertical text alignment — https://processing.org/reference/textAlign_.html</summary>
     public enum TextAlignV { Baseline, Top, Center, Bottom }
 
+    /// <summary>Compositing mode for subsequent drawing (and for Blend()) — https://processing.org/reference/blendMode_.html. Processing's SUBTRACT is deliberately omitted: it has no direct SKBlendMode equivalent (it isn't a true channel subtraction in Skia's set), so it isn't offered here rather than being approximated poorly.</summary>
+    public enum BlendModeKind { Blend, Add, Darkest, Lightest, Difference, Exclusion, Multiply, Screen, Overlay, HardLight, SoftLight, Dodge, Burn }
+
+    /// <summary>Per-pixel filters usable via Filter() — https://processing.org/reference/filter_.html. Erode/Dilate need neighbor-pixel sampling (not just a per-pixel transform) and aren't implemented yet — Filter() throws NotSupportedException for them.</summary>
+    public enum FilterKind { Gray, Invert, Threshold, Posterize, Opaque, Blur, Erode, Dilate }
+
     /// <summary>
     /// Everything about drawing state and drawing operations that Sketch and
     /// PGraphics have in common: fill/stroke/color, shape modes, the 2D
@@ -85,8 +91,17 @@ namespace DanaProcessing
         private ShapeAlignMode _rectMode = ShapeAlignMode.Corner;
         private ShapeAlignMode _ellipseMode = ShapeAlignMode.Center;
         private ShapeAlignMode _shapeDrawMode = ShapeAlignMode.Corner;
+        private ShapeAlignMode _imageMode = ShapeAlignMode.Corner;
         private SKColor? _tintColor; // null = sin tinte, Image() dibuja el bitmap sin modificar
         private float _curveTightness = 0f;
+        private bool _smooth = true;
+        private SKBlendMode _blendMode = SKBlendMode.SrcOver;
+
+        // Rangos de cada canal para ColorMode(mode, max...) — por defecto 0-255
+        // en ambos modos, igual que Processing (colorMode(HSB) por sí solo NO
+        // cambia el rango a 360/100/100; hace falta pedirlo explícitamente:
+        // colorMode(HSB, 360, 100, 100)).
+        private float _colorMax1 = 255f, _colorMax2 = 255f, _colorMax3 = 255f, _colorMaxA = 255f;
 
         /// <summary>
         /// Sets how Fill/Stroke/Background interpret their arguments from here
@@ -95,13 +110,29 @@ namespace DanaProcessing
         /// recolor anything already drawn or already set via a previous
         /// Fill()/Stroke() call — only calls made after this one are affected.
         /// </summary>
-        public void ColorMode(ColorSpaceMode mode) => _colorMode = mode;
+        public void ColorMode(ColorSpaceMode mode) => ColorMode(mode, 255f, 255f, 255f, 255f);
+
+        /// <summary>Sets the mode and a single max value shared by all three color channels plus alpha, like Processing's colorMode(mode, max).</summary>
+        public void ColorMode(ColorSpaceMode mode, float max) => ColorMode(mode, max, max, max, max);
+
+        /// <summary>Sets the mode and a max value per channel (alpha keeps its previous max unless given), like Processing's colorMode(mode, max1, max2, max3, maxA). In HSB mode max1/max2/max3 scale hue/saturation/brightness respectively — e.g. ColorMode(HSB, 360, 100, 100) gives the classic HSB ranges.</summary>
+        public void ColorMode(ColorSpaceMode mode, float max1, float max2, float max3, float? maxA = null)
+        {
+            _colorMode = mode;
+            _colorMax1 = max1;
+            _colorMax2 = max2;
+            _colorMax3 = max3;
+            _colorMaxA = maxA ?? _colorMaxA; // como en Processing: colorMode(mode, max1, max2, max3) no toca el rango de alpha
+        }
 
         public void RectMode(ShapeAlignMode mode) => _rectMode = mode;
         public void EllipseMode(ShapeAlignMode mode) => _ellipseMode = mode;
 
         /// <summary>Sets how Shape()'s x/y/w/h are interpreted — CORNER (default, x,y is top-left), CORNERS (x,y and w,h are two opposite corners, not a size), or CENTER. Matches Processing's shapeMode(). RADIUS isn't meaningful for shapeMode in Processing either, so it isn't supported here.</summary>
         public void ShapeMode(ShapeAlignMode mode) => _shapeDrawMode = mode;
+
+        /// <summary>Sets how Image()'s x/y/w/h are interpreted, like Processing's imageMode(). Default CORNER (x,y is top-left, w,h is size); CORNERS treats w,h as the opposite corner instead of a size; CENTER positions on the image's center.</summary>
+        public void ImageMode(ShapeAlignMode mode) => _imageMode = mode;
 
         /// <summary>Sets a color/alpha multiplier applied to images drawn via Image() from here on, like Processing's tint(). Interpreted per the current ColorMode, same as Fill/Stroke.</summary>
         public void Tint(float a1, float a2, float a3, byte alpha = 255) => _tintColor = ResolveColor(a1, a2, a3, alpha);
@@ -128,12 +159,45 @@ namespace DanaProcessing
         /// happen here, at call time, not via method overloads, since C#
         /// picks an overload at compile time and ColorMode is a runtime setting.
         /// </summary>
-        private SKColor ResolveColor(float a1, float a2, float a3, byte alpha) =>
-            _colorMode == ColorSpaceMode.HSB
-                ? SKColor.FromHsv(a1, a2, a3, alpha)
-                : new SKColor(ClampByte(a1), ClampByte(a2), ClampByte(a3), alpha);
+        private SKColor ResolveColor(float a1, float a2, float a3, float alpha)
+        {
+            byte a = ScaleToByte(alpha, _colorMaxA);
+            if (_colorMode == ColorSpaceMode.HSB)
+            {
+                float h = a1 / _colorMax1 * 360f;
+                float s = a2 / _colorMax2 * 100f;
+                float v = a3 / _colorMax3 * 100f;
+                return SKColor.FromHsv(h, s, v, a);
+            }
+            return new SKColor(ScaleToByte(a1, _colorMax1), ScaleToByte(a2, _colorMax2), ScaleToByte(a3, _colorMax3), a);
+        }
 
-        private static byte ClampByte(float v) => (byte)Math.Clamp(v, 0, 255);
+        /// <summary>Rescales a value from [0, max] into a clamped byte [0, 255] — the normalization every Fill/Stroke/Background argument goes through per the current ColorMode ranges.</summary>
+        private static byte ScaleToByte(float v, float max) => (byte)Math.Clamp(max == 0 ? 0 : v / max * 255f, 0, 255);
+
+        // =====================================================================
+        // Color construction — https://processing.org/reference/color_.html.
+        // This is Processing's color(...) *function* — not to be confused
+        // with `new Color(r, g, b)` on the Color struct itself (see the
+        // remark atop Color.cs on why that one's a constructor, not a
+        // same-named method). The two do different things on purpose:
+        // `new Color(r, g, b)` always means plain 0-255 RGB, full stop, no
+        // matter what ColorMode() is currently set to — the same way
+        // Color.FromHsb(...) always means HSB, full stop. Color(...) here is
+        // the one that's ColorMode-aware, exactly like Fill()/Stroke()/
+        // Background() are, since that's what Processing's color() does too.
+        // C# resolves the two without any ambiguity: `new Color(...)` is
+        // always the constructor (the `new` keyword forces a type there),
+        // while bare `Color(...)` — anywhere Sketch/PGraphics code can see
+        // this method, i.e. everywhere a sketch actually calls it — is
+        // always this method.
+        // =====================================================================
+
+        /// <summary>Builds a Color from three components interpreted per the current ColorMode (RGB by default), like Processing's color(v1, v2, v3, alpha). For a ColorMode-independent RGB color, use `new Color(r, g, b)` instead.</summary>
+        public Color Color(float a1, float a2, float a3, float alpha = 255) => new Color(ResolveColor(a1, a2, a3, alpha));
+
+        /// <summary>Builds a gray Color (same value on all three channels), like Processing's single-argument color(gray).</summary>
+        public Color Color(float gray, float alpha = 255) => Color(gray, gray, gray, alpha);
 
         /// <summary>Turns the four raw arguments Rect/Ellipse/Arc/Shape receive into an SKRect, per the given mode. Shared since Processing defines the same four modes identically across rect(), ellipse() (via ellipseMode, which arc() also reuses), and shape().</summary>
         private static SKRect ResolveRectMode(ShapeAlignMode mode, float a, float b, float c, float d) => mode switch
@@ -146,10 +210,18 @@ namespace DanaProcessing
         };
 
         /// <summary>Clears to a solid color, interpreted per the current ColorMode (RGB by default).</summary>
-        public void Background(float a1, float a2, float a3)
+        public void Background(float a1, float a2, float a3, float alpha = 255) => BackgroundColor(ResolveColor(a1, a2, a3, alpha));
+
+        /// <summary>Clears to a shade of gray (same value on all three channels), like Processing's single-argument background(gray).</summary>
+        public void Background(float gray, float alpha = 255) => Background(gray, gray, gray, alpha);
+
+        /// <summary>Clears to an already-built Color, like Processing's background(color).</summary>
+        public void Background(Color c) => BackgroundColor(c.Skia);
+
+        private void BackgroundColor(SKColor color)
         {
             EnsureReady();
-            using var paint = new SKPaint { Color = ResolveColor(a1, a2, a3, 255), Style = SKPaintStyle.Fill };
+            using var paint = new SKPaint { Color = color, Style = SKPaintStyle.Fill };
             Canvas.DrawRect(new SKRect(0, 0, Width, Height), paint);
         }
 
@@ -161,38 +233,44 @@ namespace DanaProcessing
         }
 
         /// <summary>Sets the fill color, interpreted per the current ColorMode (RGB by default).</summary>
-        public void Fill(float a1, float a2, float a3, byte alpha = 255)
+        public void Fill(float a1, float a2, float a3, float alpha = 255) => FillColor(ResolveColor(a1, a2, a3, alpha));
+
+        /// <summary>Sets the fill to a shade of gray (same value on all three channels), like Processing's single-argument fill(gray).</summary>
+        public void Fill(float gray, float alpha = 255) => Fill(gray, gray, gray, alpha);
+
+        /// <summary>Sets the fill to an already-built Color, like Processing's fill(color).</summary>
+        public void Fill(Color c) => FillColor(c.Skia);
+
+        private void FillColor(SKColor color)
         {
             _fillEnabled = true;
             _fillPaint.Shader = null; // plain fill overrides any gradient set earlier
-            _fillPaint.Color = ResolveColor(a1, a2, a3, alpha);
-            _textPaint.Color = _fillPaint.Color;
+            _fillPaint.Color = color;
+            _textPaint.Color = color;
         }
 
         /// <summary>Fill using Hue (0-360), Saturation (0-100), Brightness (0-100) — regardless of the current ColorMode.</summary>
-        public void FillHSB(float h, float s, float br, byte a = 255)
-        {
-            _fillEnabled = true;
-            _fillPaint.Shader = null;
-            _fillPaint.Color = SKColor.FromHsv(h, s, br, a);
-            _textPaint.Color = _fillPaint.Color;
-        }
+        public void FillHSB(float h, float s, float br, byte a = 255) => FillColor(SKColor.FromHsv(h, s, br, a));
 
         public void NoFill() => _fillEnabled = false;
 
         /// <summary>Sets the stroke color, interpreted per the current ColorMode (RGB by default).</summary>
-        public void Stroke(float a1, float a2, float a3, byte alpha = 255)
+        public void Stroke(float a1, float a2, float a3, float alpha = 255) => StrokeColorSet(ResolveColor(a1, a2, a3, alpha));
+
+        /// <summary>Sets the stroke to a shade of gray (same value on all three channels), like Processing's single-argument stroke(gray).</summary>
+        public void Stroke(float gray, float alpha = 255) => Stroke(gray, gray, gray, alpha);
+
+        /// <summary>Sets the stroke to an already-built Color, like Processing's stroke(color).</summary>
+        public void Stroke(Color c) => StrokeColorSet(c.Skia);
+
+        private void StrokeColorSet(SKColor color)
         {
             _strokeEnabled = true;
-            _strokePaint.Color = ResolveColor(a1, a2, a3, alpha);
+            _strokePaint.Color = color;
         }
 
         /// <summary>Stroke using Hue (0-360), Saturation (0-100), Brightness (0-100) — regardless of the current ColorMode.</summary>
-        public void StrokeHSB(float h, float s, float br, byte a = 255)
-        {
-            _strokeEnabled = true;
-            _strokePaint.Color = SKColor.FromHsv(h, s, br, a);
-        }
+        public void StrokeHSB(float h, float s, float br, byte a = 255) => StrokeColorSet(SKColor.FromHsv(h, s, br, a));
 
         public void NoStroke() => _strokeEnabled = false;
         public void StrokeWeight(float w) => _strokePaint.StrokeWidth = w;
@@ -212,6 +290,159 @@ namespace DanaProcessing
             StrokeJoinKind.Round => SKStrokeJoin.Round,
             _ => throw new ArgumentOutOfRangeException(nameof(join))
         };
+
+        // =====================================================================
+        // Antialiasing — https://processing.org/reference/smooth_.html
+        // =====================================================================
+
+        /// <summary>Turns antialiasing on for shapes/lines/text drawn from here on, like Processing's smooth(). On by default.</summary>
+        public void Smooth() => ApplySmooth(true);
+
+        /// <summary>Turns antialiasing off, like Processing's noSmooth() — gives hard, pixelated edges, occasionally desired for pixel-art-style sketches.</summary>
+        public void NoSmooth() => ApplySmooth(false);
+
+        private void ApplySmooth(bool on)
+        {
+            _smooth = on;
+            _fillPaint.IsAntialias = on;
+            _strokePaint.IsAntialias = on;
+            _textPaint.IsAntialias = on;
+        }
+
+        // =====================================================================
+        // Blend mode — https://processing.org/reference/blendMode_.html. Applies
+        // to every subsequent drawing operation (shapes, images, text), not just
+        // Blend()/Copy() below, matching Processing's own global blendMode().
+        // =====================================================================
+        public void BlendMode(BlendModeKind mode) => SetBlendModeInternal(ResolveBlendMode(mode));
+
+        private static SKBlendMode ResolveBlendMode(BlendModeKind mode) => mode switch
+        {
+            BlendModeKind.Blend => SKBlendMode.SrcOver,
+            BlendModeKind.Add => SKBlendMode.Plus,
+            BlendModeKind.Darkest => SKBlendMode.Darken,
+            BlendModeKind.Lightest => SKBlendMode.Lighten,
+            BlendModeKind.Difference => SKBlendMode.Difference,
+            BlendModeKind.Exclusion => SKBlendMode.Exclusion,
+            BlendModeKind.Multiply => SKBlendMode.Multiply,
+            BlendModeKind.Screen => SKBlendMode.Screen,
+            BlendModeKind.Overlay => SKBlendMode.Overlay,
+            BlendModeKind.HardLight => SKBlendMode.HardLight,
+            BlendModeKind.SoftLight => SKBlendMode.SoftLight,
+            BlendModeKind.Dodge => SKBlendMode.ColorDodge,
+            BlendModeKind.Burn => SKBlendMode.ColorBurn,
+            // Nota: Processing's SUBTRACT no tiene un SKBlendMode equivalente
+            // directo en Skia (no es una resta real de canales), por lo que
+            // deliberadamente no se ofrece aquí en vez de aproximarlo mal.
+            _ => throw new ArgumentOutOfRangeException(nameof(mode))
+        };
+
+        private void SetBlendModeInternal(SKBlendMode mode)
+        {
+            _blendMode = mode;
+            _fillPaint.BlendMode = mode;
+            _strokePaint.BlendMode = mode;
+        }
+
+        // =====================================================================
+        // PushStyle/PopStyle — https://processing.org/reference/pushStyle_.html.
+        // Snapshots every piece of drawing *state* this class tracks (colors,
+        // color/rect/ellipse/shape/image modes, tint, stroke weight/cap/join,
+        // text size/align/leading, curve tightness, smooth, blend mode) —
+        // deliberately everything PushMatrix/PopMatrix does NOT cover, since
+        // those two already handle the transformation matrix on their own
+        // stack via Canvas.Save()/Restore(). Gradient shaders set via
+        // LinearGradientFill/RadialGradientFill are not restored by PopStyle —
+        // call Fill() with a plain color afterward if you need to clear one.
+        // =====================================================================
+
+        private struct StyleSnapshot
+        {
+            public bool FillEnabled, StrokeEnabled;
+            public SKColor FillColor, StrokeColor;
+            public ColorSpaceMode ColorMode;
+            public float ColorMax1, ColorMax2, ColorMax3, ColorMaxA;
+            public ShapeAlignMode RectMode, EllipseMode, ShapeDrawMode, ImageMode;
+            public SKColor? TintColor;
+            public float StrokeWeight;
+            public SKStrokeCap StrokeCap;
+            public SKStrokeJoin StrokeJoin;
+            public float TextSize;
+            public TextAlignH TextAlignH;
+            public TextAlignV TextAlignV;
+            public float? TextLeading;
+            public float CurveTightness;
+            public bool Smooth;
+            public SKBlendMode BlendMode;
+        }
+
+        private readonly Stack<StyleSnapshot> _styleStack = new Stack<StyleSnapshot>();
+
+        /// <summary>Saves every current style setting onto a stack, like Processing's pushStyle(). Pair with PopStyle() to restore it later — handy for temporarily changing a color/mode/weight/etc. inside a block of drawing code without affecting anything after it.</summary>
+        public void PushStyle()
+        {
+            _styleStack.Push(new StyleSnapshot
+            {
+                FillEnabled = _fillEnabled,
+                StrokeEnabled = _strokeEnabled,
+                FillColor = _fillPaint.Color,
+                StrokeColor = _strokePaint.Color,
+                ColorMode = _colorMode,
+                ColorMax1 = _colorMax1,
+                ColorMax2 = _colorMax2,
+                ColorMax3 = _colorMax3,
+                ColorMaxA = _colorMaxA,
+                RectMode = _rectMode,
+                EllipseMode = _ellipseMode,
+                ShapeDrawMode = _shapeDrawMode,
+                ImageMode = _imageMode,
+                TintColor = _tintColor,
+                StrokeWeight = _strokePaint.StrokeWidth,
+                StrokeCap = _strokePaint.StrokeCap,
+                StrokeJoin = _strokePaint.StrokeJoin,
+                TextSize = _textPaint.TextSize,
+                TextAlignH = _textAlignH,
+                TextAlignV = _textAlignV,
+                TextLeading = _textLeading,
+                CurveTightness = _curveTightness,
+                Smooth = _smooth,
+                BlendMode = _blendMode,
+            });
+        }
+
+        /// <summary>Restores the style settings saved by the most recent unmatched PushStyle(), like Processing's popStyle().</summary>
+        public void PopStyle()
+        {
+            if (_styleStack.Count == 0)
+                throw new InvalidOperationException("PopStyle() llamado sin un PushStyle() correspondiente.");
+            var s = _styleStack.Pop();
+            _fillEnabled = s.FillEnabled;
+            _strokeEnabled = s.StrokeEnabled;
+            _fillPaint.Shader = null;
+            _fillPaint.Color = s.FillColor;
+            _textPaint.Color = s.FillColor;
+            _strokePaint.Color = s.StrokeColor;
+            _colorMode = s.ColorMode;
+            _colorMax1 = s.ColorMax1;
+            _colorMax2 = s.ColorMax2;
+            _colorMax3 = s.ColorMax3;
+            _colorMaxA = s.ColorMaxA;
+            _rectMode = s.RectMode;
+            _ellipseMode = s.EllipseMode;
+            _shapeDrawMode = s.ShapeDrawMode;
+            _imageMode = s.ImageMode;
+            _tintColor = s.TintColor;
+            _strokePaint.StrokeWidth = s.StrokeWeight;
+            _strokePaint.StrokeCap = s.StrokeCap;
+            _strokePaint.StrokeJoin = s.StrokeJoin;
+            _textPaint.TextSize = s.TextSize;
+            _textAlignH = s.TextAlignH;
+            _textAlignV = s.TextAlignV;
+            _textLeading = s.TextLeading;
+            _curveTightness = s.CurveTightness;
+            ApplySmooth(s.Smooth);
+            SetBlendModeInternal(s.BlendMode);
+        }
 
         // =====================================================================
         // Color extraction — https://processing.org/reference/red_.html and
@@ -382,6 +613,20 @@ namespace DanaProcessing
             return 3f * u * u * (b - a) + 6f * u * t * (c - b) + 3f * t * t * (d - c);
         }
 
+        /// <summary>Evaluates one axis of a Catmull-Rom curve at parameter t (0-1) without drawing it, like Processing's curvePoint(). a/b/c/d are the same four control values (p0..p3) Curve()/CurveVertex() use — the curve passes through b at t=0 and c at t=1. Call once for x and once for y with the same t. Unlike Curve() itself, this always uses the standard tension and doesn't read CurveTightness() — matching Processing's own curvePoint(), which does the same.</summary>
+        public float CurvePoint(float a, float b, float c, float d, float t)
+        {
+            float t2 = t * t, t3 = t2 * t;
+            return 0.5f * ((2f * b) + (-a + c) * t + (2f * a - 5f * b + 4f * c - d) * t2 + (-a + 3f * b - 3f * c + d) * t3);
+        }
+
+        /// <summary>Evaluates the derivative (tangent direction, not normalized) of one axis of a Catmull-Rom curve at t, like Processing's curveTangent().</summary>
+        public float CurveTangent(float a, float b, float c, float d, float t)
+        {
+            float t2 = t * t;
+            return 0.5f * ((-a + c) + 2f * (2f * a - 5f * b + 4f * c - d) * t + 3f * (-a + 3f * b - 3f * c + d) * t2);
+        }
+
         // =====================================================================
         // Custom shapes — https://processing.org/reference/beginShape_.html,
         // vertex_.html, endShape_.html, texture_.html.
@@ -405,6 +650,7 @@ namespace DanaProcessing
         private readonly List<SKPoint> _shapeVertices = new List<SKPoint>();
         private readonly List<SKColor> _shapeVertexColors = new List<SKColor>();
         private readonly List<SKPoint> _shapeVertexUVs = new List<SKPoint>();
+        private readonly List<SKPoint> _curveVertexPoints = new List<SKPoint>();
         private PImage? _shapeTexture;
 
         public void BeginShape(ShapeKind kind = ShapeKind.Polygon)
@@ -414,6 +660,7 @@ namespace DanaProcessing
             _shapeVertices.Clear();
             _shapeVertexColors.Clear();
             _shapeVertexUVs.Clear();
+            _curveVertexPoints.Clear();
             _shapeTexture = null;
         }
 
@@ -469,6 +716,44 @@ namespace DanaProcessing
             if (_shapeKind != ShapeKind.Polygon || _shapePath == null)
                 throw new InvalidOperationException("QuadraticVertex() solo es válido en el modo Polygon por defecto de BeginShape().");
             _shapePath.QuadTo(cx, cy, x, y);
+        }
+
+        /// <summary>
+        /// Adds a Catmull-Rom curve vertex, like Processing's curveVertex().
+        /// As in Processing, the curve only actually passes through the
+        /// *interior* points: the very first and very last curveVertex()
+        /// calls in a shape are used solely to shape the tangent at each end
+        /// and aren't drawn to themselves — nothing appears until the 4th
+        /// call, and the common pattern is to repeat the first point (and
+        /// the last point) once so the curve visibly starts/ends there.
+        /// Respects CurveTightness() the same way the standalone Curve()
+        /// does. Only valid in the default Polygon mode of BeginShape(), same
+        /// as BezierVertex()/QuadraticVertex().
+        /// </summary>
+        public void CurveVertex(float x, float y)
+        {
+            if (_shapeKind != ShapeKind.Polygon || _shapePath == null)
+                throw new InvalidOperationException("CurveVertex() solo es válido en el modo Polygon por defecto de BeginShape().");
+
+            _curveVertexPoints.Add(new SKPoint(x, y));
+            int n = _curveVertexPoints.Count;
+            if (n < 4)
+                return; // hacen falta 4 puntos (p0..p3) para trazar el primer segmento p1->p2
+
+            var p0 = _curveVertexPoints[n - 4];
+            var p1 = _curveVertexPoints[n - 3];
+            var p2 = _curveVertexPoints[n - 2];
+            var p3 = _curveVertexPoints[n - 1];
+
+            if (_shapePath.PointCount == 0)
+                _shapePath.MoveTo(p1);
+
+            float s = (1f - _curveTightness) / 6f;
+            float cx1 = p1.X + s * (p2.X - p0.X);
+            float cy1 = p1.Y + s * (p2.Y - p0.Y);
+            float cx2 = p2.X - s * (p3.X - p1.X);
+            float cy2 = p2.Y - s * (p3.Y - p1.Y);
+            _shapePath.CubicTo(cx1, cy1, cx2, cy2, p2.X, p2.Y);
         }
 
         /// <summary>Finishes and draws the shape. `close` only applies to Polygon mode — it's ignored for every other ShapeKind, which define their own closedness.</summary>
@@ -707,13 +992,30 @@ namespace DanaProcessing
         public float TextAscent() => -_textPaint.FontMetrics.Ascent;
         public float TextDescent() => _textPaint.FontMetrics.Descent;
 
+        // Typeface loaded directly by path via TextFont(string, ...) — this
+        // class created it, so this class owns and disposes it. A typeface
+        // set via TextFont(PFont, ...) is owned by that PFont instead (it
+        // disposes its own typeface) and is deliberately left alone here —
+        // otherwise switching between the two ways of setting a font could
+        // dispose a typeface the caller's PFont is still holding onto.
+        private SKTypeface? _ownedTypeface;
+
+        /// <summary>Sets the current font by loading a font file directly (.ttf/.otf/etc.), like a path-based shortcut for Processing's textFont(). For a font you'll reuse or that you loaded once via LoadFont()/CreateFont(), prefer the TextFont(PFont, ...) overload below instead.</summary>
         public void TextFont(string? path, float? size = null)
         {
-            _textPaint.Typeface?.Dispose();
-            _textPaint.Typeface = path == null ? null : SKTypeface.FromFile(path)
+            _ownedTypeface?.Dispose();
+            _ownedTypeface = path == null ? null : SKTypeface.FromFile(path)
                 ?? throw new InvalidOperationException($"No se pudo cargar la fuente: '{path}'. Verifica la ruta y el formato.");
+            _textPaint.Typeface = _ownedTypeface;
             if (size.HasValue)
                 _textPaint.TextSize = size.Value;
+        }
+
+        /// <summary>Sets the current font from a PFont previously obtained via LoadFont()/CreateFont(), like Processing's textFont(font, size). If size is omitted, uses the size the PFont was created/loaded at.</summary>
+        public void TextFont(PFont font, float? size = null)
+        {
+            _textPaint.Typeface = font.Typeface;
+            _textPaint.TextSize = size ?? font.Size;
         }
 
         /// <summary>Draws text at (x, y), per the current TextAlign. Multi-line strings ('\n') are split and spaced using the current TextLeading.</summary>
@@ -779,27 +1081,58 @@ namespace DanaProcessing
 
         public void Scale(float sx, float? sy = null) { EnsureReady(); Canvas.Scale(sx, sy ?? sx); }
 
+        /// <summary>Shears drawing along the x-axis by angleRadians, like Processing's shearX().</summary>
+        public void ShearX(float angleRadians) { EnsureReady(); Canvas.Skew(MathF.Tan(angleRadians), 0); }
+
+        /// <summary>Shears drawing along the y-axis by angleRadians, like Processing's shearY().</summary>
+        public void ShearY(float angleRadians) { EnsureReady(); Canvas.Skew(0, MathF.Tan(angleRadians)); }
+
+        /// <summary>Replaces the current transformation matrix with the identity, discarding any Translate/Rotate/Scale/Shear/ApplyMatrix applied so far (including ones from before the innermost PushMatrix()) — like Processing's resetMatrix(). Note this is stronger than PopMatrix(): PopMatrix() only undoes back to the last PushMatrix(), while ResetMatrix() clears everything.</summary>
+        public void ResetMatrix() { EnsureReady(); Canvas.ResetMatrix(); }
+
+        /// <summary>Multiplies the current transformation matrix by an arbitrary affine matrix [[a c e][b d f][0 0 1]], like Processing's applyMatrix(). Useful for effects (e.g. a custom skew/warp) the named Translate/Rotate/Scale/Shear calls can't express directly.</summary>
+        public void ApplyMatrix(float a, float b, float c, float d, float e, float f)
+        {
+            EnsureReady();
+            var m = new SKMatrix { ScaleX = a, SkewY = b, SkewX = c, ScaleY = d, TransX = e, TransY = f, Persp2 = 1 };
+            Canvas.Concat(ref m); // SkiaSharp moderno recibe SKMatrix por "in"; si tu versión de SkiaSharp es más antigua y espera "ref SKMatrix", cambia esta línea a Canvas.Concat(ref m).
+        }
+
+        /// <summary>Prints the current transformation matrix to the console as a 3x3 row-major matrix, like Processing's printMatrix() — mainly a debugging aid for figuring out what a chain of Translate/Rotate/Scale calls actually produced.</summary>
+        public void PrintMatrix()
+        {
+            EnsureReady();
+            var m = Canvas.TotalMatrix;
+            DanaLogger.Info($"[{m.ScaleX,8:0.####} {m.SkewX,8:0.####} {m.TransX,8:0.####}]");
+            DanaLogger.Info($"[{m.SkewY,8:0.####} {m.ScaleY,8:0.####} {m.TransY,8:0.####}]");
+            DanaLogger.Info($"[{0,8:0.####} {0,8:0.####} {1,8:0.####}]");
+        }
+
         // =====================================================================
         // Compositing other images/buffers/vector shapes onto this one
         // =====================================================================
 
         public void Image(PImage img, float x, float y) => Image(img, x, y, img.Width, img.Height);
 
+        /// <summary>Draws img with (x, y, w, h) interpreted per the current ImageMode — CORNER by default, so this behaves exactly as before unless ImageMode() has been called.</summary>
         public void Image(PImage img, float x, float y, float w, float h)
         {
             EnsureReady();
+            var rect = ResolveRectMode(_imageMode, x, y, w, h);
             using var tintPaint = BuildTintPaint();
-            Canvas.DrawBitmap(img.Bitmap, new SKRect(x, y, x + w, y + h), tintPaint);
+            Canvas.DrawBitmap(img.Bitmap, rect, tintPaint);
         }
 
         public void Image(PGraphics pg, float x, float y) => Image(pg, x, y, pg.Width, pg.Height);
 
+        /// <summary>Draws pg's current contents with (x, y, w, h) interpreted per the current ImageMode — see the PImage overload above.</summary>
         public void Image(PGraphics pg, float x, float y, float w, float h)
         {
             EnsureReady();
+            var rect = ResolveRectMode(_imageMode, x, y, w, h);
             using var snapshot = pg.SnapshotForDraw();
             using var tintPaint = BuildTintPaint();
-            Canvas.DrawImage(snapshot, new SKRect(x, y, x + w, y + h), tintPaint);
+            Canvas.DrawImage(snapshot, rect, tintPaint);
         }
 
         /// <summary>Draws a loaded vector shape at (x, y) using its natural size, positioned/sized per the current ShapeMode.</summary>
@@ -831,6 +1164,203 @@ namespace DanaProcessing
 
         /// <summary>Loads a vector shape from an SVG file, like Processing's loadShape(). Requires the SkiaSharp.Extended.Svg NuGet package.</summary>
         public PShape LoadShape(string path) => PShape.LoadSvg(path);
+
+        // =====================================================================
+        // Pixels — https://processing.org/reference/loadPixels_.html and
+        // siblings (pixels[], updatePixels(), get(), set(), copy(), blend(),
+        // filter()). Reading pixels back requires a CPU-readable Surface,
+        // same requirement as Save() below — a GPU-accelerated host would
+        // need its own readback path instead of these.
+        // =====================================================================
+
+        private Color[]? _pixels;
+
+        /// <summary>Reads this canvas's pixels into the Pixels array so they can be inspected/modified directly, like Processing's loadPixels(). Call UpdatePixels() afterward to push any edits back to the canvas — Pixels itself is just an in-memory snapshot until then.</summary>
+        public void LoadPixels()
+        {
+            EnsureReady();
+            using var pixmap = PeekPixelsOrThrow();
+            var pixels = new Color[Width * Height];
+            for (int y = 0; y < Height; y++)
+                for (int x = 0; x < Width; x++)
+                    pixels[y * Width + x] = new Color(pixmap.GetPixelColor(x, y));
+            _pixels = pixels;
+        }
+
+        /// <summary>Pixel data loaded by LoadPixels(), indexed row-major (index = y * Width + x), like Processing's pixels[] array. Throws if LoadPixels() hasn't been called (or was called before the canvas was resized) — this deliberately doesn't auto-load, so you always know whether you're looking at a fresh read or edits you made since.</summary>
+        public Color[] Pixels => _pixels ?? throw new InvalidOperationException("Pixels no está disponible — llama a LoadPixels() primero.");
+
+        /// <summary>Writes the Pixels array back onto the canvas, like Processing's updatePixels(). Pixels are copied verbatim (SKBlendMode.Src) — no blending with what was there before, matching Processing.</summary>
+        public void UpdatePixels()
+        {
+            EnsureReady();
+            if (_pixels == null)
+                throw new InvalidOperationException("UpdatePixels() llamado sin un LoadPixels() previo.");
+            var info = new SKImageInfo(Width, Height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+            using var bitmap = new SKBitmap(info);
+            for (int y = 0; y < Height; y++)
+                for (int x = 0; x < Width; x++)
+                    bitmap.SetPixel(x, y, _pixels[y * Width + x].Skia);
+            using var image = SKImage.FromBitmap(bitmap);
+            using var paint = new SKPaint { BlendMode = SKBlendMode.Src, IsAntialias = false };
+            Canvas.DrawImage(image, 0, 0, paint);
+        }
+
+        /// <summary>Reads the color at (x, y) straight from the canvas — no LoadPixels() needed, like Processing's get(x, y). Out-of-bounds coordinates return transparent black, matching Processing.</summary>
+        public Color Get(int x, int y)
+        {
+            EnsureReady();
+            if (x < 0 || y < 0 || x >= Width || y >= Height)
+                return new Color(SKColors.Transparent);
+            using var pixmap = PeekPixelsOrThrow();
+            return new Color(pixmap.GetPixelColor(x, y));
+        }
+
+        /// <summary>Grabs a rectangular region of the canvas as a standalone PImage, like Processing's get(x, y, w, h). Coordinates that fall outside the canvas come back transparent rather than throwing, matching Processing's own tolerant behavior here.</summary>
+        public PImage Get(int x, int y, int w, int h)
+        {
+            EnsureReady();
+            using var pixmap = PeekPixelsOrThrow();
+            var info = new SKImageInfo(w, h, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+            var bitmap = new SKBitmap(info);
+            for (int j = 0; j < h; j++)
+            {
+                int sy = y + j;
+                for (int i = 0; i < w; i++)
+                {
+                    int sx = x + i;
+                    var color = (sx >= 0 && sy >= 0 && sx < Width && sy < Height) ? pixmap.GetPixelColor(sx, sy) : SKColors.Transparent;
+                    bitmap.SetPixel(i, j, color);
+                }
+            }
+            return new PImage(bitmap);
+        }
+
+        /// <summary>Grabs the entire canvas as a standalone PImage, like Processing's no-argument get().</summary>
+        public PImage Get() => Get(0, 0, Width, Height);
+
+        /// <summary>Sets a single pixel's color, like Processing's set(x, y, color). Out-of-bounds coordinates are silently ignored, matching Processing. Writes verbatim (no blending with the existing pixel) — same as UpdatePixels().</summary>
+        public void Set(int x, int y, Color c)
+        {
+            EnsureReady();
+            if (x < 0 || y < 0 || x >= Width || y >= Height)
+                return;
+            using var paint = new SKPaint { Color = c.Skia, BlendMode = SKBlendMode.Src };
+            Canvas.DrawPoint(x, y, paint);
+        }
+
+        /// <summary>Draws img at (x, y) with pixels copied verbatim — no tint, no blending — like Processing's set(x, y, img).</summary>
+        public void Set(int x, int y, PImage img)
+        {
+            EnsureReady();
+            using var paint = new SKPaint { BlendMode = SKBlendMode.Src };
+            Canvas.DrawBitmap(img.Bitmap, x, y, paint);
+        }
+
+        /// <summary>Copies a region of src, scaling it if the source and destination sizes differ, into this canvas — pixels replace whatever was there (no blending), like Processing's copy(img, sx, sy, sw, sh, dx, dy, dw, dh).</summary>
+        public void Copy(PImage src, int sx, int sy, int sw, int sh, int dx, int dy, int dw, int dh)
+        {
+            EnsureReady();
+            var srcRect = SKRect.Create(sx, sy, sw, sh);
+            var dstRect = SKRect.Create(dx, dy, dw, dh);
+            using var paint = new SKPaint { BlendMode = SKBlendMode.Src, IsAntialias = true };
+            Canvas.DrawBitmap(src.Bitmap, srcRect, dstRect, paint);
+        }
+
+        /// <summary>Copies a region of this same canvas to another location on itself, like Processing's copy(sx, sy, sw, sh, dx, dy, dw, dh) called without a source image.</summary>
+        public void Copy(int sx, int sy, int sw, int sh, int dx, int dy, int dw, int dh)
+        {
+            using var region = Get(sx, sy, sw, sh);
+            Copy(region, 0, 0, sw, sh, dx, dy, dw, dh);
+        }
+
+        /// <summary>Draws a region of src into this canvas using the given blend mode, scaling if the sizes differ, like Processing's blend(img, sx, sy, sw, sh, dx, dy, dw, dh, MODE).</summary>
+        public void Blend(PImage src, int sx, int sy, int sw, int sh, int dx, int dy, int dw, int dh, BlendModeKind mode)
+        {
+            EnsureReady();
+            var srcRect = SKRect.Create(sx, sy, sw, sh);
+            var dstRect = SKRect.Create(dx, dy, dw, dh);
+            using var paint = new SKPaint { BlendMode = ResolveBlendMode(mode), IsAntialias = true };
+            Canvas.DrawBitmap(src.Bitmap, srcRect, dstRect, paint);
+        }
+
+        /// <summary>Blends a region of this same canvas onto another location on itself, like Processing's blend(sx, sy, sw, sh, dx, dy, dw, dh, MODE) called without a source image.</summary>
+        public void Blend(int sx, int sy, int sw, int sh, int dx, int dy, int dw, int dh, BlendModeKind mode)
+        {
+            using var region = Get(sx, sy, sw, sh);
+            Blend(region, 0, 0, sw, sh, dx, dy, dw, dh, mode);
+        }
+
+        /// <summary>
+        /// Applies an image filter to the whole canvas in place, like
+        /// Processing's filter(kind) / filter(kind, param). `param` means
+        /// different things per kind and is ignored where not applicable:
+        /// Threshold (0-1 cutoff, default 0.5), Posterize (number of levels
+        /// per channel, minimum 2), Blur (pixel radius). Gray/Invert/Opaque
+        /// ignore it entirely.
+        /// </summary>
+        public void Filter(FilterKind kind, float param = 0.5f)
+        {
+            EnsureReady();
+            if (kind == FilterKind.Blur)
+            {
+                using var snapshot = Get();
+                using var blurPaint = new SKPaint { ImageFilter = SKImageFilter.CreateBlur(param, param), BlendMode = SKBlendMode.Src };
+                Canvas.DrawBitmap(snapshot.Bitmap, 0, 0, blurPaint);
+                return;
+            }
+            if (kind == FilterKind.Erode || kind == FilterKind.Dilate)
+                throw new NotSupportedException($"Filter({kind}) todavía no está implementado.");
+
+            LoadPixels();
+            var pixels = Pixels;
+            for (int i = 0; i < pixels.Length; i++)
+                pixels[i] = ApplyPixelFilter(kind, pixels[i], param);
+            UpdatePixels();
+        }
+
+        private static Color ApplyPixelFilter(FilterKind kind, Color c, float param) => kind switch
+        {
+            FilterKind.Gray => Grayscale(c),
+            FilterKind.Invert => new Color((byte)(255 - c.R), (byte)(255 - c.G), (byte)(255 - c.B), c.A),
+            FilterKind.Threshold => Threshold(c, param),
+            FilterKind.Posterize => Posterize(c, (int)Math.Max(2, param)),
+            FilterKind.Opaque => new Color(c.R, c.G, c.B, 255),
+            _ => c
+        };
+
+        private static Color Grayscale(Color c)
+        {
+            byte g = (byte)Math.Clamp(c.R * 0.299f + c.G * 0.587f + c.B * 0.114f, 0, 255);
+            return new Color(g, g, g, c.A);
+        }
+
+        private static Color Threshold(Color c, float level)
+        {
+            byte gray = (byte)Math.Clamp(c.R * 0.299f + c.G * 0.587f + c.B * 0.114f, 0, 255);
+            byte v = gray < level * 255 ? (byte)0 : (byte)255;
+            return new Color(v, v, v, c.A);
+        }
+
+        private static Color Posterize(Color c, int levels)
+        {
+            byte P(byte v) => (byte)Math.Clamp(MathF.Round(v / 255f * (levels - 1)) / (levels - 1) * 255f, 0, 255);
+            return new Color(P(c.R), P(c.G), P(c.B), c.A);
+        }
+
+        /// <summary>Shared precondition + error message for every pixel-reading method above — requires a CPU-readable Surface, same as Save().</summary>
+        private SKPixmap PeekPixelsOrThrow()
+        {
+            if (Surface == null)
+                throw new InvalidOperationException(
+                    "No se pueden leer píxeles: no hay una superficie (SKSurface) asociada a este canvas. " +
+                    "Esto puede pasar si el host que ejecuta el sketch no proporcionó una superficie respaldada por CPU a SetCanvas().");
+            var pixmap = Surface.PeekPixels();
+            if (pixmap == null)
+                throw new InvalidOperationException(
+                    "No se pudieron leer los píxeles de la superficie — esto requiere una superficie respaldada por CPU (raster), no una acelerada por GPU.");
+            return pixmap;
+        }
 
         // =====================================================================
         // Saving output — https://processing.org/reference/save_.html.
@@ -902,7 +1432,7 @@ namespace DanaProcessing
                 return;
             _fillPaint.Dispose();
             _strokePaint.Dispose();
-            _textPaint.Typeface?.Dispose();
+            _ownedTypeface?.Dispose(); // NO tocar _textPaint.Typeface directamente: si el font activo vino de TextFont(PFont), ese typeface pertenece al PFont, no a este GraphicsContext.
             _textPaint.Dispose();
             _shapePath?.Dispose();
             _disposed = true;

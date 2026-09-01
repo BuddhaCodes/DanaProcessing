@@ -52,8 +52,14 @@ namespace DanaProcessing.Ide
         private readonly Button _resultToggleButton;
 
         // null until the first layout pass forces it one way or the other.
+        // True whenever either the window itself is narrow, OR the loaded
+        // sketch's own requested size (Size(w, h)) is too big for the canvas
+        // column even at full window width — both cases collapse to the same
+        // single-pane-with-toggle layout, since the fix in either case is the
+        // same: give the canvas the whole window instead of half of it.
         private bool? _isNarrow;
         private bool _showCanvasInNarrow;
+        private bool _canvasOversized;
 
         // Avalonia's base Window/TopLevel constructor can touch ClientSize
         // before our own constructor body has assigned _contentGrid etc.,
@@ -84,6 +90,7 @@ namespace DanaProcessing.Ide
 
             _editorView = new SketchEditorView();
             _canvas = new AvaloniaSketchCanvas(new PlaceholderSketch());
+            _canvas.SketchSizeChanged += (_, _) => RecomputeCanvasOversized();
             _editorView.CaretPositionChanged += (line, col) => _caretLabel.Text = $"Ln {line}, Col {col}";
 
             var runButton = new Button
@@ -95,10 +102,18 @@ namespace DanaProcessing.Ide
             };
             runButton.Click += (_, _) => RunCurrentSketch();
 
+            var settingsButton = new Button
+            {
+                Content = "⚙",
+                Classes = { "clay-chrome" },
+            };
+            ToolTip.SetTip(settingsButton, "Configuración");
+            settingsButton.Click += (_, _) => new SettingsWindow().ShowDialog(this);
+
             (_paneTogglePill, _codeToggleButton, _resultToggleButton) = BuildPaneToggle();
             UpdatePaneToggleVisuals();
 
-            var titleBarRoot = BuildTitleBar(runButton, _paneTogglePill);
+            var titleBarRoot = BuildTitleBar(runButton, settingsButton, _paneTogglePill);
 
             _outputText = new TextBlock
             {
@@ -184,6 +199,17 @@ namespace DanaProcessing.Ide
                     new Avalonia.Animation.DoubleTransition { Property = OpacityProperty, Duration = TimeSpan.FromMilliseconds(220) }
                 },
             };
+            // _canvas now sizes itself to whatever the loaded sketch requested
+            // via Size(w, h) (see AvaloniaSketchCanvas.MeasureOverride) instead
+            // of stretching to fill this card. Center it so a canvas smaller
+            // than the card sits in the middle rather than pinned to a corner,
+            // and wrap it in a ScrollViewer so a canvas too big for the card
+            // scrolls into view instead of getting clipped or squeezing the
+            // rest of the window's layout.
+            _canvas.HorizontalAlignment = HorizontalAlignment.Center;
+            _canvas.VerticalAlignment = VerticalAlignment.Center;
+            var canvasScroll = new ScrollViewer { Content = _canvas };
+
             _canvasCard = new Border
             {
                 Background = ClayTheme.Surface,
@@ -191,7 +217,7 @@ namespace DanaProcessing.Ide
                 BoxShadow = ClayTheme.ShadowRaised,
                 ClipToBounds = true,
                 Margin = new Avalonia.Thickness(10, 16, 20, 16),
-                Child = _canvas
+                Child = canvasScroll
             };
             _canvasCard.AddHandler(GotFocusEvent, (_, _) => SetCardFocused(_canvasGlow, true), RoutingStrategies.Bubble);
             _canvasCard.AddHandler(LostFocusEvent, (_, _) => SetCardFocused(_canvasGlow, false), RoutingStrategies.Bubble);
@@ -357,42 +383,50 @@ namespace DanaProcessing.Ide
         /// <summary>
         /// Segmented "Código / Resultado" pill, shown only once the window is
         /// narrow enough that editor and canvas can't both fit side by side.
+        /// Uses the "clay-toggle" style class (see ClayTheme.ButtonEffectStyles)
+        /// so active/inactive is driven purely by the "active" CSS-like class
+        /// instead of by setting Background/Foreground directly from code —
+        /// setting those directly gets silently overridden by the
+        /// ContentPresenter-level Setters that FluentTheme's Button template
+        /// applies (the same bug documented throughout ClayTheme.cs).
         /// </summary>
         private (Border pill, Button codeButton, Button resultButton) BuildPaneToggle()
         {
             var codeButton = new Button
             {
                 Content = "Código",
-                Padding = new Avalonia.Thickness(14, 6),
-                FontFamily = ClayTheme.FontBody,
-                FontSize = 12,
-                CornerRadius = ClayTheme.RadiusPill,
-                BorderThickness = new Avalonia.Thickness(0),
+                Classes = { "clay-toggle" },
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
             };
+
             var resultButton = new Button
             {
                 Content = "Resultado",
-                Padding = new Avalonia.Thickness(14, 6),
-                FontFamily = ClayTheme.FontBody,
-                FontSize = 12,
-                CornerRadius = ClayTheme.RadiusPill,
-                BorderThickness = new Avalonia.Thickness(0),
+                Classes = { "clay-toggle" },
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
             };
+
             codeButton.Click += (_, _) => SetNarrowPane(showCanvas: false);
             resultButton.Click += (_, _) => SetNarrowPane(showCanvas: true);
 
             var pill = new Border
             {
-                Background = ClayTheme.SurfaceRaised,
+                Background = Brushes.Transparent,
                 CornerRadius = ClayTheme.RadiusPill,
-                Padding = new Avalonia.Thickness(3),
+                Padding = new Avalonia.Thickness(0),
                 IsVisible = false,
                 Margin = new Avalonia.Thickness(0, 0, 8, 0),
                 Child = new StackPanel
                 {
                     Orientation = Orientation.Horizontal,
-                    Spacing = 2,
-                    Children = { codeButton, resultButton }
+                    Spacing = 6,
+                    Children =
+            {
+                codeButton,
+                resultButton
+            }
                 }
             };
 
@@ -407,17 +441,18 @@ namespace DanaProcessing.Ide
             ApplyPaneVisibility();
         }
 
+        /// <summary>
+        /// Toggles the "active" class on whichever pill button matches
+        /// <see cref="_showCanvasInNarrow"/>. The "clay-toggle"/"active"
+        /// styles in ClayTheme own the actual colors — this method just
+        /// flips which button carries the "active" class, so there's a
+        /// single source of truth instead of fighting FluentTheme's
+        /// ContentPresenter Setters with direct property assignment.
+        /// </summary>
         private void UpdatePaneToggleVisuals()
         {
-            var activeBg = ClayTheme.Accent;
-            var activeFg = ClayTheme.OnAccent;
-            var inactiveFg = ClayTheme.TextMuted;
-
-            _codeToggleButton.Background = _showCanvasInNarrow ? Avalonia.Media.Brushes.Transparent : activeBg;
-            _codeToggleButton.Foreground = _showCanvasInNarrow ? inactiveFg : activeFg;
-
-            _resultToggleButton.Background = _showCanvasInNarrow ? activeBg : Avalonia.Media.Brushes.Transparent;
-            _resultToggleButton.Foreground = _showCanvasInNarrow ? activeFg : inactiveFg;
+            _codeToggleButton.Classes.Set("active", !_showCanvasInNarrow);
+            _resultToggleButton.Classes.Set("active", _showCanvasInNarrow);
         }
 
         /// <summary>Shows both cards when wide; shows only the selected one (per <see cref="_showCanvasInNarrow"/>) when narrow.</summary>
@@ -447,7 +482,7 @@ namespace DanaProcessing.Ide
             if (!_layoutReady)
                 return;
 
-            bool narrow = clientWidth < NarrowBreakpoint;
+            bool narrow = clientWidth < NarrowBreakpoint || _canvasOversized;
             if (_isNarrow.HasValue && _isNarrow.Value == narrow)
                 return;
             _isNarrow = narrow;
@@ -501,10 +536,53 @@ namespace DanaProcessing.Ide
         {
             base.OnPropertyChanged(change);
             if (_layoutReady && change.Property == ClientSizeProperty)
+            {
+                // Shrinking the window can be what makes a previously-fine
+                // canvas stop fitting the column (or a maximize can be what
+                // makes it fit again), so re-check on every resize too — not
+                // just when the sketch itself changes size.
+                RecomputeCanvasOversized();
                 UpdateResponsiveLayout(ClientSize.Width);
+            }
         }
 
-        private Border BuildTitleBar(Button runButton, Border paneTogglePill)
+        /// <summary>
+        /// Checks whether the currently loaded sketch's own requested size
+        /// (via Size(w, h)) would still fit the canvas column at a normal
+        /// 50/50 split of the current window — and if not, treats it exactly
+        /// like a narrow window: single pane, with the toggle pill to flip
+        /// between code and result, so the canvas gets the room it actually
+        /// asked for instead of being squeezed into half the window.
+        ///
+        /// The width/height budget here is a deliberate approximation (a
+        /// 50/50 split minus roughly the margins UpdateResponsiveLayout uses
+        /// for the wide layout) rather than reading exact live Bounds — good
+        /// enough to catch "this sketch clearly doesn't fit" without this
+        /// check depending on a layout pass having already happened.
+        /// </summary>
+        private void RecomputeCanvasOversized()
+        {
+            if (!_layoutReady)
+                return;
+
+            double halfWidth = Math.Max(0, ClientSize.Width / 2.0 - 33); // ~splitter + card margins
+            double availableHeight = Math.Max(0, ClientSize.Height - 56 - 32 - 32); // title bar + status bar + card margins
+
+            bool oversized = _canvas.SketchWidth > halfWidth || _canvas.SketchHeight > availableHeight;
+            if (oversized == _canvasOversized)
+                return;
+
+            _canvasOversized = oversized;
+            UpdateResponsiveLayout(ClientSize.Width);
+
+            // Same courtesy as RunCurrentSketch's own auto-switch below: if we
+            // just became oversized while the user was looking at the code,
+            // surface the canvas instead of leaving them staring at the editor.
+            if (_canvasOversized)
+                SetNarrowPane(showCanvas: true);
+        }
+
+        private Border BuildTitleBar(Button runButton, Button settingsButton, Border paneTogglePill)
         {
             var logoDot = new Ellipse
             {
@@ -546,7 +624,7 @@ namespace DanaProcessing.Ide
                 Orientation = Orientation.Horizontal,
                 Spacing = 8,
                 Margin = new Avalonia.Thickness(0, 0, 16, 0),
-                Children = { paneTogglePill, runButton, minButton, maxButton, closeButton }
+                Children = { paneTogglePill, settingsButton, runButton, minButton, maxButton, closeButton }
             };
 
             var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
