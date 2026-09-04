@@ -1,11 +1,7 @@
-using System;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml.Styling;
-using Avalonia.Platform;
 using Avalonia.Themes.Fluent;
-using AvaloniaEdit;
-using DanaProcessing.AvaloniaHost;
 using DanaProcessing.Ide.Theme;
 
 namespace DanaProcessing.Ide
