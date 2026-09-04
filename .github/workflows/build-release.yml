@@ -2,7 +2,7 @@ name: Build and Release
 
 on:
   push:
-    branches: [ main ]
+    branches: [ master ]
   workflow_dispatch: # te deja disparar un build a mano desde la pestaña Actions
 
 permissions:
