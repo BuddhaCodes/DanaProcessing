@@ -9,14 +9,39 @@ namespace DanaProcessing
     /// </summary>
     public class PImage : IDisposable
     {
-        internal SKBitmap Bitmap { get; }
+        internal SKBitmap Bitmap { get; private set; }
 
-        public int Width => Bitmap.Width;
-        public int Height => Bitmap.Height;
+        /// <summary>
+        /// True once the bitmap backing this image is actually ready. Always
+        /// true for every normal PImage (LoadImage(), Get(), etc). Only ever
+        /// false for the placeholder Sketch.RequestImage() hands back while
+        /// its background load is still in flight — Width/Height read as 0
+        /// during that window, like Processing's own requestImage() result
+        /// before the load finishes.
+        /// </summary>
+        public bool IsLoaded { get; private set; } = true;
+
+        public int Width => IsLoaded ? Bitmap.Width : 0;
+        public int Height => IsLoaded ? Bitmap.Height : 0;
 
         internal PImage(SKBitmap bitmap)
         {
             Bitmap = bitmap;
+        }
+
+        /// <summary>Builds an unloaded placeholder — 0x0 until ReplaceBitmap() swaps in the real bitmap. Used by Sketch.RequestImage(); nothing else should need this.</summary>
+        internal static PImage CreatePlaceholder()
+        {
+            var img = new PImage(new SKBitmap(1, 1)) { IsLoaded = false };
+            return img;
+        }
+
+        /// <summary>Swaps in the real bitmap once a background RequestImage() load finishes, disposing the placeholder bitmap it replaces.</summary>
+        internal void ReplaceBitmap(SKBitmap bitmap)
+        {
+            Bitmap.Dispose();
+            Bitmap = bitmap;
+            IsLoaded = true;
         }
 
         /// <summary>

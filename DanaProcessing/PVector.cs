@@ -30,7 +30,8 @@ namespace DanaProcessing
         public PVector Normalize()
         {
             float m = Mag();
-            if (m != 0) { X /= m; Y /= m; }
+            if (m != 0)
+            { X /= m; Y /= m; }
             return this;
         }
 
@@ -108,7 +109,8 @@ namespace DanaProcessing
         public static float AngleBetween(PVector a, PVector b)
         {
             float mags = a.Mag() * b.Mag();
-            if (mags == 0) return 0f;
+            if (mags == 0)
+                return 0f;
             float cos = Dot(a, b) / mags;
             cos = cos < -1f ? -1f : (cos > 1f ? 1f : cos); // guard against float drift pushing acos out of domain
             return MathF.Acos(cos);

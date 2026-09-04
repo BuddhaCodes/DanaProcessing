@@ -95,8 +95,8 @@ namespace DanaProcessing
         {
             float m = values[0];
             for (int i = 1; i < values.Length; i++)
-            if (values[i] > m)
-                m = values[i];
+                if (values[i] > m)
+                    m = values[i];
             return m;
         }
 
@@ -105,8 +105,8 @@ namespace DanaProcessing
         {
             float m = values[0];
             for (int i = 1; i < values.Length; i++)
-            if (values[i] < m)
-                m = values[i];
+                if (values[i] < m)
+                    m = values[i];
             return m;
         }
     }

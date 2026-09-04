@@ -36,7 +36,8 @@ namespace DanaProcessing
 
         static PerlinNoise()
         {
-            for (int i = 0; i < 256; i++) P[i] = P[i + 256] = Permutation[i % Permutation.Length];
+            for (int i = 0; i < 256; i++)
+                P[i] = P[i + 256] = Permutation[i % Permutation.Length];
         }
 
         /// <summary>Reshuffles the permutation table from the given seed, so Noise() becomes repeatable. Called by Sketch.NoiseSeed().</summary>
@@ -44,13 +45,15 @@ namespace DanaProcessing
         {
             var rnd = new Random(seed);
             var perm = new int[256];
-            for (int i = 0; i < 256; i++) perm[i] = i;
+            for (int i = 0; i < 256; i++)
+                perm[i] = i;
             for (int i = 255; i > 0; i--)
             {
                 int j = rnd.Next(i + 1);
                 (perm[i], perm[j]) = (perm[j], perm[i]);
             }
-            for (int i = 0; i < 256; i++) P[i] = P[i + 256] = perm[i];
+            for (int i = 0; i < 256; i++)
+                P[i] = P[i + 256] = perm[i];
         }
 
         /// <summary>Sets octave count and falloff for the multi-octave sum below. Called by Sketch.NoiseDetail().</summary>

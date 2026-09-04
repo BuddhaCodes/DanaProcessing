@@ -15,6 +15,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
 <style>
+  
   /* ============================================================
      VARIABLES Y TEMAS
      ============================================================ */
@@ -693,7 +694,43 @@
     font-size:13px;
     transition:border var(--transition);
   }
+  .code-block{ position:relative; }
 
+  .dana-test-btn{
+    position:absolute;
+    top:10px;
+    right:10px;
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    padding:5px 11px;
+    font-family:var(--font-mono);
+    font-size:11px;
+    font-weight:500;
+    letter-spacing:0.02em;
+    color:var(--text-secondary);
+    background:var(--bg-primary);
+    border:1px solid var(--border-light);
+    border-radius:var(--radius-sm);
+    cursor:pointer;
+    opacity:0.8;
+    transition:all var(--transition);
+  }
+  .dana-test-btn:hover{
+    opacity:1;
+    color:var(--accent);
+    border-color:var(--accent);
+    box-shadow:var(--shadow-sm);
+  }
+  .dana-test-btn:active{ transform:scale(0.95); }
+  .dana-test-btn .ph-bold{ font-size:12px; }
+
+  .dana-test-btn.is-loading{ opacity:1; color:var(--text-muted); pointer-events:none; }
+  .dana-test-btn.is-loading .ph-bold{ animation:dana-spin 0.7s linear infinite; }
+
+  .dana-test-btn.is-error{ opacity:1; color:var(--danger); border-color:var(--danger); }
+
+  @keyframes dana-spin{ to{ transform:rotate(360deg); } }
   /* ============================================================
      RESPONSIVE
      ============================================================ */
@@ -779,6 +816,7 @@
       <div class="group">
         <div class="group-title">Data &amp; Math</div>
         <a href="#files-data"><i class="ph ph-file-text"></i> Files &amp; data</a>
+        <a href="#utilities"><i class="ph ph-arrows-left-right"></i> Conversion &amp; utilities</a>
         <a href="#math"><i class="ph ph-calculator"></i> Math &amp; trig</a>
         <a href="#pvector"><i class="ph ph-arrow-right"></i> PVector</a>
         <a href="#random-noise"><i class="ph ph-dice-five"></i> Random &amp; noise</a>
@@ -851,7 +889,8 @@
             <div class="note"><strong>Where things live.</strong> Drawing state and operations are defined once on <code class="inline">GraphicsContext</code>, inherited by both <code class="inline">Sketch</code> and <code class="inline">PGraphics</code>. Sketch adds lifecycle, input, time, and randomness — things an offscreen buffer doesn't need.</div>
 
             <h3 class="entry-title" id="minimal-sketch">Minimal sketch</h3>
-            <pre><span class="kw">public class</span> <span class="tp">MySketch</span> : <span class="tp">Sketch</span>
+           <div class="code-block">
+  <pre id="minimal-sketch-code"><span class="kw">public class</span> <span class="tp">MySketch</span> : <span class="tp">Sketch</span>
 {
     <span class="kw">public override void</span> Setup()
     {
@@ -866,6 +905,11 @@
         Ellipse(MouseX, MouseY, <span class="str">60</span>, <span class="str">60</span>);
     }
 }</pre>
+  <button class="dana-test-btn" data-target="minimal-sketch-code" title="Correr en DanaProcessing IDE">
+    <i class="ph-bold ph-play"></i>
+    <span class="dana-test-label">Test in Dana</span>
+  </button>
+</div>
             <p>Save this in the IDE and press <strong>Run</strong> — <code class="inline">SketchCompiler</code> compiles it in memory with Roslyn and swaps it straight into the canvas.</p>
           </section>
 
@@ -892,6 +936,9 @@
 
             <h3 class="entry-title" id="windowresized">WindowResized() <span class="sig-return">→ void</span> · virtual</h3>
             <p class="entry-desc">Called when the canvas size changes after the first frame.</p>
+
+            <h3 class="entry-title" id="displaydensity">DisplayDensity() <span class="sig-return">→ int</span> · PixelDensity(<span class="tp">int</span> density)</h3>
+            <p class="entry-desc">HiDPI helpers kept for API parity. <code class="inline">DisplayDensity()</code> always returns 1 — DanaProcessing draws everything at logical-pixel resolution and leaves any HiDPI scaling to the host. <code class="inline">PixelDensity()</code> only validates its argument (1 or 2, like Processing) and otherwise has no effect.</p>
 
             <h3 class="entry-title" id="redraw">Redraw() <span class="sig-return">→ void</span></h3>
             <p class="entry-desc">Requests a single extra frame while <code class="inline">NoLoop()</code> is in effect, raising the <code class="inline">RedrawRequested</code> event. Looping sketches don't need this — they're already rendering continuously.</p>
@@ -986,6 +1033,9 @@
             <h3 class="entry-title" id="rect">Rect(a, b, c, d) · Ellipse(a, b, c, d)</h3>
             <p class="entry-desc">Draws per the active mode, filled and/or stroked.</p>
 
+            <h3 class="entry-title" id="square">Square(x, y, extent)</h3>
+            <p class="entry-desc">A <code class="inline">Rect</code> with equal width and height — a plain alias, still subject to the current <code class="inline">RectMode()</code>.</p>
+
             <h3 class="entry-title" id="line">Line(x1, y1, x2, y2) · Point(x, y)</h3>
             <p class="entry-desc">A straight stroked segment, or a single point.</p>
 
@@ -1013,6 +1063,9 @@
 
             <h3 class="entry-title" id="curvepoint">CurvePoint(...) · CurveTangent(...) <span class="sig-return">→ float</span></h3>
             <p class="entry-desc">Evaluate one axis of a Catmull-Rom curve at parameter <code class="inline">t</code>, the way <code class="inline">Curve()</code>/<code class="inline">CurveVertex()</code> shape it. Always uses the standard tension — unlike <code class="inline">Curve()</code> itself, this doesn't read <code class="inline">CurveTightness()</code>, matching Processing's own <code class="inline">curvePoint()</code>.</p>
+
+            <h3 class="entry-title" id="bezierdetail">BezierDetail(<span class="tp">int</span> detail) · CurveDetail(<span class="tp">int</span> detail)</h3>
+            <p class="entry-desc">Stored for API parity with sketches ported from Processing. Skia already draws exact, analytically-flattened Bézier/Catmull-Rom curves regardless of segment count, so neither has any visible effect here.</p>
           </section>
 
           <!-- ================= CUSTOM SHAPES ================= -->
@@ -1033,8 +1086,16 @@
             <h3 class="entry-title" id="curvevertex">CurveVertex(x, y)</h3>
             <p class="entry-desc">Adds a Catmull-Rom curve vertex, respecting <code class="inline">CurveTightness()</code>. As in Processing, the curve only passes through the <em>interior</em> points — the very first and very last <code class="inline">CurveVertex()</code> calls shape the tangent at each end but aren't drawn to themselves, so nothing appears until the 4th call. The common pattern is to repeat the first and last point once so the curve visibly starts/ends there.</p>
 
+            <h3 class="entry-title" id="begincontour">BeginContour() · EndContour()</h3>
+            <p class="entry-desc">Cuts a hole in the shape currently being built — the vertices recorded between these two calls form a subpath that's subtracted from the outline, like a donut. Only valid in the default <code class="inline">Polygon</code> mode of <code class="inline">BeginShape()</code>.</p>
+            <div class="note"><strong>Only contour shapes are affected.</strong> Using <code class="inline">BeginContour()</code> switches that shape's fill rule to even-odd so the hole punches through reliably regardless of winding direction. Shapes that never call it keep the usual winding rule and render exactly as before.</div>
+
             <h3 class="entry-title" id="texture">Texture(<span class="tp">PImage</span> img) · NoTexture()</h3>
             <p class="entry-desc">Sets or clears the texture image for the shape.</p>
+
+            <h3 class="entry-title" id="texturemode">TextureMode(<span class="tp">TextureModeKind</span> mode) · TextureWrap(<span class="tp">TextureWrapKind</span> mode)</h3>
+            <p class="entry-desc">Sets how <code class="inline">Vertex(x, y, u, v)</code>'s u/v are interpreted, and how a texture samples outside its 0–1 range. See <a href="#enums">TextureModeKind</a> / <a href="#enums">TextureWrapKind</a>.</p>
+            <div class="note"><strong>Default differs from Processing.</strong> DanaProcessing's default is <code class="inline">Normal</code> (0–1 UVs), not Processing's own default of <code class="inline">Image</code> (pixel-coordinate UVs) — <code class="inline">Vertex(x, y, u, v)</code> already treated its u/v as 0–1 before <code class="inline">TextureMode()</code> existed, so the default was kept for backward compatibility. Call <code class="inline">TextureMode(Image)</code> for Processing's real default behavior.</div>
 
             <h3 class="entry-title" id="endshape">EndShape(<span class="tp">bool</span> close = false)</h3>
             <p class="entry-desc">Finishes and draws the recorded shape.</p>
@@ -1060,6 +1121,9 @@
 
             <h3 class="entry-title" id="textalign">TextAlign(<span class="tp">TextAlignH</span> h, <span class="tp">TextAlignV</span> v = Baseline)</h3>
             <p class="entry-desc">Sets both axes of alignment.</p>
+
+            <h3 class="entry-title" id="textmode">TextMode(<span class="tp">TextRenderMode</span> mode)</h3>
+            <p class="entry-desc">Accepts <code class="inline">Model</code> — the only supported mode, regular text drawn straight to the canvas. <code class="inline">Shape</code> throws <code class="inline">NotSupportedException</code>, the same treatment as <code class="inline">Filter(Erode/Dilate)</code>.</p>
 
             <h3 class="entry-title" id="textleading">TextLeading(<span class="tp">float</span> leading)</h3>
             <p class="entry-desc">Line spacing for multi-line strings.</p>
@@ -1099,6 +1163,13 @@
 
             <h3 class="entry-title" id="printmatrix">PrintMatrix()</h3>
             <p class="entry-desc">Prints the current transformation matrix to the console as a 3×3 row-major matrix — a debugging aid for figuring out what a chain of transform calls actually produced.</p>
+
+            <h3 class="entry-title" id="clip">Clip(x, y, w, h) · NoClip()</h3>
+            <p class="entry-desc">Restricts drawing to a rectangle until <code class="inline">NoClip()</code> is called — or until <code class="inline">Clip()</code> is called again with a new rectangle, which replaces rather than intersects the old one. Always uses corner-style x/y/w/h regardless of the current <code class="inline">RectMode()</code>.</p>
+            <div class="note"><strong>Don't straddle PushMatrix/PopMatrix.</strong> Implemented with its own internal save/restore pair on the canvas — pair a <code class="inline">Clip()</code> with its <code class="inline">NoClip()</code> at the same matrix-nesting depth, rather than spanning a <code class="inline">PushMatrix()</code>/<code class="inline">PopMatrix()</code> boundary.</div>
+
+            <h3 class="entry-title" id="hint">Hint(<span class="tp">string</span> hintName)</h3>
+            <p class="entry-desc">A logged no-op. Every hint constant Processing defines is either meaningless for a single always-antialiased 2D software renderer, or already covered by a dedicated method (<code class="inline">Smooth()</code>/<code class="inline">NoSmooth()</code>). Exists so ported sketches that defensively call <code class="inline">hint(SOME_CONSTANT)</code> still compile and run.</p>
           </section>
 
           <!-- ================= IMAGE ================= -->
@@ -1109,6 +1180,9 @@
 
             <h3 class="entry-title" id="loadimage">LoadImage(<span class="tp">string</span> path) <span class="sig-return">→ PImage</span></h3>
             <p class="entry-desc">Decodes an image file from disk.</p>
+
+            <h3 class="entry-title" id="requestimage">RequestImage(<span class="tp">string</span> path) <span class="sig-return">→ PImage</span></h3>
+            <p class="entry-desc">Starts loading an image on a background thread and returns immediately. The returned image's <code class="inline">IsLoaded</code> is false (and <code class="inline">Width</code>/<code class="inline">Height</code> read as 0) until the background decode finishes, at which point it silently swaps in the real bitmap — check <code class="inline">IsLoaded</code> in <code class="inline">Draw()</code> before using it, the same way a Processing sketch checks <code class="inline">img.width != 0</code>.</p>
 
             <h3 class="entry-title" id="imagemode">ImageMode(<span class="tp">ShapeAlignMode</span> mode)</h3>
             <p class="entry-desc">Sets how <code class="inline">Image()</code>'s x/y/w/h are interpreted — <code class="inline">Corner</code> by default (x,y is top-left, w,h is size), <code class="inline">Corners</code> (w,h is the opposite corner instead of a size), or <code class="inline">Center</code>.</p>
@@ -1209,11 +1283,97 @@
             <h3 class="entry-title" id="loadtable">LoadTable(path, options = "") <span class="sig-return">→ Table</span> · SaveTable(table, path)</h3>
             <p class="entry-desc">Reads/writes a CSV file as a <code class="inline">Table</code>. Pass <code class="inline">"header"</code> for a first line naming the columns. Cell values are stored as text and parsed on demand via <code class="inline">TableRow.GetInt</code>/<code class="inline">GetFloat</code>/<code class="inline">GetString</code>, by index or column name.</p>
             <div class="note"><strong>CSV only.</strong> Processing's <code class="inline">Table</code> also reads TSV and its own binary <code class="inline">.tbl</code> format; only CSV is implemented here. The parser handles quoted fields with embedded commas, but not escaped double-quotes inside a quoted field — enough for CSV a spreadsheet actually produces, not a full RFC&nbsp;4180 implementation.</div>
+
+            <h3 class="entry-title" id="createwriter">CreateWriter(<span class="tp">string</span> path) <span class="sig-return">→ PrintWriter</span> · CreateReader(path) <span class="sig-return">→ BufferedReader</span></h3>
+            <p class="entry-desc">Incremental text I/O — for a long-running log file, or a large input read a line at a time — where <code class="inline">LoadStrings</code>/<code class="inline">SaveStrings</code> already cover the one-shot case. <code class="inline">CreateWriter</code> creates the containing directory if needed. Remember to <code class="inline">Flush()</code>/<code class="inline">Close()</code> the <code class="inline">PrintWriter</code> when done.</p>
+
+            <h3 class="entry-title" id="createoutput">CreateOutput(<span class="tp">string</span> path) · CreateInput(path) <span class="sig-return">→ Stream</span></h3>
+            <p class="entry-desc">Raw byte streams to/from a file, like Processing's <code class="inline">createOutput()</code>/<code class="inline">createInput()</code>. The caller owns the returned <code class="inline">Stream</code> and should dispose it when finished.</p>
+
+            <h3 class="entry-title" id="printwriter">class PrintWriter · class BufferedReader</h3>
+            <p class="entry-desc"><code class="inline">PrintWriter</code> exposes <code class="inline">Print(value)</code>/<code class="inline">Println(value?)</code>/<code class="inline">Flush()</code>/<code class="inline">Close()</code>. <code class="inline">BufferedReader</code> exposes <code class="inline">ReadLine()</code>, which returns null once the file is exhausted.</p>
+
+            <h3 class="entry-title" id="printarray">PrintArray(<span class="tp">Array</span> array)</h3>
+            <p class="entry-desc">Prints every element on its own line, prefixed with its index in square brackets. Works with any array type, matching Processing's own <code class="inline">printArray()</code> (which needs a separate overload per type).</p>
+          </section>
+
+          <!-- ================= UTILITIES ================= -->
+          <section class="doc-section" id="utilities">
+            <div class="section-kicker">14 · Data &amp; Math</div>
+            <h2>Conversion &amp; utility functions</h2>
+            <p class="section-intro">Type conversion, array manipulation, and string formatting. Processing/Java needed dedicated functions for most of these because of stricter primitive typing and no operator overloading — in C# they exist mainly for 1:1 API parity with sketches ported from Processing.</p>
+
+            <h3 class="entry-title" id="int">Int(<span class="tp">float</span> value) · Int(<span class="tp">string</span> value) · Int(<span class="tp">bool</span> value) <span class="sig-return">→ int</span></h3>
+            <p class="entry-desc">Truncates a float toward zero (not rounding), parses a string (0 on failure), or converts true/false to 1/0.</p>
+
+            <h3 class="entry-title" id="float-fn">Float(<span class="tp">int</span> value) · Float(<span class="tp">string</span> value) <span class="sig-return">→ float</span></h3>
+            <p class="entry-desc">Converts an int, or parses a string — <code class="inline">float.NaN</code> on failure, matching Processing's own documented behavior.</p>
+
+            <h3 class="entry-title" id="boolean-fn">Boolean(<span class="tp">float</span> value) · Boolean(<span class="tp">string</span> value) <span class="sig-return">→ bool</span></h3>
+            <p class="entry-desc">Nonzero is true for numbers; a case-insensitive <code class="inline">"true"</code> for strings, anything else false.</p>
+
+            <h3 class="entry-title" id="byte-fn">Byte(<span class="tp">int</span> value) · Byte(<span class="tp">float</span> value) · Byte(<span class="tp">char</span> value) <span class="sig-return">→ byte</span></h3>
+            <p class="entry-desc">Truncates/wraps into a byte using two's-complement, matching Java/Processing's own <code class="inline">byte()</code> rather than throwing on overflow.</p>
+
+            <h3 class="entry-title" id="char-fn">Char(<span class="tp">int</span> value) · Char(<span class="tp">byte</span> value) <span class="sig-return">→ char</span></h3>
+            <p class="entry-desc">Converts a numeric code point to its character — <code class="inline">Char(65)</code> is <code class="inline">'A'</code>.</p>
+
+            <h3 class="entry-title" id="str-fn">Str(<span class="tp">int</span>) · Str(<span class="tp">float</span>) · Str(<span class="tp">bool</span>) · Str(<span class="tp">char</span>) <span class="sig-return">→ string</span></h3>
+            <p class="entry-desc">Renders a value as text. Exists mainly so ported sketch code compiles unchanged — C#'s own <code class="inline">ToString()</code> already covers every case here.</p>
+
+            <h3 class="entry-title" id="hex-fn">Hex(<span class="tp">int</span>) · Hex(<span class="tp">int</span>, digits) · Hex(<span class="tp">byte</span>) · Hex(<span class="tp">char</span>) <span class="sig-return">→ string</span></h3>
+            <p class="entry-desc">Hexadecimal string, zero-padded — 8 digits for <code class="inline">int</code> by default (or a custom digit count), 2 for <code class="inline">byte</code>, 4 for <code class="inline">char</code>.</p>
+
+            <h3 class="entry-title" id="unhex">Unhex(<span class="tp">string</span> value) <span class="sig-return">→ int</span></h3>
+            <p class="entry-desc">Parses a hex string back into an int. Ignores an optional leading <code class="inline">"0x"</code>; returns 0 if the text isn't valid hex.</p>
+
+            <div class="note"><strong>Prefer a plain C# cast.</strong> These exist purely for parity with sketches ported line-for-line from Processing. New DanaProcessing code can just write <code class="inline">(int)value</code>, <code class="inline">value.ToString()</code>, etc. directly.</div>
+
+            <h3 class="entry-title" id="append">Append&lt;T&gt;(array, value) · Concat&lt;T&gt;(a, b) · Expand&lt;T&gt;(array, newSize?) <span class="sig-return">→ T[]</span></h3>
+            <p class="entry-desc">Grows an array without mutating the original. <code class="inline">Expand</code> called with no size doubles the array (or grows an empty one to size 1) and never shrinks — matching Processing's own <code class="inline">expand()</code>.</p>
+
+            <h3 class="entry-title" id="reverse">Reverse&lt;T&gt;(array) · Shorten&lt;T&gt;(array) · Subset&lt;T&gt;(array, start, count?) <span class="sig-return">→ T[]</span></h3>
+            <p class="entry-desc">Returns a new, reordered or trimmed array. None of the array functions on this page mutate their input — the result is always a fresh array, matching Processing's own contract.</p>
+
+            <h3 class="entry-title" id="sort">Sort&lt;T&gt;(array) · Sort&lt;T&gt;(array, count) <span class="sig-return">→ T[]</span></h3>
+            <p class="entry-desc">Returns a new, ascending-sorted copy using <code class="inline">T</code>'s natural ordering. The two-argument overload sorts only the first <code class="inline">count</code> elements.</p>
+
+            <h3 class="entry-title" id="splice">Splice&lt;T&gt;(array, value, index) · Splice&lt;T&gt;(array, insertion, index) <span class="sig-return">→ T[]</span></h3>
+            <p class="entry-desc">Inserts a single value, or every element of another array, starting at <code class="inline">index</code>.</p>
+
+            <h3 class="entry-title" id="arraycopy">ArrayCopy&lt;T&gt;(src, dst) · ArrayCopy&lt;T&gt;(src, srcPos, dst, dstPos, count)</h3>
+            <p class="entry-desc">Copies elements into an already-sized destination array — the one function here that writes into an existing array rather than returning a new one, matching Processing's own <code class="inline">arrayCopy()</code>.</p>
+
+            <div class="note"><strong>Generic, not per-type.</strong> Processing needs a separate overload of each array function per primitive type (Java has no clean generics-over-arrays story). DanaProcessing needs just one <code class="inline">&lt;T&gt;</code> implementation, covering <code class="inline">int[]</code>, <code class="inline">float[]</code>, <code class="inline">string[]</code>, <code class="inline">PVector[]</code>, or anything else.</div>
+
+            <h3 class="entry-title" id="join">Join(array, separator) <span class="sig-return">→ string</span> · Split(value, delimiter) <span class="sig-return">→ string[]</span></h3>
+            <p class="entry-desc"><code class="inline">Split</code> takes either a single <code class="inline">char</code> or a (possibly multi-character) <code class="inline">string</code> delimiter, matched literally.</p>
+
+            <h3 class="entry-title" id="splittokens">SplitTokens(value) · SplitTokens(value, delimiters) <span class="sig-return">→ string[]</span></h3>
+            <p class="entry-desc">Splits on runs of whitespace, or on runs of any character found in <code class="inline">delimiters</code> (each character is its own delimiter, not a multi-character sequence). Empty tokens between adjacent delimiters are dropped.</p>
+
+            <h3 class="entry-title" id="trim-fn">Trim(<span class="tp">string</span>) · Trim(<span class="tp">string[]</span>)</h3>
+            <p class="entry-desc">Trims leading/trailing whitespace — a single string, or every element of an array.</p>
+
+            <h3 class="entry-title" id="match">Match(value, regexp) <span class="sig-return">→ string[]?</span> · MatchAll(value, regexp) <span class="sig-return">→ string[][]?</span></h3>
+            <p class="entry-desc">Regular-expression matching. <code class="inline">Match</code> returns the first match's groups (index 0 is the whole match); <code class="inline">MatchAll</code> returns one row of groups per match, non-overlapping. Both return null rather than an empty array when there's no match at all.</p>
+
+            <h3 class="entry-title" id="nf">Nf(num, digits) · Nf(num, left, right) <span class="sig-return">→ string</span></h3>
+            <p class="entry-desc">Zero-pads a number to a fixed digit count — an <code class="inline">int</code> overload, and a <code class="inline">float</code> overload with separate widths for the digits before and after the decimal point.</p>
+
+            <h3 class="entry-title" id="nfc">Nfc(num) · Nfc(num, right) <span class="sig-return">→ string</span></h3>
+            <p class="entry-desc">Same idea as <code class="inline">Nf</code>, with thousands separators added.</p>
+
+            <h3 class="entry-title" id="nfp">Nfp(num, digits) · Nfp(num, left, right) <span class="sig-return">→ string</span></h3>
+            <p class="entry-desc">Same as <code class="inline">Nf</code>, but always shows a leading <code class="inline">+</code> or <code class="inline">-</code> sign.</p>
+
+            <h3 class="entry-title" id="nfs">Nfs(num, digits) · Nfs(num, left, right) <span class="sig-return">→ string</span></h3>
+            <p class="entry-desc">Same as <code class="inline">Nf</code>, but pads with spaces instead of zeros.</p>
           </section>
 
           <!-- ================= MATH ================= -->
           <section class="doc-section" id="math">
-            <div class="section-kicker">14 · Data &amp; Math</div>
+            <div class="section-kicker">15 · Data &amp; Math</div>
             <h2>Math &amp; trig</h2>
             <p class="section-intro">Free functions on <code class="inline">Sketch</code>, mirroring Processing's globals. All angles are radians, except <code class="inline">Rotate()</code>.</p>
 
@@ -1244,7 +1404,7 @@
 
           <!-- ================= PVECTOR ================= -->
           <section class="doc-section" id="pvector">
-            <div class="section-kicker">15 · Data &amp; Math</div>
+            <div class="section-kicker">16 · Data &amp; Math</div>
             <h2>PVector</h2>
             <p class="section-intro">A 2D vector struct for position, velocity, and acceleration.</p>
 
@@ -1262,7 +1422,7 @@
 
           <!-- ================= RANDOM & NOISE ================= -->
           <section class="doc-section" id="random-noise">
-            <div class="section-kicker">16 · Data &amp; Math</div>
+            <div class="section-kicker">17 · Data &amp; Math</div>
             <h2>Random &amp; noise</h2>
 
             <h3 class="entry-title" id="random">Random(<span class="tp">float</span> max) · Random(min, max)</h3>
@@ -1283,7 +1443,7 @@
 
           <!-- ================= INPUT ================= -->
           <section class="doc-section" id="input">
-            <div class="section-kicker">17 · Interaction</div>
+            <div class="section-kicker">18 · Interaction</div>
             <h2>Mouse, keyboard &amp; time</h2>
             <p class="section-intro">Position and key state are plain properties; press/release/move are virtual methods.</p>
 
@@ -1294,22 +1454,32 @@
                 <tr><td>IsMousePressed / MouseButton</td><td>CODED, BACKSPACE, TAB, ENTER, RETURN, ESC, DELETE</td></tr>
                 <tr><td>MousePressed() / MouseReleased() / MouseClicked()</td><td>UP, DOWN, LEFT, RIGHT, ALT, CONTROL, SHIFT</td></tr>
                 <tr><td>MouseDragged() / MouseMoved() / MouseWheel(delta)</td><td>KeyPressed() / KeyReleased()</td></tr>
+                <tr><td>Focused</td><td>KeyTyped()</td></tr>
               </table>
             </div>
 
-            <h3 class="entry-title" id="millis">Millis() <span class="sig-return">→ long</span></h3>
-            <p class="entry-desc">Milliseconds since the sketch started.</p>
+            <h3 class="entry-title" id="keytyped">KeyTyped() <span class="sig-return">→ void</span> · virtual</h3>
+            <p class="entry-desc">Fires for printable keys only (<code class="inline">Key != CODED</code>) — a companion to <code class="inline">KeyPressed()</code>/<code class="inline">KeyReleased()</code>, which fire for every key including arrows and modifiers.</p>
+
+            <h3 class="entry-title" id="focused">Focused <span class="sig-return">→ bool</span></h3>
+            <p class="entry-desc">Whether the sketch's window currently has input focus. Defaults to true; a host that embeds the sketch updates it as its window gains/loses focus.</p>
+
+            <h3 class="entry-title" id="millis">Millis() <span class="sig-return">→ long</span> · NanoTime() <span class="sig-return">→ long</span></h3>
+            <p class="entry-desc"><code class="inline">Millis()</code> is milliseconds since the sketch started. <code class="inline">NanoTime()</code> is the same idea at nanosecond resolution — limited in practice by whatever precision the OS timer actually offers.</p>
 
             <h3 class="entry-title" id="day">Day() · Month() · Year() · Hour() · Minute() · Second() <span class="sig-return">→ int</span></h3>
             <p class="entry-desc">Reads the local system clock at call time — unlike <code class="inline">Millis()</code>, which is relative to sketch start.</p>
 
             <h3 class="entry-title" id="cursor">Cursor(<span class="tp">CursorKind</span> kind) · NoCursor()</h3>
             <p class="entry-desc">Raises the <code class="inline">CursorRequested</code> event.</p>
+
+            <h3 class="entry-title" id="selectinput">SelectInput(prompt, callback) · SelectOutput(prompt, callback) · SelectFolder(prompt, callback)</h3>
+            <p class="entry-desc">Raises the <code class="inline">SelectFileRequested</code> event with a <code class="inline">SelectFileRequest</code> describing which native dialog to show. DanaProcessing doesn't own a window, so — like <code class="inline">Cursor()</code>/<code class="inline">NoCursor()</code> — this can't pop a dialog itself; the host shows its own native dialog and calls <code class="inline">Respond(path)</code> (or <code class="inline">Respond(null)</code> on cancel) once the user answers.</p>
           </section>
 
           <!-- ================= ENUMS ================= -->
           <section class="doc-section" id="enums">
-            <div class="section-kicker">18 · Reference</div>
+            <div class="section-kicker">19 · Reference</div>
             <h2>Enumerations</h2>
             <p class="section-intro">Shared between <code class="inline">Sketch</code> and <code class="inline">PGraphics</code>.</p>
 
@@ -1390,11 +1560,29 @@
               <tr><td>Blur</td><td><code class="inline">param</code> is the pixel radius.</td></tr>
               <tr><td>Erode / Dilate</td><td>Not implemented — throws <code class="inline">NotSupportedException</code>.</td></tr>
             </table>
+
+            <table class="enum-table">
+              <caption>TextureModeKind</caption>
+              <tr><td>Image</td><td><code class="inline">Vertex(x, y, u, v)</code>'s u/v are pixel coordinates into the texture (Processing's own default).</td></tr>
+              <tr><td>Normal</td><td>u/v are already 0–1 — DanaProcessing's default; see the note under <a href="#shape-custom">Custom shapes</a>.</td></tr>
+            </table>
+
+            <table class="enum-table">
+              <caption>TextureWrapKind</caption>
+              <tr><td>Clamp</td><td>Repeats the edge pixel outside the 0–1 range (default).</td></tr>
+              <tr><td>Repeat</td><td>Tiles the texture.</td></tr>
+            </table>
+
+            <table class="enum-table">
+              <caption>TextRenderMode</caption>
+              <tr><td>Model</td><td>Regular text drawn straight to the canvas (default, and the only mode implemented).</td></tr>
+              <tr><td>Shape</td><td>Not implemented — throws <code class="inline">NotSupportedException</code>.</td></tr>
+            </table>
           </section>
 
           <!-- ================= HOSTING ================= -->
           <section class="doc-section" id="hosting">
-            <div class="section-kicker">19 · Hosting &amp; Tooling</div>
+            <div class="section-kicker">20 · Hosting &amp; Tooling</div>
             <h2>Avalonia host</h2>
             <p class="section-intro">Embeds a <code class="inline">Sketch</code> in a cross-platform Avalonia app.</p>
 
@@ -1408,7 +1596,7 @@
 
           <!-- ================= IDE ================= -->
           <section class="doc-section" id="ide">
-            <div class="section-kicker">20 · Hosting &amp; Tooling</div>
+            <div class="section-kicker">21 · Hosting &amp; Tooling</div>
             <h2>The IDE</h2>
             <p class="section-intro">A self-contained editor + canvas window for iterating on sketches without a separate build step.</p>
 
@@ -1428,7 +1616,7 @@
 
           <!-- ================= INDEX ================= -->
           <section class="doc-section" id="index">
-            <div class="section-kicker">21 · Reference</div>
+            <div class="section-kicker">22 · Reference</div>
             <h2>Keyword index</h2>
             <p class="section-intro">Every public member referenced in this document, alphabetically. Type to filter. Click any keyword to jump to its documentation.</p>
             <input type="text" class="index-search" id="indexSearch" placeholder="Filter keywords…" aria-label="Filter keyword index">
@@ -1788,7 +1976,65 @@
     "Year": "day",
     "Hour": "day",
     "Minute": "day",
-    "Second": "day"
+    "Second": "day",
+    "Int": "int",
+    "Float": "float-fn",
+    "Boolean": "boolean-fn",
+    "Byte": "byte-fn",
+    "Char": "char-fn",
+    "Str": "str-fn",
+    "Hex": "hex-fn",
+    "Unhex": "unhex",
+    "Append": "append",
+    "Concat": "append",
+    "Expand": "append",
+    "Reverse": "reverse",
+    "Shorten": "reverse",
+    "Subset": "reverse",
+    "Sort": "sort",
+    "Splice": "splice",
+    "ArrayCopy": "arraycopy",
+    "Join": "join",
+    "Split": "join",
+    "SplitTokens": "splittokens",
+    "Trim": "trim-fn",
+    "Match": "match",
+    "MatchAll": "match",
+    "Nf": "nf",
+    "Nfc": "nfc",
+    "Nfp": "nfp",
+    "Nfs": "nfs",
+    "CreateWriter": "createwriter",
+    "CreateReader": "createwriter",
+    "CreateOutput": "createoutput",
+    "CreateInput": "createoutput",
+    "PrintWriter": "printwriter",
+    "BufferedReader": "printwriter",
+    "PrintArray": "printarray",
+    "DisplayDensity": "displaydensity",
+    "PixelDensity": "displaydensity",
+    "Square": "square",
+    "BezierDetail": "bezierdetail",
+    "CurveDetail": "bezierdetail",
+    "BeginContour": "begincontour",
+    "EndContour": "begincontour",
+    "TextureMode": "texturemode",
+    "TextureWrap": "texturemode",
+    "TextureModeKind": "enums",
+    "TextureWrapKind": "enums",
+    "TextMode": "textmode",
+    "TextRenderMode": "enums",
+    "Clip": "clip",
+    "NoClip": "clip",
+    "Hint": "hint",
+    "RequestImage": "requestimage",
+    "KeyTyped": "keytyped",
+    "Focused": "focused",
+    "NanoTime": "millis",
+    "SelectInput": "selectinput",
+    "SelectOutput": "selectinput",
+    "SelectFolder": "selectinput",
+    "SelectFileRequest": "selectinput"
   };
 
   var keywords = [
@@ -2032,7 +2278,65 @@
     ["Year","method"],
     ["Hour","method"],
     ["Minute","method"],
-    ["Second","method"]
+    ["Second","method"],
+    ["Int","method"],
+    ["Float","method"],
+    ["Boolean","method"],
+    ["Byte","method"],
+    ["Char","method"],
+    ["Str","method"],
+    ["Hex","method"],
+    ["Unhex","method"],
+    ["Append","method"],
+    ["Concat","method"],
+    ["Expand","method"],
+    ["Reverse","method"],
+    ["Shorten","method"],
+    ["Subset","method"],
+    ["Sort","method"],
+    ["Splice","method"],
+    ["ArrayCopy","method"],
+    ["Join","method"],
+    ["Split","method"],
+    ["SplitTokens","method"],
+    ["Trim","method"],
+    ["Match","method"],
+    ["MatchAll","method"],
+    ["Nf","method"],
+    ["Nfc","method"],
+    ["Nfp","method"],
+    ["Nfs","method"],
+    ["CreateWriter","method"],
+    ["CreateReader","method"],
+    ["CreateOutput","method"],
+    ["CreateInput","method"],
+    ["PrintWriter","class"],
+    ["BufferedReader","class"],
+    ["PrintArray","method"],
+    ["DisplayDensity","method"],
+    ["PixelDensity","method"],
+    ["Square","method"],
+    ["BezierDetail","method"],
+    ["CurveDetail","method"],
+    ["BeginContour","method"],
+    ["EndContour","method"],
+    ["TextureMode","method"],
+    ["TextureWrap","method"],
+    ["TextureModeKind","enum"],
+    ["TextureWrapKind","enum"],
+    ["TextMode","method"],
+    ["TextRenderMode","enum"],
+    ["Clip","method"],
+    ["NoClip","method"],
+    ["Hint","method"],
+    ["RequestImage","method"],
+    ["KeyTyped","method"],
+    ["Focused","property"],
+    ["NanoTime","method"],
+    ["SelectInput","method"],
+    ["SelectOutput","method"],
+    ["SelectFolder","method"],
+    ["SelectFileRequest","class"]
   ];
   keywords.sort(function(a,b){ return a[0].localeCompare(b[0]); });
 
@@ -2062,6 +2366,71 @@
   });
 
 })();
+  // Convierte el texto de un <pre> en un link danaide://run?code=... y lo
+// dispara. Usa la misma variante base64url que decodifica Program.cs, así
+// que no hace falta URL-encodear nada más: el alfabeto de base64url
+// (A-Z a-z 0-9 - _) ya son todos caracteres válidos en una query string.
+function toBase64Url(str) {
+  const bytes = new TextEncoder().encode(str);
+  let binary = "";
+  bytes.forEach((b) => (binary += String.fromCharCode(b)));
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function setButtonState(btn, state) {
+  const label = btn.querySelector(".dana-test-label");
+  const icon = btn.querySelector("i");
+  btn.classList.remove("is-loading", "is-error");
+
+  if (state === "loading") {
+    btn.classList.add("is-loading");
+    icon.className = "ph-bold ph-circle-notch";
+    label.textContent = "Abriendo…";
+  } else if (state === "error") {
+    btn.classList.add("is-error");
+    icon.className = "ph-bold ph-warning";
+    label.textContent = "No se encontró la IDE";
+    setTimeout(() => setButtonState(btn, "idle"), 2800);
+  } else {
+    icon.className = "ph-bold ph-play";
+    label.textContent = "Test in Dana";
+  }
+}
+
+function testInDana(btn, sourceCode) {
+  const code = toBase64Url(sourceCode);
+  const link = `danaide://run?code=${code}`;
+
+  setButtonState(btn, "loading");
+
+  // No hay forma confiable de saber si el protocolo está registrado antes
+  // de intentarlo — el truco estándar es: navegar al link y, si la pestaña
+  // sigue visible después de un rato corto, asumir que no había ninguna
+  // app escuchando.
+  let stillHere = true;
+  const onBlurOrHide = () => { stillHere = false; };
+  window.addEventListener("blur", onBlurOrHide, { once: true });
+  document.addEventListener("visibilitychange", onBlurOrHide, { once: true });
+
+  window.location.href = link;
+
+  setTimeout(() => {
+    window.removeEventListener("blur", onBlurOrHide);
+    document.removeEventListener("visibilitychange", onBlurOrHide);
+    setButtonState(btn, stillHere ? "error" : "idle");
+  }, 1500);
+}
+
+// Engancha cualquier botón con class="dana-test-btn" y data-target="<id del pre>"
+document.querySelectorAll(".dana-test-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const pre = document.getElementById(btn.dataset.target);
+    if (!pre) return;
+    // textContent ignora los <span class="kw">/"tp"/"str"> de resaltado de
+    // sintaxis y devuelve el código fuente tal cual, sin HTML.
+    testInDana(btn, pre.textContent);
+  });
+});
 </script>
 </body>
 </html>

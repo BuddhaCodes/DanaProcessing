@@ -49,7 +49,14 @@ namespace DanaProcessing.Ide
             if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
             {
                 // --- IDE completo: editor + canvas + Run ---
-                desktop.MainWindow = new MainWindow();
+                var mainWindow = new MainWindow();
+                desktop.MainWindow = mainWindow;
+
+                // Launched via the "Test in Dana" web button (danaide://run?code=...)
+                // — Program.cs already decoded the payload before Avalonia's
+                // lifetime even started, so just hand it to the window.
+                if (PendingSketch.InitialSource is { } source)
+                    mainWindow.LoadAndRunSketch(source);
 
                 // --- pruebas anteriores, por si necesitas volver a ellas ---
                 // desktop.MainWindow = new EditorTestWindow();

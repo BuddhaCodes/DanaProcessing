@@ -83,6 +83,29 @@ namespace DanaProcessing
 
         public virtual void WindowResized() { }
 
+        /// <summary>Whether the sketch's window currently has input focus, like Processing's focused variable. Defaults to true; a host that embeds the sketch should update this via SetFocused() as its window gains/loses focus.</summary>
+        public bool Focused { get; internal set; } = true;
+
+        internal void SetFocused(bool focused) => Focused = focused;
+
+        /// <summary>Ratio between physical and logical pixels on the display the sketch is running on (2 for a typical "Retina"/HiDPI display, 1 otherwise), like Processing's displayDensity(). Fixed at 1 here — DanaProcessing draws everything at logical-pixel resolution and leaves any HiDPI scaling to the host — call PixelDensity() only to match Processing's API shape; it has no effect.</summary>
+        public int DisplayDensity() => 1;
+
+        /// <summary>
+        /// Like Processing's pixelDensity(density) — requests the sketch's
+        /// backing buffer be rendered at `density` pixels per logical pixel
+        /// so it looks sharp on HiDPI displays. DanaProcessing's canvas size
+        /// is entirely host-controlled (see Size()/SizeChanged), so this
+        /// can't actually resize anything from in here; it only validates
+        /// the argument the way Processing does (1 or 2), for sketches
+        /// ported from Processing that call it defensively in Setup().
+        /// </summary>
+        public void PixelDensity(int density)
+        {
+            if (density != 1 && density != 2)
+                throw new ArgumentException("PixelDensity() solo acepta 1 o 2, igual que Processing.");
+        }
+
         // --- Mouse state (position only — buttons/events live in Sketch.Input.cs) ---
         public float MouseX { get; internal set; }
         public float MouseY { get; internal set; }
@@ -126,6 +149,38 @@ namespace DanaProcessing
             if (bitmap == null)
                 throw new InvalidOperationException($"No se pudo cargar la imagen: '{path}'. Verifica la ruta y el formato.");
             return new PImage(bitmap);
+        }
+
+        /// <summary>
+        /// Starts loading an image on a background thread and returns
+        /// immediately, like Processing's requestImage(). The returned
+        /// PImage has IsLoaded == false (and Width/Height read as 0) until
+        /// the background decode finishes, at which point it silently swaps
+        /// in the real bitmap — check IsLoaded (or watch for Width/Height
+        /// becoming nonzero) in Draw() before using it, the same way a
+        /// Processing sketch checks img.width != 0. A decode failure leaves
+        /// the placeholder permanently unloaded and logs the error via
+        /// DanaLogger, rather than throwing on a background thread where
+        /// nothing could catch it.
+        /// </summary>
+        public PImage RequestImage(string path)
+        {
+            var placeholder = PImage.CreatePlaceholder();
+            System.Threading.Tasks.Task.Run(() =>
+            {
+                try
+                {
+                    var bitmap = SKBitmap.Decode(path);
+                    if (bitmap == null)
+                        throw new InvalidOperationException($"No se pudo cargar la imagen: '{path}'. Verifica la ruta y el formato.");
+                    placeholder.ReplaceBitmap(bitmap);
+                }
+                catch (Exception ex)
+                {
+                    DanaLogger.ErrorFromException(ex, $"RequestImage('{path}') falló en segundo plano");
+                }
+            });
+            return placeholder;
         }
 
         // =====================================================================

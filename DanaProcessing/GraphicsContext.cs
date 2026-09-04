@@ -37,6 +37,15 @@ namespace DanaProcessing
     /// <summary>Per-pixel filters usable via Filter() — https://processing.org/reference/filter_.html. Erode/Dilate need neighbor-pixel sampling (not just a per-pixel transform) and aren't implemented yet — Filter() throws NotSupportedException for them.</summary>
     public enum FilterKind { Gray, Invert, Threshold, Posterize, Opaque, Blur, Erode, Dilate }
 
+    /// <summary>How Vertex(x, y, u, v)'s u/v arguments are interpreted — https://processing.org/reference/textureMode_.html. Image means u/v are pixel coordinates into the texture; Normal means they're already 0-1. Note DanaProcessing's *default* is Normal (not Image, Processing's own default) — see the remark on GraphicsContext._textureMode below for why.</summary>
+    public enum TextureModeKind { Image, Normal }
+
+    /// <summary>How a texture samples outside its 0-1 UV range — https://processing.org/reference/textureWrap_.html.</summary>
+    public enum TextureWrapKind { Clamp, Repeat }
+
+    /// <summary>How Text() renders its output — https://processing.org/reference/textMode_.html. DanaProcessing only supports Model (regular raster/vector text drawn straight to the canvas, the only thing that makes sense for a non-PDF renderer); TextMode(Shape) throws NotSupportedException, same treatment as Filter(Erode/Dilate).</summary>
+    public enum TextRenderMode { Model, Shape }
+
     /// <summary>
     /// Everything about drawing state and drawing operations that Sketch and
     /// PGraphics have in common: fill/stroke/color, shape modes, the 2D
@@ -96,6 +105,22 @@ namespace DanaProcessing
         private float _curveTightness = 0f;
         private bool _smooth = true;
         private SKBlendMode _blendMode = SKBlendMode.SrcOver;
+
+        // Nota sobre el default de _textureMode: la implementación original de
+        // Vertex(x, y, u, v) (antes de que TextureMode() existiera) siempre
+        // trató u/v como 0-1, no como coordenadas de píxel — es decir, se
+        // comportaba como Processing's TEXTURE_MODE NORMAL, no como su
+        // default real (IMAGE). Para no romper ese comportamiento ya
+        // documentado/usado, el default aquí se queda en Normal; llama a
+        // TextureMode(Image) explícitamente para el comportamiento por
+        // defecto real de Processing (u/v en coordenadas de píxel).
+        private TextureModeKind _textureMode = TextureModeKind.Normal;
+        private SKShaderTileMode _textureWrapX = SKShaderTileMode.Clamp;
+        private SKShaderTileMode _textureWrapY = SKShaderTileMode.Clamp;
+        private TextRenderMode _textRenderMode = TextRenderMode.Model;
+        private int _bezierDetail = 20;
+        private int _curveDetail = 20;
+        private bool _hasClip = false;
 
         // Rangos de cada canal para ColorMode(mode, max...) — por defecto 0-255
         // en ambos modos, igual que Processing (colorMode(HSB) por sí solo NO
@@ -345,6 +370,20 @@ namespace DanaProcessing
         }
 
         // =====================================================================
+        // Renderer hints — https://processing.org/reference/hint_.html. Every
+        // hint Processing defines (ENABLE_DEPTH_TEST, DISABLE_OPTIMIZED_STROKE,
+        // etc.) is either meaningless for a single always-antialiased,
+        // always-2D software (Skia) renderer, or already covered here by a
+        // dedicated method (Smooth()/NoSmooth() for antialiasing). So unlike
+        // Processing's hint(), which changes real renderer behavior, this is
+        // a deliberate, logged no-op — it exists so ported sketches that call
+        // hint(SOME_CONSTANT) defensively still compile and run instead of
+        // failing to build.
+        // =====================================================================
+        public void Hint(string hintName) =>
+            DanaLogger.Warn($"Hint(\"{hintName}\") no tiene efecto en DanaProcessing — el renderer no distingue entre los hints de Processing (usa Smooth()/NoSmooth() para antialiasing).");
+
+        // =====================================================================
         // PushStyle/PopStyle — https://processing.org/reference/pushStyle_.html.
         // Snapshots every piece of drawing *state* this class tracks (colors,
         // color/rect/ellipse/shape/image modes, tint, stroke weight/cap/join,
@@ -374,6 +413,10 @@ namespace DanaProcessing
             public float CurveTightness;
             public bool Smooth;
             public SKBlendMode BlendMode;
+            public TextureModeKind TextureMode;
+            public SKShaderTileMode TextureWrapX, TextureWrapY;
+            public TextRenderMode TextRenderMode;
+            public int BezierDetail, CurveDetail;
         }
 
         private readonly Stack<StyleSnapshot> _styleStack = new Stack<StyleSnapshot>();
@@ -407,6 +450,12 @@ namespace DanaProcessing
                 CurveTightness = _curveTightness,
                 Smooth = _smooth,
                 BlendMode = _blendMode,
+                TextureMode = _textureMode,
+                TextureWrapX = _textureWrapX,
+                TextureWrapY = _textureWrapY,
+                TextRenderMode = _textRenderMode,
+                BezierDetail = _bezierDetail,
+                CurveDetail = _curveDetail,
             });
         }
 
@@ -442,6 +491,12 @@ namespace DanaProcessing
             _curveTightness = s.CurveTightness;
             ApplySmooth(s.Smooth);
             SetBlendModeInternal(s.BlendMode);
+            _textureMode = s.TextureMode;
+            _textureWrapX = s.TextureWrapX;
+            _textureWrapY = s.TextureWrapY;
+            _textRenderMode = s.TextRenderMode;
+            _bezierDetail = s.BezierDetail;
+            _curveDetail = s.CurveDetail;
         }
 
         // =====================================================================
@@ -482,6 +537,9 @@ namespace DanaProcessing
             if (_strokeEnabled)
                 Canvas.DrawRect(rect, _strokePaint);
         }
+
+        /// <summary>Draws a rect with equal width and height, like Processing's square() — a plain alias, still subject to the current RectMode().</summary>
+        public void Square(float x, float y, float extent) => Rect(x, y, extent, extent);
 
         public void Ellipse(float a, float b, float c, float d)
         {
@@ -586,6 +644,12 @@ namespace DanaProcessing
         /// <summary>Sets the "tightness" of subsequent Curve() calls, like Processing's curveTightness(). 0 (the default) is the standard Catmull-Rom curve; values toward 1 pull the curve tighter to straight lines between the on-curve points.</summary>
         public void CurveTightness(float tightness) => _curveTightness = tightness;
 
+        /// <summary>Like Processing's bezierDetail() — sets the number of straight-line segments used to approximate a Bezier curve in Processing's own renderers. Skia draws exact (analytically flattened) Bezier curves regardless, so this has no visible effect here; it's stored and exposed purely for API parity with ported sketches that call it.</summary>
+        public void BezierDetail(int detail) => _bezierDetail = Math.Max(1, detail);
+
+        /// <summary>Like Processing's curveDetail() — see the BezierDetail() remark; equally a no-op on rendering here, kept for API parity.</summary>
+        public void CurveDetail(int detail) => _curveDetail = Math.Max(1, detail);
+
         public void Curve(float x1, float y1, float x2, float y2, float x3, float y3, float x4, float y4)
         {
             // Catmull-Rom -> Bezier control point conversion, generalized by
@@ -652,6 +716,8 @@ namespace DanaProcessing
         private readonly List<SKPoint> _shapeVertexUVs = new List<SKPoint>();
         private readonly List<SKPoint> _curveVertexPoints = new List<SKPoint>();
         private PImage? _shapeTexture;
+        private bool _startNewContour = false;
+        private bool _shapeHasContour = false;
 
         public void BeginShape(ShapeKind kind = ShapeKind.Polygon)
         {
@@ -662,6 +728,36 @@ namespace DanaProcessing
             _shapeVertexUVs.Clear();
             _curveVertexPoints.Clear();
             _shapeTexture = null;
+            _startNewContour = false;
+            _shapeHasContour = false;
+        }
+
+        /// <summary>
+        /// Starts a new subpath inside the shape currently being built, like
+        /// Processing's beginContour() — the vertices added between this and
+        /// the matching EndContour() cut a hole out of the shape rather than
+        /// extending its outline. Only valid in the default Polygon mode of
+        /// BeginShape(), same restriction Processing itself documents.
+        /// Switches the shape's fill rule to EvenOdd (from the usual
+        /// Winding) so the hole punches through reliably regardless of which
+        /// direction the caller happened to wind it in — only shapes that
+        /// actually use a contour are affected, so ordinary (non-contour)
+        /// shapes render exactly as before.
+        /// </summary>
+        public void BeginContour()
+        {
+            if (_shapeKind != ShapeKind.Polygon || _shapePath == null)
+                throw new InvalidOperationException("BeginContour() solo es válido en el modo Polygon por defecto de BeginShape().");
+            _startNewContour = true;
+            _shapeHasContour = true;
+        }
+
+        /// <summary>Closes the subpath started by BeginContour(), like Processing's endContour().</summary>
+        public void EndContour()
+        {
+            if (_shapeKind != ShapeKind.Polygon || _shapePath == null)
+                throw new InvalidOperationException("EndContour() solo es válido en el modo Polygon por defecto de BeginShape().");
+            _shapePath.Close();
         }
 
         /// <summary>Sets the texture image for the shape currently being built. Only meaningful for Triangles/TriangleStrip/TriangleFan/Quads/QuadStrip — see the class remark above. Cleared automatically by the next BeginShape().</summary>
@@ -669,6 +765,17 @@ namespace DanaProcessing
 
         /// <summary>Clears a texture set by Texture() for the current shape.</summary>
         public void NoTexture() => _shapeTexture = null;
+
+        /// <summary>Sets how Vertex(x, y, u, v)'s u/v are interpreted from here on — see the TextureModeKind remark and the note on the default above.</summary>
+        public void TextureMode(TextureModeKind mode) => _textureMode = mode;
+
+        /// <summary>Sets how a texture samples outside its 0-1 UV range, like Processing's textureWrap() — Clamp (default) repeats the edge pixel; Repeat tiles the texture.</summary>
+        public void TextureWrap(TextureWrapKind mode)
+        {
+            var tileMode = mode == TextureWrapKind.Repeat ? SKShaderTileMode.Repeat : SKShaderTileMode.Clamp;
+            _textureWrapX = tileMode;
+            _textureWrapY = tileMode;
+        }
 
         /// <summary>Adds a straight-line vertex. Its color is captured from the current Fill() at the moment this is called — set a different fill before each vertex to get a Gouraud-shaded (per-vertex-colored) mesh on the shape kinds that support it.</summary>
         public void Vertex(float x, float y)
@@ -678,8 +785,11 @@ namespace DanaProcessing
             {
                 if (_shapePath == null)
                     throw new InvalidOperationException("Vertex() llamado sin BeginShape().");
-                if (_shapePath.PointCount == 0)
+                if (_shapePath.PointCount == 0 || _startNewContour)
+                {
                     _shapePath.MoveTo(x, y);
+                    _startNewContour = false;
+                }
                 else
                     _shapePath.LineTo(x, y);
             }
@@ -831,6 +941,8 @@ namespace DanaProcessing
                 throw new InvalidOperationException("EndShape() llamado sin BeginShape().");
             if (close)
                 _shapePath.Close();
+            if (_shapeHasContour)
+                _shapePath.FillType = SKPathFillType.EvenOdd;
             if (_fillEnabled)
                 Canvas.DrawPath(_shapePath, _fillPaint);
             if (_strokeEnabled)
@@ -942,10 +1054,16 @@ namespace DanaProcessing
                     positions[k] = _shapeVertices[idx];
                     colors[k] = _shapeVertexColors[idx];
                     // SKVertices expects texture coords in the shader's local
-                    // (pixel) space, not the 0-1 UV range Vertex(x,y,u,v)
-                    // takes — scale up to the texture's actual pixel size.
+                    // (pixel) space. Vertex(x,y,u,v)'s own u/v are already in
+                    // that space under TextureMode(Image); under the default
+                    // Normal mode they're 0-1 and need scaling up first.
                     if (texs != null)
-                        texs[k] = new SKPoint(_shapeVertexUVs[idx].X * _shapeTexture!.Width, _shapeVertexUVs[idx].Y * _shapeTexture.Height);
+                    {
+                        var uv = _shapeVertexUVs[idx];
+                        texs[k] = _textureMode == TextureModeKind.Image
+                            ? uv
+                            : new SKPoint(uv.X * _shapeTexture!.Width, uv.Y * _shapeTexture.Height);
+                    }
                     k++;
                 }
             }
@@ -953,7 +1071,7 @@ namespace DanaProcessing
             using var vertices = SKVertices.CreateCopy(SKVertexMode.Triangles, positions, texs, colors);
             using var meshPaint = new SKPaint { IsAntialias = true };
             if (_shapeTexture != null)
-                meshPaint.Shader = SKShader.CreateBitmap(_shapeTexture.Bitmap, SKShaderTileMode.Clamp, SKShaderTileMode.Clamp);
+                meshPaint.Shader = SKShader.CreateBitmap(_shapeTexture.Bitmap, _textureWrapX, _textureWrapY);
 
             // Modulate multiplies the (optional) texture shader's color by
             // each vertex's color; with no shader, the paint's own color
@@ -980,6 +1098,14 @@ namespace DanaProcessing
         }
 
         public void TextLeading(float leading) => _textLeading = leading;
+
+        /// <summary>Sets how Text() renders, like Processing's textMode() — see the TextRenderMode remark for why Shape isn't supported.</summary>
+        public void TextMode(TextRenderMode mode)
+        {
+            if (mode == TextRenderMode.Shape)
+                throw new NotSupportedException("TextMode(Shape) todavía no está implementado — DanaProcessing solo dibuja texto directamente sobre el canvas (equivalente a Processing's MODEL).");
+            _textRenderMode = mode;
+        }
 
         public float TextWidth(string text)
         {
@@ -1106,6 +1232,47 @@ namespace DanaProcessing
             DanaLogger.Info($"[{m.ScaleX,8:0.####} {m.SkewX,8:0.####} {m.TransX,8:0.####}]");
             DanaLogger.Info($"[{m.SkewY,8:0.####} {m.ScaleY,8:0.####} {m.TransY,8:0.####}]");
             DanaLogger.Info($"[{0,8:0.####} {0,8:0.####} {1,8:0.####}]");
+        }
+
+        // =====================================================================
+        // Clipping — https://processing.org/reference/clip_.html. SKCanvas
+        // has no "unclip" operation — a clip can only be removed by
+        // restoring back to a Save() taken before it was applied — so Clip()
+        // wraps its ClipRect in its own internal Save(), and NoClip()
+        // Restore()s it. Calling Clip() again while a clip is already active
+        // replaces it (matching Processing's own clip(), which doesn't
+        // intersect with a previous clip) rather than stacking.
+        // =====================================================================
+
+        /// <summary>
+        /// Restricts all drawing to the given rectangle until NoClip() is
+        /// called (or Clip() is called again with a new rectangle), like
+        /// Processing's clip(x, y, w, h). Always uses CORNER-style x/y/w/h
+        /// regardless of the current RectMode(), matching Processing's own
+        /// clip(). Caution: because this is implemented with its own
+        /// internal Canvas.Save()/Restore() pair, don't let a Clip() and its
+        /// matching NoClip() straddle a PushMatrix()/PopMatrix() pair (or
+        /// vice versa) — the two save/restore stacks would interleave out of
+        /// order. Pair Clip() with NoClip() at the same matrix-nesting depth.
+        /// </summary>
+        public void Clip(float x, float y, float w, float h)
+        {
+            EnsureReady();
+            if (_hasClip)
+                Canvas.Restore();
+            Canvas.Save();
+            Canvas.ClipRect(SKRect.Create(x, y, w, h));
+            _hasClip = true;
+        }
+
+        /// <summary>Removes a clip set by Clip(), like Processing's noClip(). Harmless to call when no clip is active.</summary>
+        public void NoClip()
+        {
+            EnsureReady();
+            if (!_hasClip)
+                return;
+            Canvas.Restore();
+            _hasClip = false;
         }
 
         // =====================================================================

@@ -109,6 +109,16 @@ namespace DanaProcessing
 
         internal void SetKeyCode(int code) => KeyCode = code;
 
+        /// <summary>Override to react to a printable character being typed, like Processing's keyTyped() — fires for printable keys only (Key != CODED), unlike KeyPressed()/KeyReleased() which fire for every key including arrows/modifiers.</summary>
+        public virtual void KeyTyped() { }
+
+        /// <summary>Host hook: call this alongside RaiseKeyPressed-equivalent handling whenever the pressed key produced a printable character (i.e. Key was set to something other than CODED) — mirrors how Processing fires keyTyped() as a companion to keyPressed() for printable keys.</summary>
+        internal void RaiseKeyTyped()
+        {
+            if (Key != CODED)
+                KeyTyped();
+        }
+
         // =====================================================================
         // Time — https://processing.org/reference/millis_.html.
         // =====================================================================
@@ -117,6 +127,9 @@ namespace DanaProcessing
 
         /// <summary>Milliseconds since the sketch started, like Processing's millis().</summary>
         public long Millis() => _clock.ElapsedMilliseconds;
+
+        /// <summary>Nanoseconds since the sketch started, like Processing's nanoTime(). Stopwatch ticks are 100ns units on .NET, hence the *100 — precision is whatever the OS timer actually offers, same caveat Processing's own nanoTime() carries.</summary>
+        public long NanoTime() => _clock.ElapsedTicks * 100L;
 
         // --- Wall-clock date/time — https://processing.org/reference/day_.html
         // and siblings (month/year/hour/minute/second). All read the local

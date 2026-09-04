@@ -1,0 +1,72 @@
+name: Build and Release
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch: # te deja disparar un build a mano desde la pestaña Actions
+
+permissions:
+  contents: write # necesario para que el job pueda crear el Release
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      # AJUSTAR: ruta real de tu .csproj de la IDE dentro del repo.
+      # Asumo "DanaProcessing.Ide/DanaProcessing.Ide.csproj" por el
+      # namespace que usan todas tus clases — si tu repo tiene otra
+      # estructura, cambiá esta ruta en los tres pasos de abajo.
+      - name: Restore
+        run: dotnet restore DanaProcessing.Ide/DanaProcessing.Ide.csproj
+
+      # --self-contained embebe el runtime de .NET en el exe: quien lo
+      # descargue no necesita tener .NET instalado. PublishSingleFile lo
+      # empaqueta todo en un solo .exe en vez de una carpeta con decenas
+      # de DLLs. Deliberadamente SIN trimming (-p:PublishTrimmed) — Roslyn
+      # (SketchCompiler, RoslynCompletionEngine) carga tipos por reflection,
+      # y el trimmer del linker recorta justamente lo que reflection no ve
+      # usado estáticamente, así que trimear rompería la compilación de
+      # sketches en tiempo de ejecución.
+      - name: Publish
+        run: >
+          dotnet publish DanaProcessing.Ide/DanaProcessing.Ide.csproj
+          -c Release
+          -r win-x64
+          --self-contained true
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -o publish/win-x64
+
+      - name: Zip build
+        shell: pwsh
+        run: Compress-Archive -Path publish/win-x64/* -DestinationPath DanaProcessingIde-win-x64.zip
+
+      # Además del Release de abajo, deja el zip como artifact del propio
+      # run — útil para revisar un push a una rama que no sea main, o para
+      # bajar un build puntual sin tocar el historial de Releases.
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: DanaProcessingIde-win-x64
+          path: DanaProcessingIde-win-x64.zip
+
+      # Un Release nuevo por cada push a main, marcado como "latest".
+      # GitHub expone siempre la URL fija:
+      #   https://github.com/<owner>/<repo>/releases/latest/download/DanaProcessingIde-win-x64.zip
+      # que redirige al asset del Release marcado como latest — así el
+      # botón de descarga en tu web nunca tiene que cambiar de link.
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: "Build #${{ github.run_number }}"
+          body: "Build automática desde ${{ github.sha }}."
+          make_latest: true
+          files: DanaProcessingIde-win-x64.zip

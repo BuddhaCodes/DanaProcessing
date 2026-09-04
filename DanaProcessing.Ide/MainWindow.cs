@@ -32,7 +32,7 @@ namespace DanaProcessing.Ide
         // side by side at a usable size, so we collapse to one pane at a
         // time with a toggle instead of squeezing both into slivers.
         private const double NarrowBreakpoint = 900;
-
+        private bool _hasRunOnce;
         private readonly SketchEditorView _editorView;
         private readonly AvaloniaSketchCanvas _canvas;
         private readonly TextBlock _outputText;
@@ -575,10 +575,11 @@ namespace DanaProcessing.Ide
             _canvasOversized = oversized;
             UpdateResponsiveLayout(ClientSize.Width);
 
-            // Same courtesy as RunCurrentSketch's own auto-switch below: if we
-            // just became oversized while the user was looking at the code,
-            // surface the canvas instead of leaving them staring at the editor.
-            if (_canvasOversized)
+            // Solo aplicamos la cortesía de saltar a "Resultado" si el usuario ya
+            // corrió un sketch — de lo contrario el placeholder inicial puede
+            // marcarse "oversized" en el primer layout y forzaría abrir en
+            // Resultado en vez de Código.
+            if (_canvasOversized && _hasRunOnce)
                 SetNarrowPane(showCanvas: true);
         }
 
@@ -665,7 +666,7 @@ namespace DanaProcessing.Ide
             {
                 _outputPanel.IsVisible = false;
                 _canvas.LoadSketch(result.Sketch!);
-
+                _hasRunOnce = true;
                 _statusDot.Fill = ClayTheme.Success;
                 _statusLabel.Text = "Listo";
                 ((Border)_statusPill).Background = ClayTheme.SuccessSurface;
@@ -686,6 +687,12 @@ namespace DanaProcessing.Ide
                 _statusLabel.Text = "Error de compilación";
                 ((Border)_statusPill).Background = ClayTheme.DangerSurface;
             }
+        }
+
+        public void LoadAndRunSketch(string source)
+        {
+            _editorView.AddNewTab(null, source);
+            RunCurrentSketch();
         }
     }
 
