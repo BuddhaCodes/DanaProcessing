@@ -1712,7 +1712,7 @@
   });
 
   // ---------- Scroll-spy ----------
-  var navLinks = Array.from(document.querySelectorAll('.sidebar-nav a'));
+var navLinks = Array.from(document.querySelectorAll('.sidebar-nav a[href^="#"]'));
   var sections = navLinks.map(function(a){ return document.querySelector(a.getAttribute('href')); }).filter(Boolean);
   var byId = {};
   navLinks.forEach(function(a){ byId[a.getAttribute('href').slice(1)] = a; });
