@@ -730,6 +730,40 @@
 
   .dana-test-btn.is-error{ opacity:1; color:var(--danger); border-color:var(--danger); }
 
+.btn-sm .ph-bold{ font-size:14px; }
+
+.sidebar-nav a.sidebar-download{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  margin-top:10px;
+  padding:9px 10px;
+  background:var(--accent);
+  color:var(--text-inverse);
+  border-radius:var(--radius-sm);
+  font-size:13px;
+  font-weight:600;
+  text-decoration:none;
+  transition:all var(--transition);
+}
+.sidebar-nav a.sidebar-download:hover{
+  background:var(--accent-hover);
+  color:var(--text-inverse);
+  text-decoration:none;
+  transform:translateY(-1px);
+  box-shadow:var(--shadow-sm);
+}
+.sidebar-nav a.sidebar-download .ph-bold{ font-size:15px; }
+
+.sidebar-download:hover{
+  background:var(--accent-hover);
+  color:var(--text-inverse);
+  text-decoration:none;
+  transform:translateY(-1px);
+  box-shadow:var(--shadow-sm);
+}
+.sidebar-download .ph-bold{ font-size:15px; }
   @keyframes dana-spin{ to{ transform:rotate(360deg); } }
   /* ============================================================
      RESPONSIVE
@@ -838,6 +872,10 @@
         <a href="#hosting"><i class="ph ph-desktop"></i> Avalonia host</a>
         <a href="#ide"><i class="ph ph-gear"></i> The IDE</a>
       </div>
+
+       <a class="sidebar-download" href="https://github.com/BuddhaCodes/DanaProcessing/releases/latest/download/DanaProcessingIde-win-x64.zip">
+        <i class="ph-bold ph-download-simple"></i> Descargar IDE
+      </a>
     </nav>
 
     <div class="sidebar-footer">
@@ -855,9 +893,9 @@
 
     <!-- TOP BAR -->
     <div class="topbar">
-      <div class="page-title">Documentation <span>· Reference</span></div>
-      <div class="badge">v0 · stable</div>
-    </div>
+  <div class="page-title">Documentation <span>· Reference</span></div>
+  <div class="badge">v0 · stable</div>
+</div>
 
     <div class="main-inner">
 
@@ -867,9 +905,12 @@
           <h1>DanaProcessing</h1>
           <p class="lede">A Processing-style creative coding library for C#, built on SkiaSharp. Write a <code class="inline">Sketch</code>, override <code class="inline">Setup()</code> and <code class="inline">Draw()</code>, and get the same drawing vocabulary Processing sketchers already know.</p>
           <div class="hero-actions">
-            <a class="btn btn-primary" href="#intro"><i class="ph ph-book-open"></i> Read the docs</a>
-            <a class="btn btn-ghost" href="#index"><i class="ph ph-magnifying-glass"></i> Keyword index</a>
-          </div>
+            <a class="btn btn-ghost" href="https://github.com/BuddhaCodes/DanaProcessing/releases/latest/download/DanaProcessingIde-win-x64.zip">
+              <i class="ph-bold ph-download-simple"></i> Download
+            </a>
+  <a class="btn btn-primary" href="#intro"><i class="ph ph-book-open"></i> Read the docs</a>
+  <a class="btn btn-ghost" href="#index"><i class="ph ph-magnifying-glass"></i> Keyword index</a>
+</div>
         </div>
      
       </section>
