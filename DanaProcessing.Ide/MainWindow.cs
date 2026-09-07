@@ -1,5 +1,6 @@
 using System;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Shapes;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -102,18 +103,36 @@ namespace DanaProcessing.Ide
             };
             runButton.Click += (_, _) => RunCurrentSketch();
 
+            // Botón cuadrado fijo (36x36) con el ícono centrado explícitamente
+            // en ambos ejes -- antes dependía del centrado por defecto del
+            // ContentPresenter, que con un botón de ancho variable (Padding
+            // asimétrico heredado de "clay-chrome") dejaba el engranaje
+            // visualmente corrido hacia la izquierda. FontSize más grande
+            // para que el glifo se lea bien a esta escala.
             var settingsButton = new Button
             {
                 Content = "⚙",
                 Classes = { "clay-chrome" },
+                Width = 36,
+                Height = 36,
+                Padding = new Avalonia.Thickness(0),
+                FontSize = 17,
+                HorizontalContentAlignment = HorizontalAlignment.Center,
+                VerticalContentAlignment = VerticalAlignment.Center,
             };
             ToolTip.SetTip(settingsButton, "Configuración");
             settingsButton.Click += (_, _) => new SettingsWindow().ShowDialog(this);
 
+            // El botón de "Samples" suelto salió de acá -- ahora vive como
+            // una entrada más adentro del menú ☰ (junto con Nuevo/Abrir/
+            // Guardar/Guardar como), en vez de competir por espacio propio
+            // en el title bar con su propio ícono.
+            var fileMenuButton = BuildFileMenuButton();
+
             (_paneTogglePill, _codeToggleButton, _resultToggleButton) = BuildPaneToggle();
             UpdatePaneToggleVisuals();
 
-            var titleBarRoot = BuildTitleBar(runButton, settingsButton, _paneTogglePill);
+            var titleBarRoot = BuildTitleBar(runButton, settingsButton, fileMenuButton, _paneTogglePill);
 
             _outputText = new TextBlock
             {
@@ -583,7 +602,124 @@ namespace DanaProcessing.Ide
                 SetNarrowPane(showCanvas: true);
         }
 
-        private Border BuildTitleBar(Button runButton, Button settingsButton, Border paneTogglePill)
+        /// <summary>
+        /// The ☰ button in the title bar: a collapsible file menu holding
+        /// Nuevo / Abrir / Guardar / Guardar como / Ejemplos. Built once here
+        /// instead of five separate buttons crowding the title bar (the old
+        /// layout had a lone 📂 "Samples" icon next to ⚙, and the editor's
+        /// own toolbar duplicated Nuevo/Abrir/Guardar/Guardar como below it —
+        /// this menu replaces both). Uses Avalonia's Flyout, which already
+        /// gives us "click to open, click outside or Escape to collapse" for
+        /// free — no bespoke Popup/IsOpen bookkeeping needed.
+        /// </summary>
+        private Button BuildFileMenuButton()
+        {
+            var menuButton = new Button
+            {
+                Content = "☰",
+                Classes = { "clay-chrome" },
+                Width = 36,
+                Height = 36,
+                Padding = new Avalonia.Thickness(0),
+                FontSize = 15,
+                HorizontalContentAlignment = HorizontalAlignment.Center,
+                VerticalContentAlignment = VerticalAlignment.Center,
+            };
+            ToolTip.SetTip(menuButton, "Archivo");
+
+            Flyout? flyout = null;
+
+            Button BuildItem(string icon, string label, Action action)
+            {
+                var item = new Button
+                {
+                    Classes = { "clay-menu-item" },
+                    Content = new StackPanel
+                    {
+                        Orientation = Orientation.Horizontal,
+                        Spacing = 10,
+                        Children =
+                        {
+                            new TextBlock
+                            {
+                                Text = icon,
+                                Width = 18,
+                                FontSize = 13,
+                                Foreground = ClayTheme.TextMuted,
+                                VerticalAlignment = VerticalAlignment.Center,
+                            },
+                            new TextBlock
+                            {
+                                Text = label,
+                                FontFamily = ClayTheme.FontBody,
+                                FontSize = 13,
+                                Foreground = ClayTheme.TextPrimary,
+                                VerticalAlignment = VerticalAlignment.Center,
+                            },
+                        }
+                    }
+                };
+                // Every item closes the menu after acting -- picking "Nuevo"
+                // or "Guardar" is a one-shot action, same reasoning as
+                // SamplesWindow closing itself once you pick a sample.
+                item.Click += (_, _) =>
+                {
+                    action();
+                    flyout?.Hide();
+                };
+                return item;
+            }
+
+            Border Separator() => new()
+            {
+                Height = 1,
+                Margin = new Avalonia.Thickness(6, 4),
+                Background = new SolidColorBrush(Avalonia.Media.Color.Parse("#E8E2DA")),
+            };
+
+            var menuPanel = new StackPanel
+            {
+                Width = 210,
+                Spacing = 1,
+            };
+            menuPanel.Children.Add(BuildItem("＋", "Nuevo", () => _editorView.AddNewTab()));
+            menuPanel.Children.Add(BuildItem("📂", "Abrir...", () => _ = _editorView.OpenFileAsync()));
+            menuPanel.Children.Add(Separator());
+            menuPanel.Children.Add(BuildItem("💾", "Guardar", () => _ = _editorView.SaveActiveTabAsync()));
+            menuPanel.Children.Add(BuildItem("💾", "Guardar como...", () => _ = _editorView.SaveActiveTabAsAsync()));
+            menuPanel.Children.Add(Separator());
+            menuPanel.Children.Add(BuildItem("🧩", "Ejemplos...", () =>
+                new SamplesWindow(source => _editorView.AddNewTab(null, source)).ShowDialog(this)));
+
+            flyout = new Flyout
+            {
+                Placement = PlacementMode.BottomEdgeAlignedLeft,
+                Content = new Border
+                {
+                    Background = ClayTheme.SurfaceRaised,
+                    BorderBrush = new SolidColorBrush(Avalonia.Media.Color.Parse("#E8E2DA")),
+                    BorderThickness = new Avalonia.Thickness(1),
+                    CornerRadius = ClayTheme.RadiusMedium,
+                    BoxShadow = ClayTheme.ShadowSubtle,
+                    Padding = new Avalonia.Thickness(6),
+                    // Sin esto, el Border se DIBUJA redondeado pero no RECORTA
+                    // a su hijo con esa forma -- el menuPanel (un StackPanel
+                    // rectangular común) sobresalía en esquinas rectas por
+                    // detrás del borde redondeado. Mismo motivo por el que
+                    // editorCard/canvasCard más arriba en este archivo ya
+                    // usan ClipToBounds = true.
+                    ClipToBounds = true,
+                    Child = menuPanel,
+                }
+            };
+
+            FlyoutBase.SetAttachedFlyout(menuButton, flyout);
+            menuButton.Click += (_, _) => FlyoutBase.ShowAttachedFlyout(menuButton);
+
+            return menuButton;
+        }
+
+        private Border BuildTitleBar(Button runButton, Button settingsButton, Button fileMenuButton, Border paneTogglePill)
         {
             var logoDot = new Ellipse
             {
@@ -625,7 +761,7 @@ namespace DanaProcessing.Ide
                 Orientation = Orientation.Horizontal,
                 Spacing = 8,
                 Margin = new Avalonia.Thickness(0, 0, 16, 0),
-                Children = { paneTogglePill, settingsButton, runButton, minButton, maxButton, closeButton }
+                Children = { paneTogglePill, fileMenuButton, settingsButton, runButton, minButton, maxButton, closeButton }
             };
 
             var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };

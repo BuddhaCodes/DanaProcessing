@@ -38,6 +38,16 @@ namespace DanaProcessing.Ide
             // que sus estilos solo la alcanzan si viven en Application.Styles
             // — agregarlos al UserControl del editor no tendría efecto acá.
             Styles.AddRange(ClayTheme.CompletionWindowStyles());
+
+            // Mismo motivo que arriba, pero para dos cosas que aparecen en
+            // CUALQUIER ventana (MainWindow, SamplesWindow, SettingsWindow):
+            // el Flyout del menú ☰ y cualquier scrollbar. RequestedThemeVariant
+            // = Dark de arriba hace que FlyoutPresenter y ScrollBar caigan al
+            // chrome oscuro de FluentTheme si nadie los re-temea -- de ahí el
+            // panel negro detrás del menú y las scrollbars con fondo negro.
+            // Va al final para ganarle en precedencia al StyleInclude de
+            // AvaloniaEdit de arriba (también trae su propio ScrollBar).
+            Styles.AddRange(ClayTheme.ChromeOverrideStyles());
         }
 
         public override void OnFrameworkInitializationCompleted()

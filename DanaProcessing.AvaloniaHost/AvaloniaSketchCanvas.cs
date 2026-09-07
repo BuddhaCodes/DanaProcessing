@@ -66,7 +66,9 @@ namespace DanaProcessing.AvaloniaHost
             Focusable = true;
 
             PointerMoved += OnPointerMoved;
-            PointerPressed += (s, e) => Focus(); // click-to-focus, like a canvas in a web page
+            PointerPressed += OnPointerPressed;
+            PointerReleased += OnPointerReleased;
+            PointerWheelChanged += OnPointerWheelChanged;
             KeyDown += OnKeyDown;
             KeyUp += OnKeyUp;
 
@@ -189,17 +191,61 @@ namespace DanaProcessing.AvaloniaHost
 
         private void OnPointerMoved(object? sender, PointerEventArgs e)
         {
-            // Both pointer coordinates and our draw calls live in DIPs here
-            // (the sketch draws into our own offscreen surface at DIP size;
-            // the scaling-to-physical-pixels only happens when we blit that
-            // surface onto the leased canvas), so no manual DPI conversion
-            // is needed here — unlike WPF.
             var pos = e.GetPosition(this);
-            _sketch.PMouseX = _sketch.MouseX;
-            _sketch.PMouseY = _sketch.MouseY;
             _sketch.MouseX = (float)pos.X;
             _sketch.MouseY = (float)pos.Y;
+
+            RunSafely(_sketch.RaiseMouseMoved, "MouseMoved/MouseDragged");
         }
+
+        private void OnPointerPressed(object? sender, PointerPressedEventArgs e)
+        {
+            Focus(); // click-to-focus, like a canvas in a web page
+
+            var button = MapButton(e.GetCurrentPoint(this).Properties);
+            RunSafely(() => _sketch.RaiseMousePressed(button), "MousePressed");
+        }
+
+        private void OnPointerReleased(object? sender, PointerReleasedEventArgs e)
+        {
+            var button = MapButton(e.InitialPressMouseButton);
+            RunSafely(() => _sketch.RaiseMouseReleased(button), "MouseReleased");
+
+            // Processing fires mouseClicked() right after mouseReleased() for
+            // any ordinary press-then-release over the sketch -- the real API
+            // has no drag-distance threshold that would suppress it, so
+            // neither does this.
+            RunSafely(() => _sketch.RaiseMouseClicked(button), "MouseClicked");
+        }
+
+        private void OnPointerWheelChanged(object? sender, PointerWheelEventArgs e)
+        {
+            // Avalonia normalizes wheel input to roughly +-1.0 per notch
+            // (fractional for trackpads) rather than WPF's +-120-per-notch
+            // convention -- passed straight through, since Sketch.MouseWheel's
+            // own doc comment says to treat the sign/magnitude as whatever the
+            // host's raw input gives, not an absolute count.
+            RunSafely(() => _sketch.RaiseMouseWheel((float)e.Delta.Y), "MouseWheel");
+        }
+
+        private static MouseButtonKind MapButton(PointerPointProperties props)
+        {
+            if (props.IsLeftButtonPressed)
+                return MouseButtonKind.Left;
+            if (props.IsRightButtonPressed)
+                return MouseButtonKind.Right;
+            if (props.IsMiddleButtonPressed)
+                return MouseButtonKind.Center;
+            return MouseButtonKind.None;
+        }
+
+        private static MouseButtonKind MapButton(MouseButton button) => button switch
+        {
+            MouseButton.Left => MouseButtonKind.Left,
+            MouseButton.Right => MouseButtonKind.Right,
+            MouseButton.Middle => MouseButtonKind.Center,
+            _ => MouseButtonKind.None,
+        };
 
         private void OnKeyDown(object? sender, KeyEventArgs e)
         {
@@ -295,6 +341,11 @@ namespace DanaProcessing.AvaloniaHost
                     _sketch.Draw();
                     _sketch.FrameCount++;
                 }, "Draw");
+
+                // pmouseX/pmouseY deben quedar listos para el PRÓXIMO frame recién
+                // acá -- una sola vez por Draw(), no por cada PointerMoved.
+                _sketch.PMouseX = _sketch.MouseX;
+                _sketch.PMouseY = _sketch.MouseY;
             }
 
             if (_crashed && _crashException != null)

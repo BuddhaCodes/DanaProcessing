@@ -13,19 +13,20 @@ namespace DanaProcessing
     /// </summary>
     public sealed class PGraphics : GraphicsContext
     {
-        private readonly SKSurface _surface;
         private bool _drawing;
         private bool _disposed;
 
         /// <summary>Use Sketch.CreateGraphics(w, h) instead of calling this directly, matching Processing's createGraphics().</summary>
-        internal PGraphics(int width, int height)
+        internal PGraphics(int width, int height, RendererKind renderer = RendererKind.Renderer2D)
         {
+            SetRenderer(renderer);
             Width = width;
             Height = height;
-            var info = new SKImageInfo(width, height, SKColorType.Rgba8888, SKAlphaType.Premul);
-            Surface = SKSurface.Create(info)
-                ?? throw new InvalidOperationException($"No se pudo crear una superficie offscreen de {width}x{height}.");
-            Canvas = Surface.Canvas;
+            _backend = renderer == RendererKind.Renderer3D
+                ? Renderer3DBackend.Create(width, height)
+                : SkiaBackend2D.Create(width, height);
+            Canvas = _backend.Canvas;
+            Surface = _backend.Surface;
         }
 
         /// <summary>Marks the start of a batch of drawing calls, like Processing's beginDraw(). Not strictly required by the software renderer, but catches the common bug of drawing into a buffer that's already mid-frame elsewhere.</summary>
@@ -35,6 +36,7 @@ namespace DanaProcessing
             if (_drawing)
                 throw new InvalidOperationException("BeginDraw() ya fue llamado; falta un EndDraw().");
             _drawing = true;
+            _backend!.BeginFrame();
         }
 
         /// <summary>Marks the end of a batch of drawing calls, like Processing's endDraw().</summary>
@@ -43,6 +45,7 @@ namespace DanaProcessing
             ThrowIfDisposed();
             if (!_drawing)
                 throw new InvalidOperationException("EndDraw() llamado sin un BeginDraw() previo.");
+            _backend!.EndFrame();
             Canvas.Flush();
             _drawing = false;
         }
@@ -79,7 +82,7 @@ namespace DanaProcessing
             if (_disposed)
                 return;
             base.Dispose();
-            Surface?.Dispose();
+            _backend!.Dispose();
             _disposed = true;
         }
     }

@@ -36,9 +36,16 @@ namespace DanaProcessing
         /// Raises SizeChanged so a host can react (resize itself, re-run layout)
         /// the moment the size actually changes, rather than only finding out
         /// on the next frame it happens to render.
+        ///
+        /// Pass RendererKind.Renderer3D to opt into the (not yet implemented)
+        /// GPU 3D pipeline, mirroring Processing's size(w, h, P3D) — like
+        /// Processing, the renderer can't change after it's been set once.
         /// </summary>
-        public void Size(int w, int h)
+        public void Size(int w, int h, RendererKind renderer = RendererKind.Renderer2D)
         {
+            if (renderer == RendererKind.Renderer3D)
+                throw new NotImplementedException("RendererKind.Renderer3D todavía no está implementado — ver los comentarios de IGraphicsBackend para la hoja de ruta 3D.");
+            SetRenderer(renderer);
             if (w == Width && h == Height)
                 return;
             Width = w;

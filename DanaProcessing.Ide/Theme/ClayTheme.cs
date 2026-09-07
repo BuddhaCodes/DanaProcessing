@@ -3,6 +3,9 @@ using Avalonia.Animation;
 using Avalonia.Controls;
 using Avalonia.Controls.Presenters;
 using Avalonia.Controls.Primitives;
+using Avalonia.Controls.Shapes;
+using Avalonia.Controls.Templates;
+using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Styling;
 using AvaloniaEdit.CodeCompletion;
@@ -648,6 +651,58 @@ namespace DanaProcessing.Ide.Theme
             },
 
             // ============================================================
+            // === MENU ITEM (filas del menú colapsable ☰: Nuevo, Abrir,
+            // Guardar, Guardar como, Ejemplos) — fila ancha, alineada a la
+            // izquierda, mismo lenguaje visual que clay-secondary pero sin
+            // el padding simétrico de un botón normal.
+            // ============================================================
+            new Style(x => x.OfType<Button>().Class("clay-menu-item"))
+            {
+                Setters =
+                {
+                    new Setter(Button.ForegroundProperty, TextPrimary),
+                    new Setter(Button.FontFamilyProperty, FontBody),
+                    new Setter(Button.FontSizeProperty, 13.0),
+                    new Setter(Button.PaddingProperty, new Thickness(10, 8)),
+                    new Setter(Button.HorizontalContentAlignmentProperty, HorizontalAlignment.Left),
+                    new Setter(Button.HorizontalAlignmentProperty, HorizontalAlignment.Stretch),
+                    new Setter(Button.CursorProperty, new Avalonia.Input.Cursor(Avalonia.Input.StandardCursorType.Hand)),
+                    new Setter(Button.BackgroundProperty, Brushes.Transparent),
+                    new Setter(Button.BorderThicknessProperty, new Thickness(0)),
+                    new Setter(Button.CornerRadiusProperty, RadiusChrome),
+                    new Setter(Control.TransitionsProperty, new Transitions
+                    {
+                        new BrushTransition { Property = Button.BackgroundProperty, Duration = System.TimeSpan.FromMilliseconds(120) },
+                    }),
+                }
+            },
+            new Style(x => x.OfType<Button>().Class("clay-menu-item").Class(":pointerover"))
+            {
+                Setters = { new Setter(Button.BackgroundProperty, SurfaceHover) }
+            },
+            new Style(x => x.OfType<Button>().Class("clay-menu-item").Class(":pressed"))
+            {
+                Setters = { new Setter(Button.BackgroundProperty, SurfacePressed) }
+            },
+
+            // --- FIX ContentPresenter: Background (mismo motivo que en los demás clay-*) ---
+            new Style(x => x.OfType<Button>().Class("clay-menu-item")
+                .Template().OfType<ContentPresenter>())
+            {
+                Setters = { new Setter(ContentPresenter.BackgroundProperty, Brushes.Transparent) }
+            },
+            new Style(x => x.OfType<Button>().Class("clay-menu-item").Class(":pointerover")
+                .Template().OfType<ContentPresenter>())
+            {
+                Setters = { new Setter(ContentPresenter.BackgroundProperty, SurfaceHover) }
+            },
+            new Style(x => x.OfType<Button>().Class("clay-menu-item").Class(":pressed")
+                .Template().OfType<ContentPresenter>())
+            {
+                Setters = { new Setter(ContentPresenter.BackgroundProperty, SurfacePressed) }
+            },
+
+            // ============================================================
             // === TOGGLE BUTTON (pill "Código / Resultado") ===
             // A diferencia de los demás, este botón tiene un estado extra
             // que no es un pseudo-clase nativa de Avalonia (:pointerover,
@@ -839,7 +894,125 @@ namespace DanaProcessing.Ide.Theme
             },
         };
 
+        /// <summary>
+        /// App.cs sets RequestedThemeVariant = Dark on the whole Application
+        /// (needed for other chrome), which means any control we haven't
+        /// explicitly re-themed falls back to FluentTheme's dark palette.
+        /// Two separate root causes, confirmed against Fluent's actual
+        /// template source (Avalonia.Themes.Fluent/Controls/ScrollBar.xaml,
+        /// FlyoutPresenter.xaml):
+        ///
+        /// 1) The sharp corners peeking out behind the ☰ menu's rounded card
+        ///    weren't FlyoutPresenter's Background/Border/CornerRadius (those
+        ///    were already zeroed below) — they were the OS-level window
+        ///    shadow every Popup gets from the window manager, which is
+        ///    always a plain rectangle regardless of how round the content
+        ///    inside it is. Disabling Popup.WindowManagerAddShadowHint is
+        ///    the standard fix (same one Fluent's own ComboBox uses).
+        ///
+        /// 2) The scrollbar's black track/arrow-pill wasn't coming from
+        ///    ScrollBar.Background at all (that was already transparent) —
+        ///    Fluent's ScrollBar template has an inner Grid and a
+        ///    Rectangle("TrackRect") that get repainted directly, and arrow
+        ///    RepeatButtons that fade from Opacity 0 to 1, all driven by the
+        ///    template's own ":expanded" trigger (hover/drag) — none of them
+        ///    read from the Background property, so overriding just that
+        ///    property never reached them.
+        /// </summary>
+        public static Style[] ChromeOverrideStyles() => new[]
+        {
+            // --- Kill the OS drop-shadow on every Popup/Flyout/ComboBox
+            // dropdown app-wide, so a rounded card never shows a square
+            // shadow poking out from behind it. ---
+            new Style(x => x.OfType<Popup>())
+            {
+                Setters = { new Setter(Popup.WindowManagerAddShadowHintProperty, false) }
+            },
+
+            // --- Flyout host: the property Setters above (Background/Border/
+            // Padding/CornerRadius) weren't enough on their own -- Fluent's
+            // own FlyoutPresenter template also wraps Content in its own
+            // Border + ScrollViewer (for auto-scrolling long menus), and
+            // apparently something in that chain still painted a rectangle
+            // even with Background=Transparent. Rather than keep guessing
+            // which nested element it is, replace the whole Template with a
+            // bare ContentPresenter: nothing renders for the FlyoutPresenter
+            // itself, only our own Border (set as the Flyout's Content in
+            // MainWindow.BuildFileMenuButton) — there's no other layer left
+            // that could paint a rectangle.
+            new Style(x => x.OfType<FlyoutPresenter>())
+            {
+                Setters =
+                {
+                    new Setter(TemplatedControl.BackgroundProperty, Brushes.Transparent),
+                    new Setter(TemplatedControl.BorderThicknessProperty, new Thickness(0)),
+                    new Setter(TemplatedControl.PaddingProperty, new Thickness(0)),
+                    new Setter(TemplatedControl.CornerRadiusProperty, new CornerRadius(0)),
+                    new Setter(TemplatedControl.TemplateProperty, new FuncControlTemplate<FlyoutPresenter>((presenter, _) =>
+                    {
+                        var content = new ContentPresenter();
+                        content.Bind(ContentPresenter.ContentProperty, presenter.GetObservable(ContentControl.ContentProperty));
+                        return content;
+                    })),
+                }
+            },
+
+            // ============================================================
+            // === SCROLLBARS: transparent everywhere, only the thumb bar
+            // visible, no arrow buttons. Every rule below targets a template
+            // part unconditionally (not just ":pointerover"/":expanded"), so
+            // there's no state where the black chrome can flash back in. ===
+            // ============================================================
+            new Style(x => x.OfType<ScrollBar>())
+            {
+                Setters =
+                {
+                    new Setter(TemplatedControl.BackgroundProperty, Brushes.Transparent),
+                    new Setter(TemplatedControl.BorderThicknessProperty, new Thickness(0)),
+                }
+            },
+            // The root "Border" the ScrollBar's own Background is template-
+            // bound to.
+            new Style(x => x.OfType<ScrollBar>().Template().OfType<Border>())
+            {
+                Setters = { new Setter(Border.BackgroundProperty, Brushes.Transparent) }
+            },
+            // The Grid ("Root") that Fluent's own hover/drag trigger repaints
+            // directly, independent of ScrollBar.Background.
+            new Style(x => x.OfType<ScrollBar>().Template().OfType<Grid>())
+            {
+                Setters = { new Setter(Grid.BackgroundProperty, Brushes.Transparent) }
+            },
+            // The Rectangle ("TrackRect") behind the thumb -- same story,
+            // repainted directly on hover/drag, unrelated to Background.
+            new Style(x => x.OfType<ScrollBar>().Template().OfType<Rectangle>())
+            {
+                Setters = { new Setter(Shape.FillProperty, Brushes.Transparent) }
+            },
+            // The up/down arrow RepeatButtons -- Fluent fades these from
+            // Opacity 0 to 1 on hover; pinning Opacity to 0 keeps them
+            // invisible in every state ("dejar solo el bar").
+            new Style(x => x.OfType<ScrollBar>().Template().OfType<RepeatButton>())
+            {
+                Setters = { new Setter(Visual.OpacityProperty, 0.0) }
+            },
+            // The thumb: the only thing left visible.
+            new Style(x => x.OfType<ScrollBar>().Template().OfType<Thumb>())
+            {
+                Setters =
+                {
+                    new Setter(TemplatedControl.BackgroundProperty, SurfaceHover),
+                    new Setter(TemplatedControl.CornerRadiusProperty, new CornerRadius(6)),
+                }
+            },
+            new Style(x => x.OfType<ScrollBar>().Template().OfType<Thumb>().Class(":pointerover"))
+            {
+                Setters = { new Setter(TemplatedControl.BackgroundProperty, SurfacePressed) }
+            },
+        };
+
         /// <summary>Todos los estilos combinados.</summary>
-        public static Style[] AllStyles() => ButtonEffectStyles().Concat(TabStripStates()).Concat(CompletionWindowStyles()).ToArray();
+        public static Style[] AllStyles() =>
+            ButtonEffectStyles().Concat(TabStripStates()).Concat(CompletionWindowStyles()).ToArray();
     }
 }

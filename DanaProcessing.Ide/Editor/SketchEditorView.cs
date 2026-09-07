@@ -57,108 +57,15 @@ namespace DanaProcessing.Ide.Editor
             Styles.AddRange(ClayTheme.TabStripStates());
 
             // ================================================================
-            // TOOLBAR
-            // ================================================================
-
-            var toolbarContainer = new Border
-            {
-                Background = ClayTheme.SurfaceRaised,
-                Padding = new Thickness(12, 8, 12, 8),
-                Height = 52,
-            };
-
-            var toolbarGrid = new Grid
-            {
-                ColumnDefinitions = new ColumnDefinitions
-                {
-                    new ColumnDefinition { Width = GridLength.Auto },
-                    new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) },
-                    new ColumnDefinition { Width = GridLength.Auto },
-                }
-            };
-
-            var leftPanel = new StackPanel
-            {
-                Orientation = Orientation.Horizontal,
-                Spacing = 8,
-                VerticalAlignment = VerticalAlignment.Center,
-            };
-
-            // ================================================================
-            // BOTONES CON CLASES PARA ACTIVAR LOS ESTILOS DE HOVER
-            // ================================================================
-
-            var newButton = new Button
-            {
-                Content = "Nuevo",
-                Classes = { "clay-secondary" },  // ← Clave: la clase activa los estilos
-                Padding = new Thickness(14, 8),
-                FontSize = 13,
-            };
-            leftPanel.Children.Add(newButton);
-
-            var openButton = new Button
-            {
-                Content = "Abrir...",
-                Classes = { "clay-secondary" },
-                Padding = new Thickness(14, 8),
-                FontSize = 13,
-            };
-            leftPanel.Children.Add(openButton);
-
-            // Separador
-            leftPanel.Children.Add(new Border
-            {
-                Width = 1,
-                Height = 28,
-                Background = new SolidColorBrush(Avalonia.Media.Color.Parse("#E8E2DA")),
-                Margin = new Thickness(4, 0),
-            });
-
-            var saveButton = new Button
-            {
-                Content = "Guardar",
-                Classes = { "clay-secondary" },
-                Padding = new Thickness(14, 8),
-                FontSize = 13,
-            };
-            leftPanel.Children.Add(saveButton);
-
-            var saveAsButton = new Button
-            {
-                Content = "Guardar como...",
-                Classes = { "clay-secondary" },
-                Padding = new Thickness(14, 8),
-                FontSize = 13,
-            };
-            leftPanel.Children.Add(saveAsButton);
-
-            // ================================================================
-            // BOTÓN RUN CON CLASE clay-run
-            // ================================================================
-
-            var runButton = new Button
-            {
-                Content = "▶  Run",
-                Classes = { "clay-run" },  // ← Clase para el botón Run
-                Padding = new Thickness(20, 8),
-                FontSize = 13,
-                FontWeight = FontWeight.SemiBold,
-                HorizontalAlignment = HorizontalAlignment.Right,
-                VerticalAlignment = VerticalAlignment.Center,
-            };
-
-            // Agregar al Grid
-            toolbarGrid.Children.Add(leftPanel);
-
-            Grid.SetColumn(leftPanel, 0);
-            Grid.SetColumn(runButton, 2);
-
-            toolbarContainer.Child = toolbarGrid;
-
-            // ================================================================
             // TAB STRIP
             // ================================================================
+            // Nuevo/Abrir/Guardar/Guardar como ya no viven en una barra propia
+            // acá -- pasaron al menú ☰ colapsable del title bar (ver
+            // MainWindow.BuildFileMenuButton), que llama a AddNewTab/
+            // OpenFileAsync/SaveActiveTabAsync/SaveActiveTabAsAsync más abajo
+            // directamente. Tenerlos duplicados acá (más un botón Run que
+            // nunca llegaba a agregarse al Grid) solo restaba espacio vertical
+            // al editor sin aportar nada que el menú no cubriera ya.
 
             _tabStrip = new TabStrip
             {
@@ -284,9 +191,6 @@ namespace DanaProcessing.Ide.Editor
                 LastChildFill = true,
             };
 
-            DockPanel.SetDock(toolbarContainer, Dock.Top);
-            mainPanel.Children.Add(toolbarContainer);
-
             DockPanel.SetDock(_tabStrip, Dock.Top);
             mainPanel.Children.Add(_tabStrip);
 
@@ -297,12 +201,10 @@ namespace DanaProcessing.Ide.Editor
             // ================================================================
             // EVENTOS
             // ================================================================
-
-            newButton.Click += (_, _) => AddNewTab();
-            openButton.Click += async (_, _) => await OpenFileAsync();
-            saveButton.Click += async (_, _) => await SaveActiveTabAsync();
-            saveAsButton.Click += async (_, _) => await SaveActiveTabAsAsync();
-            runButton.Click += (_, _) => RunSketch();
+            // Nuevo/Abrir/Guardar/Guardar como ahora se disparan desde el menú
+            // ☰ de MainWindow (llaman directo a AddNewTab/OpenFileAsync/
+            // SaveActiveTabAsync/SaveActiveTabAsAsync, públicos más abajo),
+            // así que no hay botones locales que enganchar acá.
 
             AddNewTab();
         }
@@ -502,96 +404,11 @@ namespace DanaProcessing.Ide.Editor
             TabSaved?.Invoke(_activeTab);
         }
 
-        private void RunSketch()
-        {
-            Console.WriteLine("▶ Running sketch...");
-        }
+        // Parche para SketchEditorView.cs — reemplazar el método
+        // DefaultSketchTemplate() (línea ~510, el árbol fractal) por este. El
+        // árbol no se pierde: quedó como sample "Árbol fractal" en
+        // SketchSamples.cs, accesible desde la ventana de Samples.
 
-        private static string DefaultSketchTemplate() =>
-@"
-// Arbol fractal recursivo, adaptado del ejemplo ""Recursive Tree"" de p5.js.
-// Paleta: tronco en rojo oscuro, ramas interpolando de naranja a verde
-// segun la profundidad, hojas/fondo en tonos calidos.
-public class MySketch : Sketch
-{
-    private float _angle;
-
-    private Color _paletteRed;
-    private Color _paletteOrange;
-    private Color _paletteCream;
-    private Color _paletteGreen;
-
-    private const int MaxDepth = 10;
-
-    public override void Setup()
-    {
-        Size(800, 600);
-        ColorMode(ColorSpaceMode.RGB);
-
-        _paletteRed = new Color(0x8B, 0x26, 0x26);
-        _paletteOrange = new Color(0xEF, 0x69, 0x05);
-        _paletteCream = new Color(0xF1, 0xE5, 0xA1);
-        _paletteGreen = new Color(0x48, 0x6C, 0x2F);
-    }
-
-    public override void Draw()
-    {
-        Background(Red(_paletteCream), Green(_paletteCream), Blue(_paletteCream));
-
-        _angle = (MouseX / Width) * 90f;
-        _angle = Min(_angle, 90f);
-
-        Translate(Width / 2f, Height);
-
-        StrokeWeight(6);
-        Stroke(Red(_paletteRed), Green(_paletteRed), Blue(_paletteRed));
-        Line(0, 0, 0, -180);
-
-        Translate(0, -180);
-        Branch(180, 0);
-    }
-
-    public override void KeyPressed()
-    {
-        if (Key == 's')
-            SaveFrame();
-    }
-
-    private void Branch(float length, int level)
-    {
-        float depthRatio = Constrain((float)level / MaxDepth, 0f, 1f);
-        var branchColor = LerpColor(_paletteOrange, _paletteGreen, depthRatio);
-        Stroke(Red(branchColor), Green(branchColor), Blue(branchColor));
-        StrokeWeight(Map(depthRatio, 0f, 1f, 5f, 1f));
-
-        length *= 0.66f;
-
-        if (length > 2)
-        {
-            PushMatrix();
-            Rotate(_angle);
-            Line(0, 0, 0, -length);
-            Translate(0, -length);
-            Branch(length, level + 1);
-            PopMatrix();
-
-            PushMatrix();
-            Rotate(-_angle);
-            Line(0, 0, 0, -length);
-            Translate(0, -length);
-            Branch(length, level + 1);
-            PopMatrix();
-        }
-        else
-        {
-            NoStroke();
-            Fill(Red(_paletteGreen), Green(_paletteGreen), Blue(_paletteGreen));
-            Ellipse(0, 0, 6, 6);
-            NoFill();
-            Stroke(Red(branchColor), Green(branchColor), Blue(branchColor));
-        }
-    }
-}
-";
+        private static string DefaultSketchTemplate() => SketchSamples.All[2].Source; // "Cubo 3D (Silk.NET)"
     }
 }

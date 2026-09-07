@@ -64,10 +64,44 @@ namespace DanaProcessing
     /// (Setup/Draw), input (mouse/keyboard), time, or randomness/noise —
     /// those stay on Sketch, since PGraphics doesn't have or need them.
     /// </summary>
-    public abstract class GraphicsContext : IDisposable
+    public abstract partial class GraphicsContext : IDisposable
     {
         public int Width { get; protected set; }
         public int Height { get; protected set; }
+
+        /// <summary>
+        /// Which rendering pipeline this context is using — Renderer2D
+        /// unless Size()/CreateGraphics() explicitly requested Renderer3D.
+        /// Set once via SetRenderer() and locked from then on. See
+        /// RendererKind and IGraphicsBackend for the 3D roadmap.
+        /// </summary>
+        public RendererKind Renderer { get; private set; } = RendererKind.Renderer2D;
+
+        private bool _rendererLocked;
+
+        /// <summary>
+        /// The active backend, set by PGraphics's constructor (Sketch
+        /// doesn't use this yet — its canvas is host-provided per frame
+        /// regardless of renderer; see SetCanvas). Null until then. 3D-only
+        /// methods (GraphicsContext.3D.cs) cast this to Renderer3DBackend
+        /// after checking Renderer == RendererKind.Renderer3D.
+        /// </summary>
+        private protected IGraphicsBackend? _backend;
+
+        /// <summary>
+        /// Fixes Renderer for this context's lifetime. Called by Sketch's
+        /// Size() and by PGraphics's constructor — never by sketch code
+        /// directly. Calling it again with a different value than what's
+        /// already locked in throws, matching Processing's own restriction
+        /// that size(w,h,renderer) can't switch renderers mid-sketch.
+        /// </summary>
+        internal void SetRenderer(RendererKind renderer)
+        {
+            if (_rendererLocked && renderer != Renderer)
+                throw new InvalidOperationException("El renderer no se puede cambiar después de haber sido fijado — llamá a Size()/CreateGraphics() una sola vez con el renderer deseado.");
+            Renderer = renderer;
+            _rendererLocked = true;
+        }
 
         /// <summary>The canvas this context draws into. Sketch sets this each frame via SetCanvas(); PGraphics sets it once, in its constructor.</summary>
         protected SKCanvas Canvas { get; set; } = null!;
@@ -1198,8 +1232,21 @@ namespace DanaProcessing
         // Transformations
         // =====================================================================
 
-        public void PushMatrix() { EnsureReady(); Canvas.Save(); }
-        public void PopMatrix() { EnsureReady(); Canvas.Restore(); }
+        public void PushMatrix()
+        {
+            EnsureReady();
+            Canvas.Save();
+            if (Renderer == RendererKind.Renderer3D)
+                ((Renderer3DBackend)_backend!).PushMatrix();
+        }
+
+        public void PopMatrix()
+        {
+            EnsureReady();
+            Canvas.Restore();
+            if (Renderer == RendererKind.Renderer3D)
+                ((Renderer3DBackend)_backend!).PopMatrix();
+        }
         public void Translate(float x, float y) { EnsureReady(); Canvas.Translate(x, y); }
 
         /// <summary>Rotates in degrees — a deliberate deviation from Processing's radians-based rotate(), since degrees maps directly to SkiaSharp's RotateDegrees.</summary>
@@ -1327,7 +1374,8 @@ namespace DanaProcessing
         }
 
         /// <summary>Creates a new offscreen drawing buffer, like Processing's createGraphics(w, h). Available here (not just on Sketch) so buffers can nest.</summary>
-        public PGraphics CreateGraphics(int w, int h) => new PGraphics(w, h);
+        /// <summary>Creates a new offscreen buffer, like Processing's createGraphics(). Pass RendererKind.Renderer3D once that backend exists — for now it throws NotImplementedException, same as Sketch's Size().</summary>
+        public PGraphics CreateGraphics(int w, int h, RendererKind renderer = RendererKind.Renderer2D) => new PGraphics(w, h, renderer);
 
         /// <summary>Loads a vector shape from an SVG file, like Processing's loadShape(). Requires the SkiaSharp.Extended.Svg NuGet package.</summary>
         public PShape LoadShape(string path) => PShape.LoadSvg(path);
