@@ -1,4 +1,4 @@
-using System;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Shapes;
@@ -11,6 +11,9 @@ using DanaProcessing.AvaloniaHost;
 using DanaProcessing.Ide.Compilation;
 using DanaProcessing.Ide.Editor;
 using DanaProcessing.Ide.Theme;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace DanaProcessing.Ide
 {
@@ -38,6 +41,22 @@ namespace DanaProcessing.Ide
         private readonly AvaloniaSketchCanvas _canvas;
         private readonly TextBlock _outputText;
         private readonly Border _outputPanel;
+
+        // --- Panel de abajo: dos tabs en vez de un solo panel de errores de
+        // Run. "Live" = diagnósticos de Roslyn mientras se escribe (los mismos
+        // que ahora subrayan el editor, ver EditorDiagnosticsColorizer); "Run"
+        // = lo que siempre hubo acá, la salida de SketchCompiler.Compile()
+        // tras apretar Run. ---
+        private enum BottomTab { Live, Run }
+        private BottomTab _activeBottomTab = BottomTab.Live;
+        private readonly Button _liveErrorsTabButton;
+        private readonly Button _runErrorsTabButton;
+        private readonly Ellipse _liveTabDot;
+        private readonly Ellipse _runTabDot;
+        private readonly StackPanel _liveDiagnosticsList;
+        private readonly ScrollViewer _liveDiagnosticsScroll;
+        private readonly ScrollViewer _runOutputScroll;
+
         private readonly Border _editorGlow;
         private readonly Border _canvasGlow;
         private readonly Ellipse _statusDot;
@@ -93,6 +112,7 @@ namespace DanaProcessing.Ide
             _canvas = new AvaloniaSketchCanvas(new PlaceholderSketch());
             _canvas.SketchSizeChanged += (_, _) => RecomputeCanvasOversized();
             _editorView.CaretPositionChanged += (line, col) => _caretLabel.Text = $"Ln {line}, Col {col}";
+            _editorView.LiveDiagnosticsChanged += UpdateLiveDiagnostics;
 
             var runButton = new Button
             {
@@ -140,43 +160,83 @@ namespace DanaProcessing.Ide
                 FontFamily = ClayTheme.FontMono,
                 FontSize = 12,
                 TextWrapping = Avalonia.Media.TextWrapping.Wrap,
-                Margin = new Avalonia.Thickness(16, 10, 16, 12),
+            };
+            _runOutputScroll = new ScrollViewer
+            {
+                Content = _outputText,
+                MaxHeight = 150,
+                Margin = new Avalonia.Thickness(16, 8, 16, 12),
             };
 
-            var errorHeader = new StackPanel
+            _liveDiagnosticsList = new StackPanel { Spacing = 4 };
+            _liveDiagnosticsScroll = new ScrollViewer
             {
-                Orientation = Orientation.Horizontal,
-                Margin = new Avalonia.Thickness(16, 12, 16, 0),
-                Spacing = 8,
-                Children =
+                Content = _liveDiagnosticsList,
+                MaxHeight = 150,
+                Margin = new Avalonia.Thickness(16, 8, 16, 12),
+            };
+
+            _liveTabDot = new Ellipse { Width = 7, Height = 7, Fill = ClayTheme.TextMuted, VerticalAlignment = VerticalAlignment.Center };
+            _liveErrorsTabButton = new Button
+            {
+                Classes = { "clay-toggle" },
+                Padding = new Avalonia.Thickness(14, 6),
+                FontSize = 12,
+                Content = new StackPanel
                 {
-                    new Ellipse { Width = 8, Height = 8, Fill = ClayTheme.Danger, VerticalAlignment = VerticalAlignment.Center },
-                    new TextBlock
+                    Orientation = Orientation.Horizontal,
+                    Spacing = 6,
+                    Children =
                     {
-                        Text = "Error de compilación",
-                        Foreground = ClayTheme.Danger,
-                        FontFamily = ClayTheme.FontDisplay,
-                        FontWeight = FontWeight.SemiBold,
-                        FontSize = 12.5,
+                        _liveTabDot,
+                        new TextBlock { Text = "Errores en vivo" }
                     }
                 }
             };
+            _liveErrorsTabButton.Click += (_, _) => SetBottomTab(BottomTab.Live);
+
+            _runTabDot = new Ellipse { Width = 7, Height = 7, Fill = ClayTheme.TextMuted, VerticalAlignment = VerticalAlignment.Center };
+            _runErrorsTabButton = new Button
+            {
+                Classes = { "clay-toggle" },
+                Padding = new Avalonia.Thickness(14, 6),
+                FontSize = 12,
+                Content = new StackPanel
+                {
+                    Orientation = Orientation.Horizontal,
+                    Spacing = 6,
+                    Children =
+                    {
+                        _runTabDot,
+                        new TextBlock { Text = "Errores de Run" }
+                    }
+                }
+            };
+            _runErrorsTabButton.Click += (_, _) => SetBottomTab(BottomTab.Run);
+
+            var bottomTabsRow = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                Spacing = 6,
+                Margin = new Avalonia.Thickness(16, 10, 16, 0),
+                Children = { _liveErrorsTabButton, _runErrorsTabButton }
+            };
+
+            var bottomBody = new Panel { Children = { _liveDiagnosticsScroll, _runOutputScroll } };
 
             _outputPanel = new Border
             {
-                Background = ClayTheme.DangerSurface,
-                BorderBrush = ClayTheme.Danger,
-                BorderThickness = new Avalonia.Thickness(0, 2, 0, 0),
+                Background = ClayTheme.SurfaceRaised,
+                BorderBrush = new SolidColorBrush(Avalonia.Media.Color.Parse("#E8E2DA")),
+                BorderThickness = new Avalonia.Thickness(0, 1, 0, 0),
                 CornerRadius = ClayTheme.RadiusPanelTop,
                 BoxShadow = ClayTheme.ShadowSubtle,
                 IsVisible = false,
-                MaxHeight = 200,
+                MaxHeight = 230,
                 Margin = new Avalonia.Thickness(20, 0, 20, 16),
-                Child = new StackPanel
-                {
-                    Children = { errorHeader, new ScrollViewer { Content = _outputText, MaxHeight = 150 } }
-                }
+                Child = new StackPanel { Children = { bottomTabsRow, bottomBody } }
             };
+            SetBottomTab(BottomTab.Live);
 
             // Editor and canvas each get their own "clay card": rounded,
             // shadowed, clipped so children never poke past the rounded
@@ -800,7 +860,10 @@ namespace DanaProcessing.Ide
 
             if (result.Success)
             {
-                _outputPanel.IsVisible = false;
+                _outputText.Text = "";
+                _runTabDot.Fill = ClayTheme.TextMuted;
+                RefreshBottomPanelVisibility();
+
                 _canvas.LoadSketch(result.Sketch!);
                 _hasRunOnce = true;
                 _statusDot.Fill = ClayTheme.Success;
@@ -817,12 +880,112 @@ namespace DanaProcessing.Ide
             else
             {
                 _outputText.Text = string.Join(Environment.NewLine + Environment.NewLine, result.Errors);
-                _outputPanel.IsVisible = true;
+                _runTabDot.Fill = ClayTheme.Danger;
+                // Un fallo de Run es lo que el usuario vino a mirar -- llevarlo
+                // a esa pestaña aunque estuviera parado en "Errores en vivo".
+                SetBottomTab(BottomTab.Run);
+                RefreshBottomPanelVisibility();
 
                 _statusDot.Fill = ClayTheme.Danger;
                 _statusLabel.Text = "Error de compilación";
                 ((Border)_statusPill).Background = ClayTheme.DangerSurface;
             }
+        }
+
+        /// <summary>
+        /// Swaps which of the two bottom-panel bodies is visible and updates the
+        /// "active" styling on the matching tab button (same clay-toggle/active pattern
+        /// as BuildPaneToggle's Código/Resultado pill).
+        /// </summary>
+        private void SetBottomTab(BottomTab tab)
+        {
+            _activeBottomTab = tab;
+            _liveErrorsTabButton.Classes.Set("active", tab == BottomTab.Live);
+            _runErrorsTabButton.Classes.Set("active", tab == BottomTab.Run);
+            _liveDiagnosticsScroll.IsVisible = tab == BottomTab.Live;
+            _runOutputScroll.IsVisible = tab == BottomTab.Run;
+        }
+
+        /// <summary>Called every time SketchEditorView's live Roslyn diagnostics change
+        /// (debounced as the user types, or immediately on tab switch).</summary>
+        private void UpdateLiveDiagnostics(IReadOnlyList<LiveDiagnosticInfo> diagnostics)
+        {
+            _liveDiagnosticsList.Children.Clear();
+            foreach (var d in diagnostics.OrderBy(d => d.Offset))
+                _liveDiagnosticsList.Children.Add(BuildDiagnosticRow(d));
+
+            var hasErrors = diagnostics.Any(d => d.IsError);
+            var hasWarnings = diagnostics.Any(d => !d.IsError);
+            _liveTabDot.Fill = hasErrors ? ClayTheme.Danger
+                : hasWarnings ? new SolidColorBrush(Avalonia.Media.Color.Parse("#D9A63E"))
+                : ClayTheme.TextMuted;
+
+            RefreshBottomPanelVisibility();
+
+            // Un error de Run que el usuario todavía no revisó (_runTabDot en
+            // rojo) no debería taparse solo porque apareció un error en vivo
+            // mientras tanto -- pero si ya estaba mirando "Errores en vivo", o
+            // si Run nunca falló, seguir mostrando esta pestaña es lo esperado.
+            if (diagnostics.Count > 0 && (_activeBottomTab == BottomTab.Live || _runTabDot.Fill == ClayTheme.TextMuted))
+                SetBottomTab(BottomTab.Live);
+        }
+
+        /// <summary>One clickable row in the "Errores en vivo" tab: clicking it jumps the
+        /// editor's caret to that diagnostic's location.</summary>
+        private Control BuildDiagnosticRow(LiveDiagnosticInfo d)
+        {
+            var dot = new Ellipse
+            {
+                Width = 6,
+                Height = 6,
+                VerticalAlignment = VerticalAlignment.Center,
+                Fill = d.IsError ? ClayTheme.Danger : new SolidColorBrush(Avalonia.Media.Color.Parse("#D9A63E")),
+            };
+            var locationText = new TextBlock
+            {
+                Text = $"({d.Line},{d.Column})",
+                Foreground = ClayTheme.TextMuted,
+                FontFamily = ClayTheme.FontMono,
+                FontSize = 11.5,
+                VerticalAlignment = VerticalAlignment.Center,
+            };
+            var messageText = new TextBlock
+            {
+                Text = d.Message,
+                Foreground = ClayTheme.TextPrimary,
+                FontFamily = ClayTheme.FontMono,
+                FontSize = 12,
+                TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+                VerticalAlignment = VerticalAlignment.Center,
+            };
+
+            var row = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                Spacing = 8,
+                Children = { dot, locationText, messageText },
+            };
+
+            var button = new Button
+            {
+                Content = row,
+                Background = Brushes.Transparent,
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                HorizontalContentAlignment = HorizontalAlignment.Left,
+                Padding = new Avalonia.Thickness(6, 3),
+                CornerRadius = new CornerRadius(6),
+            };
+            button.Click += (_, _) => _editorView.GoToOffset(d.Offset);
+            return button;
+        }
+
+        /// <summary>The panel is only worth showing when at least one of the two tabs has
+        /// something in it — no empty red box sitting there by default.</summary>
+        private void RefreshBottomPanelVisibility()
+        {
+            var hasLive = _liveDiagnosticsList.Children.Count > 0;
+            var hasRun = !string.IsNullOrEmpty(_outputText.Text);
+            _outputPanel.IsVisible = hasLive || hasRun;
         }
 
         public void LoadAndRunSketch(string source)

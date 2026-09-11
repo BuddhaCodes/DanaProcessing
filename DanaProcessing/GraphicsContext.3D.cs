@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 
 namespace DanaProcessing
 {
@@ -9,10 +10,12 @@ namespace DanaProcessing
         // Everything here requires Renderer3D (see Sketch.Size()/
         // CreateGraphics()) and throws otherwise, the same way Processing
         // itself errors when box()/rotateZ()/etc. are called under the
-        // default 2D renderer. 3D Primitives, Camera/Projection, Lights,
-        // and Material Properties are done — see the "NOT YET BUILT" list
-        // at the bottom of Renderer3DBackend.cs for beginCamera()/
-        // endCamera(), normal(), and PShader.
+        // default 2D renderer. 3D Primitives, Camera/Projection (including
+        // BeginCamera()/EndCamera()), Lights, Material Properties,
+        // Coordinates (ModelX/Y/Z()/ScreenX/Y/Z()), the axis-angle
+        // Rotate(angle,x,y,z), and PShader are done — see the "NOT YET
+        // BUILT" list at the bottom of Renderer3DBackend.cs for what's
+        // left (just normal(), and only partially at that).
         // =====================================================================
 
         private Renderer3DBackend Require3D([System.Runtime.CompilerServices.CallerMemberName] string caller = "")
@@ -82,6 +85,13 @@ namespace DanaProcessing
         {
             EnsureReady();
             Require3D().Scale(x, y, z);
+        }
+
+        /// <summary>Rotates by angleRadians around the arbitrary axis (x, y, z), like Processing's rotate(angle, x, y, z) — the P3D-only overload of rotate(). Takes radians, matching RotateX()/RotateY()/RotateZ() (not the 2D Rotate(degrees), which deliberately takes degrees — see its own remark). (x, y, z) doesn't need to be pre-normalized; a zero-length axis is a no-op, matching how Processing itself treats it. Useful for a single combined rotation (e.g. from a trackball/quaternion) instead of stacking RotateX()+RotateY()+RotateZ(), which composes differently depending on call order and can twist in unexpected ways once the object is no longer close to its rest orientation.</summary>
+        public void Rotate(float angleRadians, float x, float y, float z)
+        {
+            EnsureReady();
+            Require3D().RotateAxis(angleRadians, x, y, z);
         }
 
         // =====================================================================
@@ -273,6 +283,125 @@ namespace DanaProcessing
         {
             EnsureReady();
             Require3D().SetMaterialShininess(shine);
+        }
+
+        // =====================================================================
+        // Camera (advanced) — https://processing.org/reference/beginCamera_.html
+        // and endCamera(). Same Require3D() gate as everything else in this
+        // file. Between these two calls, Translate()/RotateX()/RotateY()/
+        // RotateZ()/Scale() place a "camera" the same way they'd place any
+        // object — natural, intuitive composition — and EndCamera() inverts
+        // the result into the actual view matrix once, at the end. That's
+        // what real Processing's own reference means by "transformations
+        // ... are equivalent to moving the camera around, but you must take
+        // the inverse": a camera's OWN placement (local-to-world, like an
+        // object) and the VIEW matrix used for rendering (world-to-eye) are
+        // each other's inverse, not the same matrix. Start from a known
+        // placement with Camera()/the 9-argument Camera() overload right
+        // before BeginCamera() — same idiom as real Processing — since
+        // BeginCamera() itself continues from whatever camera state was
+        // already there rather than resetting it.
+        // =====================================================================
+
+        /// <summary>Starts placing the camera with Translate()/RotateX()/RotateY()/RotateZ()/Scale() — the same calls, composed the same way, you'd use to place any object — like Processing's beginCamera(). Must be paired with EndCamera(), which turns the result into the actual view matrix. Continues from the current camera (see this section's own remarks) rather than resetting — call Camera() first for a known starting point, same as real Processing.</summary>
+        public void BeginCamera()
+        {
+            EnsureReady();
+            Require3D().BeginCameraEdit();
+        }
+
+        /// <summary>Finishes placing the camera and turns that placement into the actual view matrix used for rendering (by inverting it), like Processing's endCamera().</summary>
+        public void EndCamera()
+        {
+            EnsureReady();
+            Require3D().EndCameraEdit();
+        }
+
+        // =====================================================================
+        // Coordinates — https://processing.org/reference/modelX_.html and
+        // siblings (modelY/modelZ/screenX/screenY/screenZ). Same Require3D()
+        // gate as everything else in this file.
+        // =====================================================================
+
+        /// <summary>Returns the X coordinate of (x, y, z) after applying the current model and camera transforms, like Processing's modelX(x, y, z). Typical use: Translate()/RotateX()/etc. into position, call ModelX/Y/Z(0, 0, 0) to record that world position, then PopMatrix() and Translate() straight to it later.</summary>
+        public float ModelX(float x, float y, float z)
+        {
+            EnsureReady();
+            return Require3D().ModelPosition(x, y, z).X;
+        }
+
+        /// <summary>Returns the Y coordinate of (x, y, z) after applying the current model and camera transforms, like Processing's modelY(x, y, z).</summary>
+        public float ModelY(float x, float y, float z)
+        {
+            EnsureReady();
+            return Require3D().ModelPosition(x, y, z).Y;
+        }
+
+        /// <summary>Returns the Z coordinate of (x, y, z) after applying the current model and camera transforms, like Processing's modelZ(x, y, z).</summary>
+        public float ModelZ(float x, float y, float z)
+        {
+            EnsureReady();
+            return Require3D().ModelPosition(x, y, z).Z;
+        }
+
+        /// <summary>Returns the screen-space X pixel coordinate that (x, y, z) projects to, like Processing's screenX(x, y, z). Same pixel convention as MouseX (0 at the left edge).</summary>
+        public float ScreenX(float x, float y, float z)
+        {
+            EnsureReady();
+            return Require3D().ScreenPosition(x, y, z).X;
+        }
+
+        /// <summary>Returns the screen-space Y pixel coordinate that (x, y, z) projects to, like Processing's screenY(x, y, z). Same pixel convention as MouseY (0 at the top edge).</summary>
+        public float ScreenY(float x, float y, float z)
+        {
+            EnsureReady();
+            return Require3D().ScreenPosition(x, y, z).Y;
+        }
+
+        /// <summary>Returns the normalized device depth that (x, y, z) projects to, like Processing's screenZ(x, y, z). 0 is at the near clipping plane, 1 is at the far clipping plane — DanaProcessing's own convention (no PMatrix3D here to delegate to for Processing's exact formula), but useful the same way: smaller means closer to the camera.</summary>
+        public float ScreenZ(float x, float y, float z)
+        {
+            EnsureReady();
+            return Require3D().ScreenPosition(x, y, z).Z;
+        }
+
+        // =====================================================================
+        // Normal — https://processing.org/reference/normal_.html. Same
+        // Require3D() gate as everything else in this file.
+        // =====================================================================
+
+        /// <summary>Sets the current normal vector, like Processing's normal(nx, ny, nz). NOTE: real Processing's normal() only affects vertices defined afterward inside beginShape()/vertex(), which DanaProcessing's 3D path doesn't have yet — Box()/Sphere() are the only 3D primitives, and compute their own normals from the mesh. This stores the value for real rather than being a stub, so it's ready to be read once a vertex-based 3D shape API exists — it just has no visible effect yet.</summary>
+        public void Normal(float nx, float ny, float nz)
+        {
+            EnsureReady();
+            Require3D().SetCurrentNormal(nx, ny, nz);
+        }
+
+        // =====================================================================
+        // PShader — https://processing.org/reference/PShader.html and
+        // shader()/resetShader()/loadShader(). Same Require3D() gate as
+        // everything else in this file. See PShader's own remarks for the
+        // scope of what a custom shader here can do.
+        // =====================================================================
+
+        /// <summary>Loads a GLSL fragment shader from disk, reusing DanaProcessing's built-in vertex shader, like Processing's loadShader(fragFilename). Doesn't touch the GPU until it's passed to Shader().</summary>
+        public PShader LoadShader(string fragFilename) => new PShader(null, File.ReadAllText(fragFilename));
+
+        /// <summary>Loads a GLSL vertex+fragment shader pair from disk, like Processing's loadShader(fragFilename, vertFilename) — note the parameter order matches Processing's own (fragment path first, then vertex) even though it reads backwards. The vertex shader must use DanaProcessing's fixed 3D attribute layout — see PShader's own remarks.</summary>
+        public PShader LoadShader(string fragFilename, string vertFilename) => new PShader(File.ReadAllText(vertFilename), File.ReadAllText(fragFilename));
+
+        /// <summary>Activates shader for subsequent Box()/Sphere() draws, like Processing's shader(shader). Stays active across frames until ResetShader() or another Shader() call.</summary>
+        public void Shader(PShader shader)
+        {
+            EnsureReady();
+            Require3D().SetActiveShader(shader);
+        }
+
+        /// <summary>Reverts to DanaProcessing's built-in 3D shader, like Processing's resetShader().</summary>
+        public void ResetShader()
+        {
+            EnsureReady();
+            Require3D().ResetShaderProgram();
         }
     }
 }

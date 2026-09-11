@@ -46,12 +46,14 @@ namespace DanaProcessing
     /// First spike of a GPU-backed IGraphicsBackend: OpenGL 3.3 (core
     /// profile) via Silk.NET, rendering into an offscreen framebuffer. Two
     /// primitives (Box(), Sphere()), a full camera/projection API
-    /// (Camera()/Perspective()/Ortho()/Frustum()), a multi-light shading
-    /// model (Lights()/AmbientLight()/DirectionalLight()/PointLight()/
-    /// SpotLight(), up to 8 lights like real Processing), and Material
-    /// Properties (Ambient()/Specular()/Emissive()/Shininess()). No
-    /// PShader yet — see the "not yet built" list at the bottom of this
-    /// file for that plus beginCamera()/endCamera() and normal().
+    /// (Camera()/Perspective()/Ortho()/Frustum()/BeginCamera()/EndCamera()),
+    /// a multi-light shading model (Lights()/AmbientLight()/
+    /// DirectionalLight()/PointLight()/SpotLight(), up to 8 lights like real
+    /// Processing), Material Properties (Ambient()/Specular()/Emissive()/
+    /// Shininess()), model/screen coordinate queries (ModelX/Y/Z(),
+    /// ScreenX/Y/Z()), an axis-angle Rotate(angle,x,y,z), and a scoped
+    /// PShader (Shader()/ResetShader()) -- see the "not yet built" list at
+    /// the bottom of this file for the remaining gaps.
     ///
     /// REQUIRED NUGET PACKAGES (not restorable in the sandbox this was
     /// written in — add these locally and expect small fixes on first
@@ -103,6 +105,16 @@ namespace DanaProcessing
         private readonly GL _gl;
 
         private uint _fbo, _colorTexture, _depthRbo;
+
+        // _defaultShaderProgram is DanaProcessing's own built-in shader,
+        // compiled once in SetUpShader() and never swapped out from under
+        // itself. _shaderProgram is whichever program is ACTIVE right now
+        // (== _defaultShaderProgram unless a PShader is active via
+        // Shader() -- see SetActiveShader()/ResetShaderProgram() and the
+        // PShader remarks near the bottom of this file). DrawBox()/
+        // DrawSphere() always bind _shaderProgram, never _defaultShaderProgram
+        // directly, so they automatically pick up whichever is current.
+        private uint _defaultShaderProgram;
         private uint _shaderProgram;
         private uint _cubeVao, _cubeVbo;
         private int _uModelLoc, _uViewLoc, _uProjectionLoc, _uFillColorLoc, _uEyePosLoc;
@@ -178,6 +190,38 @@ namespace DanaProcessing
         private readonly Stack<Matrix4x4> _modelStack = new();
         private Matrix4x4 _view;
         private Matrix4x4 _projection;
+
+        // BeginCamera()/EndCamera() -- https://processing.org/reference/beginCamera_.html.
+        // MUST NOT just point Translate()/RotateX()/RotateY()/RotateZ()/
+        // Scale() at _view the same way they normally target _model -- a
+        // previous version of this file did exactly that, and it's wrong.
+        // _view is a world-TO-eye transform; _model is a local-TO-world
+        // (placement) transform; they're each other's INVERSE in spirit,
+        // not the same kind of thing, so composing "new transform on the
+        // left" onto _view directly rotates/translates the whole WORLD
+        // around the origin rather than moving the CAMERA the way the
+        // calls look like they should. What real Processing actually does
+        // (and what beginCamera()'s reference doc means by "transformations
+        // ... are equivalent to moving the camera around, but you must take
+        // the inverse"): treat the interval between BeginCameraEdit() and
+        // EndCameraEdit() as placing an OBJECT called "camera" -- Translate/
+        // Rotate/Scale compose onto _cameraPose using the exact same rule
+        // that correctly places any object via _model -- and then invert
+        // the result into the actual world-to-eye _view once, at
+        // EndCameraEdit(). _cameraPose only holds a meaningful value while
+        // _editingCamera is true.
+        private bool _editingCamera;
+        private Matrix4x4 _cameraPose;
+
+        // normal() -- https://processing.org/reference/normal_.html. Real
+        // Processing only means anything inside beginShape()/vertex(),
+        // which DanaProcessing's 3D path doesn't have yet (Box()/Sphere()
+        // are the only 3D primitives, and compute their own normals from
+        // the mesh). This still stores the value for real, though, rather
+        // than being a stub: once a vertex-based 3D shape API exists, it
+        // has a real place to read the current normal from. Processing's
+        // own default before any normal() call is (0, 0, 1).
+        private Vector3 _currentNormal = new(0f, 0f, 1f);
 
         // World-space camera position, tracked alongside _view by
         // SetDefaultView()/SetView() -- used for the specular half-vector.
@@ -430,41 +474,74 @@ void main()
 
         private void SetUpShader()
         {
-            uint vert = CompileShader(ShaderType.VertexShader, VertexShaderSource);
-            uint frag = CompileShader(ShaderType.FragmentShader, FragmentShaderSource);
+            _defaultShaderProgram = CompileProgram(VertexShaderSource, FragmentShaderSource);
+            _shaderProgram = _defaultShaderProgram;
+            BindUniformLocations(_shaderProgram);
+        }
 
-            _shaderProgram = _gl.CreateProgram();
-            _gl.AttachShader(_shaderProgram, vert);
-            _gl.AttachShader(_shaderProgram, frag);
-            _gl.LinkProgram(_shaderProgram);
-            _gl.GetProgram(_shaderProgram, ProgramPropertyARB.LinkStatus, out int linkStatus);
+        // Compiles+links a full program from a vertex/fragment source pair
+        // and returns its handle, WITHOUT touching _shaderProgram or any
+        // uniform-location field -- shared by SetUpShader() (the built-in
+        // pipeline) and SetActiveShader() (a custom PShader), each of which
+        // decides for itself when to make the result current via
+        // BindUniformLocations(). On a link failure, cleans up the partially
+        // created program/shaders before throwing rather than leaking them.
+        private uint CompileProgram(string vertexSource, string fragmentSource)
+        {
+            uint vert = CompileShader(ShaderType.VertexShader, vertexSource);
+            uint frag = CompileShader(ShaderType.FragmentShader, fragmentSource);
+
+            uint program = _gl.CreateProgram();
+            _gl.AttachShader(program, vert);
+            _gl.AttachShader(program, frag);
+            _gl.LinkProgram(program);
+            _gl.GetProgram(program, ProgramPropertyARB.LinkStatus, out int linkStatus);
+
             if (linkStatus == 0)
-                throw new InvalidOperationException($"Error linkeando el shader 3D: {_gl.GetProgramInfoLog(_shaderProgram)}");
+            {
+                string log = _gl.GetProgramInfoLog(program);
+                _gl.DeleteShader(vert);
+                _gl.DeleteShader(frag);
+                _gl.DeleteProgram(program);
+                throw new InvalidOperationException($"Error linkeando el shader 3D: {log}");
+            }
 
             _gl.DeleteShader(vert);
             _gl.DeleteShader(frag);
+            return program;
+        }
 
-            _uModelLoc = _gl.GetUniformLocation(_shaderProgram, "uModel");
-            _uViewLoc = _gl.GetUniformLocation(_shaderProgram, "uView");
-            _uProjectionLoc = _gl.GetUniformLocation(_shaderProgram, "uProjection");
-            _uFillColorLoc = _gl.GetUniformLocation(_shaderProgram, "uFillColor");
-            _uEyePosLoc = _gl.GetUniformLocation(_shaderProgram, "uEyePos");
-            _uMaterialAmbientLoc = _gl.GetUniformLocation(_shaderProgram, "uMaterialAmbient");
-            _uMaterialSpecularLoc = _gl.GetUniformLocation(_shaderProgram, "uMaterialSpecular");
-            _uMaterialEmissiveLoc = _gl.GetUniformLocation(_shaderProgram, "uMaterialEmissive");
-            _uMaterialShininessLoc = _gl.GetUniformLocation(_shaderProgram, "uMaterialShininess");
+        // Fetches every uModel/uView/.../uLight*[] uniform location from
+        // the given (already-linked) program and stores them in the
+        // _uXxxLoc fields that DrawBox()/DrawSphere()/UploadLighting() read
+        // from. Called once for the built-in program (SetUpShader()) and
+        // again any time a PShader becomes active or is reset
+        // (SetActiveShader()/ResetShaderProgram()), since a different
+        // program can have its uniforms at different locations even when
+        // the uniform NAMES match.
+        private void BindUniformLocations(uint program)
+        {
+            _uModelLoc = _gl.GetUniformLocation(program, "uModel");
+            _uViewLoc = _gl.GetUniformLocation(program, "uView");
+            _uProjectionLoc = _gl.GetUniformLocation(program, "uProjection");
+            _uFillColorLoc = _gl.GetUniformLocation(program, "uFillColor");
+            _uEyePosLoc = _gl.GetUniformLocation(program, "uEyePos");
+            _uMaterialAmbientLoc = _gl.GetUniformLocation(program, "uMaterialAmbient");
+            _uMaterialSpecularLoc = _gl.GetUniformLocation(program, "uMaterialSpecular");
+            _uMaterialEmissiveLoc = _gl.GetUniformLocation(program, "uMaterialEmissive");
+            _uMaterialShininessLoc = _gl.GetUniformLocation(program, "uMaterialShininess");
 
-            _uLightCountLoc = _gl.GetUniformLocation(_shaderProgram, "uLightCount");
+            _uLightCountLoc = _gl.GetUniformLocation(program, "uLightCount");
             for (int i = 0; i < MaxLights; i++)
             {
-                _uLightTypeLoc[i] = _gl.GetUniformLocation(_shaderProgram, $"uLightType[{i}]");
-                _uLightColorLoc[i] = _gl.GetUniformLocation(_shaderProgram, $"uLightColor[{i}]");
-                _uLightPositionLoc[i] = _gl.GetUniformLocation(_shaderProgram, $"uLightPosition[{i}]");
-                _uLightDirectionLoc[i] = _gl.GetUniformLocation(_shaderProgram, $"uLightDirection[{i}]");
-                _uLightFalloffLoc[i] = _gl.GetUniformLocation(_shaderProgram, $"uLightFalloff[{i}]");
-                _uLightSpotLoc[i] = _gl.GetUniformLocation(_shaderProgram, $"uLightSpot[{i}]");
-                _uLightSpecularLoc[i] = _gl.GetUniformLocation(_shaderProgram, $"uLightSpecular[{i}]");
-                _uLightHasPositionLoc[i] = _gl.GetUniformLocation(_shaderProgram, $"uLightHasPosition[{i}]");
+                _uLightTypeLoc[i] = _gl.GetUniformLocation(program, $"uLightType[{i}]");
+                _uLightColorLoc[i] = _gl.GetUniformLocation(program, $"uLightColor[{i}]");
+                _uLightPositionLoc[i] = _gl.GetUniformLocation(program, $"uLightPosition[{i}]");
+                _uLightDirectionLoc[i] = _gl.GetUniformLocation(program, $"uLightDirection[{i}]");
+                _uLightFalloffLoc[i] = _gl.GetUniformLocation(program, $"uLightFalloff[{i}]");
+                _uLightSpotLoc[i] = _gl.GetUniformLocation(program, $"uLightSpot[{i}]");
+                _uLightSpecularLoc[i] = _gl.GetUniformLocation(program, $"uLightSpecular[{i}]");
+                _uLightHasPositionLoc[i] = _gl.GetUniformLocation(program, $"uLightHasPosition[{i}]");
             }
         }
 
@@ -477,6 +554,38 @@ void main()
             if (status == 0)
                 throw new InvalidOperationException($"Error compilando shader {type}: {_gl.GetShaderInfoLog(shader)}");
             return shader;
+        }
+
+        // =====================================================================
+        // PShader -- https://processing.org/reference/PShader.html and
+        // shader()/resetShader()/loadShader() (the loadShader() overloads
+        // live on GraphicsContext, next to the other Load*() calls, since
+        // they're plain file reads with no GL work). SCOPE: one program
+        // replaces DanaProcessing's whole 3D pipeline at once -- there's no
+        // per-PShaderFlag (POINTS/LINES/etc.) slot like real Processing,
+        // and a custom vertex shader MUST use the fixed attribute layout
+        // SetUpCubeMesh()/EnsureSphereMesh() upload (location 0 = vec3
+        // position, location 1 = vec3 normal) to work with Box()/Sphere().
+        // =====================================================================
+
+        /// <summary>Compiles (if needed) and activates shader for subsequent Box()/Sphere() draws, like Processing's shader(shader). Recompiles lazily the first time this exact PShader is used with THIS backend -- see PShader's own remarks -- and reuses the compiled program on every later call, including across frames.</summary>
+        public void SetActiveShader(PShader shader)
+        {
+            if (shader.GLProgram == 0 || !ReferenceEquals(shader.CompiledFor, this))
+            {
+                shader.GLProgram = CompileProgram(shader.VertexSource ?? VertexShaderSource, shader.FragmentSource ?? FragmentShaderSource);
+                shader.CompiledFor = this;
+            }
+
+            _shaderProgram = shader.GLProgram;
+            BindUniformLocations(_shaderProgram);
+        }
+
+        /// <summary>Reverts to DanaProcessing's built-in 3D shader, like Processing's resetShader().</summary>
+        public void ResetShaderProgram()
+        {
+            _shaderProgram = _defaultShaderProgram;
+            BindUniformLocations(_shaderProgram);
         }
 
         // A unit cube (1x1x1, centered at the origin) with per-face normals
@@ -838,11 +947,114 @@ void main()
         // operation makes it apply first, so calls compose the way
         // Processing sketches expect -- Translate() then RotateX() rotates
         // around the already-translated origin, not the world origin.
-        public void Translate(float x, float y, float z) => _model = Matrix4x4.CreateTranslation(x, y, z) * _model;
-        public void RotateX(float radians) => _model = Matrix4x4.CreateRotationX(radians) * _model;
-        public void RotateY(float radians) => _model = Matrix4x4.CreateRotationY(radians) * _model;
-        public void RotateZ(float radians) => _model = Matrix4x4.CreateRotationZ(radians) * _model;
-        public void Scale(float x, float y, float z) => _model = Matrix4x4.CreateScale(x, y, z) * _model;
+        // Each one routes to _cameraPose instead of _model while
+        // BeginCameraEdit() is active (i.e. between BeginCamera()/
+        // EndCamera()) -- see the _editingCamera field comment above for
+        // why it's _cameraPose (a placement matrix, composed exactly like
+        // _model) and NOT _view directly.
+        public void Translate(float x, float y, float z)
+        {
+            var t = Matrix4x4.CreateTranslation(x, y, z);
+            if (_editingCamera)
+                _cameraPose = t * _cameraPose;
+            else
+                _model = t * _model;
+        }
+
+        public void RotateX(float radians)
+        {
+            var r = Matrix4x4.CreateRotationX(radians);
+            if (_editingCamera)
+                _cameraPose = r * _cameraPose;
+            else
+                _model = r * _model;
+        }
+
+        public void RotateY(float radians)
+        {
+            var r = Matrix4x4.CreateRotationY(radians);
+            if (_editingCamera)
+                _cameraPose = r * _cameraPose;
+            else
+                _model = r * _model;
+        }
+
+        public void RotateZ(float radians)
+        {
+            var r = Matrix4x4.CreateRotationZ(radians);
+            if (_editingCamera)
+                _cameraPose = r * _cameraPose;
+            else
+                _model = r * _model;
+        }
+
+        public void Scale(float x, float y, float z)
+        {
+            var s = Matrix4x4.CreateScale(x, y, z);
+            if (_editingCamera)
+                _cameraPose = s * _cameraPose;
+            else
+                _model = s * _model;
+        }
+
+        /// <summary>Rotates by radians around the arbitrary axis (x, y, z), like Processing's rotate(angle, x, y, z). Same _editingCamera routing (onto _cameraPose, not _view directly -- see the _editingCamera field comment) and "new transform on the left" composition as Translate()/RotateX()/RotateY()/RotateZ()/Scale() above. A near-zero-length axis is a no-op (mirrors Processing's own handling and avoids normalizing a zero vector into NaN).</summary>
+        public void RotateAxis(float radians, float x, float y, float z)
+        {
+            var axis = new Vector3(x, y, z);
+            if (axis.LengthSquared() < 1e-12f)
+                return;
+            var r = Matrix4x4.CreateFromAxisAngle(Vector3.Normalize(axis), radians);
+            if (_editingCamera)
+                _cameraPose = r * _cameraPose;
+            else
+                _model = r * _model;
+        }
+
+        /// <summary>Starts routing Translate()/RotateX()/RotateY()/RotateZ()/Scale() to a camera PLACEMENT matrix (see the _editingCamera field comment for why it's not _view directly), like Processing's beginCamera(). Snapshots the current camera as that starting placement (Inverse(_view)) so calls made between here and EndCameraEdit() build on top of whatever Camera()/SetView() last established, matching real Processing (which is why the usual idiom calls camera() right before beginCamera() -- to start from a known placement). Must be paired with EndCameraEdit().</summary>
+        public void BeginCameraEdit()
+        {
+            // Falls back to Identity on a (practically impossible, for any
+            // _view actually produced by CreateLookAt) failed inversion,
+            // rather than throwing -- BeginCamera()/EndCamera() are meant to
+            // be safe to wrap around arbitrary transform calls, the same
+            // way PushMatrix()/PopMatrix() never throws.
+            if (!Matrix4x4.Invert(_view, out _cameraPose))
+                _cameraPose = Matrix4x4.Identity;
+            _editingCamera = true;
+        }
+
+        /// <summary>Stops routing transform calls to the camera placement matrix and turns the result back into the actual world-to-eye _view (by inverting it once, here), like Processing's endCamera().</summary>
+        public void EndCameraEdit()
+        {
+            if (Matrix4x4.Invert(_cameraPose, out var view))
+                _view = view;
+            _editingCamera = false;
+        }
+
+        /// <summary>Stores the current normal vector, like Processing's normal(nx, ny, nz) -- see the _currentNormal field remark for why this is state-only until a vertex-based 3D shape API exists.</summary>
+        public void SetCurrentNormal(float nx, float ny, float nz) => _currentNormal = new Vector3(nx, ny, nz);
+
+        /// <summary>Transforms (x, y, z) by the current model AND camera (view) matrices, like Processing's modelX()/modelY()/modelZ() (together, since all three come from the same transformed point).</summary>
+        public Vector3 ModelPosition(float x, float y, float z) => Vector3.Transform(new Vector3(x, y, z), _model);
+
+        /// <summary>Transforms (x, y, z) all the way through model, camera, and projection, then the perspective divide and viewport mapping, like Processing's screenX()/screenY()/screenZ(). X/Y come back in pixels (same convention as MouseX/MouseY); Z comes back as normalized device depth in [0, 1] (0 at the near plane, 1 at the far plane) -- DanaProcessing's own convention, since there's no PMatrix3D here to delegate to for Processing's exact screenZ() formula.</summary>
+        public Vector3 ScreenPosition(float x, float y, float z)
+        {
+            var clip = Vector4.Transform(new Vector3(x, y, z), _model * _view * _projection);
+            float w = MathF.Abs(clip.W) > 1e-6f ? clip.W : 1e-6f;
+            var ndc = new Vector3(clip.X / w, clip.Y / w, clip.Z / w);
+
+            // A diferencia de ClipSpaceYFlip (que corrige la convención Y-down del
+            // MUNDO vs. la cámara Y-up), este flip corrige la convención de FILAS
+            // de GL: glReadPixels da la fila 0 como la parte de ABAJO del
+            // framebuffer, y EndFrame() da vuelta el bitmap entero para que la
+            // imagen final (Skia) tenga la fila 0 arriba. DrawBox()/DrawSphere()
+            // heredan ese segundo flip gratis porque pasan por EndFrame(); esta
+            // función no, así que tiene que aplicarlo a mano acá.
+            float screenX = (ndc.X * 0.5f + 0.5f) * _width;
+            float screenY = (0.5f - ndc.Y * 0.5f) * _height;
+            return new Vector3(screenX, screenY, ndc.Z * 0.5f + 0.5f);
+        }
 
         /// <summary>Draws a box centered on the current origin, sized w x h x d, filled with fillColor and shaded by the active lights (or drawn flat if none are active). Respects the current model transform (Translate/RotateX/Y/Z/Scale/PushMatrix/PopMatrix).</summary>
         public void DrawBox(float w, float h, float d, SKColor fillColor)
@@ -923,7 +1135,18 @@ void main()
                 _gl.DeleteVertexArray(_sphereVao);
                 _gl.DeleteBuffer(_sphereVbo);
             }
-            _gl.DeleteProgram(_shaderProgram);
+            // Delete the built-in program, plus whatever's currently active
+            // if a PShader swapped it out (Shader()) and it's a distinct
+            // handle. Any OTHER program still cached on a PShader instance
+            // (shader.GLProgram, set by SetActiveShader()) is deliberately
+            // left alone here -- it's a handle in THIS backend's now-dead GL
+            // context, but the PShader object itself may outlive this
+            // backend (e.g. reused for a different Sketch run), and
+            // SetActiveShader() already recompiles whenever CompiledFor
+            // doesn't match the backend it's asked to run on.
+            _gl.DeleteProgram(_defaultShaderProgram);
+            if (_shaderProgram != 0 && _shaderProgram != _defaultShaderProgram)
+                _gl.DeleteProgram(_shaderProgram);
             _gl.DeleteFramebuffer(_fbo);
             _gl.DeleteTexture(_colorTexture);
             _gl.DeleteRenderbuffer(_depthRbo);
@@ -933,21 +1156,21 @@ void main()
         }
 
         // =====================================================================
-        // DONE: 3D Primitives (Box/Sphere), Camera/Projection, Lights,
-        // Material Properties (ambient/specular/emissive/shininess).
+        // DONE: 3D Primitives (Box/Sphere), Camera/Projection (including
+        // BeginCamera()/EndCamera()), Lights, Material Properties
+        // (ambient/specular/emissive/shininess), Coordinates (ModelX/Y/Z(),
+        // ScreenX/Y/Z()), and a scoped PShader (Shader()/ResetShader()/
+        // loadShader() -- one program for the whole 3D pipeline, custom
+        // vertex shaders must match the fixed position+normal attribute
+        // layout; see the PShader remarks above SetActiveShader()).
         //
         // NOT YET BUILT (tracked here so it doesn't get lost):
-        // - beginCamera()/endCamera() -- advanced camera customization where
-        //   Translate/Rotate calls between the two apply to the view matrix
-        //   instead of the model matrix. Needs its own routing flag through
-        //   Translate()/RotateX()/Y()/Z()/Scale() above.
-        // - normal() -- sets a custom per-vertex normal inside beginShape()/
-        //   vertex(); no-op until 3D custom shapes (vertex-based, not just
-        //   Box()/Sphere()) exist to attach normals to.
+        // - normal() only stores its value for now (see the _currentNormal
+        //   field remark) -- it has nowhere to attach until a vertex-based
+        //   3D shape API (beginShape()/vertex() under Renderer3D) exists.
         // - Any 3D primitive besides Box() and Sphere() (Processing itself
         //   only has these two built-in 3D primitives, so this list is done
         //   as far as primitives go).
-        // - PShader / custom shaders.
         // - True 2D-in-3D compositing (2D primitives as flat geometry
         //   inside the same MVP pipeline) -- for now 2D draws on top of
         //   whatever 3D rendered, as a separate compositing pass.

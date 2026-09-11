@@ -17,6 +17,10 @@ namespace DanaProcessing.Ide.Compilation
     /// </summary>
     public sealed record CompletionCandidate(string DisplayText, string SortText, string Kind);
 
+    /// <summary>One compiler diagnostic mapped to plain offsets, so the editor UI
+    /// doesn't need to know about TextSpan/Roslyn types.</summary>
+    public sealed record SketchDiagnostic(int Start, int Length, string Message, bool IsError);
+
     /// <summary>
     /// Wraps a single-document Roslyn <see cref="AdhocWorkspace"/> so the editor
     /// can ask "what's valid to type here" using the same CompletionService that
@@ -66,6 +70,32 @@ namespace DanaProcessing.Ide.Compilation
 
             if (!_workspace.TryApplyChanges(solution))
                 throw new InvalidOperationException("No se pudo inicializar el workspace de Roslyn para autocompletado.");
+        }
+
+        /// <summary>Compiler errors/warnings for the document's current text, like the
+        /// red squiggles you'd see in Visual Studio while typing — independent of and
+        /// much cheaper than a full SketchCompiler.Compile() (no emit, no assembly load).</summary>
+        public async Task<IReadOnlyList<SketchDiagnostic>> GetDiagnosticsAsync(CancellationToken ct = default)
+        {
+            var document = _workspace.CurrentSolution.GetDocument(_documentId);
+            if (document is null)
+                return Array.Empty<SketchDiagnostic>();
+
+            var semanticModel = await document.GetSemanticModelAsync(ct);
+            if (semanticModel is null)
+                return Array.Empty<SketchDiagnostic>();
+
+            return semanticModel.GetDiagnostics(cancellationToken: ct)
+                .Where(d => d.Severity is DiagnosticSeverity.Error or DiagnosticSeverity.Warning)
+                // El árbol synthetic de ImplicitUsings.cs no es del usuario -- nunca
+                // mostrarle un error ahí, sería indescifrable.
+                .Where(d => d.Location.SourceTree?.FilePath == "Sketch.cs")
+                .Select(d => new SketchDiagnostic(
+                    d.Location.SourceSpan.Start,
+                    d.Location.SourceSpan.Length,
+                    d.GetMessage(),
+                    d.Severity == DiagnosticSeverity.Error))
+                .ToList();
         }
 
         /// <summary>

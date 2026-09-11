@@ -7,6 +7,7 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Input;
 using Avalonia.Platform.Storage;
+using Avalonia.Threading;
 using AvaloniaEdit;
 using AvaloniaEdit.CodeCompletion;
 using AvaloniaEdit.TextMate;
@@ -28,6 +29,10 @@ namespace DanaProcessing.Ide.Editor
         public event Action<EditorTab>? TabSaved;
         public event Action<int, int>? CaretPositionChanged;
 
+        /// <summary>Fired every time the live diagnostics list changes (debounced text edits,
+        /// or immediately on tab switch) — MainWindow's "Errores en vivo" tab renders from this.</summary>
+        public event Action<IReadOnlyList<LiveDiagnosticInfo>>? LiveDiagnosticsChanged;
+
         private readonly TabStrip _tabStrip;
         private readonly TextEditor _editor;
 
@@ -46,6 +51,18 @@ namespace DanaProcessing.Ide.Editor
         // tab activa (ver ActivateTab) en vez de crear un workspace por tab.
         private readonly RoslynCompletionEngine _completionEngine = new();
         private CompletionWindow? _completionWindow;
+
+        // ================================================================
+        // DIAGNÓSTICOS EN VIVO (antes solo aparecían al apretar Run)
+        // ================================================================
+        // Mismo GetDiagnosticsAsync que ya existía en RoslynCompletionEngine
+        // (semantic model, sin emit) — antes nadie lo llamaba. Se repinta con
+        // un debounce corto en cada cambio de texto, no en cada tecla, para
+        // no relanzar Roslyn en cada letra.
+        private readonly EditorDiagnosticsColorizer _diagnosticsColorizer = new();
+        private readonly DispatcherTimer _diagnosticsTimer;
+        private readonly Border _diagnosticBanner;
+        private readonly TextBlock _diagnosticBannerText;
 
         public SketchEditorView()
         {
@@ -171,7 +188,50 @@ namespace DanaProcessing.Ide.Editor
             ApplyCSharpGrammar();
 
             _editor.TextArea.Caret.PositionChanged += (_, _) =>
+            {
                 CaretPositionChanged?.Invoke(_editor.TextArea.Caret.Line, _editor.TextArea.Caret.Column);
+                UpdateDiagnosticBanner();
+            };
+
+            // ================================================================
+            // DIAGNÓSTICOS EN VIVO
+            // ================================================================
+
+            _editor.TextArea.TextView.LineTransformers.Add(_diagnosticsColorizer);
+
+            _diagnosticBannerText = new TextBlock
+            {
+                FontFamily = ClayTheme.FontBody,
+                FontSize = 12,
+                TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+            };
+            _diagnosticBanner = new Border
+            {
+                Padding = new Thickness(14, 6),
+                Margin = new Thickness(12, 0, 12, 6),
+                CornerRadius = new CornerRadius(8),
+                IsVisible = false,
+                Child = _diagnosticBannerText,
+            };
+
+            // Debounce: recompilar el semantic model en cada tecla sería
+            // carísimo y redundante -- se espera a que el usuario haga una
+            // pausa breve antes de volver a preguntarle a Roslyn.
+            _diagnosticsTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(450) };
+            _diagnosticsTimer.Tick += async (_, _) =>
+            {
+                _diagnosticsTimer.Stop();
+                await RefreshDiagnosticsAsync();
+            };
+
+            _editor.TextChanged += (_, _) =>
+            {
+                // El mensaje bajo el cursor queda desactualizado hasta que el
+                // debounce de abajo recalcule contra el texto nuevo.
+                _diagnosticBanner.IsVisible = false;
+                _diagnosticsTimer.Stop();
+                _diagnosticsTimer.Start();
+            };
 
             // ================================================================
             // AUTOCOMPLETADO (Roslyn CompletionService, no una lista de palabras)
@@ -193,6 +253,9 @@ namespace DanaProcessing.Ide.Editor
 
             DockPanel.SetDock(_tabStrip, Dock.Top);
             mainPanel.Children.Add(_tabStrip);
+
+            DockPanel.SetDock(_diagnosticBanner, Dock.Top);
+            mainPanel.Children.Add(_diagnosticBanner);
 
             mainPanel.Children.Add(editorContainer);
 
@@ -340,6 +403,89 @@ namespace DanaProcessing.Ide.Editor
             _activeTab = tab;
             _editor.Document = tab.Document;
             _completionEngine.UpdateText(tab.Document.Text);
+
+            // Diagnostics are per-document; painting the previous tab's
+            // squiggles for even a frame while the new document's copy
+            // compiles would be worse than showing nothing for a moment.
+            _diagnosticsColorizer.SetDiagnostics(Array.Empty<SketchDiagnostic>());
+            _editor.TextArea.TextView.Redraw();
+            _diagnosticBanner.IsVisible = false;
+            LiveDiagnosticsChanged?.Invoke(Array.Empty<LiveDiagnosticInfo>());
+
+            _diagnosticsTimer.Stop();
+            _ = RefreshDiagnosticsAsync();
+        }
+
+        /// <summary>
+        /// Re-asks Roslyn for diagnostics against the *active* tab's current text and
+        /// repaints the squiggles. Called on a debounce after every edit, and immediately
+        /// on tab switch. GetDiagnosticsAsync is the same semantic-model-only check
+        /// RoslynCompletionEngine already exposed — no full emit, much cheaper than
+        /// SketchCompiler.Compile() (which is still what "Run" uses).
+        /// </summary>
+        private async Task RefreshDiagnosticsAsync()
+        {
+            var tab = _activeTab;
+            if (tab is null)
+                return;
+
+            _completionEngine.UpdateText(_editor.Document.Text);
+            var diagnostics = await _completionEngine.GetDiagnosticsAsync();
+
+            // The user may have switched tabs (or closed this one) while the
+            // above was in flight -- a diagnostics list for a document that's
+            // no longer showing would just paint garbage over whatever is
+            // showing now.
+            if (_activeTab != tab)
+                return;
+
+            _diagnosticsColorizer.SetDiagnostics(diagnostics);
+            _editor.TextArea.TextView.Redraw();
+            UpdateDiagnosticBanner();
+
+            var info = diagnostics
+                .Select(d =>
+                {
+                    var loc = _editor.Document.GetLocation(Math.Min(d.Start, _editor.Document.TextLength));
+                    return new LiveDiagnosticInfo(d.Start, loc.Line, loc.Column, d.Message, d.IsError);
+                })
+                .ToList();
+            LiveDiagnosticsChanged?.Invoke(info);
+        }
+
+        /// <summary>Moves the caret to <paramref name="offset"/> and scrolls it into view —
+        /// used by MainWindow's "Errores en vivo" tab to jump to a diagnostic on click.</summary>
+        public void GoToOffset(int offset)
+        {
+            var clamped = Math.Clamp(offset, 0, _editor.Document.TextLength);
+            _editor.CaretOffset = clamped;
+            _editor.TextArea.Caret.BringCaretToView();
+            _editor.Focus();
+        }
+
+        /// <summary>Shows the message of whichever diagnostic sits under the caret right
+        /// now, or hides the banner if there isn't one.</summary>
+        private void UpdateDiagnosticBanner()
+        {
+            var diag = _diagnosticsColorizer.FindAt(_editor.CaretOffset);
+            if (diag is null)
+            {
+                _diagnosticBanner.IsVisible = false;
+                return;
+            }
+
+            _diagnosticBannerText.Text = diag.Message;
+            if (diag.IsError)
+            {
+                _diagnosticBannerText.Foreground = ClayTheme.DangerHover;
+                _diagnosticBanner.Background = ClayTheme.DangerSurface;
+            }
+            else
+            {
+                _diagnosticBannerText.Foreground = new SolidColorBrush(Avalonia.Media.Color.Parse("#8A6A1F"));
+                _diagnosticBanner.Background = new SolidColorBrush(Avalonia.Media.Color.Parse("#FBF1DC"));
+            }
+            _diagnosticBanner.IsVisible = true;
         }
 
         public async Task OpenFileAsync()
