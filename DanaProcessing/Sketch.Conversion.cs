@@ -81,5 +81,46 @@ namespace DanaProcessing
                 trimmed = trimmed.Substring(2);
             return uint.TryParse(trimmed, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var v) ? unchecked((int)v) : 0;
         }
+
+
+        /// <summary>Converts a number to its 32-bit binary string, zero-padded on the left, like Processing's binary(int) — https://processing.org/reference/binary_.html. Negative values render their full two's-complement bit pattern, matching Processing/Java's own behavior.</summary>
+        public string Binary(int value) => Convert.ToString(value, 2).PadLeft(32, '0');
+
+        /// <summary>Converts a number to binary, keeping only the rightmost `digits` bits, like Processing's binary(int, digits).</summary>
+        public string Binary(int value, int digits)
+        {
+            digits = Math.Clamp(digits, 1, 32);
+            var full = Convert.ToString(value, 2).PadLeft(32, '0');
+            return full.Substring(32 - digits);
+        }
+
+        /// <summary>Converts a byte to an 8-bit binary string, like Processing's binary(byte).</summary>
+        public string Binary(byte value) => Convert.ToString(value, 2).PadLeft(8, '0');
+
+        /// <summary>Converts a char to a 16-bit binary string, like Processing's binary(char).</summary>
+        public string Binary(char value) => Convert.ToString(value, 2).PadLeft(16, '0');
+
+        /// <summary>Parses a binary string back into an int, like Processing's unbinary(string) — https://processing.org/reference/unbinary_.html. Ignores anything that isn't '0'/'1'; returns 0 for an empty or fully-invalid string. Strings longer than 32 bits keep only the rightmost 32, matching int's width.</summary>
+        public int Unbinary(string value)
+        {
+            if (string.IsNullOrEmpty(value))
+                return 0;
+
+            var trimmed = value.Trim();
+            foreach (char c in trimmed)
+            {
+                if (c != '0' && c != '1')
+                    return 0;
+            }
+            if (trimmed.Length == 0)
+                return 0;
+            if (trimmed.Length > 32)
+                trimmed = trimmed.Substring(trimmed.Length - 32);
+
+            uint result = 0;
+            foreach (char c in trimmed)
+                result = (result << 1) | (uint)(c - '0');
+            return unchecked((int)result);
+        }
     }
 }

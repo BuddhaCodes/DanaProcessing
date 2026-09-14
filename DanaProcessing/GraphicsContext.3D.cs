@@ -369,12 +369,50 @@ namespace DanaProcessing
         // Normal — https://processing.org/reference/normal_.html. Same
         // Require3D() gate as everything else in this file.
         // =====================================================================
-
-        /// <summary>Sets the current normal vector, like Processing's normal(nx, ny, nz). NOTE: real Processing's normal() only affects vertices defined afterward inside beginShape()/vertex(), which DanaProcessing's 3D path doesn't have yet — Box()/Sphere() are the only 3D primitives, and compute their own normals from the mesh. This stores the value for real rather than being a stub, so it's ready to be read once a vertex-based 3D shape API exists — it just has no visible effect yet.</summary>
+        /// <summary>Sets the current normal vector, like Processing's normal(nx, ny, nz). Affects vertices added by Vertex() AFTER this call, inside a BeginShape()/EndShape() block under Renderer3D — call it once per face (before that face's vertices) for flat shading, like the "Gema facetada" sample, or share one normal across several vertices for smooth shading.</summary>
         public void Normal(float nx, float ny, float nz)
         {
-            EnsureReady();
             Require3D().SetCurrentNormal(nx, ny, nz);
+        }
+
+        /// <summary>
+        /// Builds a reusable 3D PShape once, like combining Processing's
+        /// createShape() with its own beginShape()/endShape() (real
+        /// Processing PShapes support being built that way too) —
+        /// https://processing.org/reference/createShape_.html. Call the
+        /// SAME Vertex()/Normal() calls you'd use with immediate-mode
+        /// BeginShape()/EndShape() inside `buildVertices` — don't call
+        /// BeginShape()/EndShape() yourself in there, CreateShape3D() wraps
+        /// both. The mesh is uploaded to the GPU exactly ONCE (StaticDraw);
+        /// draw it as many times as you want afterwards with
+        /// Shape(shape, x, y) instead of re-recording and re-uploading the
+        /// same geometry every frame the way a bare BeginShape()/EndShape()
+        /// call under Renderer3D would.
+        ///
+        /// A diferencia de otras llamadas 3D, esto NO requiere estar entre
+        /// BeginDraw()/EndDraw() -- reclama y libera el contexto de GL por
+        /// su cuenta (ver UploadPersistentMesh()), así que se puede llamar
+        /// tranquilamente una sola vez en Setup(), suelto, sin ningún
+        /// bracket adicional.
+        /// </summary>
+        public PShape CreateShape3D(ShapeKind kind, Action buildVertices)
+        {
+            var backend = Require3D(); // valida Renderer3D antes de tocar nada -- sin EnsureReady(), ver remark arriba
+
+            BeginShape(kind);
+            buildVertices();
+
+            if (!_shape3DActive)
+                throw new InvalidOperationException("CreateShape3D(): buildVertices() no debe llamar EndShape() -- CreateShape3D() ya se encarga de eso.");
+
+            var flat = TriangulateShape3D();
+            _shape3DActive = false;
+
+            if (flat.Length == 0)
+                throw new InvalidOperationException("CreateShape3D(): no se agregó ningún vértice dentro de buildVertices().");
+
+            var (vao, vbo, vertexCount, textureId) = backend.UploadPersistentMesh(flat, _shapeTexture);
+            return PShape.FromMesh3D(backend, vao, vbo, vertexCount, textureId);
         }
 
         // =====================================================================

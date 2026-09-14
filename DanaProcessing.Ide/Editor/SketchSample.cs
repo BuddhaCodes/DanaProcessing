@@ -1,5 +1,6 @@
 ﻿using Avalonia.Animation;
 using Avalonia.Markup.Xaml.MarkupExtensions;
+using Microsoft.CodeAnalysis;
 using Silk.NET.Maths;
 
 namespace DanaProcessing.Ide.Editor
@@ -72,7 +73,409 @@ namespace DanaProcessing.Ide.Editor
                 "normal() (Silk.NET)",
                 "Muestra la firma de normal(nx, ny, nz) -- por ahora solo guarda el valor (no tiene efecto visible todavía: hace falta una API de formas 3D por vértice, tipo beginShape()/vertex(), que este motor no tiene aún). Este sample lo deja documentado en código en vez de dejarlo sin ejemplo.",
                 Normal3D),
+
+            new SketchSample(
+                "Lluvia de círculos: circle()",
+                "Circle(x, y, d) en vivo -- lluvia de círculos que caen y rebotan, el mouse en X controla cuántos caen por segundo, la rueda cambia el tamaño, y cada click cambia de paleta.",
+                CircleRain),
+
+            new SketchSample(
+                "Flota reutilizable: createShape()",
+                "CreateShape(GROUP, ...) arma una navecita una sola vez en Setup() a partir de Rect()+Triangle()+Ellipse(), y Shape() la estampa muchas veces por frame -- cada click agrega una nave nueva en el mouse, todas giran a su propia velocidad sin volver a construir la geometría.",
+                ShapeFleet),
+
+            new SketchSample(
+                "Ecualizador reordenable: FloatList",
+                "Un FloatList de alturas al estilo ecualizador -- click lo reordena con Shuffle(), la tecla S lo ordena con Sort(), la tecla R genera valores nuevos, y las líneas punteadas marcan Min()/Max()/Average() en vivo mientras cambian.",
+                ReorderableEqualizer),
+
+            new SketchSample(
+                "Reloj de bajo consumo: delay()",
+                "Un reloj analógico real (Hour()/Minute()/Second()) que llama Delay(1000) al final de cada Draw() -- en vez de redibujar cientos de veces por segundo sin necesidad, se redibuja una sola vez por segundo, como recomienda la referencia de Processing para sketches que no necesitan animación fluida.",
+                LowPowerClock),
+            new SketchSample(
+                "Modo presentación: FullScreen()",
+                "Un caleidoscopio en HSB que gira solo -- la tecla F llama FullScreen() y el HUD de abajo muestra Width/Height (lógicos) junto a PixelWidth/PixelHeight (reales) y DisplayDensity(), para ver los cuatro juntos en un caso con contenido de verdad.",
+                PresentationMode),
+
+            new SketchSample(
+                "Panel de ventana: windowMove/Resizable/Title/Ratio",
+                "Un panel con log en pantalla para las funciones de ventana -- F: FullScreen(), M: WindowMove() a una posición al azar, R: WindowResizable(), T: WindowTitle() al azar, A: WindowRatio(16,9). Cada tecla imprime en el log qué se pidió y qué devolvió el estado (IsFullScreen, IsWindowResizable, WindowTitleText); si el host de la IDE todavía no escucha estos eventos, el log documenta igual el llamado -- queda listo para cuando se conecte.",
+                WindowControlPanel),
+
+            new SketchSample(
+                "Tamaño dinámico: Settings()",
+                "Settings() corre ANTES que Setup() -- acá decide una orientación (retrato o paisaje) al azar y llama Size() con esa decisión, así Setup() ya arranca con Width/Height correctos sin tener que adivinarlos de antemano. Click reelige la orientación en cualquier momento llamando Size() directo, para contrastar con la garantía de orden que da Settings().",
+                DynamicSizeSettings),
+                // --- dentro de SketchSamples.All, agregar: ---
+            new SketchSample(
+                "Contador binario: Binary()/Unbinary()",
+                "Un contador de 0 a 255 mostrado como 8 bits que se prenden y apagan -- Binary(byte) arma la fila, Unbinary() la vuelve a convertir en número para probar que van y vuelven. La rueda cambia la velocidad, y se puede forzar un bit a mano con click.",
+                BinaryCounter),
+
+            new SketchSample(
+                "Búsqueda en paralelo: thread()",
+                "Thread(\"SearchPrimes\") lanza la búsqueda de primos en un hilo aparte apenas arranca el sketch -- el spinner de la izquierda sigue girando fluido en Draw() mientras tanto, sin trabarse, porque el trabajo pesado vive en su propio hilo. Click reinicia la búsqueda.",
+                PrimeSearchThread),
+
+            new SketchSample(
+                "Exportar a PDF: beginRaw()/endRaw()",
+                "Un póster generativo (círculos en espiral con color HSB) que se dibuja normal cada frame -- la tecla V llama al MISMO método de dibujo una vez más, esta vez encerrado entre BeginRaw()/EndRaw(), y ese segundo llamado no aparece en pantalla: se va directo a poster.pdf como vector real, no como imagen.",
+                PdfExport),
+
+            new SketchSample(
+                "Respaldo de trazos: saveStream()",
+                "Dibujá con el mouse -- la tecla S guarda el trazo en trazo.txt con SaveStrings() y después usa CreateInput() + SaveStream() para copiar ese archivo entero a un backup con nombre único, sin leerlo a mano línea por línea.",
+                StrokeBackup),
+
+            new SketchSample(
+                "Tarjeta de datos: parseJSONObject()/parseXML() + launch()",
+                "Arma un JSONObject y un fragmento de XML con la API normal, los serializa a String, y los vuelve a leer con ParseJSONObject()/ParseXML() -- exactamente como llegarían datos desde una red o un campo de texto, no desde un archivo. La tecla L abre el sitio guardado en el JSON con Launch(), en el navegador del sistema.",
+                DataCardParseLaunch),
+            new SketchSample(
+                "Gema facetada: BeginShape/Vertex(x,y,z)/Normal() en 3D",
+                "Un octaedro armado a mano, cara por cara, con BeginShape(Triangles)+Vertex(x,y,z)+Normal() -- la tecla N alterna entre sombreado plano (una normal por cara, via PVector.Cross()) y suave (normales promediadas por vértice), para ver en vivo qué cambia normal() en la iluminación. Arrastrá para rotar.",
+                FacetedGem),
+
+            new SketchSample(
+                "Partículas 3D: PVector con Z",
+                "PVector ahora tiene X, Y, y Z -- este sistema de partículas usa Add()/Sub() de PVector para gravedad y rebote en las TRES dimensiones dentro de un cubo invisible, en vez de simular la profundidad a mano con floats sueltos. Click agrega más partículas.",
+                Particles3D),
+
+             new SketchSample(
+                "Enjambre reutilizable: CreateShape3D()",
+                "La misma gema facetada del sample anterior, pero armada UNA sola vez con CreateShape3D() en vez de BeginShape()/EndShape() cada frame -- la malla se sube a la GPU una vez, y después 150 copias se dibujan solo con Shape(), cada una con su propia posición y rotación, sin volver a triangular ni volver a subir nada.",
+                ReusableSwarm),
+
+            new SketchSample(
+                "Cartel texturizado: Vertex(x,y,z,u,v)",
+                "Un panel 3D con una textura generada en código (un PGraphics 2D convertido a PImage con Get()) mapeada por Vertex(x,y,z,u,v) -- Texture(img) antes de BeginShape() le dice al shape qué imagen indexan esas coordenadas. Arrastrá para rotar y ver el mapeo desde otros ángulos.",
+                TexturedBillboard),
         };
+
+        private const string CircleRain =
+@"// Lluvia de circulos -- demo de Circle(x, y, d), el atajo nuevo para
+// Ellipse(x, y, d, d). Cada particula es un circulo que cae con gravedad
+// simple y rebota contra el piso perdiendo energia, hasta que se
+// desvanece y se recicla arriba con un tamano nuevo.
+public class MySketch : Sketch
+{
+    private class Drop
+    {
+        public float X, Y, VY, Size;
+    }
+ 
+    private readonly List<Drop> _drops = new List<Drop>();
+    private readonly Color[] _palette =
+    {
+        new Color(120, 180, 255),
+        new Color(255, 140, 180),
+        new Color(160, 255, 180),
+        new Color(255, 210, 120),
+    };
+    private int _paletteIndex;
+    private float _sizeScale = 1f;
+ 
+    public override void Setup()
+    {
+        Size(700, 450);
+        for (int i = 0; i < 40; i++)
+            _drops.Add(NewDrop(Random(Height)));
+    }
+ 
+    public override void Draw()
+    {
+        Background(18, 20, 28);
+ 
+        // El mouse en X controla cuantas gotas nuevas entran por frame --
+        // de 0 (nada) a ~1 por frame cerca del borde derecho.
+        float spawnChance = Map(MouseX, 0, Width, 0f, 1f);
+        if (Random(1f) < spawnChance)
+            _drops.Add(NewDrop(-20));
+ 
+        NoStroke();
+        Fill(_palette[_paletteIndex]);
+ 
+        foreach (var drop in _drops)
+        {
+            drop.VY += 0.4f; // gravedad
+            drop.Y += drop.VY;
+ 
+            float floor = Height - drop.Size / 2f;
+            if (drop.Y > floor)
+            {
+                drop.Y = floor;
+                drop.VY *= -0.55f; // rebote con perdida de energia
+            }
+ 
+            Circle(drop.X, drop.Y, drop.Size * _sizeScale);
+        }
+ 
+        // Reciclar las que ya casi no rebotan, para no acumular para siempre.
+        _drops.RemoveAll(d => Abs(d.VY) < 0.6f && d.Y >= Height - d.Size / 2f - 1);
+ 
+        Fill(255);
+        TextSize(13);
+        Text($""Circle() x{_drops.Count} -- mouse X: spawn -- rueda: tamaño ({_sizeScale:F1}x) -- click: paleta"", 12, Height - 16);
+    }
+ 
+    public override void MouseWheel(float delta)
+    {
+        _sizeScale = Constrain(_sizeScale - delta * 0.05f, 0.4f, 2.5f);
+    }
+ 
+    public override void MouseClicked()
+    {
+        _paletteIndex = (_paletteIndex + 1) % _palette.Length;
+    }
+ 
+    private Drop NewDrop(float y) => new Drop
+    {
+        X = Random(Width),
+        Y = y,
+        VY = Random(1f, 3f),
+        Size = Random(10, 26),
+    };
+}
+";
+
+        private const string ShapeFleet =
+@"// Flota reutilizable -- demo de CreateShape(). La navecita (un Triangle
+// como nariz, un Rect como fuselaje y una Ellipse como motor) se arma UNA
+// sola vez en Setup() con CreateShape(GROUP, ...), en vez de volver a
+// llamar Triangle()/Rect()/Ellipse() a mano cada frame para cada nave. Cada
+// click agrega una nave nueva en la posicion del mouse -- todas comparten
+// la MISMA geometria (el mismo PShape), solo cambia donde y con que
+// rotacion se estampa via Shape().
+public class MySketch : Sketch
+{
+    private class Ship
+    {
+        public float X, Y, Angle, Spin;
+    }
+ 
+    private PShape _shipShape;
+    private readonly List<Ship> _fleet = new List<Ship>();
+ 
+    public override void Setup()
+    {
+        Size(700, 450);
+ 
+        // Geometria centrada en (0,0): nariz apuntando hacia -Y, fuselaje
+        // rectangular, motor como elipse en la cola. Fill()/Stroke() en el
+        // momento de cada CreateShape() quedan HORNEADOS en esa pieza --
+        // por eso se fija el color antes de cada llamada.
+        Fill(230, 230, 235);
+        NoStroke();
+        var nose = CreateShape(PShapeType.Triangle, -10, -28, 10, -28, 0, -46);
+ 
+        Fill(160, 170, 185);
+        var body = CreateShape(PShapeType.Rect, -9, -28, 18, 34);
+ 
+        Fill(255, 140, 60);
+        var engine = CreateShape(PShapeType.Ellipse, -12, 4, 24, 16);
+ 
+        _shipShape = CreateShape(nose, body, engine);
+ 
+        _fleet.Add(new Ship { X = Width / 2f, Y = Height / 2f, Spin = 0.5f });
+    }
+ 
+    public override void Draw()
+    {
+        Background(12, 14, 22);
+ 
+        foreach (var ship in _fleet)
+        {
+            ship.Angle += ship.Spin;
+ 
+            PushMatrix();
+            Translate(ship.X, ship.Y);
+            Rotate(Radians(ship.Angle));
+            Shape(_shipShape, 0, 0);
+            PopMatrix();
+        }
+ 
+        Fill(255);
+        TextSize(13);
+        Text($""CreateShape(GROUP) x1, Shape() x{_fleet.Count} -- click agrega una nave"", 12, Height - 16);
+    }
+ 
+    public override void MouseClicked()
+    {
+        _fleet.Add(new Ship
+        {
+            X = MouseX,
+            Y = MouseY,
+            Spin = Random(-2f, 2f),
+        });
+    }
+}
+";
+
+        private const string ReorderableEqualizer =
+@"// Ecualizador reordenable -- demo de FloatList. Las 24 alturas de las
+// barras viven en un solo FloatList en vez de un arreglo fijo a mano --
+// click llama Shuffle() para desordenarlas con una animacion, la tecla S
+// llama Sort(), la tecla R genera valores nuevos con Random(), y
+// Min()/Max()/Average() (todos metodos de FloatList) dibujan las lineas de
+// referencia que se mueven solas cuando los datos cambian.
+public class MySketch : Sketch
+{
+    private FloatList _heights;
+    private FloatList _targetHeights;
+    private const int BarCount = 24;
+ 
+    public override void Setup()
+    {
+        Size(720, 420);
+        _heights = new FloatList();
+        _targetHeights = new FloatList();
+        RegenerateValues();
+    }
+ 
+    public override void Draw()
+    {
+        Background(22, 24, 30);
+ 
+        float barWidth = Width / (float)BarCount;
+ 
+        for (int i = 0; i < _heights.Size; i++)
+        {
+            // Interpola suave hacia el valor objetivo, para que Shuffle()/
+            // Sort() se vean como una animacion en vez de un salto brusco.
+            _heights[i] = Lerp(_heights[i], _targetHeights[i], 0.15f);
+ 
+            float h = _heights[i];
+            float x = i * barWidth;
+            float hue = Map(i, 0, BarCount, 200, 320);
+ 
+            NoStroke();
+            FillHSB(hue, 70, 90);
+            Rect(x + 2, Height - h, barWidth - 4, h);
+        }
+ 
+        float avg = _targetHeights.Average();
+        float min = _targetHeights.Min();
+        float max = _targetHeights.Max();
+ 
+        DrawReferenceLine(avg, new Color(255, 255, 255), $""Average() = {avg:F0}"");
+        DrawReferenceLine(min, new Color(120, 200, 255), $""Min() = {min:F0}"");
+        DrawReferenceLine(max, new Color(255, 140, 140), $""Max() = {max:F0}"");
+ 
+        Fill(255);
+        TextSize(13);
+        Text(""click: Shuffle() -- tecla S: Sort() -- tecla R: valores nuevos"", 12, 22);
+    }
+ 
+    public override void MouseClicked()
+    {
+        _targetHeights.Shuffle();
+    }
+ 
+    public override void KeyPressed()
+    {
+        if (Key == 's')
+            _targetHeights.Sort();
+        else if (Key == 'r')
+            RegenerateValues();
+    }
+ 
+    private void RegenerateValues()
+    {
+        _targetHeights.Clear();
+        for (int i = 0; i < BarCount; i++)
+            _targetHeights.Append(Random(40, Height - 40));
+ 
+        if (_heights.Size == 0)
+        {
+            for (int i = 0; i < BarCount; i++)
+                _heights.Append(_targetHeights[i]);
+        }
+    }
+ 
+    private void DrawReferenceLine(float h, Color c, string label)
+    {
+        Stroke(c);
+        StrokeWeight(1);
+        Line(0, Height - h, Width, Height - h);
+        NoStroke();
+        Fill(c);
+        TextSize(12);
+        Text(label, Width - 150, Height - h - 6);
+    }
+}
+";
+
+        private const string LowPowerClock =
+@"// Reloj de bajo consumo -- demo de Delay(). Un reloj analogico comun
+// (Hour()/Minute()/Second() para las manecillas) que, a diferencia de
+// todos los demas samples de esta lista, NO necesita 60 cuadros por
+// segundo: nada en pantalla cambia mas de una vez por segundo. Por eso
+// Draw() termina con Delay(1000) -- el hilo de animacion se detiene ese
+// segundo entero en vez de recalcular y redibujar un reloj identico
+// cientos de veces sin necesidad. Es exactamente el caso de uso que
+// recomienda la referencia de Processing para delay(): no para animar
+// suave (para eso esta FrameRate()), sino para sketches de bajo consumo
+// que solo necesitan redibujar de tanto en tanto.
+public class MySketch : Sketch
+{
+    public override void Setup()
+    {
+        Size(400, 400);
+    }
+ 
+    public override void Draw()
+    {
+        Background(15, 18, 26);
+ 
+        float cx = Width / 2f;
+        float cy = Height / 2f;
+        float radius = Min(Width, Height) * 0.4f;
+ 
+        NoFill();
+        Stroke(200, 200, 210);
+        StrokeWeight(3);
+        Ellipse(cx, cy, radius * 2, radius * 2);
+ 
+        // Marcas de hora.
+        for (int i = 0; i < 12; i++)
+        {
+            float a = Radians(i * 30 - 90);
+            float x1 = cx + Cos(a) * radius * 0.9f;
+            float y1 = cy + Sin(a) * radius * 0.9f;
+            float x2 = cx + Cos(a) * radius;
+            float y2 = cy + Sin(a) * radius;
+            Line(x1, y1, x2, y2);
+        }
+ 
+        int h = Hour() % 12;
+        int m = Minute();
+        int s = Second();
+ 
+        DrawHand(cx, cy, (h + m / 60f) / 12f * 360 - 90, radius * 0.5f, 6, new Color(230, 230, 235));
+        DrawHand(cx, cy, (m + s / 60f) / 60f * 360 - 90, radius * 0.72f, 4, new Color(200, 210, 255));
+        DrawHand(cx, cy, s / 60f * 360 - 90, radius * 0.85f, 2, new Color(255, 110, 110));
+ 
+        Fill(255);
+        TextSize(13);
+        Text($""{h:D2}:{m:D2}:{s:D2} -- Delay(1000): se redibuja 1 vez/seg, no {TargetFrameRate}/seg"", 20, Height - 20);
+ 
+        // La linea que hace todo el punto de este sample: bloquea el hilo
+        // de animacion un segundo entero antes de volver a Draw(), en vez
+        // de recalcular/redibujar un reloj identico decenas de veces sin
+        // necesidad mientras el segundero no cambio.
+        Delay(1000);
+    }
+ 
+    private void DrawHand(float cx, float cy, float angleDeg, float length, float weight, Color c)
+    {
+        float a = Radians(angleDeg);
+        Stroke(c);
+        StrokeWeight(weight);
+        Line(cx, cy, cx + Cos(a) * length, cy + Sin(a) * length);
+    }
+}
+";
 
         private const string MinimalSketch =
 @"public class MySketch : Sketch
@@ -1050,6 +1453,1016 @@ public class MySketch : Sketch
         Fill(255);
         TextSize(13);
         Text(""normal(0, 0, 1) se llama arriba, pero todavia no tiene efecto visible -- hace falta beginShape()/vertex() en 3D para que tenga donde aplicarse."", 12, Height - 16);
+    }
+}
+";
+        private const string PresentationMode =
+@"// Modo presentacion -- demo de FullScreen() + PixelWidth/PixelHeight. El
+// dibujo en si (un caleidoscopio girando, HSB puro) no necesita nada
+// especial: lo interesante es el HUD de abajo, que muestra los 4 numeros
+// de entorno juntos -- Width/Height logicos, PixelWidth/PixelHeight reales
+// (en este motor siempre iguales, ver el comentario de PixelWidth en
+// Sketch.cs) y DisplayDensity().
+public class MySketch : Sketch
+{
+    private float _t;
+ 
+    public override void Setup()
+    {
+        Size(700, 500);
+        ColorMode(ColorSpaceMode.HSB);
+    }
+ 
+    public override void Draw()
+    {
+        Background(230, 20, 12);
+ 
+        PushMatrix();
+        Translate(Width / 2f, Height / 2f);
+ 
+        int arms = 10;
+        _t += 0.01f;
+ 
+        for (int i = 0; i < arms; i++)
+        {
+            PushMatrix();
+            Rotate(TWO_PI / arms * i + _t);
+            NoStroke();
+            for (int r = 0; r < 6; r++)
+            {
+                float hue = (_t * 60 + r * 40) % 360;
+                FillHSB(hue, 80, 90);
+                Circle(80 + r * 30, 0, 18);
+            }
+            PopMatrix();
+        }
+ 
+        PopMatrix();
+ 
+        Fill(0, 0, 100);
+        TextSize(13);
+        Text($""tecla F: FullScreen() -- ahora: {IsFullScreen} -- {Width}x{Height} lógicos, {PixelWidth}x{PixelHeight} reales (density {DisplayDensity()}x)"", 12, Height - 16);
+    }
+ 
+    public override void KeyPressed()
+    {
+        if (Key == 'f')
+            FullScreen(!IsFullScreen);
+    }
+}
+";
+
+        private const string WindowControlPanel =
+@"
+using System.Collections.Generic;
+// Panel de ventana -- demo de WindowMove()/WindowResizable()/WindowTitle()/
+// WindowRatio(), todas expuestas como eventos que un host real (la ventana
+// de la IDE, por ejemplo) puede escuchar para mover/redimensionar/titular
+// la ventana de verdad. Este sample no depende de que ese cableado ya
+// exista: cada tecla llama a la funcion igual, y el log en pantalla
+// muestra el llamado y el estado resultante (IsFullScreen,
+// IsWindowResizable, WindowTitleText) leido directamente del Sketch --
+// eso funciona SIEMPRE, este o no conectado un host que reaccione.
+public class MySketch : Sketch
+{
+    private readonly List<string> _log = new List<string>();
+    private readonly string[] _titles = { ""Boceto A"", ""Boceto B"", ""DanaProcessing Live"", ""Sin titulo"" };
+ 
+    public override void Setup()
+    {
+        Size(640, 420);
+        WindowTitle(""DanaProcessing -- Panel de ventana"");
+        _log.Add($""WindowTitle('{WindowTitleText}')"");
+    }
+ 
+    public override void Draw()
+    {
+        Background(24, 26, 34);
+ 
+        Fill(255);
+        TextSize(14);
+        Text(""F: FullScreen()   M: WindowMove()   R: WindowResizable()   T: WindowTitle()   A: WindowRatio(16,9)"", 16, 28);
+ 
+        TextSize(12);
+        Fill(180, 200, 255);
+        for (int i = 0; i < _log.Count; i++)
+            Text(_log[_log.Count - 1 - i], 16, 60 + i * 20);
+ 
+        while (_log.Count > 12)
+            _log.RemoveAt(0);
+    }
+ 
+    public override void KeyPressed()
+    {
+        switch (Key)
+        {
+            case 'f':
+                FullScreen(!IsFullScreen);
+                _log.Add($""FullScreen({!IsFullScreen}) -> IsFullScreen={IsFullScreen}"");
+                break;
+ 
+            case 'm':
+                int x = (int)Random(0, 400);
+                int y = (int)Random(0, 300);
+                WindowMove(x, y);
+                _log.Add($""WindowMove({x}, {y})"");
+                break;
+ 
+            case 'r':
+                WindowResizable(!IsWindowResizable);
+                _log.Add($""WindowResizable({IsWindowResizable}) -> IsWindowResizable={IsWindowResizable}"");
+                break;
+ 
+            case 't':
+                string title = _titles[(int)Random(_titles.Length)];
+                WindowTitle(title);
+                _log.Add($""WindowTitle('{title}') -> WindowTitleText='{WindowTitleText}'"");
+                break;
+ 
+            case 'a':
+                WindowRatio(16, 9);
+                _log.Add(""WindowRatio(16, 9)"");
+                break;
+        }
+    }
+}
+";
+
+        private const string DynamicSizeSettings =
+@"// Tamano dinamico -- demo de Settings(). A diferencia de todos los demas
+// samples de esta lista (que llaman Size() dentro de Setup()), este lo
+// llama dentro de Settings() -- el hook que corre ANTES que Setup(), igual
+// que en Processing real. La diferencia practica: para cuando Setup()
+// arranca, Width/Height YA reflejan lo que decidio Settings(), sin
+// depender del orden en que el host llame a los metodos del ciclo de vida.
+// En C# puro esto no es estrictamente necesario (Size() funciona igual de
+// bien llamado directo en Setup()), pero mantiene el mismo orden
+// garantizado que esperan los sketches portados de Processing.
+public class MySketch : Sketch
+{
+    private bool _portrait;
+ 
+    public override void Settings()
+    {
+        _portrait = Random(1f) < 0.5f;
+        Size(_portrait ? 400 : 700, _portrait ? 700 : 400);
+    }
+ 
+    public override void Setup()
+    {
+        // Width/Height ya estan fijados por Settings() -- no hace falta
+        // llamar Size() de nuevo aca.
+        ColorMode(ColorSpaceMode.HSB);
+    }
+ 
+    public override void Draw()
+    {
+        Background(210, 15, 15);
+ 
+        NoStroke();
+        for (int i = 0; i < 40; i++)
+        {
+            float y = Map(i, 0, 40, 0, Height);
+            float hue = Map(i, 0, 40, 190, 260);
+            FillHSB(hue, 70, 90);
+            Rect(0, y, Width, Height / 40f + 1);
+        }
+ 
+        Fill(0, 0, 100);
+        TextSize(16);
+        string orientation = _portrait ? ""retrato"" : ""paisaje"";
+        Text($""Settings() eligió {orientation} antes de Setup() -- {Width}x{Height}"", 20, 34);
+        TextSize(13);
+        Text(""click para volver a elegir con Size() directo (ya en Draw, no en Settings)"", 20, Height - 20);
+    }
+ 
+    public override void MouseClicked()
+    {
+        _portrait = !_portrait;
+        Size(_portrait ? 400 : 700, _portrait ? 700 : 400);
+    }
+}
+";
+        private const string BinaryCounter =
+@"// Contador binario visual -- demo de Binary()/Unbinary(). Un valor de 0 a
+// 255 se muestra como 8 celdas (bits): Binary((byte)valor) arma la cadena
+// de 8 caracteres, y Unbinary() la vuelve a convertir en numero para
+// demostrar que el viaje de ida y vuelta da el mismo valor.
+public class MySketch : Sketch
+{
+    private int _value;
+    private float _accum;
+    private float _speed = 2f;
+ 
+    public override void Setup()
+    {
+        Size(500, 260);
+    }
+ 
+    public override void Draw()
+    {
+        Background(18, 20, 26);
+ 
+        _accum += 1f / Max(_speed, 0.1f);
+        if (_accum >= 1f)
+        {
+            _accum = 0;
+            _value = (_value + 1) % 256;
+        }
+ 
+        string bits = Binary((byte)_value);
+        float cellSize = 50;
+        float startX = (Width - cellSize * 8) / 2f;
+ 
+        for (int i = 0; i < 8; i++)
+        {
+            bool on = bits[i] == '1';
+            float x = startX + i * cellSize;
+ 
+            Fill(on ? new Color(255, 200, 60) : new Color(45, 48, 58));
+            Stroke(70, 70, 80);
+            StrokeWeight(2);
+            Rect(x, 90, cellSize - 6, cellSize - 6);
+ 
+            Fill(on ? new Color(30, 30, 20) : new Color(120, 120, 130));
+            TextSize(20);
+            Text(bits[i].ToString(), x + cellSize / 2f - 6, 90 + cellSize / 2f + 8);
+        }
+ 
+        Fill(255);
+        TextSize(15);
+        Text($""Binary({_value}) = {bits}   ->   Unbinary(bits) = {Unbinary(bits)}"", startX, 60);
+        TextSize(12);
+        Text(""rueda: velocidad del contador -- click en un bit para forzarlo a mano"", startX, 200);
+    }
+ 
+    public override void MouseWheel(float delta)
+    {
+        _speed = Constrain(_speed - delta * 0.3f, 0.2f, 30f);
+    }
+ 
+    public override void MouseClicked()
+    {
+        float cellSize = 50;
+        float startX = (Width - cellSize * 8) / 2f;
+        int index = (int)((MouseX - startX) / cellSize);
+        if (index >= 0 && index < 8 && MouseY > 90 && MouseY < 90 + cellSize)
+        {
+            int bitFromLeft = 7 - index;
+            _value ^= 1 << bitFromLeft;
+        }
+    }
+}
+";
+
+        private const string PrimeSearchThread =
+@"// Busqueda en paralelo -- demo de Thread(). SearchPrimes() es un metodo
+// sin parametros normal y corriente; Thread(nameof(SearchPrimes)) lo busca
+// por reflexion y lo corre en un hilo aparte. Mientras tanto, Draw() sigue
+// corriendo a su propio ritmo (el spinner no se traba), porque el trabajo
+// pesado del bucle de primos vive en otro hilo por completo. El handoff de
+// datos entre los dos hilos es deliberadamente simple -- solo un par de
+// campos volatiles que un hilo escribe y el otro lee, sin locks.
+public class MySketch : Sketch
+{
+    private volatile int _primesFound;
+    private volatile long _lastPrime;
+    private volatile bool _searching;
+    private float _spin;
+ 
+    public override void Setup()
+    {
+        Size(600, 300);
+        StartSearch();
+    }
+ 
+    public override void Draw()
+    {
+        Background(20, 22, 30);
+ 
+        if (_searching)
+            _spin += 6f;
+ 
+        PushMatrix();
+        Translate(90, Height / 2f);
+        Rotate(Radians(_spin));
+        NoFill();
+        Stroke(_searching ? new Color(255, 200, 60) : new Color(80, 200, 120));
+        StrokeWeight(6);
+        Arc(0, 0, 70, 70, 0, Radians(270));
+        PopMatrix();
+ 
+        Fill(255);
+        TextSize(18);
+        Text(_searching ? ""Buscando primos en un hilo aparte..."" : ""Búsqueda terminada"", 150, Height / 2f - 30);
+        TextSize(14);
+        Text($""Encontrados hasta ahora: {_primesFound}"", 150, Height / 2f);
+        Text($""Último primo: {_lastPrime}"", 150, Height / 2f + 24);
+        TextSize(12);
+        Text(""el spinner de la izquierda nunca se traba mientras tanto -- click reinicia la búsqueda"", 20, Height - 20);
+    }
+ 
+    public override void MouseClicked()
+    {
+        if (!_searching)
+            StartSearch();
+    }
+ 
+    private void StartSearch()
+    {
+        _primesFound = 0;
+        _lastPrime = 0;
+        _searching = true;
+        Thread(nameof(SearchPrimes));
+    }
+ 
+    // Sin parametros -- exactamente lo que Thread() busca por reflexion.
+    private void SearchPrimes()
+    {
+        for (long n = 2; n < 2_000_000; n++)
+        {
+            if (IsPrime(n))
+            {
+                _primesFound++;
+                _lastPrime = n;
+            }
+        }
+        _searching = false;
+    }
+ 
+    private static bool IsPrime(long n)
+    {
+        if (n < 2)
+            return false;
+        for (long d = 2; d * d <= n; d++)
+        {
+            if (n % d == 0)
+                return false;
+        }
+        return true;
+    }
+}
+";
+
+        private const string PdfExport =
+@"// Exportar a PDF -- demo de BeginRaw()/EndRaw(). DrawPoster() es un metodo
+// comun que dibuja la escena -- Draw() lo llama cada frame para mostrarla
+// en pantalla, igual que cualquier sketch. La tecla V llama a ESE MISMO
+// metodo una vez mas, pero encerrado entre BeginRaw('poster.pdf') y
+// EndRaw() -- durante ese llamado extra, todo lo que DrawPoster() dibuja
+// se redirige a la pagina PDF en vez de a pantalla (por eso la pantalla no
+// 'parpadea' ni cambia en ese instante), y al llamar EndRaw() el archivo
+// queda escrito con la misma escena, pero como vectores reales -- se puede
+// abrir y hacer zoom infinito sin pixelarse, a diferencia de un
+// screenshot.
+public class MySketch : Sketch
+{
+    private float _t;
+ 
+    public override void Setup()
+    {
+        Size(600, 600);
+        ColorMode(ColorSpaceMode.HSB);
+    }
+ 
+    public override void Draw()
+    {
+        _t += 0.01f;
+        DrawPoster();
+ 
+        Fill(0, 0, 100);
+        TextSize(13);
+        Text(""tecla V: exporta este frame a poster.pdf (vectorial, via BeginRaw/EndRaw)"", 16, Height - 16);
+    }
+ 
+    public override void KeyPressed()
+    {
+        if (Key == 'v')
+        {
+            BeginRaw(""poster.pdf"");
+            DrawPoster();
+            EndRaw();
+        }
+    }
+ 
+    private void DrawPoster()
+    {
+        Background(0, 0, 8);
+        PushMatrix();
+        Translate(Width / 2f, Height / 2f);
+        NoStroke();
+        for (int i = 0; i < 200; i++)
+        {
+            float angle = i * 0.3f + _t;
+            float radius = i * 1.3f;
+            float hue = (i * 2 + _t * 40) % 360;
+            FillHSB(hue, 70, 90);
+            Circle(Cos(angle) * radius, Sin(angle) * radius, 14);
+        }
+        PopMatrix();
+    }
+}
+";
+
+        private const string StrokeBackup =
+@"// Respaldo de trazos -- demo de SaveStream(). El trazo dibujado con el
+// mouse se guarda primero como texto con SaveStrings() (una funcion que ya
+// existia), y despues la tecla S abre ESE archivo con CreateInput() y lo
+// copia entero a un backup con nombre unico usando SaveStream(path, input)
+// -- una copia de archivo a archivo sin leerlo a mano linea por linea.
+public class MySketch : Sketch
+{
+    private readonly List<float> _xs = new List<float>();
+    private readonly List<float> _ys = new List<float>();
+    private string _status = ""dibuja con el mouse -- tecla S: guarda + backup"";
+ 
+    public override void Setup()
+    {
+        Size(640, 420);
+    }
+ 
+    public override void Draw()
+    {
+        Background(24, 26, 32);
+ 
+        Stroke(255, 210, 90);
+        StrokeWeight(3);
+        NoFill();
+        for (int i = 1; i < _xs.Count; i++)
+            Line(_xs[i - 1], _ys[i - 1], _xs[i], _ys[i]);
+ 
+        if (IsMousePressed)
+        {
+            _xs.Add(MouseX);
+            _ys.Add(MouseY);
+        }
+ 
+        Fill(255);
+        TextSize(13);
+        Text(_status, 14, 24);
+    }
+ 
+    public override void KeyPressed()
+    {
+        if (Key != 's')
+            return;
+ 
+        var lines = new string[_xs.Count];
+        for (int i = 0; i < _xs.Count; i++)
+            lines[i] = $""{_xs[i]},{_ys[i]}"";
+        SaveStrings(""trazo.txt"", lines);
+ 
+        string backupPath = $""trazo_backup_{Millis()}.txt"";
+        using (var input = CreateInput(""trazo.txt""))
+            SaveStream(backupPath, input);
+ 
+        _status = $""guardado trazo.txt ({_xs.Count} puntos) y copiado a {backupPath} con SaveStream()"";
+    }
+}
+";
+
+        private const string DataCardParseLaunch =
+@"
+using System.Collections.Generic;
+// Tarjeta de datos -- demo de ParseJSONObject()/ParseXML() + Launch(). El
+// JSON y el XML se arman primero con la API normal (JSONObject/XML) y se
+// serializan a texto con ToString() -- simulando datos que llegaron como
+// STRING (una respuesta de red, un campo de texto pegado), no como
+// archivo en disco. Despues ESE texto se vuelve a leer con
+// ParseJSONObject()/ParseXML(), que es la funcion nueva. La tecla L abre
+// el sitio guardado en el JSON con Launch(), en el navegador del sistema
+// operativo.
+public class MySketch : Sketch
+{
+    private JSONObject _data;
+    private string _bio;
+ 
+    public override void Setup()
+    {
+        Size(520, 280);
+ 
+        var built = new JSONObject();
+        built.SetString(""name"", ""Processing Foundation"");
+        built.SetInt(""founded"", 2012);
+        built.SetString(""site"", ""https://processing.org"");
+        string json = built.ToString();
+        _data = ParseJSONObject(json);
+ 
+        string xmlText = ""<bio>Fundación sin fines de lucro detrás de Processing y p5.js.</bio>"";
+        var xml = ParseXML(xmlText);
+        _bio = xml.GetContent(""(sin descripción)"");
+    }
+ 
+    public override void Draw()
+    {
+        Background(26, 28, 36);
+ 
+        Fill(255);
+        TextSize(22);
+        Text(_data.GetString(""name""), 30, 60);
+ 
+        TextSize(14);
+        Fill(200, 210, 230);
+        Text($""Fundada en {_data.GetInt(""founded"")}"", 30, 92);
+        Text(_bio, 30, 118);
+ 
+        TextSize(13);
+        Fill(160, 200, 255);
+        Text(""tecla L: abre "" + _data.GetString(""site"") + "" con Launch()"", 30, Height - 20);
+    }
+ 
+    public override void KeyPressed()
+    {
+        if (Key == 'l')
+            Launch(_data.GetString(""site""));
+    }
+}
+";
+        private const string FacetedGem =
+    @"
+using System.Collections.Generic;
+// Gema facetada -- demo de BeginShape(Triangles) + Vertex(x,y,z) + Normal()
+// bajo Renderer3D, la pieza que hasta ahora faltaba: normal() ya tenia
+// donde guardarse pero ningun vertice que la usara. Un octaedro (8 caras
+// triangulares) se arma a mano, cara por cara -- cada cara llama Normal()
+// ANTES de sus 3 Vertex(), y esa normal es la que queda pegada a esos 3
+// vertices quando EndShape() sube la malla.
+//
+// Sombreado PLANO: la normal de cada cara sale de PVector.Cross() entre
+// dos de sus aristas (el metodo de PVector que agrega el cross product en
+// 3D) -- por eso cada cara se ve como una faceta solida, con un borde
+// marcado contra la de al lado, igual que una gema real tallada.
+// Sombreado SUAVE: en un octaedro regular centrado en el origen, la normal
+// 'promedio' de cada vertice es sencillamente su propia direccion desde el
+// centro (normalizada) -- asi que ni siquiera hace falta promediar caras a
+// mano, y las facetas se funden en una superficie que se ve redondeada.
+public class MySketch : Sketch
+{
+    private PGraphics _scene3d;
+    private float _qw = 1f, _qx, _qy, _qz;
+    private float _spinAxisX = 1f, _spinAxisY, _spinAxisZ, _spinAngle;
+    private bool _smooth;
+    private float _radius = 150;
+ 
+    public override void Setup()
+    {
+        Size(700, 500);
+        _scene3d = CreateGraphics(Width, Height, RendererKind.Renderer3D);
+    }
+ 
+    public override void Draw()
+    {
+        Background(15, 15, 20);
+ 
+        if (IsMousePressed)
+        {
+            float dx = MouseX - PMouseX;
+            float dy = MouseY - PMouseY;
+            float dragMag = Mag(dx, dy);
+            if (dragMag > 0.001f)
+            {
+                _spinAxisX = -dy / dragMag;
+                _spinAxisY = dx / dragMag;
+                _spinAxisZ = 0f;
+                _spinAngle = dragMag * 0.01f;
+            }
+        }
+        ApplySpin(_spinAxisX, _spinAxisY, _spinAxisZ, _spinAngle);
+        if (!IsMousePressed)
+            _spinAngle *= 0.98f;
+ 
+        _scene3d.BeginDraw();
+        _scene3d.Lights();
+        _scene3d.Fill(160, 220, 255);
+        _scene3d.PushMatrix();
+        _scene3d.Translate(Width / 2f, Height / 2f, 0);
+ 
+        float angle = 2f * Acos(Constrain(_qw, -1f, 1f));
+        float s = Sqrt(Max(1f - _qw * _qw, 0f));
+        if (s < 0.0001f)
+            _scene3d.Rotate(angle, 1, 0, 0);
+        else
+            _scene3d.Rotate(angle, _qx / s, _qy / s, _qz / s);
+ 
+        DrawGem(_scene3d, _radius, _smooth);
+ 
+        _scene3d.PopMatrix();
+        _scene3d.EndDraw();
+ 
+        Image(_scene3d.Get(), 0, 0);
+ 
+        Fill(255);
+        TextSize(13);
+        string shadingLabel = _smooth ? ""suave (normales promediadas)"" : ""plana (una normal por cara)"";
+        Text($""BeginShape+Vertex(x,y,z)+Normal() -- sombreado {shadingLabel} -- tecla N alterna -- rueda escala -- arrastrá para rotar"", 12, Height - 16);
+    }
+ 
+    public override void KeyPressed()
+    {
+        if (Key == 'n')
+            _smooth = !_smooth;
+    }
+ 
+    public override void MouseWheel(float delta)
+    {
+        _radius = Constrain(_radius - delta * 3, 60, 260);
+    }
+ 
+    private void DrawGem(PGraphics g, float r, bool smooth)
+    {
+        var points = new PVector[]
+        {
+            new PVector(0, -r, 0),   // 0: arriba
+            new PVector(0,  r, 0),   // 1: abajo
+            new PVector( r, 0,  0),  // 2: ecuador +X
+            new PVector( 0, 0,  r),  // 3: ecuador +Z
+            new PVector(-r, 0,  0),  // 4: ecuador -X
+            new PVector( 0, 0, -r),  // 5: ecuador -Z
+        };
+ 
+        var smoothNormals = new PVector[points.Length];
+        for (int i = 0; i < points.Length; i++)
+            smoothNormals[i] = points[i].Copy().Normalize();
+ 
+        int[,] faces =
+        {
+            { 0, 2, 3 }, { 0, 3, 4 }, { 0, 4, 5 }, { 0, 5, 2 },
+            { 1, 3, 2 }, { 1, 4, 3 }, { 1, 5, 4 }, { 1, 2, 5 },
+        };
+ 
+        g.BeginShape(ShapeKind.Triangles);
+        for (int f = 0; f < faces.GetLength(0); f++)
+        {
+            int ia = faces[f, 0], ib = faces[f, 1], ic = faces[f, 2];
+            var a = points[ia];
+            var b = points[ib];
+            var c = points[ic];
+ 
+            if (smooth)
+            {
+                g.Normal(smoothNormals[ia].X, smoothNormals[ia].Y, smoothNormals[ia].Z);
+                g.Vertex(a.X, a.Y, a.Z);
+                g.Normal(smoothNormals[ib].X, smoothNormals[ib].Y, smoothNormals[ib].Z);
+                g.Vertex(b.X, b.Y, b.Z);
+                g.Normal(smoothNormals[ic].X, smoothNormals[ic].Y, smoothNormals[ic].Z);
+                g.Vertex(c.X, c.Y, c.Z);
+            }
+            else
+            {
+                var faceNormal = PVector.Cross(PVector.Sub(b, a), PVector.Sub(c, a)).Normalize();
+                g.Normal(faceNormal.X, faceNormal.Y, faceNormal.Z);
+                g.Vertex(a.X, a.Y, a.Z);
+                g.Vertex(b.X, b.Y, b.Z);
+                g.Vertex(c.X, c.Y, c.Z);
+            }
+        }
+        g.EndShape();
+    }
+ 
+    private void ApplySpin(float ax, float ay, float az, float angle)
+    {
+        if (angle == 0f)
+            return;
+ 
+        float half = angle * 0.5f;
+        float dw = Cos(half), dx = ax * Sin(half), dy = ay * Sin(half), dz = az * Sin(half);
+ 
+        float nw = dw * _qw - dx * _qx - dy * _qy - dz * _qz;
+        float nx = dw * _qx + dx * _qw + dy * _qz - dz * _qy;
+        float ny = dw * _qy - dx * _qz + dy * _qw + dz * _qx;
+        float nz = dw * _qz + dx * _qy - dy * _qx + dz * _qw;
+ 
+        float norm = Sqrt(nw * nw + nx * nx + ny * ny + nz * nz);
+        _qw = nw / norm;
+        _qx = nx / norm;
+        _qy = ny / norm;
+        _qz = nz / norm;
+    }
+}
+";
+
+        private const string Particles3D =
+@"
+using System.Collections.Generic;
+// Particulas 3D -- demo de PVector con Z. Antes PVector solo tenia X e Y;
+// ahora Add()/Sub()/Mult()/Normalize()/etc. operan en las tres dimensiones,
+// asi que un sistema de particulas con posicion/velocidad/gravedad reales
+// en 3D se escribe exactamente igual que uno 2D -- sin tener que manejar
+// un tercer float 'z' suelto a mano por separado.
+public class MySketch : Sketch
+{
+    private PGraphics _scene3d;
+    private readonly List<PVector> _pos = new List<PVector>();
+    private readonly List<PVector> _vel = new List<PVector>();
+    private const float BoxHalf = 200;
+ 
+    public override void Setup()
+    {
+        Size(700, 500);
+        _scene3d = CreateGraphics(Width, Height, RendererKind.Renderer3D);
+        for (int i = 0; i < 40; i++)
+            SpawnParticle();
+    }
+ 
+    public override void Draw()
+    {
+        Background(12, 14, 20);
+ 
+        _scene3d.BeginDraw();
+        _scene3d.Lights();
+        _scene3d.PushMatrix();
+        _scene3d.Translate(Width / 2f, Height / 2f, 0);
+        _scene3d.RotateY(FrameCount / 200f); // gira la escena entera para que se note la profundidad
+ 
+        var gravity = new PVector(0, 0.15f, 0);
+ 
+        for (int i = 0; i < _pos.Count; i++)
+        {
+            var p = _pos[i];
+            var v = _vel[i];
+ 
+            v.Add(gravity);
+            p.Add(v);
+ 
+            // Rebote elastico contra las 6 paredes de un cubo invisible --
+            // cada eje se revisa por separado, pero es el MISMO PVector en
+            // los tres casos gracias al soporte nuevo de Z.
+            if (Abs(p.X) > BoxHalf) { p.X = Constrain(p.X, -BoxHalf, BoxHalf); v.X *= -0.8f; }
+            if (Abs(p.Y) > BoxHalf) { p.Y = Constrain(p.Y, -BoxHalf, BoxHalf); v.Y *= -0.8f; }
+            if (Abs(p.Z) > BoxHalf) { p.Z = Constrain(p.Z, -BoxHalf, BoxHalf); v.Z *= -0.8f; }
+ 
+            _pos[i] = p;
+            _vel[i] = v;
+ 
+            _scene3d.PushMatrix();
+            _scene3d.Translate(p.X, p.Y, p.Z);
+            _scene3d.FillHSB(Map(p.Y, -BoxHalf, BoxHalf, 0, 300), 70, 90);
+            _scene3d.Sphere(10);
+            _scene3d.PopMatrix();
+        }
+ 
+        _scene3d.PopMatrix();
+        _scene3d.EndDraw();
+ 
+        Image(_scene3d.Get(), 0, 0);
+ 
+        Fill(255);
+        TextSize(13);
+        Text($""PVector en 3D (X,Y,Z) -- {_pos.Count} partículas rebotando en un cubo -- click agrega más"", 12, Height - 16);
+    }
+ 
+    public override void MouseClicked()
+    {
+        for (int i = 0; i < 10; i++)
+            SpawnParticle();
+    }
+ 
+    private void SpawnParticle()
+    {
+        _pos.Add(new PVector(Random(-50, 50), -BoxHalf + 10, Random(-50, 50)));
+        _vel.Add(new PVector(Random(-2f, 2f), 0, Random(-2f, 2f)));
+    }
+}
+";
+        private const string ReusableSwarm =
+ @"
+using System.Collection.Generic;
+// Enjambre reutilizable -- demo de CreateShape3D(). La geometria de la
+// gema (el mismo octaedro facetado del sample anterior) se arma UNA sola
+// vez en Setup() -- CreateShape3D() graba los mismos Vertex()/Normal() que
+// usariamos con BeginShape()/EndShape(), pero en vez de dibujar
+// inmediatamente, sube la malla a un VAO/VBO persistente y devuelve un
+// PShape. De ahi en mas, cada gema del enjambre se dibuja con un simple
+// Shape() -- sin volver a triangular en la CPU ni volver a subir datos a
+// la GPU en cada frame, que es exactamente lo que SI hacia (a proposito,
+// para mostrar el contraste) el sample de la 'Gema facetada'.
+public class MySketch : Sketch
+{
+    private PGraphics _scene3d;
+    private PShape _gemShape;
+    private readonly List<(float x, float y, float z, float spin, float angle)> _gems =
+        new List<(float, float, float, float, float)>();
+ 
+    public override void Setup()
+    {
+        Size(800, 600);
+        _scene3d = CreateGraphics(Width, Height, RendererKind.Renderer3D);
+ 
+        // CreateShape3D() reclama y libera el contexto de GL por su cuenta
+        // -- se puede llamar suelto, una sola vez, sin BeginDraw()/EndDraw().
+        _gemShape = _scene3d.CreateShape3D(ShapeKind.Triangles, () => BuildGemVertices(_scene3d, 22));
+ 
+        for (int i = 0; i < 150; i++)
+        {
+            _gems.Add((
+                Random(-320, 320),
+                Random(-220, 220),
+                Random(-320, 320),
+                Random(0.3f, 1.5f),
+                Random(TWO_PI)));
+        }
+    }
+ 
+    public override void Draw()
+    {
+        Background(12, 14, 20);
+ 
+        _scene3d.BeginDraw();
+        _scene3d.Lights();
+        _scene3d.Fill(180, 220, 255);
+        _scene3d.PushMatrix();
+        _scene3d.Translate(Width / 2f, Height / 2f, 0);
+        _scene3d.RotateY(FrameCount / 300f);
+ 
+        for (int i = 0; i < _gems.Count; i++)
+        {
+            var g = _gems[i];
+            float angle = g.angle + FrameCount * 0.01f * g.spin;
+ 
+            _scene3d.PushMatrix();
+            _scene3d.Translate(g.x, g.y, g.z);
+            _scene3d.RotateY(angle);
+            _scene3d.RotateX(angle * 0.6f);
+            _scene3d.Shape(_gemShape, 0, 0);
+            _scene3d.PopMatrix();
+        }
+ 
+        _scene3d.PopMatrix();
+        _scene3d.EndDraw();
+ 
+        Image(_scene3d.Get(), 0, 0);
+ 
+        Fill(255);
+        TextSize(13);
+        Text($""CreateShape3D() x1 (subida una vez) -- Shape() x{_gems.Count} por frame, sin re-triangular ni re-subir nada"", 12, Height - 16);
+    }
+ 
+    private void BuildGemVertices(PGraphics g, float r)
+    {
+        var points = new PVector[]
+        {
+            new PVector(0, -r, 0), new PVector(0, r, 0),
+            new PVector(r, 0, 0), new PVector(0, 0, r), new PVector(-r, 0, 0), new PVector(0, 0, -r),
+        };
+        int[,] faces =
+        {
+            { 0, 2, 3 }, { 0, 3, 4 }, { 0, 4, 5 }, { 0, 5, 2 },
+            { 1, 3, 2 }, { 1, 4, 3 }, { 1, 5, 4 }, { 1, 2, 5 },
+        };
+ 
+        for (int f = 0; f < faces.GetLength(0); f++)
+        {
+            int ia = faces[f, 0], ib = faces[f, 1], ic = faces[f, 2];
+            var a = points[ia];
+            var b = points[ib];
+            var c = points[ic];
+ 
+            var normal = PVector.Cross(PVector.Sub(b, a), PVector.Sub(c, a)).Normalize();
+            g.Normal(normal.X, normal.Y, normal.Z);
+            g.Vertex(a.X, a.Y, a.Z);
+            g.Vertex(b.X, b.Y, b.Z);
+            g.Vertex(c.X, c.Y, c.Z);
+        }
+    }
+}
+";
+        private const string TexturedBillboard =
+@"// Cartel texturizado -- demo de Vertex(x,y,z,u,v) + Texture() bajo
+// Renderer3D. La textura no viene de un archivo: se genera dibujando un
+// patron con la API 2D de siempre sobre un PGraphics chico, y Get() lo
+// convierte en un PImage comun -- Texture()/Vertex(...,u,v) no distinguen
+// entre una imagen generada en codigo y una cargada con LoadImage(), asi
+// que ambas funcionan igual.
+//
+// El panel es un solo Quad con las 4 esquinas de la textura (u,v) de
+// (0,0) a (1,1) -- CreateShape3D() lo sube a la GPU una sola vez en
+// Setup(), y despues cada frame solo se dibuja con Shape().
+public class MySketch : Sketch
+{
+    private PGraphics _scene3d;
+    private PImage _texture;
+    private PShape _panel;
+ 
+    private float _qw = 1f, _qx, _qy, _qz;
+    private float _spinAxisX, _spinAxisY = 1f, _spinAxisZ, _spinAngle;
+ 
+    public override void Setup()
+    {
+        Size(700, 500);
+        _scene3d = CreateGraphics(Width, Height, RendererKind.Renderer3D);
+ 
+        _texture = BuildCheckerTexture();
+ 
+        // OJO: BeginShape() (llamado por CreateShape3D() internamente)
+        // resetea _shapeTexture a null -- por eso Texture() va DENTRO del
+        // callback, como primera línea, en vez de antes de CreateShape3D().
+        _panel = _scene3d.CreateShape3D(ShapeKind.Quads, () =>
+        {
+            _scene3d.Texture(_texture);
+ 
+            float s = 180;
+            _scene3d.Normal(0, 0, 1);
+            _scene3d.Vertex(-s, -s, 0, 0, 0);
+            _scene3d.Vertex(s, -s, 0, 1, 0);
+            _scene3d.Vertex(s, s, 0, 1, 1);
+            _scene3d.Vertex(-s, s, 0, 0, 1);
+        });
+    }
+ 
+    public override void Draw()
+    {
+        Background(15, 15, 20);
+ 
+        if (IsMousePressed)
+        {
+            float dx = MouseX - PMouseX;
+            float dy = MouseY - PMouseY;
+            float dragMag = Mag(dx, dy);
+            if (dragMag > 0.001f)
+            {
+                _spinAxisX = -dy / dragMag;
+                _spinAxisY = dx / dragMag;
+                _spinAxisZ = 0f;
+                _spinAngle = dragMag * 0.01f;
+            }
+        }
+        ApplySpin(_spinAxisX, _spinAxisY, _spinAxisZ, _spinAngle);
+        if (!IsMousePressed)
+            _spinAngle *= 0.98f;
+ 
+        _scene3d.BeginDraw();
+        _scene3d.Lights();
+        _scene3d.Fill(255);
+        _scene3d.PushMatrix();
+        _scene3d.Translate(Width / 2f, Height / 2f, 0);
+ 
+        float angle = 2f * Acos(Constrain(_qw, -1f, 1f));
+        float s = Sqrt(Max(1f - _qw * _qw, 0f));
+        if (s < 0.0001f)
+            _scene3d.Rotate(angle, 1, 0, 0);
+        else
+            _scene3d.Rotate(angle, _qx / s, _qy / s, _qz / s);
+ 
+        _scene3d.Shape(_panel, 0, 0);
+ 
+        _scene3d.PopMatrix();
+        _scene3d.EndDraw();
+ 
+        Image(_scene3d.Get(), 0, 0);
+ 
+        Fill(255);
+        TextSize(13);
+        Text(""CreateShape3D(Quads) + Vertex(x,y,z,u,v) + Texture() -- arrastrá para rotar"", 12, Height - 16);
+    }
+ 
+    // Genera un tablero de 8x8 en un PGraphics 2D chico y lo devuelve como
+    // PImage -- exactamente la misma API que ya usarías para dibujar en
+    // pantalla (Rect/Fill), solo que acá el resultado se guarda como
+    // textura en vez de mostrarse directo.
+    private PImage BuildCheckerTexture()
+    {
+        var tex = CreateGraphics(256, 256, RendererKind.Renderer2D);
+        tex.BeginDraw();
+        int cells = 8;
+        float cellSize = 256f / cells;
+        for (int gy = 0; gy < cells; gy++)
+        {
+            for (int gx = 0; gx < cells; gx++)
+            {
+                bool dark = (gx + gy) % 2 == 0;
+                float hue = Map(gx, 0, cells, 0, 300);
+                if (dark)
+                    tex.FillHSB(hue, 70, 40);
+                else
+                    tex.FillHSB(hue, 40, 95);
+                tex.NoStroke();
+                tex.Rect(gx * cellSize, gy * cellSize, cellSize, cellSize);
+            }
+        }
+        tex.EndDraw();
+        var img = tex.Get();
+        tex.Dispose();
+        return img;
+    }
+ 
+    private void ApplySpin(float ax, float ay, float az, float angle)
+    {
+        if (angle == 0f)
+            return;
+ 
+        float half = angle * 0.5f;
+        float dw = Cos(half), dx = ax * Sin(half), dy = ay * Sin(half), dz = az * Sin(half);
+ 
+        float nw = dw * _qw - dx * _qx - dy * _qy - dz * _qz;
+        float nx = dw * _qx + dx * _qw + dy * _qz - dz * _qy;
+        float ny = dw * _qy - dx * _qz + dy * _qw + dz * _qx;
+        float nz = dw * _qz + dx * _qy - dy * _qx + dz * _qw;
+ 
+        float norm = Sqrt(nw * nw + nx * nx + ny * ny + nz * nz);
+        _qw = nw / norm;
+        _qx = nx / norm;
+        _qy = ny / norm;
+        _qz = nz / norm;
     }
 }
 ";

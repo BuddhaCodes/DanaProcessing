@@ -349,17 +349,20 @@ namespace DanaProcessing
 #version 330 core
 layout(location = 0) in vec3 aPos;
 layout(location = 1) in vec3 aNormal;
+layout(location = 2) in vec2 aUV;
 uniform mat4 uModel;
 uniform mat4 uView;
 uniform mat4 uProjection;
 out vec3 vNormal;
 out vec3 vWorldPos;
+out vec2 vUV;
 void main()
 {
     vec4 worldPos = uModel * vec4(aPos, 1.0);
     vWorldPos = worldPos.xyz;
     gl_Position = uProjection * uView * worldPos;
     vNormal = normalize(mat3(transpose(inverse(uModel))) * aNormal);
+    vUV = aUV;
 }";
 
         private const int ShaderMaxLights = 8; // must match MaxLights above -- GLSL can't take a C# const
@@ -369,46 +372,59 @@ void main()
 #define MAX_LIGHTS 8
 in vec3 vNormal;
 in vec3 vWorldPos;
+in vec2 vUV;
 out vec4 FragColor;
-
+ 
 uniform vec4 uFillColor;
+uniform sampler2D uTexture;
+uniform int uHasTexture;
 uniform vec3 uMaterialAmbient;
 uniform vec3 uMaterialSpecular;
 uniform vec3 uMaterialEmissive;
 uniform float uMaterialShininess;
 uniform vec3 uEyePos;
-
+ 
 uniform int uLightCount;
 uniform int uLightType[MAX_LIGHTS];
 uniform vec3 uLightColor[MAX_LIGHTS];
 uniform vec3 uLightPosition[MAX_LIGHTS];
 uniform vec3 uLightDirection[MAX_LIGHTS];
 uniform vec3 uLightFalloff[MAX_LIGHTS];
-uniform vec2 uLightSpot[MAX_LIGHTS]; // x = angle (radians), y = concentration
+uniform vec2 uLightSpot[MAX_LIGHTS];
 uniform vec3 uLightSpecular[MAX_LIGHTS];
-uniform int uLightHasPosition[MAX_LIGHTS]; // ambient lights only: 0 = infinite (no falloff), 1 = positional
-
+uniform int uLightHasPosition[MAX_LIGHTS];
+ 
 void main()
 {
+    // uHasTexture == 1: el color de la textura reemplaza el RGB de
+    // uFillColor (igual que un shape texturizado en Processing), pero el
+    // alpha de uFillColor se sigue multiplicando -- así Tint()/alpha de
+    // fill siguen funcionando como un multiplicador de opacidad incluso
+    // sobre una superficie texturizada.
+    vec4 surfaceColor = uFillColor;
+    if (uHasTexture == 1)
+    {
+        vec4 texColor = texture(uTexture, vUV);
+        surfaceColor = vec4(texColor.rgb, texColor.a * uFillColor.a);
+    }
+ 
     if (uLightCount <= 0)
     {
-        // Processing's true default: no lights() called means shapes draw
-        // flat-colored, completely unlit -- normals aren't even consulted.
-        FragColor = uFillColor;
+        FragColor = surfaceColor;
         return;
     }
-
+ 
     vec3 n = normalize(vNormal);
     vec3 viewDir = normalize(uEyePos - vWorldPos);
-
+ 
     vec3 totalAmbient = vec3(0.0);
     vec3 totalDiffuse = vec3(0.0);
     vec3 totalSpecular = vec3(0.0);
-
+ 
     for (int i = 0; i < uLightCount; i++)
     {
         vec3 lightColor = uLightColor[i];
-
+ 
         if (uLightType[i] == 0)
         {
             float atten = 1.0;
@@ -421,10 +437,10 @@ void main()
             totalAmbient += lightColor * atten;
             continue;
         }
-
+ 
         vec3 lightDir;
         float atten = 1.0;
-
+ 
         if (uLightType[i] == 1)
         {
             lightDir = normalize(-uLightDirection[i]);
@@ -436,7 +452,7 @@ void main()
             lightDir = toLight / max(dist, 0.0001);
             vec3 fo = uLightFalloff[i];
             atten = 1.0 / max(fo.x + fo.y * dist + fo.z * dist * dist, 0.0001);
-
+ 
             if (uLightType[i] == 3)
             {
                 vec3 spotDir = normalize(uLightDirection[i]);
@@ -448,10 +464,10 @@ void main()
                     atten *= pow(cosAngle, uLightSpot[i].y);
             }
         }
-
+ 
         float diff = max(dot(n, lightDir), 0.0);
         totalDiffuse += lightColor * diff * atten;
-
+ 
         if (uMaterialShininess > 0.0)
         {
             vec3 halfVec = normalize(lightDir + viewDir);
@@ -459,17 +475,13 @@ void main()
             totalSpecular += lightColor * uLightSpecular[i] * spec * atten;
         }
     }
-
-    // Ambient reflectance uses uMaterialAmbient (defaults to the fill
-    // color on the C# side -- see UploadLighting() -- until ambient() is
-    // called explicitly); diffuse reflectance always follows the fill
-    // color, matching Processing (there's no separate diffuse() call).
+ 
     vec3 rgb = uMaterialEmissive
              + uMaterialAmbient * totalAmbient
-             + uFillColor.rgb * totalDiffuse
+             + surfaceColor.rgb * totalDiffuse
              + uMaterialSpecular * totalSpecular;
-
-    FragColor = vec4(rgb, uFillColor.a);
+ 
+    FragColor = vec4(rgb, surfaceColor.a);
 }";
 
         private void SetUpShader()
@@ -511,6 +523,7 @@ void main()
             return program;
         }
 
+        private int _uTextureLoc, _uHasTextureLoc;
         // Fetches every uModel/uView/.../uLight*[] uniform location from
         // the given (already-linked) program and stores them in the
         // _uXxxLoc fields that DrawBox()/DrawSphere()/UploadLighting() read
@@ -530,6 +543,9 @@ void main()
             _uMaterialSpecularLoc = _gl.GetUniformLocation(program, "uMaterialSpecular");
             _uMaterialEmissiveLoc = _gl.GetUniformLocation(program, "uMaterialEmissive");
             _uMaterialShininessLoc = _gl.GetUniformLocation(program, "uMaterialShininess");
+            
+            _uTextureLoc = _gl.GetUniformLocation(program, "uTexture");
+            _uHasTextureLoc = _gl.GetUniformLocation(program, "uHasTexture");
 
             _uLightCountLoc = _gl.GetUniformLocation(program, "uLightCount");
             for (int i = 0; i < MaxLights; i++)
@@ -853,6 +869,52 @@ void main()
             }
         }
 
+        // PImage no sabe nada de GL -- este diccionario es lo único que
+        // recuerda "esta imagen ya se subió, y su handle es este" para no
+        // volver a subirla cada frame si el mismo PImage se usa de nuevo
+        // (típico: Texture(img) llamado adentro de Draw() con la misma
+        // imagen todos los frames). Se limpia en Dispose().
+        private readonly Dictionary<PImage, uint> _textureCache = new();
+
+        private unsafe uint GetOrUploadTexture(PImage img)
+        {
+            if (_textureCache.TryGetValue(img, out uint existing))
+                return existing;
+
+            uint tex = _gl.GenTexture();
+            _gl.BindTexture(TextureTarget.Texture2D, tex);
+
+            var bitmap = img.Bitmap;
+            using var rgba = bitmap.ColorType == SKColorType.Rgba8888 ? null : bitmap.Copy(SKColorType.Rgba8888);
+            var source = rgba ?? bitmap;
+
+            var pixels = source.GetPixels();
+            _gl.TexImage2D(TextureTarget.Texture2D, 0, InternalFormat.Rgba8, (uint)source.Width, (uint)source.Height, 0, PixelFormat.Rgba, PixelType.UnsignedByte, (void*)pixels);
+
+            _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)GLEnum.Linear);
+            _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)GLEnum.Linear);
+            _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int)GLEnum.ClampToEdge);
+            _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int)GLEnum.ClampToEdge);
+
+            _textureCache[img] = tex;
+            return tex;
+        }
+
+        /// <summary>Binds uTexture/uHasTexture for the draw call about to happen — texture == null sets uHasTexture=0 (the shader falls back to uFillColor, exactly as before this patch).</summary>
+        private void BindTextureUniform(PImage? texture)
+        {
+            if (texture == null)
+            {
+                _gl.Uniform1(_uHasTextureLoc, 0);
+                return;
+            }
+            uint tex = GetOrUploadTexture(texture);
+            _gl.ActiveTexture(TextureUnit.Texture0);
+            _gl.BindTexture(TextureTarget.Texture2D, tex);
+            _gl.Uniform1(_uTextureLoc, 0); // unidad de textura 0
+            _gl.Uniform1(_uHasTextureLoc, 1);
+        }
+
         // =====================================================================
         // Per-frame lifecycle (IGraphicsBackend)
         // =====================================================================
@@ -1034,6 +1096,9 @@ void main()
         /// <summary>Stores the current normal vector, like Processing's normal(nx, ny, nz) -- see the _currentNormal field remark for why this is state-only until a vertex-based 3D shape API exists.</summary>
         public void SetCurrentNormal(float nx, float ny, float nz) => _currentNormal = new Vector3(nx, ny, nz);
 
+        /// <summary>Current Normal(nx, ny, nz) value — read by GraphicsContext.AddShape3DVertex() to stamp each vertex added inside a custom BeginShape()/EndShape() or CreateShape3D() block under Renderer3D.</summary>
+        public Vector3 CurrentNormal => _currentNormal;
+
         /// <summary>Transforms (x, y, z) by the current model AND camera (view) matrices, like Processing's modelX()/modelY()/modelZ() (together, since all three come from the same transformed point).</summary>
         public Vector3 ModelPosition(float x, float y, float z) => Vector3.Transform(new Vector3(x, y, z), _model);
 
@@ -1067,7 +1132,7 @@ void main()
             UploadMatrix(_uProjectionLoc, _projection);
             _gl.Uniform4(_uFillColorLoc, fillColor.Red / 255f, fillColor.Green / 255f, fillColor.Blue / 255f, fillColor.Alpha / 255f);
             UploadLighting(fillColor);
-
+            _gl.Uniform1(_uHasTextureLoc, 0);
             _gl.BindVertexArray(_cubeVao);
             _gl.DrawArrays(GLEnum.Triangles, 0, 36);
             _gl.BindVertexArray(0);
@@ -1099,10 +1164,163 @@ void main()
             UploadMatrix(_uProjectionLoc, _projection);
             _gl.Uniform4(_uFillColorLoc, fillColor.Red / 255f, fillColor.Green / 255f, fillColor.Blue / 255f, fillColor.Alpha / 255f);
             UploadLighting(fillColor);
-
+            _gl.Uniform1(_uHasTextureLoc, 0);
             _gl.BindVertexArray(_sphereVao);
             _gl.DrawArrays(GLEnum.Triangles, 0, (uint)_sphereVertexCount);
             _gl.BindVertexArray(0);
+        }
+
+        /// <summary>
+        /// Draws an arbitrary triangle-list mesh built from a custom
+        /// BeginShape()/Vertex()/EndShape() block, like Processing's
+        /// vertex-based 3D shapes under P3D. `positionsNormalsUVs` is a flat
+        /// GL_TRIANGLES buffer using 8 floats per vertex (position xyz,
+        /// normal xyz, uv xy) — built by GraphicsContext.TriangulateShape3D().
+        /// `texture` is the PImage set via Texture() for this shape, or null
+        /// for a plain-colored mesh (uHasTexture=0, shader falls back to
+        /// fillColor).
+        ///
+        /// Unlike Box()/Sphere(), which upload their mesh once in Setup()
+        /// and reuse it every frame, this uploads a fresh temporary VBO/VAO
+        /// on EVERY call — correct and simple, matching Processing's own
+        /// immediate-mode beginShape()/endShape() semantics, but not the
+        /// fastest way to redraw an unchanging shape every frame. A shape
+        /// that doesn't change is cheaper drawn once into a PShape (via
+        /// CreateShape3D()) and reused with Shape(), rather than re-issuing
+        /// BeginShape()/EndShape() itself every Draw().
+        /// </summary>
+        public unsafe void DrawCustomMesh(float[] positionsNormalsUVs, SKColor fillColor, PImage? texture)
+        {
+            if (positionsNormalsUVs.Length == 0)
+                return;
+
+            uint vao = _gl.GenVertexArray();
+            uint vbo = _gl.GenBuffer();
+            _gl.BindVertexArray(vao);
+            _gl.BindBuffer(GLEnum.ArrayBuffer, vbo);
+
+            fixed (float* data = positionsNormalsUVs)
+            {
+                _gl.BufferData(GLEnum.ArrayBuffer, (nuint)(positionsNormalsUVs.Length * sizeof(float)), data, GLEnum.StreamDraw);
+            }
+
+            const uint stride = 8 * sizeof(float);
+            _gl.EnableVertexAttribArray(0);
+            _gl.VertexAttribPointer(0, 3, GLEnum.Float, false, stride, (void*)0);
+            _gl.EnableVertexAttribArray(1);
+            _gl.VertexAttribPointer(1, 3, GLEnum.Float, false, stride, (void*)(3 * sizeof(float)));
+            _gl.EnableVertexAttribArray(2);
+            _gl.VertexAttribPointer(2, 2, GLEnum.Float, false, stride, (void*)(6 * sizeof(float)));
+
+            _gl.UseProgram(_shaderProgram);
+            UploadMatrix(_uModelLoc, _model);
+            UploadMatrix(_uViewLoc, _view);
+            UploadMatrix(_uProjectionLoc, _projection);
+            _gl.Uniform4(_uFillColorLoc, fillColor.Red / 255f, fillColor.Green / 255f, fillColor.Blue / 255f, fillColor.Alpha / 255f);
+            UploadLighting(fillColor);
+            BindTextureUniform(texture);
+
+            int vertexCount = positionsNormalsUVs.Length / 8;
+            _gl.DrawArrays(GLEnum.Triangles, 0, (uint)vertexCount);
+
+            _gl.BindVertexArray(0);
+            _gl.DeleteBuffer(vbo);
+            _gl.DeleteVertexArray(vao);
+        }
+
+        /// <summary>
+        /// Uploads a triangle-list mesh (8 floats/vertex: position xyz,
+        /// normal xyz, uv xy) to a NEW, persistent VAO/VBO (StaticDraw) and
+        /// returns its handle plus a resolved GL texture id (0 if `texture`
+        /// is null) — called once by GraphicsContext.CreateShape3D(), not
+        /// per frame. Same threading contract as before this patch: claims
+        /// and releases the GL context itself, safe to call from any thread
+        /// (typically Setup(), on the UI thread) without wrapping in
+        /// BeginDraw()/EndDraw().
+        /// </summary>
+        public unsafe (uint vao, uint vbo, int vertexCount, uint textureId) UploadPersistentMesh(float[] positionsNormalsUVs, PImage? texture)
+        {
+            _window.GLContext?.MakeCurrent();
+            try
+            {
+                uint vao = _gl.GenVertexArray();
+                uint vbo = _gl.GenBuffer();
+                _gl.BindVertexArray(vao);
+                _gl.BindBuffer(GLEnum.ArrayBuffer, vbo);
+
+                fixed (float* data = positionsNormalsUVs)
+                {
+                    _gl.BufferData(GLEnum.ArrayBuffer, (nuint)(positionsNormalsUVs.Length * sizeof(float)), data, GLEnum.StaticDraw);
+                }
+
+                const uint stride = 8 * sizeof(float);
+                _gl.EnableVertexAttribArray(0);
+                _gl.VertexAttribPointer(0, 3, GLEnum.Float, false, stride, (void*)0);
+                _gl.EnableVertexAttribArray(1);
+                _gl.VertexAttribPointer(1, 3, GLEnum.Float, false, stride, (void*)(3 * sizeof(float)));
+                _gl.EnableVertexAttribArray(2);
+                _gl.VertexAttribPointer(2, 2, GLEnum.Float, false, stride, (void*)(6 * sizeof(float)));
+
+                _gl.BindVertexArray(0);
+
+                uint textureId = texture != null ? GetOrUploadTexture(texture) : 0;
+                int vertexCount = positionsNormalsUVs.Length / 8;
+                return (vao, vbo, vertexCount, textureId);
+            }
+            finally
+            {
+                _window.GLContext?.Clear();
+            }
+        }
+
+        /// <summary>
+        /// Draws an already-uploaded mesh (from UploadPersistentMesh()) —
+        /// just binds the existing VAO (and texture, if textureId != 0) and
+        /// issues the draw call, with none of DrawCustomMesh()'s per-call
+        /// BufferData/create/delete overhead. Called by
+        /// GraphicsContext.Shape3D() for a PShape built with CreateShape3D().
+        /// </summary>
+        public void DrawUploadedMesh(uint vao, int vertexCount, SKColor fillColor, uint textureId)
+        {
+            _gl.UseProgram(_shaderProgram);
+            UploadMatrix(_uModelLoc, _model);
+            UploadMatrix(_uViewLoc, _view);
+            UploadMatrix(_uProjectionLoc, _projection);
+            _gl.Uniform4(_uFillColorLoc, fillColor.Red / 255f, fillColor.Green / 255f, fillColor.Blue / 255f, fillColor.Alpha / 255f);
+            UploadLighting(fillColor);
+
+            if (textureId != 0)
+            {
+                _gl.ActiveTexture(TextureUnit.Texture0);
+                _gl.BindTexture(TextureTarget.Texture2D, textureId);
+                _gl.Uniform1(_uTextureLoc, 0);
+                _gl.Uniform1(_uHasTextureLoc, 1);
+            }
+            else
+            {
+                _gl.Uniform1(_uHasTextureLoc, 0);
+            }
+
+            _gl.BindVertexArray(vao);
+            _gl.DrawArrays(GLEnum.Triangles, 0, (uint)vertexCount);
+            _gl.BindVertexArray(0);
+        }
+
+        /// <summary>Releases a persistent mesh's GPU buffers, created by UploadPersistentMesh() — called from PShape.Dispose(). Claims and releases the GL context itself, same reasoning as UploadPersistentMesh() (this can run from any thread, e.g. the UI thread disposing a shape after a sketch ends). A no-op if this backend is already disposed (its whole GL context, and everything in it, already died along with it — nothing left here to free individually).</summary>
+        public void DeleteMesh(uint vao, uint vbo)
+        {
+            if (_disposed)
+                return;
+            _window.GLContext?.MakeCurrent();
+            try
+            {
+                _gl.DeleteVertexArray(vao);
+                _gl.DeleteBuffer(vbo);
+            }
+            finally
+            {
+                _window.GLContext?.Clear();
+            }
         }
 
         private unsafe void UploadMatrix(int location, Matrix4x4 m)
@@ -1123,6 +1341,11 @@ void main()
         {
             if (_disposed)
                 return;
+
+            foreach (var tex in _textureCache.Values)
+                _gl.DeleteTexture(tex);
+            _textureCache.Clear();
+
             // Same reasoning as BeginFrame() — Dispose() can be called from
             // yet another thread (e.g. the UI thread swapping in a new
             // sketch via LoadSketch()), and deleting GL objects needs the
@@ -1165,9 +1388,12 @@ void main()
         // layout; see the PShader remarks above SetActiveShader()).
         //
         // NOT YET BUILT (tracked here so it doesn't get lost):
-        // - normal() only stores its value for now (see the _currentNormal
-        //   field remark) -- it has nowhere to attach until a vertex-based
-        //   3D shape API (beginShape()/vertex() under Renderer3D) exists.
+        // - normal() now has somewhere to attach: BeginShape()/Vertex(x,y,z)/
+        //   EndShape() under Renderer3D builds and draws a real triangle
+        //   mesh (DrawCustomMesh()), with per-vertex normals taken from
+        //   normal(). Points/Lines shape kinds aren't supported in 3D yet
+        //   (no meaningful normal to light them with) — EndShape() throws
+        //   NotSupportedException for those.
         // - Any 3D primitive besides Box() and Sphere() (Processing itself
         //   only has these two built-in 3D primitives, so this list is done
         //   as far as primitives go).

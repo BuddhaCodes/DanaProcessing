@@ -38,6 +38,20 @@ namespace DanaProcessing
         /// <summary>Opens a raw input byte stream from a file, like Processing's createInput(path). Throws if the file doesn't exist.</summary>
         public Stream CreateInput(string path) => File.OpenRead(path);
 
+        /// <summary>Opens a raw output byte stream to a file, like Processing's single-argument saveStream(filename) — an alias of CreateOutput() under Processing's other name for the same thing.</summary>
+        public Stream SaveStream(string path) => CreateOutput(path);
+
+        /// <summary>Copies the entire contents of `input` to a new file at `path` and closes both, like Processing's two-argument saveStream(filename, input) — https://processing.org/reference/saveStream_.html. Handy when you already have an input stream (e.g. from CreateInput() on another file, or a network/download stream) and just want it saved whole, without reading it into memory by hand first.</summary>
+        public void SaveStream(string path, Stream input)
+        {
+            using var output = CreateOutput(path);
+            input.CopyTo(output);
+        }
+
+        /// <summary>Opens a file, folder, URL, or application with the OS's default handler, like Processing's launch() — https://processing.org/reference/launch_.html. Fire-and-forget: returns as soon as the OS has been asked to open it, same as Processing's version.</summary>
+        public void Launch(string path) =>
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(path) { UseShellExecute = true });
+
         // =====================================================================
         // Output — https://processing.org/reference/printArray_.html.
         // Print()/Println() live in Sketch.cs.

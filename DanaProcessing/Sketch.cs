@@ -1,4 +1,5 @@
 using SkiaSharp;
+using System.Xml.Linq;
 
 namespace DanaProcessing
 {
@@ -70,6 +71,49 @@ namespace DanaProcessing
         public void NoLoop() => IsLooping = false;
         public void Loop() => IsLooping = true;
 
+        /// <summary>
+        /// Halts the calling thread for ms milliseconds, like Processing's
+        /// delay() — https://processing.org/reference/delay_.html. Draw()
+        /// runs on whatever thread the host pumps its render loop on, so a
+        /// long Delay() here blocks that same thread/frame — exactly like
+        /// Processing blocking its own animation thread. NOT meant for
+        /// pacing smooth animation (use FrameRate() for that); it's meant
+        /// for sketches that only need to redraw occasionally and want to
+        /// spend the rest of the time idle instead of burning CPU on frames
+        /// nobody will see change (a slow-updating clock, a sensor readout,
+        /// a battery-friendly ambient display...).
+        /// </summary>
+        public void Delay(int ms) => System.Threading.Thread.Sleep(Math.Max(0, ms));
+
+        /// <summary>
+        /// Runs a no-argument method of this sketch on a background thread
+        /// and returns immediately, like Processing's thread(functionName) —
+        /// https://processing.org/reference/thread_.html. Looks the method
+        /// up by name via reflection (public or private, instance method),
+        /// exactly like Processing's own string-based API. Useful for slow
+        /// work (a big computation, a network call) that shouldn't block
+        /// Draw() — write your results to a field the background method
+        /// owns, and have Draw() just read that field each frame; there's no
+        /// automatic locking here, so keep the handoff to something simple
+        /// (a single field write/read, or your own lock) to avoid tearing.
+        /// </summary>
+        public void Thread(string methodName)
+        {
+            var method = GetType().GetMethod(
+                methodName,
+                System.Reflection.BindingFlags.Instance
+                    | System.Reflection.BindingFlags.Public
+                    | System.Reflection.BindingFlags.NonPublic,
+                binder: null,
+                types: Type.EmptyTypes,
+                modifiers: null);
+
+            if (method == null)
+                throw new ArgumentException($"Thread(): no se encontró un método sin parámetros llamado '{methodName}' en {GetType().Name}.", nameof(methodName));
+
+            System.Threading.Tasks.Task.Run(() => method.Invoke(this, null));
+        }
+
         /// <summary>Raised when the sketch calls Redraw() — meaningful only while NoLoop() is in effect, like Processing's redraw() forcing exactly one extra frame. The host should subscribe and render a single frame in response; looping sketches can ignore this since they're already rendering continuously.</summary>
         public event Action? RedrawRequested;
 
@@ -112,6 +156,100 @@ namespace DanaProcessing
             if (density != 1 && density != 2)
                 throw new ArgumentException("PixelDensity() solo acepta 1 o 2, igual que Processing.");
         }
+
+        /// <summary>
+        /// Width of the sketch's own backing buffer in actual pixels, like
+        /// Processing's pixelWidth — https://processing.org/reference/pixelWidth.html.
+        /// Since DanaProcessing always draws at 1:1 (PixelDensity() is
+        /// validated but has no effect — see its doc comment above), this is
+        /// always equal to Width; it exists so sketches ported from
+        /// Processing that read pixelWidth (e.g. when indexing into
+        /// LoadPixels()'s array by hand) keep working without a rewrite.
+        /// </summary>
+        public int PixelWidth => Width;
+
+        /// <summary>Height of the sketch's backing buffer in actual pixels — see PixelWidth.</summary>
+        public int PixelHeight => Height;
+
+        /// <summary>Whether the sketch is currently requesting fullscreen, like Processing's fullScreen() being active. Set by FullScreen(); a host should watch FullScreenRequested rather than poll this, but it's here for sketches that want to read their own state back.</summary>
+        public bool IsFullScreen { get; private set; }
+
+        /// <summary>Raised when the sketch calls FullScreen(fullScreen) — a host that owns an actual window should subscribe and enter/exit fullscreen accordingly, the same way it reacts to SizeChanged.</summary>
+        public event Action<bool>? FullScreenRequested;
+
+        /// <summary>Requests the sketch's window go fullscreen (or leave fullscreen), like Processing's fullScreen()/fullScreen(false) — https://processing.org/reference/fullScreen_.html. Call from Setup() (or anywhere) rather than only at startup; unlike real Processing, nothing stops you from toggling it back off later.</summary>
+        public void FullScreen(bool fullScreen = true)
+        {
+            IsFullScreen = fullScreen;
+            FullScreenRequested?.Invoke(fullScreen);
+        }
+
+        /// <summary>Raised when the sketch calls WindowMove(x, y) — like Processing's windowMove() — https://processing.org/reference/windowMove_.html. A host with an actual window should subscribe and reposition it.</summary>
+        public event Action<int, int>? WindowMoveRequested;
+
+        /// <summary>Requests the sketch's window move to (x, y) in screen coordinates, like Processing's windowMove().</summary>
+        public void WindowMove(int x, int y) => WindowMoveRequested?.Invoke(x, y);
+
+        /// <summary>Classic-API alias for WindowMove(x, y), like Processing's older setLocation() (pre-windowMove()).</summary>
+        public void SetLocation(int x, int y) => WindowMove(x, y);
+
+        /// <summary>Raised when the sketch calls WindowResize(w, h) — like Processing's windowResize() — https://processing.org/reference/windowResize_.html. Distinct from Size(w, h): Size() tells the host what buffer size to render at; this asks the host to resize the actual OS window around it.</summary>
+        public event Action<int, int>? WindowResizeRequested;
+
+        /// <summary>Requests the sketch's OS window be resized to (w, h), like Processing's windowResize().</summary>
+        public void WindowResize(int w, int h) => WindowResizeRequested?.Invoke(w, h);
+
+        /// <summary>Whether the sketch's window is currently allowed to be resized by the user, like Processing's windowResizable() state. Defaults to false, matching Processing's own default.</summary>
+        public bool IsWindowResizable { get; private set; }
+
+        /// <summary>Raised when the sketch calls WindowResizable(resizable) — like Processing's windowResizable() — https://processing.org/reference/windowResizable_.html.</summary>
+        public event Action<bool>? WindowResizableChanged;
+
+        /// <summary>Allows or forbids the user resizing the sketch's window, like Processing's windowResizable().</summary>
+        public void WindowResizable(bool resizable)
+        {
+            IsWindowResizable = resizable;
+            WindowResizableChanged?.Invoke(resizable);
+        }
+
+        /// <summary>Classic-API alias for WindowResizable(resizable), like Processing's older setResizable().</summary>
+        public void SetResizable(bool resizable) => WindowResizable(resizable);
+
+        /// <summary>The sketch's current window title, like Processing's windowTitle() state. Empty until WindowTitle()/SetTitle() is called.</summary>
+        public string WindowTitleText { get; private set; } = "";
+
+        /// <summary>Raised when the sketch calls WindowTitle(title) — like Processing's windowTitle() — https://processing.org/reference/windowTitle_.html.</summary>
+        public event Action<string>? WindowTitleChanged;
+
+        /// <summary>Sets the sketch's window title, like Processing's windowTitle().</summary>
+        public void WindowTitle(string title)
+        {
+            WindowTitleText = title ?? "";
+            WindowTitleChanged?.Invoke(WindowTitleText);
+        }
+
+        /// <summary>Classic-API alias for WindowTitle(title), like Processing's older setTitle().</summary>
+        public void SetTitle(string title) => WindowTitle(title);
+
+        /// <summary>Raised when the sketch calls WindowRatio(w, h) — like Processing's windowRatio() — https://processing.org/reference/windowRatio_.html. A host should constrain interactive resizing to this aspect ratio from here on.</summary>
+        public event Action<int, int>? WindowRatioRequested;
+
+        /// <summary>Locks the sketch's window to the w:h aspect ratio while the user resizes it, like Processing's windowRatio().</summary>
+        public void WindowRatio(int w, int h) => WindowRatioRequested?.Invoke(w, h);
+
+        /// <summary>
+        /// Runs once, before Setup() — like Processing's settings() —
+        /// https://processing.org/reference/settings_.html. In real
+        /// Processing this exists only because size() is special-cased by
+        /// the preprocessor and can't take a variable inside setup(); in
+        /// plain C# there's no such restriction, so overriding this is
+        /// entirely optional here — Size() works fine directly inside
+        /// Setup() too. It's provided so sketches ported from Processing
+        /// that rely on the setup-order guarantee (settings() strictly
+        /// before setup()) keep behaving the same way. The host is
+        /// responsible for calling Settings() immediately before Setup().
+        /// </summary>
+        public virtual void Settings() { }
 
         // --- Mouse state (position only — buttons/events live in Sketch.Input.cs) ---
         public float MouseX { get; internal set; }
@@ -238,6 +376,26 @@ namespace DanaProcessing
 
         /// <summary>Writes an XML element (and its children) to a file, like Processing's saveXML(xml, path).</summary>
         public void SaveXML(XML xml, string path) => xml.Save(path);
+
+        /// <summary>Parses an already-in-memory JSON string as a JSONObject, like Processing's parseJSONObject(string) — https://processing.org/reference/parseJSONObject_.html. Use this instead of LoadJSONObject() when the JSON came from somewhere other than a file on disk (a network response, a string you built by hand, text pasted into the sketch...).</summary>
+        public JSONObject ParseJSONObject(string json) => JSONObject.Parse(json);
+
+        /// <summary>Parses an already-in-memory JSON string as a JSONArray, like Processing's parseJSONArray(string) — see ParseJSONObject().</summary>
+        public JSONArray ParseJSONArray(string json) => JSONArray.Parse(json);
+
+        /// <summary>Parses an already-in-memory XML string, like Processing's parseXML(string) — https://processing.org/reference/parseXML_.html. Use this instead of LoadXML() when the XML didn't come from a file.</summary>
+        public XML ParseXML(string xml) => ParseXML(xml);
+
+
+        // ============================================================================
+        // PATCH 2/2 — PXML.cs
+        // Insertar inmediatamente después de:
+        //     public static XML Load(string path) => new XML(XElement.Load(path));
+        // ============================================================================
+
+        /// <summary>Parses an XML string directly (no file involved), like Processing's parseXML(string). Throws if the text isn't well-formed XML.</summary>
+        public static XML Parse(string xml) => new XML(XElement.Parse(xml));
+
 
         /// <summary>Loads a CSV file as a Table, like Processing's loadTable(path, options). `options` supports "header" for a first line naming the columns.</summary>
         public Table LoadTable(string path, string options = "") => Table.LoadCsv(path, options);

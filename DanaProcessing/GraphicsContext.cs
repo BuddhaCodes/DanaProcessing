@@ -574,6 +574,9 @@ namespace DanaProcessing
 
         /// <summary>Draws a rect with equal width and height, like Processing's square() — a plain alias, still subject to the current RectMode().</summary>
         public void Square(float x, float y, float extent) => Rect(x, y, extent, extent);
+        
+        /// <summary>Draws an ellipse with equal width and height, like Processing's circle() — https://processing.org/reference/circle_.html. A plain alias for Ellipse(x, y, extent, extent), still subject to the current EllipseMode().</summary>
+        public void Circle(float x, float y, float extent) => Ellipse(x, y, extent, extent);
 
         public void Ellipse(float a, float b, float c, float d)
         {
@@ -752,7 +755,10 @@ namespace DanaProcessing
         private PImage? _shapeTexture;
         private bool _startNewContour = false;
         private bool _shapeHasContour = false;
-
+        private bool _shape3DActive;
+        private readonly List<System.Numerics.Vector3> _shape3DPositions = new List<System.Numerics.Vector3>();
+        private readonly List<System.Numerics.Vector3> _shape3DNormals = new List<System.Numerics.Vector3>();
+        private readonly List<System.Numerics.Vector2> _shape3DUVs = new List<System.Numerics.Vector2>();
         public void BeginShape(ShapeKind kind = ShapeKind.Polygon)
         {
             _shapeKind = kind;
@@ -764,6 +770,14 @@ namespace DanaProcessing
             _shapeTexture = null;
             _startNewContour = false;
             _shapeHasContour = false;
+
+            _shape3DActive = Renderer == RendererKind.Renderer3D;
+            if (_shape3DActive)
+            {
+                _shape3DPositions.Clear();
+                _shape3DNormals.Clear();
+                _shape3DUVs.Clear();
+            }
         }
 
         /// <summary>
@@ -814,6 +828,12 @@ namespace DanaProcessing
         /// <summary>Adds a straight-line vertex. Its color is captured from the current Fill() at the moment this is called — set a different fill before each vertex to get a Gouraud-shaded (per-vertex-colored) mesh on the shape kinds that support it.</summary>
         public void Vertex(float x, float y)
         {
+            if (_shape3DActive)
+            {
+                AddShape3DVertex(x, y, 0f);
+                return;
+            }
+
             RecordVertexColorAndUv(new SKPoint(0, 0));
             if (_shapeKind == ShapeKind.Polygon)
             {
@@ -831,6 +851,49 @@ namespace DanaProcessing
             {
                 _shapeVertices.Add(new SKPoint(x, y));
             }
+        }
+
+        /// <summary>
+        /// Adds a 3D vertex (x, y, z) to the shape currently being built,
+        /// like Processing's vertex(x, y, z) under P3D. Only valid inside
+        /// BeginShape()/EndShape() while running under Renderer3D — use the
+        /// plain Vertex(x, y) overload under the default 2D renderer (it's
+        /// treated as z = 0 here too, if called while a Renderer3D shape is
+        /// active). The vertex's normal is whatever the last Normal(nx, ny,
+        /// nz) call set (default (0,0,1) if you never called it) — call
+        /// Normal() again before each face's vertices for flat per-face
+        /// shading (see the "Gema facetada" sample), or once with a shared
+        /// direction across several vertices for smooth shading.
+        /// </summary>
+        public void Vertex(float x, float y, float z)
+        {
+            if (!_shape3DActive)
+                throw new InvalidOperationException("Vertex(x, y, z) requiere estar dentro de BeginShape()/EndShape() bajo Renderer3D — usa Vertex(x, y) en el renderer 2D por defecto.");
+            AddShape3DVertex(x, y, z);
+        }
+
+
+        /// <summary>
+        /// Adds a 3D vertex with explicit texture coordinates (u, v in
+        /// 0-1), like Processing's vertex(x, y, z, u, v) under P3D. Call
+        /// Texture(img) before BeginShape() (or right after it, before any
+        /// Vertex() calls) to set which image these coordinates index into
+        /// — the same Texture()/NoTexture() pair the 2D mesh path already
+        /// uses. Only valid inside BeginShape()/EndShape() under
+        /// Renderer3D, same restriction as the plain Vertex(x, y, z).
+        /// </summary>
+        public void Vertex(float x, float y, float z, float u, float v)
+        {
+            if (!_shape3DActive)
+                throw new InvalidOperationException("Vertex(x, y, z, u, v) requiere estar dentro de BeginShape()/EndShape() bajo Renderer3D.");
+            AddShape3DVertex(x, y, z, u, v);
+        }
+
+        private void AddShape3DVertex(float x, float y, float z, float u = 0f, float v = 0f)
+        {
+            _shape3DPositions.Add(new System.Numerics.Vector3(x, y, z));
+            _shape3DNormals.Add(Require3D().CurrentNormal);
+            _shape3DUVs.Add(new System.Numerics.Vector2(u, v));
         }
 
         /// <summary>Adds a vertex with explicit texture coordinates (u, v in 0-1, relative to the image set via Texture()), like Processing's vertex(x, y, u, v). Only valid for Triangles/TriangleStrip/TriangleFan/Quads/QuadStrip — Polygon can't mix in per-vertex texture data because of its curved-segment support.</summary>
@@ -904,6 +967,14 @@ namespace DanaProcessing
         public void EndShape(bool close = false)
         {
             EnsureReady();
+
+            if (_shape3DActive)
+            {
+                EndShape3D();
+                _shape3DActive = false;
+                return;
+            }
+
             switch (_shapeKind)
             {
                 case ShapeKind.Polygon:
@@ -954,6 +1025,99 @@ namespace DanaProcessing
             _shapeVertices.Clear();
             _shapeVertexColors.Clear();
             _shapeVertexUVs.Clear();
+
+        }
+
+        /// <summary>
+        /// Triangulates the vertices/normals recorded since BeginShape() and
+        /// uploads them as one GL_TRIANGLES mesh, called by EndShape() when
+        /// running under Renderer3D. Triangulation happens here, on the CPU,
+        /// in plain C# — Renderer3DBackend.DrawCustomMesh() just draws
+        /// whatever flat triangle list it's handed, the same way it already
+        /// does for Box()/Sphere()'s own precomputed meshes.
+        /// </summary>
+        private void EndShape3D()
+        {
+            var flat = TriangulateShape3D();
+            if (flat.Length > 0)
+                Require3D().DrawCustomMesh(flat, _fillPaint.Color, _shapeTexture);
+        }
+
+        /// <summary>Triangulates the vertices/normals recorded since BeginShape() into a flat GL_TRIANGLES buffer (position xyz, normal xyz per vertex) — shared by EndShape3D() (immediate draw) and CreateShape3D() (persistent upload).</summary>
+        private float[] TriangulateShape3D()
+        {
+            var positions = _shape3DPositions;
+            var normals = _shape3DNormals;
+            var uvs = _shape3DUVs;
+            int n = positions.Count;
+
+            var flat = new List<float>(n * 8);
+
+            void AddVert(int i)
+            {
+                var p = positions[i];
+                var nrm = normals[i];
+                var uv = uvs[i];
+                flat.Add(p.X);
+                flat.Add(p.Y);
+                flat.Add(p.Z);
+                flat.Add(nrm.X);
+                flat.Add(nrm.Y);
+                flat.Add(nrm.Z);
+                flat.Add(uv.X);
+                flat.Add(uv.Y);
+            }
+            void AddTri(int a, int b, int c)
+            { AddVert(a); AddVert(b); AddVert(c); }
+
+            switch (_shapeKind)
+            {
+                case ShapeKind.Triangles:
+                    for (int i = 0; i + 2 < n; i += 3)
+                        AddTri(i, i + 1, i + 2);
+                    break;
+
+                case ShapeKind.TriangleStrip:
+                    for (int i = 2; i < n; i++)
+                    {
+                        if ((i & 1) == 0)
+                            AddTri(i - 2, i - 1, i);
+                        else
+                            AddTri(i - 1, i - 2, i);
+                    }
+                    break;
+
+                case ShapeKind.TriangleFan:
+                    for (int i = 2; i < n; i++)
+                        AddTri(0, i - 1, i);
+                    break;
+
+                case ShapeKind.Quads:
+                    for (int i = 0; i + 3 < n; i += 4)
+                    {
+                        AddTri(i, i + 1, i + 2);
+                        AddTri(i, i + 2, i + 3);
+                    }
+                    break;
+
+                case ShapeKind.QuadStrip:
+                    for (int i = 0; i + 3 < n; i += 2)
+                    {
+                        AddTri(i, i + 1, i + 3);
+                        AddTri(i, i + 3, i + 2);
+                    }
+                    break;
+
+                case ShapeKind.Polygon:
+                    for (int i = 2; i < n; i++)
+                        AddTri(0, i - 1, i);
+                    break;
+
+                default:
+                    throw new NotSupportedException($"BeginShape()/EndShape() bajo Renderer3D todavía no soporta ShapeKind.{_shapeKind} (Points/Lines no tienen una normal con la que iluminarse) — usa Triangles/TriangleStrip/TriangleFan/Quads/QuadStrip/Polygon.");
+            }
+
+            return flat.ToArray();
         }
 
         private bool ShapeNeedsMesh()
@@ -1364,6 +1528,12 @@ namespace DanaProcessing
         public void Shape(PShape shape, float x, float y, float w, float h)
         {
             EnsureReady();
+            if (shape.Mesh3D != null)
+            {
+                Shape3D(shape, x, y);
+                return;
+            }
+
             var rect = ResolveRectMode(_shapeDrawMode, x, y, w, h);
             Canvas.Save();
             Canvas.Translate(rect.Left, rect.Top);
@@ -1373,12 +1543,68 @@ namespace DanaProcessing
             Canvas.Restore();
         }
 
+        /// <summary>
+        /// Draws a PShape built with CreateShape3D() at (x, y, 0) in the
+        /// current model space, called by Shape() when the shape wraps a 3D
+        /// mesh instead of a 2D SKPicture. Unlike the 2D Shape() overload,
+        /// w/h scaling isn't supported here (a baked 3D mesh's own
+        /// coordinates already define its size) — wrap the call in your own
+        /// PushMatrix()/Scale()/Rotate()/PopMatrix() for that, the same way
+        /// the "Enjambre reutilizable" sample does for rotation.
+        /// </summary>
+        private void Shape3D(PShape shape, float x, float y)
+        {
+            var backend = Require3D();
+            if (!ReferenceEquals(shape.Mesh3D!.Backend, backend))
+                throw new InvalidOperationException("Este PShape 3D se construyó con CreateShape3D() en otro contexto Renderer3D (otro PGraphics/Sketch) -- solo puede dibujarse en el mismo backend donde se creó.");
+
+            PushMatrix();
+            Translate(x, y, 0);
+            backend.DrawUploadedMesh(shape.Mesh3D.Vao, shape.Mesh3D.VertexCount, _fillPaint.Color, shape.Mesh3D.TextureId);
+            PopMatrix();
+        }
+
         /// <summary>Creates a new offscreen drawing buffer, like Processing's createGraphics(w, h). Available here (not just on Sketch) so buffers can nest.</summary>
         /// <summary>Creates a new offscreen buffer, like Processing's createGraphics(). Pass RendererKind.Renderer3D once that backend exists — for now it throws NotImplementedException, same as Sketch's Size().</summary>
         public PGraphics CreateGraphics(int w, int h, RendererKind renderer = RendererKind.Renderer2D) => new PGraphics(w, h, renderer);
 
         /// <summary>Loads a vector shape from an SVG file, like Processing's loadShape(). Requires the SkiaSharp.Extended.Svg NuGet package.</summary>
         public PShape LoadShape(string path) => PShape.LoadSvg(path);
+
+        /// <summary>Current Fill() color as a Color, or null if NoFill() is active — used by CreateShape() to bake the *current* style into a standalone PShape at the moment it's built.</summary>
+        private Color? CurrentFillColor => _fillEnabled ? new Color(_fillPaint.Color) : (Color?)null;
+
+        /// <summary>Current Stroke() color as a Color, or null if NoStroke() is active — see CurrentFillColor.</summary>
+        private Color? CurrentStrokeColor => _strokeEnabled ? new Color(_strokePaint.Color) : (Color?)null;
+
+        /// <summary>
+        /// Builds a standalone, reusable rectangle PShape, like Processing's
+        /// createShape(RECT, x, y, w, h) — https://processing.org/reference/createShape_.html
+        /// x/y/w/h are in the shape's OWN local coordinate system (matching
+        /// real Processing): Shape(built, drawX, drawY) later draws it
+        /// translated by (drawX, drawY), so it ends up on screen at
+        /// (drawX + x, drawY + y) — build once in Setup(), stamp many times
+        /// in Draw() instead of re-issuing Rect() every frame.
+        ///
+        /// Captures the CURRENT Fill()/Stroke()/StrokeWeight() as the shape's
+        /// fixed, baked-in style — changing Fill()/Stroke() afterwards has no
+        /// retroactive effect on a shape you already built.
+        /// </summary>
+        public PShape CreateShape(PShapeType type, params float[] v)
+        {
+            EnsureReady();
+            return PShape.CreatePrimitive(type, v, CurrentFillColor, CurrentStrokeColor, _strokePaint.StrokeWidth);
+        }
+
+        /// <summary>
+        /// Groups several shapes into one reusable PShape, like Processing's
+        /// createShape(GROUP) + addChild() — https://processing.org/reference/createShape_.html.
+        /// Children keep their own absolute local coordinates (as given to
+        /// CreateShape() when each was built), so this is how you compose an
+        /// icon/sprite out of several primitives and then move/scale/draw the
+        /// whole thing as one PShape via Shape().
+        /// </summary>
+        public PShape CreateShape(params PShape[] children) => PShape.CreateGroup(children);
 
         // =====================================================================
         // Pixels — https://processing.org/reference/loadPixels_.html and
