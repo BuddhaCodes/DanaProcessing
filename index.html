@@ -42,6 +42,7 @@
     --border-strong: #9A8A7D;
 
     --accent: #1B3C53;
+    --accent-2: #B8863A;
     --accent-hover: #2A5070;
     --accent-light: #D2C1B6;
     --accent-glow: rgba(27, 60, 83, 0.12);
@@ -91,6 +92,7 @@
     --border-strong: #5A7A8C;
 
     --accent: #D2C1B6;
+    --accent-2: #D4A64A;
     --accent-hover: #E0D2C8;
     --accent-light: #3A5A6C;
     --accent-glow: rgba(210, 193, 182, 0.12);
@@ -106,6 +108,49 @@
 
     --icon-color: #B8AEA6;
     --icon-active: #D2C1B6;
+  }
+
+  /* ============================================================
+     MODO 3D — paleta "espacio profundo", deliberadamente distinta
+     de light/dark: el toggle 2D/3D cambia de universo visual, no
+     solo de brillo. Gana por especificidad/orden de cascada sobre
+     [data-theme="dark"] cuando ambos atributos están presentes.
+     ============================================================ */
+  [data-mode="3d"]{
+    --bg-primary: #0A0918;
+    --bg-secondary: #12112A;
+    --bg-tertiary: #1B1A3A;
+    --bg-sidebar: #0A0918;
+    --bg-code: #12112A;
+    --bg-hover: #1E1D42;
+    --bg-active: #2B2960;
+
+    --text-primary: #ECE9FF;
+    --text-secondary: #A9A1E8;
+    --text-muted: #6B63A8;
+    --text-inverse: #0A0918;
+
+    --border-light: #262456;
+    --border-medium: #3B387A;
+    --border-strong: #524C9E;
+
+    --accent: #9C7BFF;
+    --accent-2: #35E8D4;
+    --accent-hover: #B79BFF;
+    --accent-light: #2B2960;
+    --accent-glow: rgba(156, 123, 255, 0.35);
+
+    --success: #35E8B0;
+    --warning: #FFC24B;
+    --danger: #FF5C8A;
+
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.4);
+    --shadow-md: 0 4px 20px rgba(80,40,255,0.18);
+    --shadow-lg: 0 8px 40px rgba(80,40,255,0.22);
+    --shadow-xl: 0 20px 60px rgba(80,40,255,0.28);
+
+    --icon-color: #A9A1E8;
+    --icon-active: #35E8D4;
   }
 
   /* ============================================================
@@ -765,6 +810,200 @@
 }
 .sidebar-download .ph-bold{ font-size:15px; }
   @keyframes dana-spin{ to{ transform:rotate(360deg); } }
+
+  /* ============================================================
+     TOGGLE 2D / 3D — el interruptor de universo
+     ============================================================ */
+  .mode-toggle{
+    position:relative;
+    display:flex;
+    align-items:center;
+    gap:0;
+    background:var(--bg-tertiary);
+    border:1px solid var(--border-medium);
+    border-radius:999px;
+    padding:3px;
+    cursor:pointer;
+    font-family:var(--font-mono);
+    font-size:12px;
+    font-weight:600;
+    letter-spacing:0.03em;
+    isolation:isolate;
+    transition:background var(--transition), border-color var(--transition);
+  }
+  .mode-toggle .mode-pill{
+    position:absolute;
+    top:3px; bottom:3px; left:3px;
+    width:calc(50% - 3px);
+    border-radius:999px;
+    background:linear-gradient(135deg, var(--accent), var(--accent-2, var(--accent-hover)));
+    box-shadow:0 0 0 1px rgba(255,255,255,0.08) inset, 0 2px 10px var(--accent-glow);
+    transition:transform 0.45s cubic-bezier(0.65,0,0.35,1), background 0.4s ease;
+    z-index:0;
+  }
+  [data-mode="3d"] .mode-toggle .mode-pill{ transform:translateX(100%); }
+  .mode-toggle span{
+    position:relative;
+    z-index:1;
+    display:flex;
+    align-items:center;
+    gap:6px;
+    padding:7px 14px;
+    border-radius:999px;
+    color:var(--text-muted);
+    transition:color 0.3s ease;
+    min-width:56px;
+    justify-content:center;
+  }
+  .mode-toggle span.active{ color:var(--text-inverse); }
+  .mode-toggle:hover{ border-color:var(--border-strong); }
+  .mode-toggle .ph{ font-size:15px; }
+
+  /* Insignia "modo actual" junto al título de la página */
+  .mode-flag{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    font-size:11px;
+    font-weight:600;
+    letter-spacing:0.04em;
+    padding:4px 12px;
+    border-radius:20px;
+    background:var(--accent-glow);
+    color:var(--accent);
+    border:1px solid transparent;
+  }
+  [data-mode="3d"] .mode-flag{
+    background:linear-gradient(135deg, rgba(156,123,255,0.18), rgba(53,232,212,0.18));
+    color:var(--accent-2);
+    border-color:var(--border-medium);
+  }
+
+  /* ============================================================
+     VISIBILIDAD POR MODO — todo lo marcado data-mode-section/nav
+     con el modo "apagado" se oculta por completo (no solo opacidad,
+     para que el buscador de teclado/lector de pantalla tampoco lo
+     vea, y para que el TOC/keyword-index no lo indexen dos veces).
+     ============================================================ */
+  [data-mode="2d"] [data-mode-section="3d"],
+  [data-mode="2d"] [data-mode-nav="3d"],
+  [data-mode="2d"] .only-3d{ display:none !important; }
+
+  [data-mode="3d"] [data-mode-section="2d"],
+  [data-mode="3d"] [data-mode-nav="2d"],
+  [data-mode="3d"] .only-2d{ display:none !important; }
+
+  /* Texto que cambia según el modo (hero, notas) sin duplicar secciones enteras */
+  .mode-copy{ display:none; }
+  [data-mode="2d"] .mode-copy.copy-2d{ display:inline; }
+  [data-mode="3d"] .mode-copy.copy-3d{ display:inline; }
+  .mode-copy-block{ display:none; }
+  [data-mode="2d"] .mode-copy-block.copy-2d{ display:block; }
+  [data-mode="3d"] .mode-copy-block.copy-3d{ display:block; }
+
+  /* ============================================================
+     3D: acentos ambientales — una nebulosa fija muy sutil detrás
+     del contenido, y un resplandor en los títulos de sección, para
+     que "sentirse en modo 3D" no dependa solo del toggle mismo.
+     ============================================================ */
+  .space-glow{
+    position:fixed;
+    inset:0;
+    z-index:-1;
+    opacity:0;
+    pointer-events:none;
+    background:
+      radial-gradient(ellipse 900px 600px at 15% -10%, rgba(156,123,255,0.16), transparent 60%),
+      radial-gradient(ellipse 700px 500px at 100% 20%, rgba(53,232,212,0.10), transparent 60%),
+      radial-gradient(ellipse 800px 700px at 50% 120%, rgba(156,123,255,0.10), transparent 60%);
+    transition:opacity 0.6s ease;
+  }
+  [data-mode="3d"] .space-glow{ opacity:1; }
+
+  [data-mode="3d"] .doc-section h2{
+    background:linear-gradient(90deg, var(--text-primary), var(--accent-2) 140%);
+    -webkit-background-clip:text;
+    background-clip:text;
+  }
+  [data-mode="3d"] .section-kicker{ color:var(--accent-2); }
+  [data-mode="3d"] .hero h1{
+    background:linear-gradient(120deg, var(--text-primary) 20%, var(--accent) 60%, var(--accent-2) 100%);
+    -webkit-background-clip:text;
+    background-clip:text;
+    -webkit-text-fill-color:transparent;
+  }
+  [data-mode="3d"] .entry-title{ border-left-color:var(--accent-2, var(--accent)); }
+
+  /* ============================================================
+     TRANSICIÓN ÉPICA — overlay de pantalla completa que se dispara
+     en cada toggle. Un barrido tipo "portal" (anillo que se expande
+     desde el botón) + un golpe de escala/blur sobre el contenido,
+     y un breve "glitch" de líneas de escaneo para que se sienta
+     como un cambio de dimensión, no un simple cambio de color.
+     ============================================================ */
+  .warp-overlay{
+    position:fixed;
+    inset:0;
+    z-index:9999;
+    pointer-events:none;
+    opacity:0;
+  }
+  .warp-overlay.firing{
+    animation:warp-fade 0.7s ease forwards;
+  }
+  .warp-overlay .warp-ring{
+    position:absolute;
+    top:var(--warp-y, 50%);
+    left:var(--warp-x, 50%);
+    width:40px; height:40px;
+    border-radius:50%;
+    transform:translate(-50%,-50%) scale(0);
+    background:radial-gradient(circle, var(--accent) 0%, var(--accent-2, var(--accent)) 35%, transparent 72%);
+    filter:blur(0.5px);
+  }
+  .warp-overlay.firing .warp-ring{
+    animation:warp-expand 0.7s cubic-bezier(0.2,0.8,0.2,1) forwards;
+  }
+  .warp-overlay .warp-scan{
+    position:absolute; inset:0;
+    background:repeating-linear-gradient(
+      to bottom,
+      rgba(156,123,255,0.09) 0px,
+      rgba(156,123,255,0.09) 1px,
+      transparent 2px,
+      transparent 4px
+    );
+    opacity:0;
+  }
+  .warp-overlay.firing .warp-scan{ animation:warp-scan 0.7s ease forwards; }
+
+  @keyframes warp-fade{
+    0%{ opacity:1; }
+    85%{ opacity:1; }
+    100%{ opacity:0; }
+  }
+  @keyframes warp-expand{
+    0%{ transform:translate(-50%,-50%) scale(0); opacity:1; }
+    55%{ transform:translate(-50%,-50%) scale(45); opacity:1; }
+    100%{ transform:translate(-50%,-50%) scale(65); opacity:0; }
+  }
+  @keyframes warp-scan{
+    0%{ opacity:0; }
+    30%{ opacity:1; }
+    60%{ opacity:1; }
+    100%{ opacity:0; }
+  }
+  .app.warping .main{ animation:warp-content 0.6s ease; }
+  @keyframes warp-content{
+    0%{ filter:blur(0); transform:scale(1); }
+    35%{ filter:blur(6px) brightness(1.4); transform:scale(0.985); }
+    100%{ filter:blur(0); transform:scale(1); }
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .warp-overlay, .warp-overlay .warp-ring, .warp-overlay .warp-scan, .app.warping .main{ animation:none !important; }
+  }
+
   /* ============================================================
      RESPONSIVE
      ============================================================ */
@@ -798,7 +1037,16 @@
   }
 </style>
 </head>
-<body>
+<body data-mode="2d">
+
+<!-- Nebulosa fija de fondo, solo visible en modo 3D -->
+<div class="space-glow" aria-hidden="true"></div>
+
+<!-- Overlay de la transición "portal" al cambiar de modo -->
+<div class="warp-overlay" id="warpOverlay" aria-hidden="true">
+  <div class="warp-ring"></div>
+  <div class="warp-scan"></div>
+</div>
 
 <!-- ============================================================
      MOBILE MENU TOGGLE
@@ -832,10 +1080,23 @@
       <div class="group">
         <div class="group-title">Drawing</div>
         <a href="#color"><i class="ph ph-palette"></i> Color</a>
-        <a href="#shape-primitives"><i class="ph ph-shapes"></i> 2D Primitives</a>
-        <a href="#shape-custom"><i class="ph ph-pencil"></i> Custom shapes</a>
+        <a href="#shape-primitives" data-mode-nav="2d"><i class="ph ph-shapes"></i> 2D Primitives</a>
+        <a href="#shape-custom" data-mode-nav="2d"><i class="ph ph-pencil"></i> Custom shapes</a>
         <a href="#typography"><i class="ph ph-text-aa"></i> Typography</a>
         <a href="#transform"><i class="ph ph-arrows-counter-clockwise"></i> Transformations</a>
+      </div>
+
+      <div class="group" data-mode-nav="3d">
+        <div class="group-title"><i class="ph-bold ph-cube" style="margin-right:4px;"></i> 3D — Renderer3D</div>
+        <a href="#getting-started-3d"><i class="ph ph-rocket-launch"></i> Getting started</a>
+        <a href="#shape-3d-primitives"><i class="ph ph-cube"></i> 3D Primitives</a>
+        <a href="#transform-3d"><i class="ph ph-arrows-out-cardinal"></i> 3D Transformations</a>
+        <a href="#camera-3d"><i class="ph ph-video-camera"></i> Camera &amp; Projection</a>
+        <a href="#lights-3d"><i class="ph ph-lightbulb"></i> Lights</a>
+        <a href="#material-3d"><i class="ph ph-drop"></i> Material properties</a>
+        <a href="#coordinates-3d"><i class="ph ph-crosshair"></i> Coordinates</a>
+        <a href="#shape-3d-custom"><i class="ph ph-polygon"></i> Custom 3D shapes</a>
+        <a href="#pshader"><i class="ph ph-magic-wand"></i> PShader</a>
       </div>
 
       <div class="group">
@@ -854,6 +1115,7 @@
         <a href="#math"><i class="ph ph-calculator"></i> Math &amp; trig</a>
         <a href="#pvector"><i class="ph ph-arrow-right"></i> PVector</a>
         <a href="#random-noise"><i class="ph ph-dice-five"></i> Random &amp; noise</a>
+        <a href="#collections"><i class="ph ph-list-checks"></i> Collections</a>
       </div>
 
       <div class="group">
@@ -893,8 +1155,21 @@
 
     <!-- TOP BAR -->
     <div class="topbar">
-  <div class="page-title">Documentation <span>· Reference</span></div>
-  <div class="badge">v0 · stable</div>
+  <div class="page-title">
+    Documentation <span>· Reference</span>
+    <span class="mode-flag" id="modeFlag" style="margin-left:10px;">
+      <i class="ph-bold ph-square" id="modeFlagIcon"></i>
+      <span id="modeFlagText">2D Canvas API</span>
+    </span>
+  </div>
+  <div style="display:flex;align-items:center;gap:14px;">
+    <button class="mode-toggle" id="modeToggle" aria-label="Cambiar entre documentación 2D y 3D" title="Cambiar entre documentación 2D y 3D">
+      <span class="mode-pill" aria-hidden="true"></span>
+      <span class="mode-2d-label active"><i class="ph-bold ph-square"></i> 2D</span>
+      <span class="mode-3d-label"><i class="ph-bold ph-cube"></i> 3D</span>
+    </button>
+    <div class="badge">v0 · stable</div>
+  </div>
 </div>
 
     <div class="main-inner">
@@ -975,11 +1250,41 @@
             <h3 class="entry-title" id="noloop-loop">NoLoop() / Loop()</h3>
             <p class="entry-desc">Stops or resumes automatic per-frame redraw via <code class="inline">IsLooping</code>.</p>
 
+            <h3 class="entry-title" id="delay">Delay(<span class="tp">int</span> ms)</h3>
+            <p class="entry-desc">Halts the calling thread for <code class="inline">ms</code> milliseconds. Since <code class="inline">Draw()</code> runs on whatever thread the host pumps its render loop on, a long <code class="inline">Delay()</code> blocks that same thread/frame — exactly like Processing blocking its own animation thread.</p>
+            <div class="note"><strong>Not for animation pacing.</strong> Use <code class="inline">FrameRate()</code> for smooth motion. <code class="inline">Delay()</code> is meant for sketches that only need to redraw occasionally and would rather sit idle than burn CPU on frames nobody will see change — a slow-updating clock, a sensor readout, an ambient display.</div>
+
+            <h3 class="entry-title" id="thread">Thread(<span class="tp">string</span> methodName)</h3>
+            <p class="entry-desc">Runs a no-argument method of this sketch on a background thread and returns immediately, like Processing's <code class="inline">thread(functionName)</code>. Looks the method up by name via reflection (public or private, instance method) — same string-based API as Processing's own.</p>
+            <div class="note"><strong>No automatic locking.</strong> Write results to a field the background method owns, and have <code class="inline">Draw()</code> just read that field each frame. Keep the handoff to something simple (a single field write/read, or your own lock) to avoid tearing.</div>
+
             <h3 class="entry-title" id="windowresized">WindowResized() <span class="sig-return">→ void</span> · virtual</h3>
             <p class="entry-desc">Called when the canvas size changes after the first frame.</p>
 
             <h3 class="entry-title" id="displaydensity">DisplayDensity() <span class="sig-return">→ int</span> · PixelDensity(<span class="tp">int</span> density)</h3>
             <p class="entry-desc">HiDPI helpers kept for API parity. <code class="inline">DisplayDensity()</code> always returns 1 — DanaProcessing draws everything at logical-pixel resolution and leaves any HiDPI scaling to the host. <code class="inline">PixelDensity()</code> only validates its argument (1 or 2, like Processing) and otherwise has no effect.</p>
+
+            <h3 class="entry-title" id="pixelwidth">PixelWidth · PixelHeight <span class="sig-return">→ int</span></h3>
+            <p class="entry-desc">Width/height of the sketch's backing buffer in actual pixels, like Processing's <code class="inline">pixelWidth</code>/<code class="inline">pixelHeight</code>. Since DanaProcessing always draws at 1:1 (see <code class="inline">PixelDensity()</code> above), these are always equal to <code class="inline">Width</code>/<code class="inline">Height</code> — kept so sketches ported from Processing that read them directly (e.g. when indexing <code class="inline">LoadPixels()</code>'s array by hand) keep working unchanged.</p>
+
+            <h3 class="entry-title" id="settings">Settings() <span class="sig-return">→ void</span> · virtual</h3>
+            <p class="entry-desc">Runs once, before <code class="inline">Setup()</code>, like Processing's <code class="inline">settings()</code>. The host is responsible for calling it immediately before <code class="inline">Setup()</code>.</p>
+            <div class="note"><strong>Optional in C#.</strong> Real Processing needs this only because <code class="inline">size()</code> is special-cased by the preprocessor and can't take a variable inside <code class="inline">setup()</code>. Plain C# has no such restriction — <code class="inline">Size()</code> works fine called directly inside <code class="inline">Setup()</code> too. Overriding <code class="inline">Settings()</code> is provided purely so sketches ported from Processing that rely on the setup-order guarantee (<code class="inline">settings()</code> strictly before <code class="inline">setup()</code>) keep behaving the same way.</div>
+
+            <h3 class="entry-title" id="window-management">FullScreen(<span class="tp">bool</span> fullScreen = true) · WindowMove(x, y) · WindowResize(w, h) · WindowResizable(<span class="tp">bool</span>) · WindowTitle(<span class="tp">string</span>) · WindowRatio(w, h)</h3>
+            <p class="entry-desc">Window-management requests, each backed by an event a host can subscribe to and act on — the same pattern <code class="inline">RedrawRequested</code>/<code class="inline">ExitRequested</code> already use. <code class="inline">SetLocation()</code>, <code class="inline">SetResizable()</code>, and <code class="inline">SetTitle()</code> are classic-API aliases for <code class="inline">WindowMove()</code>, <code class="inline">WindowResizable()</code>, and <code class="inline">WindowTitle()</code> respectively.</p>
+            <div class="table-wrap">
+              <table>
+                <tr><th>call</th><th>event raised</th><th>readable state</th></tr>
+                <tr><td>FullScreen(bool)</td><td>FullScreenRequested</td><td>IsFullScreen</td></tr>
+                <tr><td>WindowMove(x, y)</td><td>WindowMoveRequested</td><td>—</td></tr>
+                <tr><td>WindowResize(w, h)</td><td>WindowResizeRequested</td><td>—</td></tr>
+                <tr><td>WindowResizable(bool)</td><td>WindowResizableChanged</td><td>IsWindowResizable</td></tr>
+                <tr><td>WindowTitle(string)</td><td>WindowTitleChanged</td><td>WindowTitleText</td></tr>
+                <tr><td>WindowRatio(w, h)</td><td>WindowRatioRequested</td><td>—</td></tr>
+              </table>
+            </div>
+            <div class="note"><strong>Host-dependent.</strong> Calling any of these always updates the readable state and raises its event — that part works regardless of host. Whether the actual OS window visibly moves/resizes/retitles depends entirely on whether the host you're running in (the bundled IDE, a custom Avalonia/WPF shell) subscribes to that event and acts on it. A host that doesn't wire these up yet will accept the calls silently rather than throwing.</div>
 
             <h3 class="entry-title" id="redraw">Redraw() <span class="sig-return">→ void</span></h3>
             <p class="entry-desc">Requests a single extra frame while <code class="inline">NoLoop()</code> is in effect, raising the <code class="inline">RedrawRequested</code> event. Looping sketches don't need this — they're already rendering continuously.</p>
@@ -1053,7 +1358,7 @@
           </section>
 
           <!-- ================= PRIMITIVES ================= -->
-          <section class="doc-section" id="shape-primitives">
+          <section class="doc-section" id="shape-primitives" data-mode-section="2d">
             <div class="section-kicker">04 · Drawing</div>
             <h2>2D primitives</h2>
             <p class="section-intro">Rect, ellipse, arc, and custom-shape drawing all share the same four-argument alignment convention, resolved by <code class="inline">ShapeAlignMode</code>.</p>
@@ -1076,6 +1381,9 @@
 
             <h3 class="entry-title" id="square">Square(x, y, extent)</h3>
             <p class="entry-desc">A <code class="inline">Rect</code> with equal width and height — a plain alias, still subject to the current <code class="inline">RectMode()</code>.</p>
+
+            <h3 class="entry-title" id="circle">Circle(x, y, extent)</h3>
+            <p class="entry-desc">An <code class="inline">Ellipse</code> with equal width and height — a plain alias for <code class="inline">Ellipse(x, y, extent, extent)</code>, still subject to the current <code class="inline">EllipseMode()</code>.</p>
 
             <h3 class="entry-title" id="line">Line(x1, y1, x2, y2) · Point(x, y)</h3>
             <p class="entry-desc">A straight stroked segment, or a single point.</p>
@@ -1110,7 +1418,7 @@
           </section>
 
           <!-- ================= CUSTOM SHAPES ================= -->
-          <section class="doc-section" id="shape-custom">
+          <section class="doc-section" id="shape-custom" data-mode-section="2d">
             <div class="section-kicker">05 · Drawing</div>
             <h2>Custom shapes &amp; meshes</h2>
             <p class="section-intro">Build arbitrary shapes vertex by vertex. There are two render paths at <code class="inline">EndShape()</code>: a <strong>simple path</strong> when every vertex shares one fill color, and a <strong>mesh path</strong> (Gouraud shading and/or texturing) once either varies.</p>
@@ -1141,6 +1449,248 @@
             <h3 class="entry-title" id="endshape">EndShape(<span class="tp">bool</span> close = false)</h3>
             <p class="entry-desc">Finishes and draws the recorded shape.</p>
           </section>
+
+          <!-- ================================================================
+               3D — RENDERER3D
+               ================================================================ -->
+
+          <!-- ================= GETTING STARTED 3D ================= -->
+          <section class="doc-section" id="getting-started-3d" data-mode-section="3d">
+            <div class="section-kicker">00 · 3D — Renderer3D</div>
+            <h2>Getting started with 3D</h2>
+            <p class="section-intro">An entirely separate rendering pipeline — offscreen OpenGL 3.3 (core profile) via Silk.NET, rendered into a hidden window's framebuffer and read back as a normal <code class="inline">PGraphics</code>. Everything under this "3D" nav group requires <code class="inline">RendererKind.Renderer3D</code> and throws <code class="inline">InvalidOperationException</code> otherwise — the same way Processing itself errors when <code class="inline">box()</code>/<code class="inline">rotateZ()</code>/etc. are called under the default 2D renderer.</p>
+
+            <h3 class="entry-title" id="renderer3d-setup">Size(w, h, RendererKind.Renderer3D) · CreateGraphics(w, h, RendererKind.Renderer3D)</h3>
+            <p class="entry-desc">Requests the 3D pipeline for the main sketch canvas, or for an offscreen buffer. The renderer is fixed for that context's entire lifetime — calling either again with a different <code class="inline">RendererKind</code> later throws, matching Processing's own restriction that <code class="inline">size(w, h, renderer)</code> can't switch renderers mid-sketch.</p>
+            <div class="note"><strong>The common pattern is an offscreen buffer.</strong> Most sketches keep the main canvas on the default 2D renderer and create a <em>separate</em> 3D <code class="inline">PGraphics</code> with <code class="inline">CreateGraphics()</code> — that way HUD text, UI, and 2D overlays stay on the easy Skia path, and the 3D scene gets composited on top with a single <code class="inline">Image()</code> call each frame.</div>
+
+            <h3 class="entry-title" id="renderer3d-frame">BeginDraw() / EndDraw()</h3>
+            <p class="entry-desc">A 3D <code class="inline">PGraphics</code> only accepts drawing calls between these two — <code class="inline">Box()</code>, <code class="inline">Sphere()</code>, <code class="inline">Lights()</code>, custom <code class="inline">Vertex()</code>/<code class="inline">EndShape()</code>, all of it. Calling any of them outside the bracket throws <code class="inline">InvalidOperationException</code> ("Llamada de dibujo fuera de BeginDraw()/EndDraw()").</p>
+            <div class="note"><strong>Exception: CreateShape3D().</strong> Building a reusable mesh doesn't need the bracket — it claims and releases the GL context on its own, so it's safe to call once, loose, in <code class="inline">Setup()</code>. See <a href="#createshape3d">Custom 3D shapes</a>.</div>
+
+            <div class="code-block">
+<pre><span class="kw">public class</span> <span class="tp">MySketch</span> : <span class="tp">Sketch</span>
+{
+    <span class="kw">private</span> <span class="tp">PGraphics</span> _scene3d;
+
+    <span class="kw">public override void</span> Setup()
+    {
+        Size(<span class="str">700</span>, <span class="str">500</span>);
+        _scene3d = CreateGraphics(Width, Height, <span class="tp">RendererKind</span>.Renderer3D);
+    }
+
+    <span class="kw">public override void</span> Draw()
+    {
+        Background(<span class="str">20</span>);
+
+        _scene3d.BeginDraw();
+        _scene3d.Lights();                     <span class="cm">// cada frame — ver Lights()</span>
+        _scene3d.Fill(<span class="str">160</span>, <span class="str">200</span>, <span class="str">255</span>);
+        _scene3d.PushMatrix();
+        _scene3d.Translate(Width / <span class="str">2f</span>, Height / <span class="str">2f</span>, <span class="str">0</span>);
+        _scene3d.RotateY(FrameCount / <span class="str">60f</span>);
+        _scene3d.Box(<span class="str">160</span>);
+        _scene3d.PopMatrix();
+        _scene3d.EndDraw();
+
+        Image(_scene3d.Get(), <span class="str">0</span>, <span class="str">0</span>);  <span class="cm">// compone la escena 3D sobre el canvas 2D</span>
+    }
+}</pre>
+            </div>
+          </section>
+
+          <!-- ================= 3D PRIMITIVES ================= -->
+          <section class="doc-section" id="shape-3d-primitives" data-mode-section="3d">
+            <div class="section-kicker">00 · 3D — Renderer3D</div>
+            <h2>3D Primitives</h2>
+            <p class="section-intro">Two built-in solids — the same two Processing itself ships as core 3D primitives. Both are centered on the current origin, filled with the current <code class="inline">Fill()</code> color, and shaded by the active lights (flat and fully unlit if <code class="inline">Lights()</code> hasn't been called — Processing's own default too).</p>
+
+            <h3 class="entry-title" id="box">Box(<span class="tp">float</span> size) · Box(w, h, d)</h3>
+            <p class="entry-desc">A cube (or box) centered on the origin. <code class="inline">Box(size)</code> is a shortcut for <code class="inline">Box(size, size, size)</code>.</p>
+
+            <h3 class="entry-title" id="sphere">Sphere(<span class="tp">float</span> radius)</h3>
+            <p class="entry-desc">A sphere centered on the origin, meshed at the resolution set by the last <code class="inline">SphereDetail()</code> call (default 30×30).</p>
+
+            <h3 class="entry-title" id="spheredetail">SphereDetail(<span class="tp">int</span> res) · SphereDetail(ures, vres)</h3>
+            <p class="entry-desc">Sets the sphere mesh resolution for <code class="inline">Sphere()</code> calls made <em>after</em> this one — <code class="inline">res</code> segments both around the equator and pole-to-pole, or independently via <code class="inline">ures</code>/<code class="inline">vres</code>. Values below 3 are clamped up to 3. Applied lazily: the mesh is only rebuilt the next time <code class="inline">Sphere()</code> actually runs, so calling this repeatedly (or never calling <code class="inline">Sphere()</code> at all) never touches the GPU for nothing.</p>
+          </section>
+
+          <!-- ================= 3D TRANSFORMATIONS ================= -->
+          <section class="doc-section" id="transform-3d" data-mode-section="3d">
+            <div class="section-kicker">00 · 3D — Renderer3D</div>
+            <h2>3D Transformations</h2>
+            <p class="section-intro"><code class="inline">PushMatrix()</code>/<code class="inline">PopMatrix()</code> (from <a href="#transform">Transformations</a>) work exactly as before, and now also save/restore the 3D model matrix alongside the 2D one. Everything below composes the usual way: each call prepends to the current matrix, so <code class="inline">Translate()</code> then <code class="inline">RotateX()</code> rotates around the already-translated origin, not the world origin.</p>
+
+            <h3 class="entry-title" id="translate-3d">Translate(x, y, <span class="tp">float</span> z)</h3>
+            <p class="entry-desc">3D translate. The 2D <code class="inline">Translate(x, y)</code> overload still works under Renderer3D too — <code class="inline">z</code> is implicitly 0, matching Processing.</p>
+
+            <h3 class="entry-title" id="rotatexyz">RotateX(radians) · RotateY(radians) · RotateZ(radians)</h3>
+            <p class="entry-desc">Rotates around each axis. Note these take <strong>radians</strong> — unlike the 2D <code class="inline">Rotate(degrees)</code>, which deliberately takes degrees. Under Renderer3D both exist and compose: <code class="inline">Rotate()</code> rotates the Skia 2D overlay, <code class="inline">RotateZ()</code> rotates 3D geometry — they're genuinely different operations.</p>
+
+            <h3 class="entry-title" id="scale-3d">Scale(x, y, <span class="tp">float</span> z)</h3>
+            <p class="entry-desc">3D scale.</p>
+
+            <h3 class="entry-title" id="rotate-axis">Rotate(<span class="tp">float</span> angleRadians, x, y, z)</h3>
+            <p class="entry-desc">Rotates by <code class="inline">angleRadians</code> around the arbitrary axis <code class="inline">(x, y, z)</code> — the P3D-only overload of <code class="inline">rotate()</code>. Takes radians, like <code class="inline">RotateX/Y/Z()</code> (not the 2D <code class="inline">Rotate(degrees)</code>). The axis doesn't need to be pre-normalized; a zero-length axis is a no-op.</p>
+            <div class="note"><strong>One combined rotation beats three stacked ones.</strong> <code class="inline">RotateX()</code>+<code class="inline">RotateY()</code>+<code class="inline">RotateZ()</code> compose differently depending on call order, and can twist in unexpected ways once an object is no longer near its rest orientation (the classic gimbal-lock feel). A single axis-angle <code class="inline">Rotate()</code> — typically derived from an accumulated quaternion for a trackball-style drag — sidesteps that entirely. See the "Gema facetada" sample's <code class="inline">ApplySpin()</code> helper for the pattern.</div>
+          </section>
+
+          <!-- ================= CAMERA 3D ================= -->
+          <section class="doc-section" id="camera-3d" data-mode-section="3d">
+            <div class="section-kicker">00 · 3D — Renderer3D</div>
+            <h2>Camera &amp; Projection</h2>
+            <p class="section-intro">Two independent matrices: the <strong>camera</strong> (view — where the eye is and what it's looking at) and the <strong>projection</strong> (perspective vs. orthographic, field of view, clipping planes). Both start at Processing's own defaults and stay set until changed.</p>
+
+            <h3 class="entry-title" id="camera">Camera() · Camera(eyeX, eyeY, eyeZ, centerX, centerY, centerZ, upX, upY, upZ)</h3>
+            <p class="entry-desc">No-arg resets to Processing's default view — eye pulled back from the canvas center, looking straight at it, +Y up. The 9-argument form positions the eye explicitly, looking at <code class="inline">center</code>, with <code class="inline">up</code> as the up direction.</p>
+
+            <h3 class="entry-title" id="perspective">Perspective() · Perspective(fovy, aspect, zNear, zFar)</h3>
+            <p class="entry-desc">No-arg resets to the default perspective projection (60° vertical FOV). The 4-argument form sets an explicit symmetric perspective — <code class="inline">fovy</code> in radians, <code class="inline">aspect</code> = width/height.</p>
+
+            <h3 class="entry-title" id="ortho">Ortho() · Ortho(left, right, bottom, top) · Ortho(left, right, bottom, top, near, far)</h3>
+            <p class="entry-desc">Orthographic (parallel) projection — objects stay the same size regardless of distance from the camera, useful for isometric-style views. No-arg uses the canvas bounds; the 4-argument form sets the X/Y clipping volume with default near/far planes; the 6-argument form sets everything explicitly.</p>
+
+            <h3 class="entry-title" id="frustum">Frustum(left, right, bottom, top, near, far)</h3>
+            <p class="entry-desc">A general (possibly asymmetric) perspective projection from explicit clipping-plane coordinates — unlike <code class="inline">Perspective()</code>, the planes don't need to be centered on the view axis. <code class="inline">near</code> must be greater than zero, <code class="inline">far</code> greater than <code class="inline">near</code>. Processing gives <code class="inline">frustum()</code> no no-argument form, so neither does this.</p>
+
+            <h3 class="entry-title" id="begincamera">BeginCamera() · EndCamera()</h3>
+            <p class="entry-desc">Places the camera with <code class="inline">Translate()</code>/<code class="inline">RotateX/Y/Z()</code>/<code class="inline">Scale()</code> — the same calls, composed the same way, you'd use to place any object — between these two. <code class="inline">EndCamera()</code> inverts the result into the actual view matrix once.</p>
+            <div class="note"><strong>Call Camera() first.</strong> <code class="inline">BeginCamera()</code> continues from whatever camera state already exists rather than resetting it — start from a known placement with <code class="inline">Camera()</code> (or the 9-argument overload) right before, same idiom as real Processing.</div>
+
+            <h3 class="entry-title" id="printcamera">PrintCamera() · PrintProjection()</h3>
+            <p class="entry-desc">Logs the current view or projection matrix to the console — a debugging aid for figuring out what a chain of camera calls actually produced.</p>
+          </section>
+
+          <!-- ================= LIGHTS 3D ================= -->
+          <section class="doc-section" id="lights-3d" data-mode-section="3d">
+            <div class="section-kicker">00 · 3D — Renderer3D</div>
+            <h2>Lights</h2>
+            <p class="section-intro">Up to 8 lights — Processing's own cap — combined with a Blinn-Phong shading model. Without any light call, <code class="inline">Box()</code>/<code class="inline">Sphere()</code> and custom 3D meshes draw flat and fully unlit, ignoring normals entirely, which is Processing's own documented default too.</p>
+            <div class="note"><strong>The light list resets every frame.</strong> <code class="inline">BeginDraw()</code> clears all active lights, so <code class="inline">Lights()</code>/<code class="inline">PointLight()</code>/etc. need to be called again every <code class="inline">Draw()</code> to stay active — not just once in <code class="inline">Setup()</code>. This matches Processing's own documented requirement exactly. Lights past the 8-light cap are silently ignored, not an error.</div>
+
+            <h3 class="entry-title" id="lights">Lights() · NoLights()</h3>
+            <p class="entry-desc"><code class="inline">Lights()</code> turns on Processing's default rig — a mid-gray ambient light plus a mid-gray directional light shining straight along -Z — with <code class="inline">LightFalloff(1,0,0)</code> (no falloff) and <code class="inline">LightSpecular(0,0,0)</code> (no specular contribution). <code class="inline">NoLights()</code> clears everything back to flat/unlit.</p>
+
+            <h3 class="entry-title" id="ambientlight">AmbientLight(r, g, b) · AmbientLight(r, g, b, x, y, z)</h3>
+            <p class="entry-desc">Uniform light that lights every surface regardless of orientation. The no-position overload is infinite and unattenuated; the positioned overload falls off with distance according to the current <code class="inline">LightFalloff()</code>.</p>
+
+            <h3 class="entry-title" id="directionallight">DirectionalLight(r, g, b, nx, ny, nz)</h3>
+            <p class="entry-desc">Shines from a fixed direction with no position and no distance falloff — think sunlight. <code class="inline">(nx, ny, nz)</code> is the direction the light travels <em>from</em>, matching Processing's own convention.</p>
+
+            <h3 class="entry-title" id="pointlight">PointLight(r, g, b, x, y, z)</h3>
+            <p class="entry-desc">Radiates equally in all directions from a position, attenuated by the current <code class="inline">LightFalloff()</code> with distance.</p>
+
+            <h3 class="entry-title" id="spotlight">SpotLight(r, g, b, x, y, z, nx, ny, nz, angle, concentration)</h3>
+            <p class="entry-desc">A cone of light at <code class="inline">(x, y, z)</code>, aimed along <code class="inline">(nx, ny, nz)</code>. <code class="inline">angle</code> (radians) is the half-angle of the cone; <code class="inline">concentration</code> controls how sharply intensity falls off toward the cone's edge (higher = tighter hotspot). Also attenuated by <code class="inline">LightFalloff()</code> with distance.</p>
+
+            <h3 class="entry-title" id="lightfalloff">LightFalloff(constant, linear, quadratic) · LightSpecular(r, g, b)</h3>
+            <p class="entry-desc">Style state affecting lights added <em>after</em> the call — like <code class="inline">Fill()</code>/<code class="inline">Stroke()</code>, not retroactive. <code class="inline">LightFalloff()</code> sets the distance-attenuation coefficients for point/spot/positional-ambient lights (Processing's own default: <code class="inline">(1, 0, 0)</code> — no falloff at all). <code class="inline">LightSpecular()</code> sets the color used for specular highlights and has no visible effect until <code class="inline">Shininess()</code> is above 0 — see <a href="#material-3d">Material properties</a>.</p>
+          </section>
+
+          <!-- ================= MATERIAL 3D ================= -->
+          <section class="doc-section" id="material-3d" data-mode-section="3d">
+            <div class="section-kicker">00 · 3D — Renderer3D</div>
+            <h2>Material properties</h2>
+            <p class="section-intro">Unlike the light list, these are persistent style state — set once, applied to every shape drawn afterward, <strong>not</strong> reset per frame — the same contract as <code class="inline">Fill()</code>/<code class="inline">Stroke()</code>.</p>
+
+            <h3 class="entry-title" id="ambient-material">Ambient(gray) · Ambient(r, g, b)</h3>
+            <p class="entry-desc">Ambient reflectance — how much of each light's ambient contribution a surface reflects. Before this is ever called, it defaults to tracking the current <code class="inline">Fill()</code> color, matching Processing; calling it explicitly detaches from that tracking.</p>
+
+            <h3 class="entry-title" id="specular-material">Specular(gray) · Specular(r, g, b)</h3>
+            <p class="entry-desc">Specular reflectance color — controls the color of specular highlights. Has no visible effect until <code class="inline">Shininess()</code> is set above 0.</p>
+
+            <h3 class="entry-title" id="emissive">Emissive(gray) · Emissive(r, g, b)</h3>
+            <p class="entry-desc">Added on top of a surface's shading regardless of lighting — makes it look like it's glowing on its own, without actually casting light onto other shapes.</p>
+
+            <h3 class="entry-title" id="shininess">Shininess(<span class="tp">float</span> shine)</h3>
+            <p class="entry-desc">The specular exponent. 0 (the default) disables the specular highlight entirely; higher values give a smaller, glossier highlight. Needs <code class="inline">Specular()</code> and an active light with <code class="inline">LightSpecular()</code> set to be visible at all.</p>
+          </section>
+
+          <!-- ================= COORDINATES 3D ================= -->
+          <section class="doc-section" id="coordinates-3d" data-mode-section="3d">
+            <div class="section-kicker">00 · 3D — Renderer3D</div>
+            <h2>Coordinates</h2>
+            <p class="section-intro">Query where a local point ends up, after the current transform stack — in world space, or projected all the way to screen pixels.</p>
+
+            <h3 class="entry-title" id="modelxyz">ModelX(x, y, z) · ModelY(x, y, z) · ModelZ(x, y, z) <span class="sig-return">→ float</span></h3>
+            <p class="entry-desc">The coordinate of <code class="inline">(x, y, z)</code> after applying the current model and camera transforms. Typical use: <code class="inline">Translate()</code>/<code class="inline">RotateX/Y/Z()</code> into position, call <code class="inline">ModelX/Y/Z(0, 0, 0)</code> to record that world position, then <code class="inline">PopMatrix()</code> and <code class="inline">Translate()</code> straight to it later — without repeating the whole rotation chain.</p>
+
+            <h3 class="entry-title" id="screenxyz">ScreenX(x, y, z) · ScreenY(x, y, z) · ScreenZ(x, y, z) <span class="sig-return">→ float</span></h3>
+            <p class="entry-desc">Projects <code class="inline">(x, y, z)</code> all the way to screen space — <code class="inline">ScreenX</code>/<code class="inline">ScreenY</code> come back in pixels (same convention as <code class="inline">MouseX</code>/<code class="inline">MouseY</code>); <code class="inline">ScreenZ</code> comes back as normalized device depth in [0, 1] (0 at the near plane, 1 at the far plane) — DanaProcessing's own convention, since there's no <code class="inline">PMatrix3D</code> here to delegate to for Processing's exact <code class="inline">screenZ()</code> formula. A common use: anchor a 2D label (drawn with the plain 2D <code class="inline">Text()</code>) to a moving 3D object.</p>
+          </section>
+
+          <!-- ================= CUSTOM 3D SHAPES ================= -->
+          <section class="doc-section" id="shape-3d-custom" data-mode-section="3d">
+            <div class="section-kicker">00 · 3D — Renderer3D</div>
+            <h2>Custom 3D shapes</h2>
+            <p class="section-intro"><code class="inline">BeginShape()</code>/<code class="inline">Vertex()</code>/<code class="inline">EndShape()</code> (from <a href="#shape-custom">Custom shapes</a>) work under Renderer3D too — they build and draw a real triangle mesh instead of an <code class="inline">SKPath</code>. Triangulation happens on the CPU; the result uploads as one <code class="inline">GL_TRIANGLES</code> draw call, the same way <code class="inline">Box()</code>/<code class="inline">Sphere()</code> already work.</p>
+
+            <h3 class="entry-title" id="normal">Normal(<span class="tp">float</span> nx, ny, nz)</h3>
+            <p class="entry-desc">Sets the current normal vector. Affects vertices added <em>after</em> this call — call it once per face, before that face's vertices, for flat shading (the faceted-gem example below), or share one normal across several vertices for smooth shading. Default before any call: <code class="inline">(0, 0, 1)</code>.</p>
+
+            <h3 class="entry-title" id="vertex-3d">Vertex(x, y, <span class="tp">float</span> z) · Vertex(x, y, z, u, v)</h3>
+            <p class="entry-desc">3D vertex overloads of <a href="#vertex"><code class="inline">Vertex()</code></a>, only valid inside <code class="inline">BeginShape()</code>/<code class="inline">EndShape()</code> while running under Renderer3D — the plain <code class="inline">Vertex(x, y)</code> also works there, treated as <code class="inline">z = 0</code>. The 5-argument overload adds texture coordinates <code class="inline">(u, v)</code> in 0–1, looked up in whatever image <code class="inline">Texture()</code> set for this shape — the same <code class="inline">Texture()</code>/<code class="inline">NoTexture()</code> the 2D mesh path already uses.</p>
+
+            <div class="table-wrap">
+              <table>
+                <tr><th>ShapeKind under Renderer3D</th><th>triangulation</th></tr>
+                <tr><td>Triangles</td><td>Consecutive groups of 3.</td></tr>
+                <tr><td>TriangleStrip</td><td>Shared-edge strip, winding alternates by parity.</td></tr>
+                <tr><td>TriangleFan</td><td>All triangles share vertex 0.</td></tr>
+                <tr><td>Quads</td><td>Groups of 4, split into 2 triangles each.</td></tr>
+                <tr><td>QuadStrip</td><td>Shared-edge quad strip, split into 2 triangles each.</td></tr>
+                <tr><td>Polygon</td><td>Fan-triangulated from vertex 0 — correct for convex shapes, same limitation Processing itself documents for concave ones under P3D.</td></tr>
+                <tr><td>Points / Lines</td><td><strong>Not supported</strong> — no meaningful normal to light them with. Throws <code class="inline">NotSupportedException</code>.</td></tr>
+              </table>
+            </div>
+
+            <div class="code-block">
+<pre><span class="cm">// Octaedro facetado -- cada cara llama Normal() (via PVector.Cross()</span>
+<span class="cm">// entre dos aristas) antes de sus 3 Vertex(), para sombreado plano.</span>
+g.BeginShape(<span class="tp">ShapeKind</span>.Triangles);
+<span class="kw">var</span> faceNormal = <span class="tp">PVector</span>.Cross(<span class="tp">PVector</span>.Sub(b, a), <span class="tp">PVector</span>.Sub(c, a)).Normalize();
+g.Normal(faceNormal.X, faceNormal.Y, faceNormal.Z);
+g.Vertex(a.X, a.Y, a.Z);
+g.Vertex(b.X, b.Y, b.Z);
+g.Vertex(c.X, c.Y, c.Z);
+<span class="cm">// ... repetir por cada cara ...</span>
+g.EndShape();</pre>
+            </div>
+
+            <h3 class="entry-title" id="createshape3d">CreateShape3D(<span class="tp">ShapeKind</span> kind, <span class="tp">Action</span> buildVertices) <span class="sig-return">→ PShape</span></h3>
+            <p class="entry-desc">Builds a reusable 3D <code class="inline">PShape</code> once — like combining Processing's <code class="inline">createShape()</code> with its own <code class="inline">beginShape()</code>/<code class="inline">endShape()</code>. Call the <strong>same</strong> <code class="inline">Vertex()</code>/<code class="inline">Normal()</code> calls you'd use with immediate-mode <code class="inline">BeginShape()</code>/<code class="inline">EndShape()</code> inside <code class="inline">buildVertices</code> — don't call <code class="inline">BeginShape()</code>/<code class="inline">EndShape()</code> yourself in there, <code class="inline">CreateShape3D()</code> wraps both. The mesh uploads to the GPU exactly <strong>once</strong> (<code class="inline">StaticDraw</code>); draw it as many times as you want afterward with <a href="#shape"><code class="inline">Shape(shape, x, y)</code></a> instead of re-recording and re-uploading the same geometry every frame the way a bare <code class="inline">BeginShape()</code>/<code class="inline">EndShape()</code> call would.</p>
+            <div class="note"><strong>No BeginDraw()/EndDraw() needed.</strong> This claims and releases the GL context on its own — call it loose, typically once in <code class="inline">Setup()</code>.</div>
+            <div class="note"><strong>Texture() goes inside the callback.</strong> <code class="inline">BeginShape()</code> (called internally by <code class="inline">CreateShape3D()</code>, before <code class="inline">buildVertices</code> runs) resets the shape's texture — so call <code class="inline">Texture(img)</code> as the <em>first line inside</em> <code class="inline">buildVertices</code>, not before <code class="inline">CreateShape3D()</code>.</div>
+
+            <div class="code-block">
+<pre>_gemShape = _scene3d.CreateShape3D(<span class="tp">ShapeKind</span>.Triangles, () =&gt;
+{
+    <span class="cm">// ... Normal()/Vertex() por cada cara, como arriba ...</span>
+});
+
+<span class="cm">// cada frame, en Draw():</span>
+_scene3d.PushMatrix();
+_scene3d.Translate(x, y, z);
+_scene3d.Shape(_gemShape, <span class="str">0</span>, <span class="str">0</span>);   <span class="cm">// sin re-triangular ni re-subir nada</span>
+_scene3d.PopMatrix();</pre>
+            </div>
+            <div class="note"><strong>Scaling.</strong> Unlike the 2D <code class="inline">Shape()</code> overload, <code class="inline">w</code>/<code class="inline">h</code> scaling isn't supported for a 3D mesh — a baked mesh's own coordinates already define its size. Wrap the call in your own <code class="inline">PushMatrix()</code>/<code class="inline">Scale()</code>/<code class="inline">Rotate()</code>/<code class="inline">PopMatrix()</code> instead.</div>
+          </section>
+
+          <!-- ================= PSHADER ================= -->
+          <section class="doc-section" id="pshader" data-mode-section="3d">
+            <div class="section-kicker">00 · 3D — Renderer3D</div>
+            <h2>PShader</h2>
+            <p class="section-intro">Swap DanaProcessing's built-in Blinn-Phong shader for a custom GLSL program, applied to every subsequent <code class="inline">Box()</code>/<code class="inline">Sphere()</code>/custom-mesh draw. One program replaces the <em>whole</em> 3D pipeline at once — there's no per-<code class="inline">PShaderFlag</code> slot (<code class="inline">POINTS</code>/<code class="inline">LINES</code>/etc.) like real Processing.</p>
+
+            <h3 class="entry-title" id="loadshader">LoadShader(<span class="tp">string</span> fragFilename) · LoadShader(fragFilename, vertFilename) <span class="sig-return">→ PShader</span></h3>
+            <p class="entry-desc">The single-argument overload reads a fragment shader from disk and reuses DanaProcessing's own built-in vertex shader. The two-argument overload reads both — note the parameter order matches Processing's own (fragment path first, then vertex) even though it reads backwards. Neither touches the GPU until the result is passed to <code class="inline">Shader()</code>; compilation happens lazily, the first time it's actually used with a given 3D context.</p>
+            <div class="note"><strong>Fixed attribute layout.</strong> A custom vertex shader must declare <code class="inline">layout(location = 0) in vec3 aPos;</code>, <code class="inline">layout(location = 1) in vec3 aNormal;</code>, and (for texture support) <code class="inline">layout(location = 2) in vec2 aUV;</code> — the same layout <code class="inline">Box()</code>/<code class="inline">Sphere()</code>/custom meshes upload. A fragment shader that wants to sample a texture set via <code class="inline">Texture()</code> should declare <code class="inline">uniform sampler2D uTexture;</code> and <code class="inline">uniform int uHasTexture;</code> and check the flag — DanaProcessing sets both automatically per draw call.</div>
+
+            <h3 class="entry-title" id="shader">Shader(<span class="tp">PShader</span> shader) · ResetShader()</h3>
+            <p class="entry-desc"><code class="inline">Shader()</code> activates a custom shader for subsequent draws, staying active across frames until <code class="inline">ResetShader()</code> or another <code class="inline">Shader()</code> call. <code class="inline">ResetShader()</code> reverts to the built-in pipeline.</p>
+          </section>
+
 
           <!-- ================= TYPOGRAPHY ================= -->
           <section class="doc-section" id="typography">
@@ -1255,13 +1805,29 @@
           <section class="doc-section" id="pshape">
             <div class="section-kicker">10 · Media</div>
             <h2>PShape</h2>
-            <p class="section-intro">A loaded vector shape — SVG only.</p>
+            <p class="section-intro">A loaded or built vector shape. Four ways to get one: load an SVG, build a primitive or group in code, or — <span class="mode-copy copy-3d">since you're reading the 3D docs —</span><span class="mode-copy copy-2d">under the 3D renderer —</span> build a reusable mesh with <a href="#createshape3d"><code class="inline">CreateShape3D()</code></a>. A given <code class="inline">PShape</code> is either a 2D <code class="inline">SKPicture</code> or a 3D mesh handle, never both.</p>
 
             <h3 class="entry-title" id="loadshape">LoadShape(<span class="tp">string</span> path) <span class="sig-return">→ PShape</span></h3>
             <p class="entry-desc">Loads an SVG file.</p>
 
+            <h3 class="entry-title" id="createshape">CreateShape(<span class="tp">PShapeType</span> type, <span class="tp">params float[]</span> v) <span class="sig-return">→ PShape</span></h3>
+            <p class="entry-desc">Builds a standalone, reusable primitive shape in code, like Processing's <code class="inline">createShape(RECT/ELLIPSE/LINE/TRIANGLE/QUAD, ...)</code>. <code class="inline">x</code>/<code class="inline">y</code>/<code class="inline">w</code>/<code class="inline">h</code> are in the shape's <em>own</em> local coordinate system — <code class="inline">Shape(built, drawX, drawY)</code> later draws it translated by <code class="inline">(drawX, drawY)</code>, so it ends up on screen at <code class="inline">(drawX + x, drawY + y)</code>, matching real Processing. Captures the <strong>current</strong> <code class="inline">Fill()</code>/<code class="inline">Stroke()</code>/<code class="inline">StrokeWeight()</code> as the shape's fixed, baked-in style — changing them afterward has no retroactive effect.</p>
+
+            <table class="enum-table">
+              <caption>PShapeType</caption>
+              <tr><td>Rect</td><td>4 values: x, y, w, h.</td></tr>
+              <tr><td>Ellipse</td><td>4 values: x, y, w, h.</td></tr>
+              <tr><td>Line</td><td>4 values: x1, y1, x2, y2.</td></tr>
+              <tr><td>Triangle</td><td>6 values: x1,y1, x2,y2, x3,y3.</td></tr>
+              <tr><td>Quad</td><td>8 values: x1,y1, x2,y2, x3,y3, x4,y4.</td></tr>
+            </table>
+
+            <h3 class="entry-title" id="createshape-group">CreateShape(<span class="tp">params PShape[]</span> children) <span class="sig-return">→ PShape</span></h3>
+            <p class="entry-desc">Groups several 2D shapes into one, like Processing's <code class="inline">createShape(GROUP)</code> followed by <code class="inline">addChild()</code> for each piece. Each child keeps the absolute local coordinates it was built with — build a rocket out of a triangle, a rect, and an ellipse once in <code class="inline">Setup()</code>, then stamp the whole group with a single <code class="inline">Shape()</code> call per instance in <code class="inline">Draw()</code>.</p>
+            <div class="note"><strong>2D only.</strong> Group a set of <code class="inline">CreateShape3D()</code> meshes by drawing each with its own <code class="inline">Shape()</code> call instead — there's no 3D-mesh grouping yet.</div>
+
             <h3 class="entry-title" id="shape">Shape(<span class="tp">PShape</span> shape, x, y) · Shape(shape, x, y, w, h)</h3>
-            <p class="entry-desc">Draws the shape, positioned/sized per the current <code class="inline">ShapeMode</code>.</p>
+            <p class="entry-desc">Draws the shape, positioned/sized per the current <code class="inline">ShapeMode</code>. Dispatches automatically to the 3D draw path when <code class="inline">shape</code> wraps a mesh from <code class="inline">CreateShape3D()</code> — see <a href="#shape-3d-custom">Custom 3D shapes</a>.</p>
             <div class="note"><strong>Tint doesn't apply here.</strong> To tint a vector shape, render it into a <code class="inline">PGraphics</code> first.</div>
           </section>
 
@@ -1275,6 +1841,23 @@
 
             <h3 class="entry-title" id="saveframe">SaveFrame(<span class="tp">string</span> pattern = "screen-####.png")</h3>
             <p class="entry-desc">Like <code class="inline">Save()</code>, but substitutes <code class="inline">#</code> with <code class="inline">FrameCount</code>.</p>
+
+            <h3 class="entry-title" id="beginraw">BeginRaw(<span class="tp">string</span> path) · EndRaw() · BeginRecord(<span class="tp">string</span> renderer, path) · EndRecord()</h3>
+            <p class="entry-desc">Exports every draw call between <code class="inline">BeginRaw()</code>/<code class="inline">EndRaw()</code> to a vector PDF instead of the screen. <code class="inline">BeginRecord()</code>/<code class="inline">EndRecord()</code> are plain aliases — <code class="inline">renderer</code> is accepted for API parity with Processing but ignored, since only PDF export exists here.</p>
+            <div class="note"><strong>Redirects, doesn't fork.</strong> Real Processing draws to the screen <em>and</em> records at the same time. DanaProcessing instead <strong>redirects</strong> every draw call to the PDF page for the duration of the block — nothing appears on screen while a recording is active. The idiomatic pattern: factor your actual drawing into its own method, and call it twice — once normally in <code class="inline">Draw()</code>, once more (typically on a keypress, not every frame) wrapped in <code class="inline">BeginRaw()</code>/<code class="inline">EndRaw()</code>.</div>
+            <div class="code-block">
+<pre><span class="kw">private void</span> DrawPoster() { <span class="cm">/* Background/Fill/Circle/... */</span> }
+
+<span class="kw">public override void</span> KeyPressed()
+{
+    <span class="kw">if</span> (Key == <span class="str">'v'</span>)
+    {
+        BeginRaw(<span class="str">"poster.pdf"</span>);
+        DrawPoster();
+        EndRaw();
+    }
+}</pre>
+            </div>
           </section>
 
           <!-- ================= PIXELS ================= -->
@@ -1318,6 +1901,9 @@
             <h3 class="entry-title" id="loadjsonobject">LoadJSONObject(path) <span class="sig-return">→ JSONObject</span> · SaveJSONObject(json, path) · LoadJSONArray(path) <span class="sig-return">→ JSONArray</span> · SaveJSONArray(json, path)</h3>
             <p class="entry-desc">Reads/writes JSON files. <code class="inline">JSONObject</code>/<code class="inline">JSONArray</code> wrap <code class="inline">System.Text.Json</code> with Processing's <code class="inline">Get*</code>/<code class="inline">Set*</code>/<code class="inline">Append*</code> naming (<code class="inline">GetString</code>, <code class="inline">GetInt</code>, <code class="inline">GetFloat</code>, <code class="inline">GetBoolean</code>, <code class="inline">GetJSONObject</code>, <code class="inline">GetJSONArray</code>, and their <code class="inline">Set*</code>/<code class="inline">Append*</code> counterparts).</p>
 
+            <h3 class="entry-title" id="parsejsonobject">ParseJSONObject(<span class="tp">string</span> json) <span class="sig-return">→ JSONObject</span> · ParseJSONArray(json) <span class="sig-return">→ JSONArray</span> · ParseXML(<span class="tp">string</span> xml) <span class="sig-return">→ XML</span></h3>
+            <p class="entry-desc">Parses an already-in-memory string instead of reading from a file — use these instead of <code class="inline">LoadJSONObject</code>/<code class="inline">LoadJSONArray</code>/<code class="inline">LoadXML</code> when the data came from somewhere other than disk: a network response, a string built by hand, text pasted into the sketch.</p>
+
             <h3 class="entry-title" id="loadxml">LoadXML(<span class="tp">string</span> path) <span class="sig-return">→ XML</span> · SaveXML(xml, path)</h3>
             <p class="entry-desc">Reads/writes an XML file. <code class="inline">XML</code> wraps <code class="inline">System.Xml.Linq</code> with <code class="inline">GetString</code>/<code class="inline">GetInt</code>/<code class="inline">GetFloat</code> attribute accessors, <code class="inline">GetContent()</code> for text, and <code class="inline">GetChildren()</code>/<code class="inline">GetChild(name)</code>/<code class="inline">AddChild(name)</code> for structure.</p>
 
@@ -1330,6 +1916,9 @@
 
             <h3 class="entry-title" id="createoutput">CreateOutput(<span class="tp">string</span> path) · CreateInput(path) <span class="sig-return">→ Stream</span></h3>
             <p class="entry-desc">Raw byte streams to/from a file, like Processing's <code class="inline">createOutput()</code>/<code class="inline">createInput()</code>. The caller owns the returned <code class="inline">Stream</code> and should dispose it when finished.</p>
+
+            <h3 class="entry-title" id="savestream">SaveStream(<span class="tp">string</span> path) <span class="sig-return">→ Stream</span> · SaveStream(path, <span class="tp">Stream</span> input)</h3>
+            <p class="entry-desc">The single-argument overload is an alias for <code class="inline">CreateOutput()</code>, under Processing's other name for the same thing. The two-argument overload copies the entire contents of <code class="inline">input</code> to a new file at <code class="inline">path</code> and closes both — handy when you already have an input stream (from <code class="inline">CreateInput()</code> on another file, say) and just want it saved whole.</p>
 
             <h3 class="entry-title" id="printwriter">class PrintWriter · class BufferedReader</h3>
             <p class="entry-desc"><code class="inline">PrintWriter</code> exposes <code class="inline">Print(value)</code>/<code class="inline">Println(value?)</code>/<code class="inline">Flush()</code>/<code class="inline">Close()</code>. <code class="inline">BufferedReader</code> exposes <code class="inline">ReadLine()</code>, which returns null once the file is exhausted.</p>
@@ -1367,6 +1956,12 @@
 
             <h3 class="entry-title" id="unhex">Unhex(<span class="tp">string</span> value) <span class="sig-return">→ int</span></h3>
             <p class="entry-desc">Parses a hex string back into an int. Ignores an optional leading <code class="inline">"0x"</code>; returns 0 if the text isn't valid hex.</p>
+
+            <h3 class="entry-title" id="binary-fn">Binary(<span class="tp">int</span>) · Binary(<span class="tp">int</span>, digits) · Binary(<span class="tp">byte</span>) · Binary(<span class="tp">char</span>) <span class="sig-return">→ string</span></h3>
+            <p class="entry-desc">Binary string, zero-padded — 32 digits for <code class="inline">int</code> by default (or the rightmost <code class="inline">digits</code> bits), 8 for <code class="inline">byte</code>, 16 for <code class="inline">char</code>. Negative <code class="inline">int</code> values render their full two's-complement bit pattern, matching Processing/Java.</p>
+
+            <h3 class="entry-title" id="unbinary">Unbinary(<span class="tp">string</span> value) <span class="sig-return">→ int</span></h3>
+            <p class="entry-desc">Parses a binary string back into an int. Anything other than <code class="inline">'0'</code>/<code class="inline">'1'</code> in the string makes the whole result 0; strings longer than 32 bits keep only the rightmost 32, matching <code class="inline">int</code>'s width.</p>
 
             <div class="note"><strong>Prefer a plain C# cast.</strong> These exist purely for parity with sketches ported line-for-line from Processing. New DanaProcessing code can just write <code class="inline">(int)value</code>, <code class="inline">value.ToString()</code>, etc. directly.</div>
 
@@ -1447,18 +2042,23 @@
           <section class="doc-section" id="pvector">
             <div class="section-kicker">16 · Data &amp; Math</div>
             <h2>PVector</h2>
-            <p class="section-intro">A 2D vector struct for position, velocity, and acceleration.</p>
+            <p class="section-intro">A 3D vector struct for position, velocity, and acceleration — position, velocity, and acceleration in a particle system, steering, or plain 3D math for custom <a href="#shape-3d-custom"><code class="inline">Vertex()</code>/<code class="inline">Normal()</code></a> geometry. <code class="inline">Z</code> defaults to 0 via the 2-argument constructor, so 2D-only sketch code that only ever wrote <code class="inline">new PVector(x, y)</code> keeps working unchanged.</p>
 
             <div class="table-wrap">
               <table>
                 <tr><th>instance (mutates)</th><th>static (pure)</th></tr>
                 <tr><td>Add / Sub / Mult / Div</td><td>Add / Sub / Mult / Div</td></tr>
                 <tr><td>Normalize / Limit(max) / SetMag(mag)</td><td>Dist(a, b) / Dot(a, b)</td></tr>
-                <tr><td>Rotate(rad) / Set(x, y)</td><td>FromAngle(rad)</td></tr>
+                <tr><td>Rotate(rad)<sup>†</sup> / Set(x, y, z=0)</td><td>FromAngle(rad)<sup>†</sup></td></tr>
                 <tr><td>Lerp(v, amt)</td><td>Lerp(a, b, amt)</td></tr>
-                <tr><td>Mag() / MagSq() / Heading() / Copy() / Array()</td><td>AngleBetween(a, b)</td></tr>
+                <tr><td>Cross(v)</td><td>Cross(a, b)</td></tr>
+                <tr><td>Mag() / MagSq() / Heading()<sup>†</sup> / Copy() / Array()</td><td>AngleBetween(a, b)</td></tr>
               </table>
             </div>
+            <p class="entry-desc" style="margin-top:10px;font-size:13.5px;"><sup>†</sup><code class="inline">Rotate()</code>/<code class="inline">FromAngle()</code>/<code class="inline">Heading()</code> only make sense for a vector lying in the XY plane and ignore <code class="inline">Z</code>, matching Processing's own documented 2D-only behavior for these three. For a genuine 3D rotation, rotate the point with <a href="#transform-3d"><code class="inline">RotateX/Y/Z()</code></a> instead.</p>
+
+            <h3 class="entry-title" id="pvector-cross">Cross(<span class="tp">PVector</span> v) <span class="sig-return">→ PVector</span></h3>
+            <p class="entry-desc">The 3D cross product — perpendicular to both vectors, following the right-hand rule. Does <strong>not</strong> mutate <code class="inline">this</code> (unlike most other instance methods here), matching Processing's own <code class="inline">cross()</code>, which always returns a new <code class="inline">PVector</code>. For two vectors lying in the XY plane (<code class="inline">Z = 0</code>), the result points purely along <code class="inline">Z</code> — exactly what you want for a 2D face's "up" normal, as in the faceted-gem example under <a href="#shape-3d-custom">Custom 3D shapes</a>.</p>
           </section>
 
           <!-- ================= RANDOM & NOISE ================= -->
@@ -1480,6 +2080,43 @@
 
             <h3 class="entry-title" id="noiseseed">NoiseSeed(<span class="tp">int</span> seed) · NoiseDetail(<span class="tp">int</span> octaves, <span class="tp">float</span> falloff = 0.5f)</h3>
             <p class="entry-desc">Reshuffles the noise permutation table, or changes octaves and falloff.</p>
+          </section>
+
+          <!-- ================= COLLECTIONS ================= -->
+          <section class="doc-section" id="collections">
+            <div class="section-kicker">17.5 · Data &amp; Math</div>
+            <h2>Collections</h2>
+            <p class="section-intro"><code class="inline">FloatList</code>, <code class="inline">IntList</code>, and <code class="inline">StringList</code> — Processing-flavored typed lists, like <a href="https://processing.org/reference/FloatList.html" target="_blank" rel="noopener">Processing's own</a>. Thin wrappers around <code class="inline">List&lt;T&gt;</code> with the handful of methods sketches actually reach for, rather than a 1:1 port of Java's much larger surface. Standalone value-holder types — like <code class="inline">PVector</code>, you just <code class="inline">new FloatList()</code> directly, no <code class="inline">Sketch</code> factory method needed.</p>
+
+            <div class="note"><strong>What about FloatDict/IntDict/StringDict?</strong> Not ported, on purpose. A plain C# <code class="inline">Dictionary&lt;string, float&gt;</code> (or <code class="inline">int</code>/<code class="inline">string</code>) already does exactly what Processing's dict types do, with better performance and an API every C# developer already knows. That wrapper only earned its keep in Java, which didn't have comfortable generics when Processing's API was designed.</div>
+
+            <h3 class="entry-title" id="floatlist">class FloatList · class IntList · class StringList</h3>
+            <p class="entry-desc">All three share the same shape — <code class="inline">Size</code>, an indexer (<code class="inline">this[int]</code>), and the methods below. <code class="inline">FloatList</code>/<code class="inline">IntList</code> additionally expose <code class="inline">Min()</code>/<code class="inline">Max()</code>/<code class="inline">Sum()</code> (and <code class="inline">FloatList</code> alone adds <code class="inline">Average()</code>) — numeric summaries that don't make sense for <code class="inline">StringList</code>, which instead adds <code class="inline">Join(separator)</code>. All three implement <code class="inline">IEnumerable&lt;T&gt;</code>, so a plain <code class="inline">foreach</code> works too.</p>
+
+            <div class="table-wrap">
+              <table>
+                <tr><th>method</th><th>does</th></tr>
+                <tr><td>Append(value)</td><td>Adds to the end.</td></tr>
+                <tr><td>Get(i) / Set(i, value)</td><td>Read/write by index (same as the indexer).</td></tr>
+                <tr><td>Remove(i) / Clear()</td><td>Removes one element, or everything.</td></tr>
+                <tr><td>Contains(value) / IndexOf(value)</td><td>Linear search.</td></tr>
+                <tr><td>Sort() / SortReverse() / Reverse()</td><td>In place.</td></tr>
+                <tr><td>Shuffle(<span class="ptype">Random?</span> rng = null)</td><td>Fisher-Yates in place. Uses its own internal <code class="inline">Random</code> by default — pass your own for reproducible results tied to a seed.</td></tr>
+                <tr><td>ToArray()</td><td>Snapshot as a plain array.</td></tr>
+              </table>
+            </div>
+
+            <h3 class="entry-title" id="intlist-range">IntList.Range(<span class="tp">int</span> count) <span class="sig-return">→ IntList</span> · static</h3>
+            <p class="entry-desc">Fills a new list with <code class="inline">count</code> sequential ints starting at 0 — handy for building an index list to shuffle/sort alongside parallel data.</p>
+
+            <div class="code-block">
+<pre><span class="kw">var</span> heights = <span class="kw">new</span> <span class="tp">FloatList</span>();
+<span class="kw">for</span> (<span class="kw">int</span> i = <span class="str">0</span>; i &lt; <span class="str">24</span>; i++)
+    heights.Append(Random(<span class="str">40</span>, Height - <span class="str">40</span>));
+
+heights.Shuffle();               <span class="cm">// reordena en el lugar</span>
+<span class="kw">float</span> avg = heights.Average();  <span class="cm">// resumen numérico</span></pre>
+            </div>
           </section>
 
           <!-- ================= INPUT ================= -->
@@ -1516,6 +2153,9 @@
 
             <h3 class="entry-title" id="selectinput">SelectInput(prompt, callback) · SelectOutput(prompt, callback) · SelectFolder(prompt, callback)</h3>
             <p class="entry-desc">Raises the <code class="inline">SelectFileRequested</code> event with a <code class="inline">SelectFileRequest</code> describing which native dialog to show. DanaProcessing doesn't own a window, so — like <code class="inline">Cursor()</code>/<code class="inline">NoCursor()</code> — this can't pop a dialog itself; the host shows its own native dialog and calls <code class="inline">Respond(path)</code> (or <code class="inline">Respond(null)</code> on cancel) once the user answers.</p>
+
+            <h3 class="entry-title" id="launch">Launch(<span class="tp">string</span> path)</h3>
+            <p class="entry-desc">Opens a file, folder, URL, or application with the OS's default handler, like Processing's <code class="inline">launch()</code>. Fire-and-forget — returns as soon as the OS has been asked to open it. Unlike <code class="inline">SelectInput</code>/<code class="inline">Cursor</code>, this doesn't need a host at all: it goes straight to <code class="inline">Process.Start</code>.</p>
           </section>
 
           <!-- ================= ENUMS ================= -->
@@ -1523,6 +2163,12 @@
             <div class="section-kicker">19 · Reference</div>
             <h2>Enumerations</h2>
             <p class="section-intro">Shared between <code class="inline">Sketch</code> and <code class="inline">PGraphics</code>.</p>
+
+            <table class="enum-table">
+              <caption>RendererKind</caption>
+              <tr><td>Renderer2D</td><td>Skia software rasterizer — the default. Everything under <a href="#shape-primitives">Drawing</a>.</td></tr>
+              <tr><td>Renderer3D</td><td>Offscreen OpenGL 3.3. Set once via <code class="inline">Size()</code>/<code class="inline">CreateGraphics()</code> and locked for that context's lifetime. See <a href="#getting-started-3d">3D — Getting started</a>.</td></tr>
+            </table>
 
             <table class="enum-table">
               <caption>ColorSpaceMode</caption>
@@ -1567,6 +2213,12 @@
               <tr><td>Triangles</td><td>Grouped in threes; supports mesh rendering.</td></tr>
               <tr><td>TriangleFan / TriangleStrip</td><td>Shared-vertex triangles.</td></tr>
               <tr><td>Quads / QuadStrip</td><td>Grouped or shared-vertex quads.</td></tr>
+            </table>
+            <div class="note"><strong>Under Renderer3D:</strong> <code class="inline">Triangles</code>/<code class="inline">TriangleFan</code>/<code class="inline">TriangleStrip</code>/<code class="inline">Quads</code>/<code class="inline">QuadStrip</code>/<code class="inline">Polygon</code> (triangulated as a fan) build and draw a real GPU mesh. <code class="inline">Points</code>/<code class="inline">Lines</code> aren't supported there — no meaningful normal to light them with — and throw <code class="inline">NotSupportedException</code>. See <a href="#shape-3d-custom">Custom 3D shapes</a>.</div>
+
+            <table class="enum-table">
+              <caption>PShapeType</caption>
+              <tr><td>Rect / Ellipse / Line / Triangle / Quad</td><td>Used with <a href="#createshape"><code class="inline">CreateShape(type, ...)</code></a> to build a 2D primitive shape from raw coordinates.</td></tr>
             </table>
 
             <table class="enum-table">
@@ -1701,6 +2353,65 @@
     localStorage.setItem('dana-theme', next);
   });
 
+  // ---------- 2D / 3D mode toggle ----------
+  var modeToggle   = document.getElementById('modeToggle');
+  var modeFlagText = document.getElementById('modeFlagText');
+  var modeFlagIcon = document.getElementById('modeFlagIcon');
+  var label2d      = modeToggle.querySelector('.mode-2d-label');
+  var label3d      = modeToggle.querySelector('.mode-3d-label');
+  var warpOverlay  = document.getElementById('warpOverlay');
+
+  function applyMode(mode){
+    // El atributo vive en <body> (así lo esperan los selectores
+    // [data-mode="3d"] .doc-section, .only-3d, etc.)
+    document.body.setAttribute('data-mode', mode);
+    localStorage.setItem('dana-mode', mode);
+
+    label2d.classList.toggle('active', mode === '2d');
+    label3d.classList.toggle('active', mode === '3d');
+
+    if(mode === '3d'){
+      modeFlagText.textContent = '3D Renderer API';
+      modeFlagIcon.className = 'ph-bold ph-cube';
+    } else {
+      modeFlagText.textContent = '2D Canvas API';
+      modeFlagIcon.className = 'ph-bold ph-square';
+    }
+  }
+
+  // Restaurar modo guardado (por defecto: 2d)
+  applyMode(localStorage.getItem('dana-mode') || '2d');
+
+  modeToggle.addEventListener('click', function(e){
+    var current = document.body.getAttribute('data-mode');
+    var next = (current === '3d') ? '2d' : '3d';
+
+    // Posicionar el anillo del overlay en el punto del click
+    var rect = modeToggle.getBoundingClientRect();
+    var cx = (e && e.clientX) ? e.clientX : (rect.left + rect.width / 2);
+    var cy = (e && e.clientY) ? e.clientY : (rect.top + rect.height / 2);
+    warpOverlay.style.setProperty('--warp-x', cx + 'px');
+    warpOverlay.style.setProperty('--warp-y', cy + 'px');
+
+    // Disparar la transición "portal"
+    warpOverlay.classList.remove('firing');
+    void warpOverlay.offsetWidth; // reflow para reiniciar la animación
+    warpOverlay.classList.add('firing');
+
+    var app = document.querySelector('.app');
+    app.classList.add('warping');
+    setTimeout(function(){ app.classList.remove('warping'); }, 600);
+
+    // Cambiar el modo a mitad de la animación, para que el cambio
+    // de contenido quede oculto detrás del anillo en expansión.
+    setTimeout(function(){ applyMode(next); }, 320);
+
+    warpOverlay.addEventListener('animationend', function handler(){
+      warpOverlay.classList.remove('firing');
+      warpOverlay.removeEventListener('animationend', handler);
+    });
+  });
+
   // ---------- Mobile nav ----------
   var menuToggle = document.getElementById('menuToggle');
   var sidebar = document.getElementById('sidebar');
@@ -1739,14 +2450,20 @@ var navLinks = Array.from(document.querySelectorAll('.sidebar-nav a[href^="#"]')
   var headingToId = {};
   entryHeadings.forEach(function(h){
     var label = h.textContent.trim().split('\n')[0].split('→')[0].trim();
-    var base = slugify(label) || 'entry';
-    var id = base, n = 2;
-    while(usedIds[id]){ id = base + '-' + n; n++; }
+    var id = h.id; // respeta un id puesto a mano en el HTML en vez de pisarlo siempre
+    if(!id){
+      var base = slugify(label) || 'entry';
+      id = base;
+      var n = 2;
+      while(usedIds[id]){ id = base + '-' + n; n++; }
+    }
     usedIds[id] = true;
     h.id = id;
     headingToId[label] = id;
 
     var li = document.createElement('li');
+    var modeSection = h.closest('section[data-mode-section]');
+    if(modeSection){ li.setAttribute('data-mode-section', modeSection.getAttribute('data-mode-section')); }
     var a = document.createElement('a');
     a.href = '#' + id;
     a.textContent = label;
@@ -2075,7 +2792,79 @@ var navLinks = Array.from(document.querySelectorAll('.sidebar-nav a[href^="#"]')
     "SelectInput": "selectinput",
     "SelectOutput": "selectinput",
     "SelectFolder": "selectinput",
-    "SelectFileRequest": "selectinput"
+    "SelectFileRequest": "selectinput",
+
+    "Circle": "circle",
+    "CreateShape": "createshape",
+    "PShapeType": "enums",
+    "FloatList": "floatlist",
+    "IntList": "floatlist",
+    "StringList": "floatlist",
+    "Binary": "binary-fn",
+    "Unbinary": "unbinary",
+    "Launch": "launch",
+    "ParseJSONObject": "parsejsonobject",
+    "ParseJSONArray": "parsejsonobject",
+    "ParseXML": "parsejsonobject",
+    "SaveStream": "savestream",
+    "BeginRaw": "beginraw",
+    "EndRaw": "beginraw",
+    "BeginRecord": "beginraw",
+    "EndRecord": "beginraw",
+    "Delay": "delay",
+    "Thread": "thread",
+    "Settings": "settings",
+    "PixelWidth": "pixelwidth",
+    "PixelHeight": "pixelwidth",
+    "FullScreen": "window-management",
+    "WindowMove": "window-management",
+    "WindowResize": "window-management",
+    "WindowResizable": "window-management",
+    "WindowTitle": "window-management",
+    "WindowRatio": "window-management",
+    "SetLocation": "window-management",
+    "SetResizable": "window-management",
+    "SetTitle": "window-management",
+
+    "RendererKind": "enums",
+    "Box": "box",
+    "Sphere": "sphere",
+    "SphereDetail": "spheredetail",
+    "Camera": "camera",
+    "Perspective": "perspective",
+    "Ortho": "ortho",
+    "Frustum": "frustum",
+    "BeginCamera": "begincamera",
+    "EndCamera": "begincamera",
+    "PrintCamera": "printcamera",
+    "PrintProjection": "printcamera",
+    "Lights": "lights",
+    "NoLights": "lights",
+    "AmbientLight": "ambientlight",
+    "DirectionalLight": "directionallight",
+    "PointLight": "pointlight",
+    "SpotLight": "spotlight",
+    "LightFalloff": "lightfalloff",
+    "LightSpecular": "lightfalloff",
+    "Ambient": "ambient-material",
+    "Specular": "specular-material",
+    "Emissive": "emissive",
+    "Shininess": "shininess",
+    "ModelX": "modelxyz",
+    "ModelY": "modelxyz",
+    "ModelZ": "modelxyz",
+    "ScreenX": "screenxyz",
+    "ScreenY": "screenxyz",
+    "ScreenZ": "screenxyz",
+    "Normal": "normal",
+    "CreateShape3D": "createshape3d",
+    "LoadShader": "loadshader",
+    "Shader": "shader",
+    "ResetShader": "shader",
+    "PShader": "loadshader",
+    "RotateX": "rotatexyz",
+    "RotateY": "rotatexyz",
+    "RotateZ": "rotatexyz"
   };
 
   var keywords = [
@@ -2377,7 +3166,79 @@ var navLinks = Array.from(document.querySelectorAll('.sidebar-nav a[href^="#"]')
     ["SelectInput","method"],
     ["SelectOutput","method"],
     ["SelectFolder","method"],
-    ["SelectFileRequest","class"]
+    ["SelectFileRequest","class"],
+
+    ["Circle","method"],
+    ["CreateShape","method"],
+    ["PShapeType","enum"],
+    ["FloatList","class"],
+    ["IntList","class"],
+    ["StringList","class"],
+    ["Binary","method"],
+    ["Unbinary","method"],
+    ["Launch","method"],
+    ["ParseJSONObject","method"],
+    ["ParseJSONArray","method"],
+    ["ParseXML","method"],
+    ["SaveStream","method"],
+    ["BeginRaw","method"],
+    ["EndRaw","method"],
+    ["BeginRecord","method"],
+    ["EndRecord","method"],
+    ["Delay","method"],
+    ["Thread","method"],
+    ["Settings","method"],
+    ["PixelWidth","property"],
+    ["PixelHeight","property"],
+    ["FullScreen","method"],
+    ["WindowMove","method"],
+    ["WindowResize","method"],
+    ["WindowResizable","method"],
+    ["WindowTitle","method"],
+    ["WindowRatio","method"],
+    ["SetLocation","method"],
+    ["SetResizable","method"],
+    ["SetTitle","method"],
+
+    ["RendererKind","enum"],
+    ["Box","method"],
+    ["Sphere","method"],
+    ["SphereDetail","method"],
+    ["Camera","method"],
+    ["Perspective","method"],
+    ["Ortho","method"],
+    ["Frustum","method"],
+    ["BeginCamera","method"],
+    ["EndCamera","method"],
+    ["PrintCamera","method"],
+    ["PrintProjection","method"],
+    ["Lights","method"],
+    ["NoLights","method"],
+    ["AmbientLight","method"],
+    ["DirectionalLight","method"],
+    ["PointLight","method"],
+    ["SpotLight","method"],
+    ["LightFalloff","method"],
+    ["LightSpecular","method"],
+    ["Ambient","method"],
+    ["Specular","method"],
+    ["Emissive","method"],
+    ["Shininess","method"],
+    ["ModelX","method"],
+    ["ModelY","method"],
+    ["ModelZ","method"],
+    ["ScreenX","method"],
+    ["ScreenY","method"],
+    ["ScreenZ","method"],
+    ["Normal","method"],
+    ["CreateShape3D","method"],
+    ["LoadShader","method"],
+    ["Shader","method"],
+    ["ResetShader","method"],
+    ["PShader","class"],
+    ["RotateX","method"],
+    ["RotateY","method"],
+    ["RotateZ","method"]
   ];
   keywords.sort(function(a,b){ return a[0].localeCompare(b[0]); });
 
