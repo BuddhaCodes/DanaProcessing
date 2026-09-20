@@ -23,6 +23,11 @@ namespace DanaProcessing.Ide.Editor
                 "Sketch mínimo",
                 "Setup()/Draw() chico -- un círculo que sigue al mouse, crece mientras mantenés apretado el botón, y cambia de color con cada click.",
                 MinimalSketch),
+             
+            new SketchSample(
+                "Sketch mínimo 3D",
+                "Setup()/Draw() ",
+                MinimalSketch3D),
 
             new SketchSample(
                 "Árbol fractal",
@@ -513,6 +518,25 @@ public class MySketch : Sketch
     {
         // Cada click avanza al proximo color de la paleta.
         _colorIndex = (_colorIndex + 1) % _palette.Length;
+    }
+}
+";
+        private const string MinimalSketch3D =
+@"public class MySketch : Sketch
+{ private float _angle;
+
+    public override void Setup() => Size(800, 600, RendererKind.Renderer3D);
+
+    public override void Draw()
+    {
+        Background(20, 20, 30);
+        Lights();
+        Fill(255, 150, 90);
+        PushMatrix();
+        Translate(Width / 2f, Height / 2f, 0);
+        RotateY(_angle += 0.02f);
+        Box(200);
+        PopMatrix();
     }
 }
 ";

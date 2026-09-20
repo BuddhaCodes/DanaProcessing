@@ -334,16 +334,15 @@ namespace DanaProcessing.AvaloniaHost
             // the same way a brand-new canvas would each time.
             offscreenCanvas.Save();
 
+            // DESPUÉS:
             if (!_crashed)
             {
-                RunSafely(() =>
-                {
-                    _sketch.Draw();
-                    _sketch.FrameCount++;
-                }, "Draw");
+                // RenderFrame() incrementa FrameCount y, si el sketch pidió
+                // RendererKind.Renderer3D via Size(), maneja el backend GPU
+                // (BeginFrame/EndFrame + blit sobre este mismo offscreenCanvas) solo --
+                // ver Sketch.RenderFrame(). Para Renderer2D es idéntico a antes.
+                RunSafely(_sketch.RenderFrame, "Draw");
 
-                // pmouseX/pmouseY deben quedar listos para el PRÓXIMO frame recién
-                // acá -- una sola vez por Draw(), no por cada PointerMoved.
                 _sketch.PMouseX = _sketch.MouseX;
                 _sketch.PMouseY = _sketch.MouseY;
             }

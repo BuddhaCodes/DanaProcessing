@@ -44,9 +44,11 @@ namespace DanaProcessing
         /// </summary>
         public void Size(int w, int h, RendererKind renderer = RendererKind.Renderer2D)
         {
-            if (renderer == RendererKind.Renderer3D)
-                throw new NotImplementedException("RendererKind.Renderer3D todavía no está implementado — ver los comentarios de IGraphicsBackend para la hoja de ruta 3D.");
             SetRenderer(renderer);
+
+            if (renderer == RendererKind.Renderer3D && _backend == null)
+                _backend = Renderer3DBackend.Create(w, h); // el mismo backend que ya usa PGraphics
+
             if (w == Width && h == Height)
                 return;
             Width = w;
@@ -155,6 +157,40 @@ namespace DanaProcessing
         {
             if (density != 1 && density != 2)
                 throw new ArgumentException("PixelDensity() solo acepta 1 o 2, igual que Processing.");
+        }
+
+        /// <summary>
+        /// Corre un frame completo. El host debe llamar a ESTO en vez de Draw()
+        /// directamente. Bajo Renderer3D, redirige Canvas/Surface al backend GPU
+        /// mientras corre Draw() del usuario, y al terminar vuelca el resultado ya
+        /// compuesto (3D + overlay 2D) sobre el canvas real que dio SetCanvas() —
+        /// exactamente lo que hoy hace cada sample a mano con _scene3d + Image().
+        /// </summary>
+        internal void RenderFrame()
+        {
+            FrameCount++;
+
+            if (Renderer != RendererKind.Renderer3D)
+            {
+                Draw();
+                return;
+            }
+
+            var backend = (Renderer3DBackend)_backend!;
+            var hostCanvas = Canvas;
+            var hostSurface = Surface;
+
+            Canvas = backend.Canvas;
+            Surface = backend.Surface;
+
+            backend.BeginFrame();
+            Draw();
+            backend.EndFrame();
+
+            hostCanvas.DrawSurface(backend.Surface, 0, 0);
+
+            Canvas = hostCanvas;
+            Surface = hostSurface;
         }
 
         /// <summary>
