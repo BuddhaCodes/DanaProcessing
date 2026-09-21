@@ -16,6 +16,7 @@
 	  <PackageReference Include="TextMateSharp.Grammars" Version="2.0.3" />
 	  <PackageReference Include="Avalonia.AvaloniaEdit" Version="12.0.0" />
 	  <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.9.0" />
+	  <PackageReference Include="NuGet.Protocol" Version="7.9.0" />
     <ProjectReference Include="..\DanaProcessing.AvaloniaHost\DanaProcessing.AvaloniaHost.csproj" />
   </ItemGroup>
 </Project>

@@ -1009,6 +1009,100 @@ namespace DanaProcessing.Ide.Theme
             {
                 Setters = { new Setter(TemplatedControl.BackgroundProperty, SurfacePressed) }
             },
+
+            // ============================================================
+            // === TEXTBOX: same root cause as Popup/FlyoutPresenter/
+            // ScrollBar above -- RequestedThemeVariant = Dark (App.cs) means
+            // any control nobody explicitly re-themes falls back to Fluent's
+            // dark defaults: a dark box with a washed-out placeholder,
+            // unreadable against ClayTheme's light palette.
+            //
+            // Setting Background/BorderBrush on the outer TextBox only fixes
+            // the RESTING state. Fluent's own TextBox.xaml nests separate
+            // "^:pointerover"/"^:focus" Style blocks *inside* the
+            // ControlTheme that repaint a named child, Border#PART_BorderElement,
+            // straight from DynamicResource brushes (TextControlBackgroundFocused
+            // etc.) -- selectors of the shape "TextBox:focus /template/
+            // Border#PART_BorderElement". That's more specific than a plain
+            // "TextBox { Background }" setter, so the box visibly went back
+            // to dark the moment it was hovered or focused (verified against
+            // Avalonia's own TextBox.xaml source). Same family of bug as the
+            // ContentPresenter-repaints-itself issue documented on
+            // clay-secondary above, just on a different template part --
+            // fixed the same way: target that exact template part, per state.
+            //
+            // Foreground has a *different* shaped version of the same
+            // problem: PART_TextPresenter has no Foreground of its own in the
+            // template (it just inherits the TextBox's), so the plain setter
+            // below is enough at rest -- but the ControlTheme's own
+            // "^:pointerover"/"^:focus"/"^:disabled" blocks set Foreground
+            // directly on the TextBox itself (no /template/ needed there),
+            // which then wins over the plain setter while any of those states
+            // are active. Fixed further below with plain (non-templated)
+            // per-state Foreground setters. PlaceholderForeground, CaretBrush
+            // and Selection* have no competing override anywhere and don't
+            // need this treatment.
+            // ============================================================
+            new Style(x => x.OfType<TextBox>())
+            {
+                Setters =
+                {
+                    new Setter(TemplatedControl.BackgroundProperty, Surface),
+                    new Setter(TemplatedControl.BorderBrushProperty, new SolidColorBrush(Avalonia.Media.Color.Parse("#E8E2DA"))),
+                    new Setter(TemplatedControl.BorderThicknessProperty, new Thickness(1)),
+                    new Setter(TemplatedControl.CornerRadiusProperty, RadiusSmall),
+                    new Setter(TemplatedControl.PaddingProperty, new Thickness(10, 7)),
+                    new Setter(TemplatedControl.ForegroundProperty, TextPrimary),
+                    new Setter(TextBox.PlaceholderForegroundProperty, TextMuted),
+                    new Setter(TextBox.CaretBrushProperty, TextPrimary),
+                    new Setter(TextBox.SelectionBrushProperty, AccentGlow),
+                    new Setter(TextBox.SelectionForegroundBrushProperty, TextPrimary),
+                }
+            },
+            // The at-rest state above already reaches PART_BorderElement fine
+            // (it binds Background/BorderBrush via plain TemplateBinding when
+            // no pseudo-class Style inside the ControlTheme is active) -- only
+            // :pointerover and :focus need the explicit /template/ traversal.
+            new Style(x => x.OfType<TextBox>().Class(":pointerover").Template().OfType<Border>().Name("PART_BorderElement"))
+            {
+                Setters =
+                {
+                    new Setter(Border.BackgroundProperty, Surface),
+                    new Setter(Border.BorderBrushProperty, AccentDim),
+                    new Setter(Border.BorderThicknessProperty, new Thickness(1)),
+                }
+            },
+            new Style(x => x.OfType<TextBox>().Class(":focus").Template().OfType<Border>().Name("PART_BorderElement"))
+            {
+                Setters =
+                {
+                    new Setter(Border.BackgroundProperty, Surface),
+                    new Setter(Border.BorderBrushProperty, Accent),
+                    new Setter(Border.BorderThicknessProperty, new Thickness(1)),
+                }
+            },
+            // Typed text is a different story from Background: PART_TextPresenter
+            // has no Foreground of its own in Fluent's template at all (confirmed
+            // against the source) -- it just inherits whatever Foreground is
+            // active on the TextBox. That means a plain external setter reaches
+            // it fine AT REST, but Fluent's ControlTheme sets Foreground directly
+            // on the TextBox itself (no /template/ needed) for :pointerover/
+            // :focus/:disabled, which then wins while any of those are active --
+            // exactly the state the search box is in while you're typing into
+            // it, which is why the text stayed light/unreadable even after the
+            // box itself turned white.
+            new Style(x => x.OfType<TextBox>().Class(":pointerover"))
+            {
+                Setters = { new Setter(TemplatedControl.ForegroundProperty, TextPrimary) }
+            },
+            new Style(x => x.OfType<TextBox>().Class(":focus"))
+            {
+                Setters = { new Setter(TemplatedControl.ForegroundProperty, TextPrimary) }
+            },
+            new Style(x => x.OfType<TextBox>().Class(":disabled"))
+            {
+                Setters = { new Setter(TemplatedControl.ForegroundProperty, TextMuted) }
+            },
         };
 
         /// <summary>Todos los estilos combinados.</summary>

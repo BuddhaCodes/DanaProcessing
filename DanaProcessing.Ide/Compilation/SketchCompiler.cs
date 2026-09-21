@@ -3,9 +3,11 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.Loader;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using DanaProcessing;
+using DanaProcessing.Ide.Compilation.PackageManagement;
 
 namespace DanaProcessing.Ide.Compilation
 {
@@ -50,15 +52,63 @@ namespace DanaProcessing.Ide.Compilation
         /// and a Run-time syntax tree never disagree about what's valid C#.</summary>
         internal static readonly CSharpParseOptions SharedParseOptions = ParseOptions;
 
-        public static CompileResult Compile(string sourceCode)
+        // simple assembly name -> file path, populated by SetNuGetAssemblies right
+        // before each Compile() call that has `// nuget:` directives to satisfy.
+        // Resolving is process-wide (AssemblyLoadContext.Default), not per-sketch,
+        // because a byte[]-loaded sketch assembly resolves its dependencies through
+        // the Default context regardless of which Compile() call produced it — see
+        // the remark on SetNuGetAssemblies below for the one consequence of that.
+        private static readonly Dictionary<string, string> NuGetAssemblyPaths = new(StringComparer.OrdinalIgnoreCase);
+
+        static SketchCompiler()
+        {
+            AssemblyLoadContext.Default.Resolving += (context, name) =>
+            {
+                if (name.Name != null && NuGetAssemblyPaths.TryGetValue(name.Name, out var path))
+                {
+                    try { return context.LoadFromAssemblyPath(path); }
+                    catch { return null; }
+                }
+                return null;
+            };
+        }
+
+        /// <summary>
+        /// Tells the runtime where to find each NuGet package assembly a sketch's
+        /// `// nuget:` directives resolved to, so that when the compiled sketch
+        /// assembly is instantiated and its code first touches a type from one of
+        /// those packages, AssemblyLoadContext.Default.Resolving (wired up above)
+        /// can load it on demand — Assembly.Load(byte[]) below runs the sketch in
+        /// the Default context, same as any normally-referenced assembly.
+        ///
+        /// Caveat: once a given simple name (e.g. "Newtonsoft.Json") has actually
+        /// been loaded into the Default context, the CLR won't ask to resolve it
+        /// again — so switching a sketch to a *different* version of a package
+        /// already loaded this way earlier in the session keeps using the old one
+        /// until the IDE restarts. Acceptable for a creative-coding sketch host;
+        /// not something a general-purpose plugin loader could get away with.
+        /// </summary>
+        public static void SetNuGetAssemblies(IEnumerable<ResolvedNuGetPackage> packages)
+        {
+            NuGetAssemblyPaths.Clear();
+            foreach (var package in packages)
+                foreach (var path in package.AssemblyPaths)
+                    NuGetAssemblyPaths[Path.GetFileNameWithoutExtension(path)] = path;
+        }
+
+        public static CompileResult Compile(string sourceCode, IReadOnlyList<MetadataReference>? extraReferences = null)
         {
             var userTree = CSharpSyntaxTree.ParseText(sourceCode, ParseOptions);
             var implicitUsingsTree = CSharpSyntaxTree.ParseText(ImplicitUsingsSource, ParseOptions, path: "ImplicitUsings.cs");
 
+            var references = GetSharedReferences();
+            if (extraReferences != null)
+                references.AddRange(extraReferences);
+
             var compilation = CSharpCompilation.Create(
                 assemblyName: "DanaProcessing.Sketch." + Guid.NewGuid().ToString("N"),
                 syntaxTrees: new[] { userTree, implicitUsingsTree },
-                references: GetSharedReferences(),
+                references: references,
                 options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 
             using var ms = new MemoryStream();

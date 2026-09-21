@@ -9,11 +9,14 @@ using Avalonia.Media;
 using DanaProcessing;
 using DanaProcessing.AvaloniaHost;
 using DanaProcessing.Ide.Compilation;
+using DanaProcessing.Ide.Compilation.PackageManagement;
 using DanaProcessing.Ide.Editor;
 using DanaProcessing.Ide.Theme;
+using Microsoft.CodeAnalysis;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace DanaProcessing.Ide
 {
@@ -37,6 +40,8 @@ namespace DanaProcessing.Ide
         // time with a toggle instead of squeezing both into slivers.
         private const double NarrowBreakpoint = 900;
         private bool _hasRunOnce;
+        private bool _isRunning;
+        private readonly Button _runButton;
         private readonly SketchEditorView _editorView;
         private readonly AvaloniaSketchCanvas _canvas;
         private readonly TextBlock _outputText;
@@ -114,14 +119,14 @@ namespace DanaProcessing.Ide
             _editorView.CaretPositionChanged += (line, col) => _caretLabel.Text = $"Ln {line}, Col {col}";
             _editorView.LiveDiagnosticsChanged += UpdateLiveDiagnostics;
 
-            var runButton = new Button
+            _runButton = new Button
             {
                 Content = "▶  Run",
                 Classes = { "clay-run" },
                 Padding = new Avalonia.Thickness(20, 8),
                 CornerRadius = ClayTheme.RadiusButton,
             };
-            runButton.Click += (_, _) => RunCurrentSketch();
+            _runButton.Click += async (_, _) => await RunCurrentSketchAsync();
 
             // Botón cuadrado fijo (36x36) con el ícono centrado explícitamente
             // en ambos ejes -- antes dependía del centrado por defecto del
@@ -152,7 +157,7 @@ namespace DanaProcessing.Ide
             (_paneTogglePill, _codeToggleButton, _resultToggleButton) = BuildPaneToggle();
             UpdatePaneToggleVisuals();
 
-            var titleBarRoot = BuildTitleBar(runButton, settingsButton, fileMenuButton, _paneTogglePill);
+            var titleBarRoot = BuildTitleBar(_runButton, settingsButton, fileMenuButton, _paneTogglePill);
 
             _outputText = new TextBlock
             {
@@ -663,6 +668,31 @@ namespace DanaProcessing.Ide
         }
 
         /// <summary>
+        /// "Nuevo" and "Ejemplos" each replace the whole editor context (every
+        /// open tab) with a single new one — picking either means switching to a
+        /// different sketch entirely, same "one sketch at a time" model as
+        /// Processing's own IDE, unlike "Abrir" which adds a tab within whatever
+        /// context is already active. If that would discard unsaved work, this
+        /// confirms with the user first; <paramref name="applyNewContext"/> only
+        /// runs if there's nothing to lose or they explicitly chose to discard it.
+        /// </summary>
+        private async Task ReplaceContextIfConfirmedAsync(Action applyNewContext)
+        {
+            if (_editorView.HasUnsavedChanges)
+            {
+                var discard = await ConfirmDialog.ShowAsync(
+                    this,
+                    "Descartar cambios sin guardar",
+                    "Hay pestañas con cambios sin guardar. Si continuás, se van a perder.",
+                    confirmLabel: "Descartar y continuar",
+                    cancelLabel: "Cancelar");
+                if (!discard)
+                    return;
+            }
+            applyNewContext();
+        }
+
+        /// <summary>
         /// The ☰ button in the title bar: a collapsible file menu holding
         /// Nuevo / Abrir / Guardar / Guardar como / Ejemplos. Built once here
         /// instead of five separate buttons crowding the title bar (the old
@@ -742,14 +772,19 @@ namespace DanaProcessing.Ide
                 Width = 210,
                 Spacing = 1,
             };
-            menuPanel.Children.Add(BuildItem("＋", "Nuevo", () => _editorView.AddNewTab()));
+            menuPanel.Children.Add(BuildItem("＋", "Nuevo", () => _ = ReplaceContextIfConfirmedAsync(() => _editorView.ReplaceAllTabs())));
             menuPanel.Children.Add(BuildItem("📂", "Abrir...", () => _ = _editorView.OpenFileAsync()));
             menuPanel.Children.Add(Separator());
             menuPanel.Children.Add(BuildItem("💾", "Guardar", () => _ = _editorView.SaveActiveTabAsync()));
             menuPanel.Children.Add(BuildItem("💾", "Guardar como...", () => _ = _editorView.SaveActiveTabAsAsync()));
             menuPanel.Children.Add(Separator());
             menuPanel.Children.Add(BuildItem("🧩", "Ejemplos...", () =>
-                new SamplesWindow(source => _editorView.AddNewTab(null, source)).ShowDialog(this)));
+                new SamplesWindow(source => _ = ReplaceContextIfConfirmedAsync(() => _editorView.ReplaceAllTabs(null, source))).ShowDialog(this)));
+            menuPanel.Children.Add(BuildItem("📦", "Paquetes NuGet...", () =>
+            {
+                var current = PackageDirectiveParser.Parse(_editorView.ActiveSourceText);
+                new NuGetPackagesWindow(current, directives => _editorView.ApplyPackageDirectives(directives)).ShowDialog(this);
+            }));
 
             flyout = new Flyout
             {
@@ -850,45 +885,105 @@ namespace DanaProcessing.Ide
             return root;
         }
 
-        private void RunCurrentSketch()
+        /// <summary>
+        /// Compiles (and, if the sketch has any `// nuget:` directives,
+        /// resolves/downloads those packages first) and runs the active tab.
+        /// Async because package resolution can hit the network on a cache
+        /// miss — everything from here down used to be synchronous when the
+        /// only work was an in-memory Roslyn compile, which is still true for
+        /// the common case of a sketch with no NuGet directives (no `await`
+        /// actually suspends in that path, so it's no slower than before).
+        /// </summary>
+        private async Task RunCurrentSketchAsync()
         {
+            if (_isRunning)
+                return;
+
             var source = _editorView.ActiveSourceText;
             if (string.IsNullOrWhiteSpace(source))
                 return;
 
-            var result = SketchCompiler.Compile(source);
-
-            if (result.Success)
+            _isRunning = true;
+            _runButton.IsEnabled = false;
+            try
             {
-                _outputText.Text = "";
-                _runTabDot.Fill = ClayTheme.TextMuted;
-                RefreshBottomPanelVisibility();
+                var directives = PackageDirectiveParser.Parse(source);
+                IReadOnlyList<MetadataReference>? extraReferences = null;
 
-                _canvas.LoadSketch(result.Sketch!);
-                _hasRunOnce = true;
-                _statusDot.Fill = ClayTheme.Success;
-                _statusLabel.Text = "Listo";
-                ((Border)_statusPill).Background = ClayTheme.SuccessSurface;
+                if (directives.Count > 0)
+                {
+                    _outputText.Text = "";
+                    SetBottomTab(BottomTab.Run);
+                    _outputPanel.IsVisible = true;
 
-                // On a narrow window the canvas is hidden until you ask for
-                // it — but the whole point of pressing Run is to see the
-                // result, so surface it automatically instead of making the
-                // user tap "Resultado" themselves.
-                if (_isNarrow == true)
-                    SetNarrowPane(showCanvas: true);
+                    _statusDot.Fill = ClayTheme.Accent;
+                    _statusLabel.Text = "Restaurando paquetes NuGet...";
+                    ((Border)_statusPill).Background = ClayTheme.SurfaceHigher;
+
+                    var progress = new Progress<string>(message =>
+                        _outputText.Text = string.IsNullOrEmpty(_outputText.Text) ? message : _outputText.Text + Environment.NewLine + message);
+
+                    var resolution = await NuGetPackageResolver.ResolveAsync(directives, progress);
+
+                    if (!resolution.Success)
+                    {
+                        _outputText.Text = string.Join(Environment.NewLine, resolution.Errors);
+                        _runTabDot.Fill = ClayTheme.Danger;
+                        SetBottomTab(BottomTab.Run);
+                        RefreshBottomPanelVisibility();
+
+                        _statusDot.Fill = ClayTheme.Danger;
+                        _statusLabel.Text = "Error restaurando NuGet";
+                        ((Border)_statusPill).Background = ClayTheme.DangerSurface;
+                        return;
+                    }
+
+                    SketchCompiler.SetNuGetAssemblies(resolution.Packages);
+                    extraReferences = resolution.AllAssemblyPaths
+                        .Select(path => (MetadataReference)MetadataReference.CreateFromFile(path))
+                        .ToList();
+                    _outputText.Text = "";
+                }
+
+                var result = SketchCompiler.Compile(source, extraReferences);
+
+                if (result.Success)
+                {
+                    _outputText.Text = "";
+                    _runTabDot.Fill = ClayTheme.TextMuted;
+                    RefreshBottomPanelVisibility();
+
+                    _canvas.LoadSketch(result.Sketch!);
+                    _hasRunOnce = true;
+                    _statusDot.Fill = ClayTheme.Success;
+                    _statusLabel.Text = "Listo";
+                    ((Border)_statusPill).Background = ClayTheme.SuccessSurface;
+
+                    // On a narrow window the canvas is hidden until you ask for
+                    // it — but the whole point of pressing Run is to see the
+                    // result, so surface it automatically instead of making the
+                    // user tap "Resultado" themselves.
+                    if (_isNarrow == true)
+                        SetNarrowPane(showCanvas: true);
+                }
+                else
+                {
+                    _outputText.Text = string.Join(Environment.NewLine + Environment.NewLine, result.Errors);
+                    _runTabDot.Fill = ClayTheme.Danger;
+                    // Un fallo de Run es lo que el usuario vino a mirar -- llevarlo
+                    // a esa pestaña aunque estuviera parado en "Errores en vivo".
+                    SetBottomTab(BottomTab.Run);
+                    RefreshBottomPanelVisibility();
+
+                    _statusDot.Fill = ClayTheme.Danger;
+                    _statusLabel.Text = "Error de compilación";
+                    ((Border)_statusPill).Background = ClayTheme.DangerSurface;
+                }
             }
-            else
+            finally
             {
-                _outputText.Text = string.Join(Environment.NewLine + Environment.NewLine, result.Errors);
-                _runTabDot.Fill = ClayTheme.Danger;
-                // Un fallo de Run es lo que el usuario vino a mirar -- llevarlo
-                // a esa pestaña aunque estuviera parado en "Errores en vivo".
-                SetBottomTab(BottomTab.Run);
-                RefreshBottomPanelVisibility();
-
-                _statusDot.Fill = ClayTheme.Danger;
-                _statusLabel.Text = "Error de compilación";
-                ((Border)_statusPill).Background = ClayTheme.DangerSurface;
+                _isRunning = false;
+                _runButton.IsEnabled = true;
             }
         }
 
@@ -991,7 +1086,7 @@ namespace DanaProcessing.Ide
         public void LoadAndRunSketch(string source)
         {
             _editorView.AddNewTab(null, source);
-            RunCurrentSketch();
+            _ = RunCurrentSketchAsync();
         }
     }
 

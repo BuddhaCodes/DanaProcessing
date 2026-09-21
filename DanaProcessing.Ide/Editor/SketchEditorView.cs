@@ -12,6 +12,7 @@ using AvaloniaEdit;
 using AvaloniaEdit.CodeCompletion;
 using AvaloniaEdit.TextMate;
 using DanaProcessing.Ide.Compilation;
+using DanaProcessing.Ide.Compilation.PackageManagement;
 using DanaProcessing.Ide.Theme;
 using System;
 using System.Collections.ObjectModel;
@@ -35,6 +36,7 @@ namespace DanaProcessing.Ide.Editor
 
         private readonly TabStrip _tabStrip;
         private readonly TextEditor _editor;
+        private readonly Border _emptyStateOverlay;
 
         // FIX: ThemeName.DarkPlus pinta el texto base en gris claro/blanco,
         // pensado para un editor de fondo oscuro. Nuestro editor tiene fondo
@@ -131,7 +133,13 @@ namespace DanaProcessing.Ide.Editor
                             }
                             else
                             {
-                                AddNewTab();
+                                // Closing the last tab no longer conjures a fresh
+                                // one automatically -- it leaves the editor
+                                // genuinely empty, and _emptyStateOverlay (wired
+                                // to OpenTabs.CollectionChanged below) takes over
+                                // with its own "crear un nuevo sketch" prompt.
+                                _activeTab = null;
+                                ClearDiagnosticsDisplay();
                             }
                         }
                         else
@@ -158,6 +166,31 @@ namespace DanaProcessing.Ide.Editor
                 if (_tabStrip.SelectedItem is EditorTab tab)
                     ActivateTab(tab);
             };
+
+            // "+" lives next to the tab strip itself (not the ☰ menu) so
+            // adding a tab *within* the current context has its own obvious,
+            // always-visible affordance -- distinct from ☰ ▸ Nuevo, which
+            // now replaces the whole context instead (see MainWindow.
+            // ReplaceContextIfConfirmedAsync).
+            var addTabButton = new Button
+            {
+                Content = "+",
+                Classes = { "clay-icon" },
+                Width = 28,
+                Height = 28,
+                FontSize = 15,
+                Margin = new Thickness(2, 4, 8, 0),
+                HorizontalContentAlignment = HorizontalAlignment.Center,
+                VerticalContentAlignment = VerticalAlignment.Center,
+            };
+            ToolTip.SetTip(addTabButton, "Nueva pestaña");
+            addTabButton.Click += (_, _) => AddNewTab();
+
+            var tabStripRow = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
+            Grid.SetColumn(_tabStrip, 0);
+            Grid.SetColumn(addTabButton, 1);
+            tabStripRow.Children.Add(_tabStrip);
+            tabStripRow.Children.Add(addTabButton);
 
             // ================================================================
             // EDITOR
@@ -242,6 +275,93 @@ namespace DanaProcessing.Ide.Editor
             _editor.TextArea.KeyDown += OnEditorKeyDown;
 
             // ================================================================
+            // ESTADO VACÍO: se muestra en vez del editor cuando se cierra la
+            // última pestaña (ver el closeButton.Click de más arriba) -- ya
+            // no se crea una pestaña en blanco automáticamente, así que esto
+            // es lo único que ocuparía ese lugar. Background opaco (no un
+            // overlay semitransparente): cubre del todo el editorContainer
+            // que queda debajo con contenido de la última pestaña cerrada.
+            // Insignia con gradiente + glow, mismo lenguaje visual que el
+            // resto del IDE (AccentGradient del botón Run, ShadowGlow del
+            // foco de editor/canvas en MainWindow), y un fade-in propio en
+            // vez de aparecer de golpe -- el "toque animado" que el resto de
+            // la app reserva para pocos lugares en vez de repartirlo por todos.
+            // ================================================================
+            var emptyStateIconBadge = new Border
+            {
+                Width = 64,
+                Height = 64,
+                CornerRadius = new CornerRadius(32),
+                Background = ClayTheme.AccentGradient,
+                BoxShadow = ClayTheme.ShadowGlow,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                Child = new TextBlock
+                {
+                    Text = "✏️",
+                    FontSize = 26,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center,
+                }
+            };
+
+            var newSketchFromEmptyStateButton = new Button
+            {
+                Content = "+ Crear nuevo sketch",
+                Classes = { "clay-run" },
+                Padding = new Thickness(20, 10),
+                CornerRadius = ClayTheme.RadiusButton,
+                FontSize = 13.5,
+                HorizontalAlignment = HorizontalAlignment.Center,
+            };
+            newSketchFromEmptyStateButton.Click += (_, _) => AddNewTab();
+
+            _emptyStateOverlay = new Border
+            {
+                Background = ClayTheme.SurfaceRaised,
+                IsVisible = false,
+                Opacity = 0,
+                Transitions = new Avalonia.Animation.Transitions
+                {
+                    new Avalonia.Animation.DoubleTransition { Property = OpacityProperty, Duration = TimeSpan.FromMilliseconds(260) }
+                },
+                Child = new StackPanel
+                {
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    MaxWidth = 300,
+                    Spacing = 4,
+                    Children =
+                    {
+                        emptyStateIconBadge,
+                        new TextBlock
+                        {
+                            Text = "No hay ningún sketch abierto",
+                            Foreground = ClayTheme.TextPrimary,
+                            FontFamily = ClayTheme.FontDisplay,
+                            FontWeight = FontWeight.SemiBold,
+                            FontSize = 18,
+                            HorizontalAlignment = HorizontalAlignment.Center,
+                            TextAlignment = TextAlignment.Center,
+                            TextWrapping = TextWrapping.Wrap,
+                            Margin = new Thickness(0, 18, 0, 0),
+                        },
+                        new TextBlock
+                        {
+                            Text = "Empezá uno nuevo para seguir dibujando.",
+                            Foreground = ClayTheme.TextMuted,
+                            FontFamily = ClayTheme.FontBody,
+                            FontSize = 13,
+                            HorizontalAlignment = HorizontalAlignment.Center,
+                            TextAlignment = TextAlignment.Center,
+                            TextWrapping = TextWrapping.Wrap,
+                            Margin = new Thickness(0, 4, 0, 20),
+                        },
+                        newSketchFromEmptyStateButton,
+                    }
+                }
+            };
+
+            // ================================================================
             // LAYOUT FINAL
             // ================================================================
 
@@ -251,13 +371,14 @@ namespace DanaProcessing.Ide.Editor
                 LastChildFill = true,
             };
 
-            DockPanel.SetDock(_tabStrip, Dock.Top);
-            mainPanel.Children.Add(_tabStrip);
+            DockPanel.SetDock(tabStripRow, Dock.Top);
+            mainPanel.Children.Add(tabStripRow);
 
             DockPanel.SetDock(_diagnosticBanner, Dock.Top);
             mainPanel.Children.Add(_diagnosticBanner);
 
-            mainPanel.Children.Add(editorContainer);
+            var editorArea = new Panel { Children = { editorContainer, _emptyStateOverlay } };
+            mainPanel.Children.Add(editorArea);
 
             Content = mainPanel;
 
@@ -268,6 +389,25 @@ namespace DanaProcessing.Ide.Editor
             // ☰ de MainWindow (llaman directo a AddNewTab/OpenFileAsync/
             // SaveActiveTabAsync/SaveActiveTabAsAsync, públicos más abajo),
             // así que no hay botones locales que enganchar acá.
+
+            OpenTabs.CollectionChanged += (_, _) =>
+            {
+                if (OpenTabs.Count == 0)
+                {
+                    // Two ticks, not one assignment: IsVisible has to actually take
+                    // effect (a render frame has to happen) before bumping Opacity
+                    // back to 1 gives the DoubleTransition above something to
+                    // animate *from* -- setting both in the same tick would just
+                    // jump straight to the end state with no visible fade.
+                    _emptyStateOverlay.Opacity = 0;
+                    _emptyStateOverlay.IsVisible = true;
+                    Dispatcher.UIThread.Post(() => _emptyStateOverlay.Opacity = 1);
+                }
+                else
+                {
+                    _emptyStateOverlay.IsVisible = false;
+                }
+            };
 
             AddNewTab();
         }
@@ -396,7 +536,55 @@ namespace DanaProcessing.Ide.Editor
             return tab;
         }
 
+        /// <summary>True if any open tab has edits since it was last saved —
+        /// checked before "Nuevo"/"Ejemplos" would otherwise discard them.</summary>
+        public bool HasUnsavedChanges => OpenTabs.Any(t => t.IsDirty);
+
+        /// <summary>
+        /// Closes every open tab and starts a single fresh one. Used by "Nuevo"
+        /// and "Ejemplos" (see MainWindow.BuildFileMenuButton): picking either one
+        /// means switching to a different sketch entirely, same "one sketch at a
+        /// time" model as Processing's own IDE — not adding one more tab alongside
+        /// whatever was already open (that's what "Abrir" is for). Callers are
+        /// responsible for confirming with the user first when HasUnsavedChanges
+        /// is true; this method itself always discards without asking.
+        /// </summary>
+        public EditorTab ReplaceAllTabs(string? filePath = null, string? initialText = null)
+        {
+            OpenTabs.Clear();
+            return AddNewTab(filePath, initialText);
+        }
+
         public string? ActiveSourceText => _activeTab?.Document.Text;
+
+        /// <summary>Rewrites the active tab's `// nuget:` directives to exactly
+        /// <paramref name="directives"/> (see PackageDirectiveParser.Apply) — used
+        /// by the "Paquetes NuGet" dialog. Setting Document.Text fires the same
+        /// TextChanged path a real keystroke would, so the tab's dirty flag and
+        /// live diagnostics update themselves; a no-op if there's no active tab.</summary>
+        public void ApplyPackageDirectives(IReadOnlyList<PackageDirective> directives)
+        {
+            if (_activeTab is null)
+                return;
+
+            _activeTab.Document.Text = PackageDirectiveParser.Apply(_activeTab.Document.Text, directives);
+        }
+
+        /// <summary>Clears the squiggles/banner/live-errors-tab for whatever was
+        /// showing before — used when switching tabs (a new document's diagnostics
+        /// haven't been computed yet) and when the last tab closes (nothing left to
+        /// show diagnostics for). Pulled out as its own method rather than inlined
+        /// in the tab strip's ItemTemplate closures: referencing these fields from
+        /// a closure defined earlier in the constructor than their own assignment
+        /// trips the compiler's (here, false-positive) possibly-null warning —
+        /// a plain method isn't part of that constructor-body definite-assignment
+        /// trace, so it doesn't have the same problem.</summary>
+        private void ClearDiagnosticsDisplay()
+        {
+            _diagnosticsColorizer.SetDiagnostics(Array.Empty<SketchDiagnostic>());
+            _diagnosticBanner.IsVisible = false;
+            LiveDiagnosticsChanged?.Invoke(Array.Empty<LiveDiagnosticInfo>());
+        }
 
         private void ActivateTab(EditorTab tab)
         {
@@ -407,10 +595,8 @@ namespace DanaProcessing.Ide.Editor
             // Diagnostics are per-document; painting the previous tab's
             // squiggles for even a frame while the new document's copy
             // compiles would be worse than showing nothing for a moment.
-            _diagnosticsColorizer.SetDiagnostics(Array.Empty<SketchDiagnostic>());
+            ClearDiagnosticsDisplay();
             _editor.TextArea.TextView.Redraw();
-            _diagnosticBanner.IsVisible = false;
-            LiveDiagnosticsChanged?.Invoke(Array.Empty<LiveDiagnosticInfo>());
 
             _diagnosticsTimer.Stop();
             _ = RefreshDiagnosticsAsync();
@@ -550,11 +736,26 @@ namespace DanaProcessing.Ide.Editor
             TabSaved?.Invoke(_activeTab);
         }
 
-        // Parche para SketchEditorView.cs — reemplazar el método
-        // DefaultSketchTemplate() (línea ~510, el árbol fractal) por este. El
-        // árbol no se pierde: quedó como sample "Árbol fractal" en
-        // SketchSamples.cs, accesible desde la ventana de Samples.
-
-        private static string DefaultSketchTemplate() => SketchSamples.All[2].Source; // "Cubo 3D (Silk.NET)"
+        /// <summary>
+        /// What "Nuevo", the "+" tab button, and the empty-state prompt all
+        /// start from — a genuinely blank sketch, not one of the samples.
+        /// Draw() has to be overridden (it's abstract on Sketch); Setup() is
+        /// filled in too since an unsized, unfilled canvas is a confusing
+        /// first thing to look at. Samples stay reachable from their own
+        /// "Ejemplos..." menu entry instead of being what "new" secretly means.
+        /// </summary>
+        private static string DefaultSketchTemplate() =>
+            "public class MySketch : Sketch\n" +
+            "{\n" +
+            "    public override void Setup()\n" +
+            "    {\n" +
+            "        Size(600, 400);\n" +
+            "    }\n" +
+            "\n" +
+            "    public override void Draw()\n" +
+            "    {\n" +
+            "        Background(255);\n" +
+            "    }\n" +
+            "}\n";
     }
 }
