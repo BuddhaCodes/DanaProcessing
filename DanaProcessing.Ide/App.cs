@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml.Styling;
 using Avalonia.Themes.Fluent;
+using DanaProcessing.Ide.Export;
 using DanaProcessing.Ide.Theme;
 
 namespace DanaProcessing.Ide
@@ -54,15 +55,25 @@ namespace DanaProcessing.Ide
         {
             if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
             {
-                // --- IDE completo: editor + canvas + Run ---
-                var mainWindow = new MainWindow();
-                desktop.MainWindow = mainWindow;
+                if (ExportedSketchRunner.SketchFilePath is { } sketchFile)
+                {
+                    // Running as an exported standalone sketch (see
+                    // DanaProcessing.Ide.Export) — just the sketch's own window,
+                    // no editor/menu/title bar chrome at all.
+                    desktop.MainWindow = ExportedSketchRunner.BuildWindow(sketchFile);
+                }
+                else
+                {
+                    // --- IDE completo: editor + canvas + Run ---
+                    var mainWindow = new MainWindow();
+                    desktop.MainWindow = mainWindow;
 
-                // Launched via the "Test in Dana" web button (danaide://run?code=...)
-                // — Program.cs already decoded the payload before Avalonia's
-                // lifetime even started, so just hand it to the window.
-                if (PendingSketch.InitialSource is { } source)
-                    mainWindow.LoadAndRunSketch(source);
+                    // Launched via the "Test in Dana" web button (danaide://run?code=...)
+                    // — Program.cs already decoded the payload before Avalonia's
+                    // lifetime even started, so just hand it to the window.
+                    if (PendingSketch.InitialSource is { } source)
+                        mainWindow.LoadAndRunSketch(source);
+                }
 
                 // --- pruebas anteriores, por si necesitas volver a ellas ---
                 // desktop.MainWindow = new EditorTestWindow();

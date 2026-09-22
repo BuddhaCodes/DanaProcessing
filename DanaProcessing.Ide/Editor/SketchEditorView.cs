@@ -557,6 +557,12 @@ namespace DanaProcessing.Ide.Editor
 
         public string? ActiveSourceText => _activeTab?.Document.Text;
 
+        /// <summary>A reasonable default name to suggest for the active tab when
+        /// exporting it (see MainWindow's "Exportar sketch..."): the saved file's
+        /// name if it has one, otherwise a generic fallback for an unsaved tab.</summary>
+        public string SuggestedExportName =>
+            _activeTab?.FilePath is { } path ? Path.GetFileNameWithoutExtension(path) : "MiSketch";
+
         /// <summary>Rewrites the active tab's `// nuget:` directives to exactly
         /// <paramref name="directives"/> (see PackageDirectiveParser.Apply) — used
         /// by the "Paquetes NuGet" dialog. Setting Document.Text fires the same

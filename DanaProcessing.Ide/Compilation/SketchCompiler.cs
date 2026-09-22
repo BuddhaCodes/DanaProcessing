@@ -158,7 +158,69 @@ namespace DanaProcessing.Ide.Compilation
                 catch { /* skip anything that fails to load as metadata (rare, safe to ignore) */ }
             }
 
-            references.Add(MetadataReference.CreateFromFile(typeof(Sketch).Assembly.Location));
+            // Assembly.Location comes back "" instead of throwing for an assembly
+            // loaded from somewhere other than a plain file on disk (notably: a
+            // single-file-published exe's own bundled managed assemblies, before
+            // they've been extracted anywhere — see the exported-sketch runner's
+            // remark on IncludeAllContentForSelfExtract for why that case doesn't
+            // normally arise here). CreateFromFile("") throws ArgumentException
+            // either way, so this stays defensive rather than trusting that flag
+            // choice alone: if it ever does happen, a sketch simply can't see
+            // Sketch/PVector/etc. (a clear, debuggable Roslyn compile error) is a
+            // far better failure mode than crashing the whole process over it.
+            try
+            { references.Add(MetadataReference.CreateFromFile(typeof(Sketch).Assembly.Location)); }
+            catch { /* see remark above */ }
+
+            return references;
+        }
+
+        /// <summary>
+        /// Registers every .dll sitting in <paramref name="directory"/> as a
+        /// runtime-loadable assembly by simple name, via the same Resolving hook
+        /// used for `// nuget:` packages during a normal Run (see SetNuGetAssemblies
+        /// above). Reused for an exported standalone sketch's bundled dependencies —
+        /// see DanaProcessing.Ide.Export.SketchExporter, which is what copies those
+        /// .dll files in next to the exported exe in the first place.
+        /// </summary>
+        public static void RegisterAssemblyDirectory(string directory)
+        {
+            if (!Directory.Exists(directory))
+                return;
+
+            foreach (var dll in Directory.GetFiles(directory, "*.dll"))
+                NuGetAssemblyPaths[Path.GetFileNameWithoutExtension(dll)] = dll;
+        }
+
+        /// <summary>
+        /// Every .dll in <paramref name="directory"/> that ISN'T already one of the
+        /// trusted platform assemblies, as compile-time Roslyn references. Trusted
+        /// platform ones are skipped because GetSharedReferences() above already
+        /// references them — adding the same simple-named assembly a second time
+        /// under a separate MetadataReference would surface as an ambiguous-reference
+        /// compile error instead of just being redundant.
+        /// </summary>
+        public static List<MetadataReference> CollectExternalReferences(string directory)
+        {
+            var references = new List<MetadataReference>();
+            if (!Directory.Exists(directory))
+                return references;
+
+            var trustedNames = new HashSet<string>(
+                (AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES") as string)?
+                    .Split(Path.PathSeparator)
+                    .Select(Path.GetFileNameWithoutExtension)
+                    .OfType<string>() ?? Enumerable.Empty<string>(),
+                StringComparer.OrdinalIgnoreCase);
+
+            foreach (var dll in Directory.GetFiles(directory, "*.dll"))
+            {
+                if (trustedNames.Contains(Path.GetFileNameWithoutExtension(dll)))
+                    continue;
+
+                try { references.Add(MetadataReference.CreateFromFile(dll)); }
+                catch { /* not a valid managed assembly (a native dependency, etc.) -- skip it */ }
+            }
 
             return references;
         }

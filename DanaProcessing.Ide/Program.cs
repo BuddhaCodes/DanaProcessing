@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using System.Text;
 using Avalonia;
+using DanaProcessing.Ide.Export;
 using Microsoft.Win32;
 
 namespace DanaProcessing.Ide
@@ -17,13 +18,25 @@ namespace DanaProcessing.Ide
         [STAThread]
         public static void Main(string[] args)
         {
-            if (OperatingSystem.IsWindows())
-                RegisterUrlProtocolIfNeeded();
+            // An exported standalone sketch (see DanaProcessing.Ide.Export) is a
+            // plain copy of this same exe with a "sketch.cs" file dropped next to
+            // it. Checked first and unconditionally: none of the IDE-only startup
+            // below is just wasted work in that case, registering the danaide://
+            // protocol would be actively wrong — it would hijack the "Test in
+            // Dana" web button into always reopening THIS exported copy instead
+            // of the real IDE from then on.
+            ExportedSketchRunner.DetectAndStash();
 
-            // Avalonia's classic desktop lifetime doesn't hand argv to App
-            // itself, so stash whatever we parsed here where App can read it
-            // once OnFrameworkInitializationCompleted runs.
-            PendingSketch.InitialSource = TryExtractSketchSource(args);
+            if (ExportedSketchRunner.SketchFilePath is null)
+            {
+                if (OperatingSystem.IsWindows())
+                    RegisterUrlProtocolIfNeeded();
+
+                // Avalonia's classic desktop lifetime doesn't hand argv to App
+                // itself, so stash whatever we parsed here where App can read it
+                // once OnFrameworkInitializationCompleted runs.
+                PendingSketch.InitialSource = TryExtractSketchSource(args);
+            }
 
             BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
         }

@@ -6,11 +6,13 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.Platform.Storage;
 using DanaProcessing;
 using DanaProcessing.AvaloniaHost;
 using DanaProcessing.Ide.Compilation;
 using DanaProcessing.Ide.Compilation.PackageManagement;
 using DanaProcessing.Ide.Editor;
+using DanaProcessing.Ide.Export;
 using DanaProcessing.Ide.Theme;
 using Microsoft.CodeAnalysis;
 using System;
@@ -785,6 +787,8 @@ namespace DanaProcessing.Ide
                 var current = PackageDirectiveParser.Parse(_editorView.ActiveSourceText);
                 new NuGetPackagesWindow(current, directives => _editorView.ApplyPackageDirectives(directives)).ShowDialog(this);
             }));
+            menuPanel.Children.Add(Separator());
+            menuPanel.Children.Add(BuildItem("📤", "Exportar sketch...", () => _ = ExportActiveSketchAsync()));
 
             flyout = new Flyout
             {
@@ -979,6 +983,81 @@ namespace DanaProcessing.Ide
                     _statusLabel.Text = "Error de compilación";
                     ((Border)_statusPill).Background = ClayTheme.DangerSurface;
                 }
+            }
+            finally
+            {
+                _isRunning = false;
+                _runButton.IsEnabled = true;
+            }
+        }
+
+        /// <summary>
+        /// Packages the active tab as a standalone, double-clickable app (see
+        /// DanaProcessing.Ide.Export.SketchExporter for what that actually
+        /// involves) into a folder the user picks. Reuses the same "busy" plumbing
+        /// as Run — _isRunning guard, Run output panel for progress, status pill —
+        /// since this is the same shape of long-running, network-touching
+        /// operation, just triggered from the file menu instead of the Run button.
+        /// </summary>
+        private async Task ExportActiveSketchAsync()
+        {
+            if (_isRunning)
+                return;
+
+            var source = _editorView.ActiveSourceText;
+            if (string.IsNullOrWhiteSpace(source))
+                return;
+
+            var topLevel = TopLevel.GetTopLevel(this);
+            if (topLevel?.StorageProvider is null)
+                return;
+
+            var folders = await topLevel.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+            {
+                Title = "Elegi donde exportar el sketch",
+                AllowMultiple = false,
+            });
+            if (folders.Count == 0)
+                return;
+
+            var destinationFolder = folders[0].Path.LocalPath;
+            var sketchName = _editorView.SuggestedExportName;
+
+            _isRunning = true;
+            _runButton.IsEnabled = false;
+            try
+            {
+                _outputText.Text = "";
+                SetBottomTab(BottomTab.Run);
+                _outputPanel.IsVisible = true;
+
+                _statusDot.Fill = ClayTheme.Accent;
+                _statusLabel.Text = "Exportando...";
+                ((Border)_statusPill).Background = ClayTheme.SurfaceHigher;
+
+                var progress = new Progress<string>(message =>
+                    _outputText.Text = string.IsNullOrEmpty(_outputText.Text) ? message : _outputText.Text + Environment.NewLine + message);
+
+                var result = await SketchExporter.ExportAsync(source, destinationFolder, sketchName, progress);
+
+                if (result.Success)
+                {
+                    _outputText.Text = $"Exportado a: {result.OutputFolder}";
+                    _runTabDot.Fill = ClayTheme.TextMuted;
+                    _statusDot.Fill = ClayTheme.Success;
+                    _statusLabel.Text = "Exportado";
+                    ((Border)_statusPill).Background = ClayTheme.SuccessSurface;
+                }
+                else
+                {
+                    _outputText.Text = string.Join(Environment.NewLine, result.Errors);
+                    _runTabDot.Fill = ClayTheme.Danger;
+                    _statusDot.Fill = ClayTheme.Danger;
+                    _statusLabel.Text = "Error exportando";
+                    ((Border)_statusPill).Background = ClayTheme.DangerSurface;
+                }
+
+                RefreshBottomPanelVisibility();
             }
             finally
             {
