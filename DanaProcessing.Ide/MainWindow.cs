@@ -13,6 +13,7 @@ using DanaProcessing.Ide.Compilation;
 using DanaProcessing.Ide.Compilation.PackageManagement;
 using DanaProcessing.Ide.Editor;
 using DanaProcessing.Ide.Export;
+using DanaProcessing.Ide.Localization;
 using DanaProcessing.Ide.Theme;
 using Microsoft.CodeAnalysis;
 using System;
@@ -123,7 +124,7 @@ namespace DanaProcessing.Ide
 
             _runButton = new Button
             {
-                Content = "▶  Run",
+                Content = Loc.Tr("▶  Ejecutar", "▶  Run"),
                 Classes = { "clay-run" },
                 Padding = new Avalonia.Thickness(20, 8),
                 CornerRadius = ClayTheme.RadiusButton,
@@ -147,7 +148,7 @@ namespace DanaProcessing.Ide
                 HorizontalContentAlignment = HorizontalAlignment.Center,
                 VerticalContentAlignment = VerticalAlignment.Center,
             };
-            ToolTip.SetTip(settingsButton, "Configuración");
+            ToolTip.SetTip(settingsButton, Loc.Tr("Configuración", "Settings"));
             settingsButton.Click += (_, _) => new SettingsWindow().ShowDialog(this);
 
             // El botón de "Samples" suelto salió de acá -- ahora vive como
@@ -196,7 +197,7 @@ namespace DanaProcessing.Ide
                     Children =
                     {
                         _liveTabDot,
-                        new TextBlock { Text = "Errores en vivo" }
+                        new TextBlock { Text = Loc.Tr("Errores en vivo", "Live errors") }
                     }
                 }
             };
@@ -215,7 +216,7 @@ namespace DanaProcessing.Ide
                     Children =
                     {
                         _runTabDot,
-                        new TextBlock { Text = "Errores de Run" }
+                        new TextBlock { Text = Loc.Tr("Errores de Run", "Run errors") }
                     }
                 }
             };
@@ -320,7 +321,7 @@ namespace DanaProcessing.Ide
 
             // --- Status bar: reports real state instead of decorating. ---
             _statusDot = new Ellipse { Width = 8, Height = 8, Fill = ClayTheme.Success, VerticalAlignment = VerticalAlignment.Center };
-            _statusLabel = new TextBlock { Text = "Listo", Foreground = ClayTheme.TextSecondary, FontFamily = ClayTheme.FontBody, FontSize = 11.5 };
+            _statusLabel = new TextBlock { Text = Loc.Tr("Listo", "Ready"), Foreground = ClayTheme.TextSecondary, FontFamily = ClayTheme.FontBody, FontSize = 11.5 };
             _statusPill = new Border
             {
                 Background = ClayTheme.SuccessSurface,
@@ -480,7 +481,7 @@ namespace DanaProcessing.Ide
         {
             var codeButton = new Button
             {
-                Content = "Código",
+                Content = Loc.Tr("Código", "Code"),
                 Classes = { "clay-toggle" },
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
@@ -488,7 +489,7 @@ namespace DanaProcessing.Ide
 
             var resultButton = new Button
             {
-                Content = "Resultado",
+                Content = Loc.Tr("Resultado", "Result"),
                 Classes = { "clay-toggle" },
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
@@ -684,10 +685,10 @@ namespace DanaProcessing.Ide
             {
                 var discard = await ConfirmDialog.ShowAsync(
                     this,
-                    "Descartar cambios sin guardar",
-                    "Hay pestañas con cambios sin guardar. Si continuás, se van a perder.",
-                    confirmLabel: "Descartar y continuar",
-                    cancelLabel: "Cancelar");
+                    Loc.Tr("Descartar cambios sin guardar", "Discard unsaved changes"),
+                    Loc.Tr("Hay pestañas con cambios sin guardar. Si continuás, se van a perder.", "There are tabs with unsaved changes. If you continue, they'll be lost."),
+                    confirmLabel: Loc.Tr("Descartar y continuar", "Discard and continue"),
+                    cancelLabel: Loc.Tr("Cancelar", "Cancel"));
                 if (!discard)
                     return;
             }
@@ -717,7 +718,7 @@ namespace DanaProcessing.Ide
                 HorizontalContentAlignment = HorizontalAlignment.Center,
                 VerticalContentAlignment = VerticalAlignment.Center,
             };
-            ToolTip.SetTip(menuButton, "Archivo");
+            ToolTip.SetTip(menuButton, Loc.Tr("Archivo", "File"));
 
             Flyout? flyout = null;
 
@@ -774,21 +775,21 @@ namespace DanaProcessing.Ide
                 Width = 210,
                 Spacing = 1,
             };
-            menuPanel.Children.Add(BuildItem("＋", "Nuevo", () => _ = ReplaceContextIfConfirmedAsync(() => _editorView.ReplaceAllTabs())));
-            menuPanel.Children.Add(BuildItem("📂", "Abrir...", () => _ = _editorView.OpenFileAsync()));
+            menuPanel.Children.Add(BuildItem("＋", Loc.Tr("Nuevo", "New"), () => _ = ReplaceContextIfConfirmedAsync(() => _editorView.ReplaceAllTabs())));
+            menuPanel.Children.Add(BuildItem("📂", Loc.Tr("Abrir...", "Open..."), () => _ = _editorView.OpenFileAsync()));
             menuPanel.Children.Add(Separator());
-            menuPanel.Children.Add(BuildItem("💾", "Guardar", () => _ = _editorView.SaveActiveTabAsync()));
-            menuPanel.Children.Add(BuildItem("💾", "Guardar como...", () => _ = _editorView.SaveActiveTabAsAsync()));
+            menuPanel.Children.Add(BuildItem("💾", Loc.Tr("Guardar", "Save"), () => _ = _editorView.SaveActiveTabAsync()));
+            menuPanel.Children.Add(BuildItem("💾", Loc.Tr("Guardar como...", "Save as..."), () => _ = _editorView.SaveActiveTabAsAsync()));
             menuPanel.Children.Add(Separator());
-            menuPanel.Children.Add(BuildItem("🧩", "Ejemplos...", () =>
+            menuPanel.Children.Add(BuildItem("🧩", Loc.Tr("Ejemplos...", "Examples..."), () =>
                 new SamplesWindow(source => _ = ReplaceContextIfConfirmedAsync(() => _editorView.ReplaceAllTabs(null, source))).ShowDialog(this)));
-            menuPanel.Children.Add(BuildItem("📦", "Paquetes NuGet...", () =>
+            menuPanel.Children.Add(BuildItem("📦", Loc.Tr("Paquetes NuGet...", "NuGet Packages..."), () =>
             {
                 var current = PackageDirectiveParser.Parse(_editorView.ActiveSourceText);
                 new NuGetPackagesWindow(current, directives => _editorView.ApplyPackageDirectives(directives)).ShowDialog(this);
             }));
             menuPanel.Children.Add(Separator());
-            menuPanel.Children.Add(BuildItem("📤", "Exportar sketch...", () => _ = ExportActiveSketchAsync()));
+            menuPanel.Children.Add(BuildItem("📤", Loc.Tr("Exportar sketch...", "Export sketch..."), () => _ = ExportActiveSketchAsync()));
 
             flyout = new Flyout
             {
@@ -898,6 +899,24 @@ namespace DanaProcessing.Ide
         /// the common case of a sketch with no NuGet directives (no `await`
         /// actually suspends in that path, so it's no slower than before).
         /// </summary>
+        /// <summary>
+        /// Re-reads the saved antialiasing settings (RenderingSettingsWindow's
+        /// "Renderizado" section) and applies them to the NEXT sketch run —
+        /// 2D supersampling is a per-canvas property, and 3D MSAA is a
+        /// process-wide default read once when a fresh Renderer3DBackend gets
+        /// created (see Renderer3DSettings' own remark for why it can't just
+        /// be a Size() parameter). Called on every Run rather than once at
+        /// startup so a mid-session change in Options takes effect on the
+        /// very next click, without needing the "reiniciar ahora" restart
+        /// ThemeSettings' own baked-in fields require.
+        /// </summary>
+        private void ApplyRenderingSettings()
+        {
+            var settings = RenderingSettingsStore.Load();
+            _canvas.SupersampleScale = settings.SupersampleScale2D;
+            Renderer3DSettings.DefaultSampleCount = settings.MsaaSamples3D;
+        }
+
         private async Task RunCurrentSketchAsync()
         {
             if (_isRunning)
@@ -921,7 +940,7 @@ namespace DanaProcessing.Ide
                     _outputPanel.IsVisible = true;
 
                     _statusDot.Fill = ClayTheme.Accent;
-                    _statusLabel.Text = "Restaurando paquetes NuGet...";
+                    _statusLabel.Text = Loc.Tr("Restaurando paquetes NuGet...", "Restoring NuGet packages...");
                     ((Border)_statusPill).Background = ClayTheme.SurfaceHigher;
 
                     var progress = new Progress<string>(message =>
@@ -937,7 +956,7 @@ namespace DanaProcessing.Ide
                         RefreshBottomPanelVisibility();
 
                         _statusDot.Fill = ClayTheme.Danger;
-                        _statusLabel.Text = "Error restaurando NuGet";
+                        _statusLabel.Text = Loc.Tr("Error restaurando NuGet", "Error restoring NuGet");
                         ((Border)_statusPill).Background = ClayTheme.DangerSurface;
                         return;
                     }
@@ -957,10 +976,11 @@ namespace DanaProcessing.Ide
                     _runTabDot.Fill = ClayTheme.TextMuted;
                     RefreshBottomPanelVisibility();
 
+                    ApplyRenderingSettings();
                     _canvas.LoadSketch(result.Sketch!);
                     _hasRunOnce = true;
                     _statusDot.Fill = ClayTheme.Success;
-                    _statusLabel.Text = "Listo";
+                    _statusLabel.Text = Loc.Tr("Listo", "Ready");
                     ((Border)_statusPill).Background = ClayTheme.SuccessSurface;
 
                     // On a narrow window the canvas is hidden until you ask for
@@ -980,7 +1000,7 @@ namespace DanaProcessing.Ide
                     RefreshBottomPanelVisibility();
 
                     _statusDot.Fill = ClayTheme.Danger;
-                    _statusLabel.Text = "Error de compilación";
+                    _statusLabel.Text = Loc.Tr("Error de compilación", "Compile error");
                     ((Border)_statusPill).Background = ClayTheme.DangerSurface;
                 }
             }
@@ -1014,7 +1034,7 @@ namespace DanaProcessing.Ide
 
             var folders = await topLevel.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
             {
-                Title = "Elegi donde exportar el sketch",
+                Title = Loc.Tr("Elegi donde exportar el sketch", "Choose where to export the sketch"),
                 AllowMultiple = false,
             });
             if (folders.Count == 0)
@@ -1032,7 +1052,7 @@ namespace DanaProcessing.Ide
                 _outputPanel.IsVisible = true;
 
                 _statusDot.Fill = ClayTheme.Accent;
-                _statusLabel.Text = "Exportando...";
+                _statusLabel.Text = Loc.Tr("Exportando...", "Exporting...");
                 ((Border)_statusPill).Background = ClayTheme.SurfaceHigher;
 
                 var progress = new Progress<string>(message =>
@@ -1042,10 +1062,10 @@ namespace DanaProcessing.Ide
 
                 if (result.Success)
                 {
-                    _outputText.Text = $"Exportado a: {result.OutputFolder}";
+                    _outputText.Text = Loc.Tr($"Exportado a: {result.OutputFolder}", $"Exported to: {result.OutputFolder}");
                     _runTabDot.Fill = ClayTheme.TextMuted;
                     _statusDot.Fill = ClayTheme.Success;
-                    _statusLabel.Text = "Exportado";
+                    _statusLabel.Text = Loc.Tr("Exportado", "Exported");
                     ((Border)_statusPill).Background = ClayTheme.SuccessSurface;
                 }
                 else
@@ -1053,7 +1073,7 @@ namespace DanaProcessing.Ide
                     _outputText.Text = string.Join(Environment.NewLine, result.Errors);
                     _runTabDot.Fill = ClayTheme.Danger;
                     _statusDot.Fill = ClayTheme.Danger;
-                    _statusLabel.Text = "Error exportando";
+                    _statusLabel.Text = Loc.Tr("Error exportando", "Export error");
                     ((Border)_statusPill).Background = ClayTheme.DangerSurface;
                 }
 
@@ -1179,7 +1199,7 @@ namespace DanaProcessing.Ide
             Background(35, 61, 77);   // matches ClayTheme.Surface (#233D4D)
             Fill(234, 236, 240);      // matches ClayTheme.TextPrimary (#EAECF0)
             TextSize(16);
-            Text("Presiona Run para ejecutar el sketch del editor.", 20, Height / 2f);
+            Text(Loc.Tr("Presiona Run para ejecutar el sketch del editor.", "Press Run to run the editor's sketch."), 20, Height / 2f);
         }
     }
 }

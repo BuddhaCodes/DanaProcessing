@@ -4,6 +4,7 @@ using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
 using DanaProcessing.Ide.Editor;
+using DanaProcessing.Ide.Localization;
 using DanaProcessing.Ide.Theme;
 
 namespace DanaProcessing.Ide
@@ -19,7 +20,7 @@ namespace DanaProcessing.Ide
         /// <param name="onLoad">Called with the chosen sample's source once the user picks one. The window closes itself right after.</param>
         public SamplesWindow(Action<string> onLoad)
         {
-            Title = "Samples — DanaProcessing IDE";
+            Title = Loc.Tr("Samples — DanaProcessing IDE", "Examples — DanaProcessing IDE");
             Width = 640;
             Height = 560;
             MinWidth = 480;
@@ -32,7 +33,7 @@ namespace DanaProcessing.Ide
 
             root.Children.Add(new TextBlock
             {
-                Text = "Sketches de ejemplo",
+                Text = Loc.Tr("Sketches de ejemplo", "Example sketches"),
                 Foreground = ClayTheme.TextPrimary,
                 FontFamily = ClayTheme.FontDisplay,
                 FontWeight = FontWeight.SemiBold,
@@ -40,7 +41,7 @@ namespace DanaProcessing.Ide
             });
             root.Children.Add(new TextBlock
             {
-                Text = "Abre uno en un tab nuevo del editor.",
+                Text = Loc.Tr("Abre uno en un tab nuevo del editor.", "Open one in a new editor tab."),
                 Foreground = ClayTheme.TextMuted,
                 FontFamily = ClayTheme.FontBody,
                 FontSize = 12.5,
@@ -76,7 +77,7 @@ namespace DanaProcessing.Ide
 
             var loadButton = new Button
             {
-                Content = "Cargar",
+                Content = Loc.Tr("Cargar", "Load"),
                 Classes = { "clay-secondary" },
                 Padding = new Thickness(14, 7),
                 FontSize = 12.5,

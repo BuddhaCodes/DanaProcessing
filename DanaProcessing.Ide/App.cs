@@ -3,6 +3,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml.Styling;
 using Avalonia.Themes.Fluent;
 using DanaProcessing.Ide.Export;
+using DanaProcessing.Ide.Localization;
 using DanaProcessing.Ide.Theme;
 
 namespace DanaProcessing.Ide
@@ -11,6 +12,12 @@ namespace DanaProcessing.Ide
     {
         public override void Initialize()
         {
+            // Same reasoning as ClayTheme.Initialize() right below: every
+            // Loc.Tr() call site is read once, when a control is constructed —
+            // has to be set before MainWindow (or, for an exported standalone
+            // sketch, ExportedSketchRunner's error window) builds anything.
+            Loc.Initialize(LocaleSettingsStore.Load().Language);
+
             // Has to happen before anything below touches ClayTheme (FluentTheme
             // itself doesn't, but CompletionWindowStyles() a few lines down does) —
             // otherwise the completion popup would build its Styles from the

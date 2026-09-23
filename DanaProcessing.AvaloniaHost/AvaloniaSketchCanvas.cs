@@ -39,11 +39,34 @@ namespace DanaProcessing.AvaloniaHost
         private string _crashContext = "";
 
         // --- Our own offscreen surface, sized in DIPs (matching what we pass
-        // to _sketch.Size(...)) — recreated whenever that size changes. This
-        // is what gives Sketch.Surface something real to read pixels from. ---
+        // to _sketch.Size(...)) times SupersampleScale — recreated whenever
+        // that size (or the scale) changes. This is what gives Sketch.Surface
+        // something real to read pixels from. ---
         private SKSurface? _offscreenSurface;
         private int _offscreenWidth = -1;
         private int _offscreenHeight = -1;
+        private int _offscreenScale = -1;
+
+        /// <summary>
+        /// How many times larger than the sketch's own logical Width/Height
+        /// the offscreen surface it actually draws into is — 1 disables this,
+        /// 2/3/4 render at 2x/3x/4x resolution and downscale on the final
+        /// blit to the real (leased) canvas, which is what actually smooths
+        /// jagged edges (classic supersampling AA): a genuinely different,
+        /// stackable improvement on top of Smooth()/NoSmooth()'s existing
+        /// per-shape edge AA (GraphicsContext._fillPaint/etc.'s IsAntialias),
+        /// which only smooths each shape's OWN edge, not the composited
+        /// result. Defaults to 2 so a sketch looks better out of the box even
+        /// before anyone opens Options — the IDE's SettingsWindow overrides
+        /// this (see MainWindow's RenderingSettings wiring) for its own
+        /// preview; an exported standalone sketch just keeps this default.
+        /// Read fresh each time EnsureOffscreenSurface() runs (not cached at
+        /// construction), so changing it takes effect on the very next frame
+        /// that also triggers a surface rebuild (e.g. the next LoadSketch()/
+        /// Run(), which always invalidates the size) rather than needing this
+        /// control itself recreated.
+        /// </summary>
+        public int SupersampleScale { get; set; } = 2;
 
         /// <summary>The current width the loaded sketch has requested via Size(w, h) — what this control asks the layout system for, not necessarily what the parent ends up giving it.</summary>
         public int SketchWidth => _sketch.Width;
@@ -289,7 +312,8 @@ namespace DanaProcessing.AvaloniaHost
         /// </summary>
         private void EnsureOffscreenSurface(int width, int height)
         {
-            if (_offscreenSurface != null && width == _offscreenWidth && height == _offscreenHeight)
+            var scale = Math.Max(1, SupersampleScale);
+            if (_offscreenSurface != null && width == _offscreenWidth && height == _offscreenHeight && scale == _offscreenScale)
                 return;
 
             _offscreenSurface?.Dispose();
@@ -298,10 +322,16 @@ namespace DanaProcessing.AvaloniaHost
             if (width <= 0 || height <= 0)
                 return; // control not laid out yet; try again next frame
 
-            var info = new SKImageInfo(width, height, SKColorType.Rgba8888, SKAlphaType.Premul);
+            // Sized up by `scale` — the sketch itself still draws in plain
+            // Width/Height logical units (PaintSketch scales the canvas by
+            // `scale` before Draw() runs), so this is invisible to sketch
+            // code; only the final blit back to the real canvas (also in
+            // PaintSketch) needs to know about it, to downscale again.
+            var info = new SKImageInfo(width * scale, height * scale, SKColorType.Rgba8888, SKAlphaType.Premul);
             _offscreenSurface = SKSurface.Create(info);
             _offscreenWidth = width;
             _offscreenHeight = height;
+            _offscreenScale = scale;
         }
 
         /// <summary>
@@ -334,6 +364,17 @@ namespace DanaProcessing.AvaloniaHost
             // the same way a brand-new canvas would each time.
             offscreenCanvas.Save();
 
+            // Supersampling: the offscreen surface is `_offscreenScale` times
+            // bigger than the sketch's logical Width/Height (see
+            // EnsureOffscreenSurface), so everything the sketch draws in its
+            // own logical coordinates needs scaling up to actually land at
+            // that resolution — the final blit below scales back down,
+            // averaging multiple real pixels into each logical one, which is
+            // what actually softens jagged edges (on top of, not instead of,
+            // Smooth()'s own per-shape edge AA).
+            if (_offscreenScale > 1)
+                offscreenCanvas.Scale(_offscreenScale);
+
             // DESPUÉS:
             if (!_crashed)
             {
@@ -358,10 +399,21 @@ namespace DanaProcessing.AvaloniaHost
             offscreenCanvas.Flush();
 
             // Blit the finished offscreen frame onto the real, leased canvas,
-            // applying the DPI scale only at this final step.
+            // applying the DPI scale AND undoing the supersampling upscale
+            // (see the Scale() call above) in one step — dividing by
+            // _offscreenScale here is what actually turns "drew everything
+            // N times bigger" into "N real pixels got averaged into every
+            // one logical pixel", i.e. the actual antialiasing effect.
+            // Linear filter + linear mipmap (not SKSamplingOptions.Default,
+            // and not nearest-neighbor) is what makes that averaging actually
+            // correct at 3x/4x scales: plain bilinear only samples a 2x2
+            // neighborhood, which still aliases when shrinking an image by
+            // more than ~2x — mipmapping is what makes every source pixel
+            // actually contribute to the downscaled result.
             leasedCanvas.Save();
-            leasedCanvas.Scale((float)scaling);
-            leasedCanvas.DrawSurface(_offscreenSurface, 0, 0);
+            leasedCanvas.Scale((float)(scaling / _offscreenScale));
+            using (var snapshot = _offscreenSurface.Snapshot())
+                leasedCanvas.DrawImage(snapshot, 0, 0, new SKSamplingOptions(SKFilterMode.Linear, SKMipmapMode.Linear));
             leasedCanvas.Restore();
         }
 

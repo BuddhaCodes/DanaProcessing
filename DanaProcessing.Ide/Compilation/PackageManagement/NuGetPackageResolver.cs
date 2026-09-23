@@ -11,6 +11,7 @@ using NuGet.Packaging.Core;
 using NuGet.Protocol;
 using NuGet.Protocol.Core.Types;
 using NuGet.Versioning;
+using DanaProcessing.Ide.Localization;
 
 namespace DanaProcessing.Ide.Compilation.PackageManagement
 {
@@ -103,7 +104,7 @@ namespace DanaProcessing.Ide.Compilation.PackageManagement
             var findResource = await SourceRepo.GetResourceAsync<FindPackageByIdResource>(ct);
             if (findResource is null)
             {
-                errors.Add("No se pudo inicializar el cliente de NuGet.org.");
+                errors.Add(Loc.Tr("No se pudo inicializar el cliente de NuGet.org.", "Could not initialize the NuGet.org client."));
                 return new NuGetResolutionResult(packages, errors);
             }
 
@@ -117,7 +118,7 @@ namespace DanaProcessing.Ide.Compilation.PackageManagement
                 if (SkipIds.Contains(id) || !resolved.Add(id))
                     continue;
 
-                progress?.Report($"Resolviendo {id}{(versionSpec is null ? "" : " " + versionSpec)}...");
+                progress?.Report(Loc.Tr($"Resolviendo {id}{(versionSpec is null ? "" : " " + versionSpec)}...", $"Resolving {id}{(versionSpec is null ? "" : " " + versionSpec)}..."));
 
                 NuGetVersion? version;
                 try
@@ -126,15 +127,15 @@ namespace DanaProcessing.Ide.Compilation.PackageManagement
                 }
                 catch (Exception ex)
                 {
-                    errors.Add($"No se pudo conectar a NuGet.org para resolver '{id}': {ex.Message}");
+                    errors.Add(Loc.Tr($"No se pudo conectar a NuGet.org para resolver '{id}': {ex.Message}", $"Could not connect to NuGet.org to resolve '{id}': {ex.Message}"));
                     continue;
                 }
 
                 if (version is null)
                 {
                     errors.Add(versionSpec is null
-                        ? $"No se encontro el paquete '{id}' en NuGet.org."
-                        : $"No se encontro una version de '{id}' que satisfaga '{versionSpec}' en NuGet.org.");
+                        ? Loc.Tr($"No se encontro el paquete '{id}' en NuGet.org.", $"Package '{id}' was not found on NuGet.org.")
+                        : Loc.Tr($"No se encontro una version de '{id}' que satisfaga '{versionSpec}' en NuGet.org.", $"No version of '{id}' satisfying '{versionSpec}' was found on NuGet.org."));
                     continue;
                 }
 
@@ -147,7 +148,7 @@ namespace DanaProcessing.Ide.Compilation.PackageManagement
                 }
                 catch (Exception ex)
                 {
-                    errors.Add($"No se pudo descargar '{id}' {version.ToNormalizedString()}: {ex.Message}");
+                    errors.Add(Loc.Tr($"No se pudo descargar '{id}' {version.ToNormalizedString()}: {ex.Message}", $"Could not download '{id}' {version.ToNormalizedString()}: {ex.Message}"));
                 }
             }
 
@@ -247,7 +248,7 @@ namespace DanaProcessing.Ide.Compilation.PackageManagement
                 return (cachedAssemblies, cachedDeps);
             }
 
-            progress?.Report($"Descargando {id} {version.ToNormalizedString()}...");
+            progress?.Report(Loc.Tr($"Descargando {id} {version.ToNormalizedString()}...", $"Downloading {id} {version.ToNormalizedString()}..."));
 
             Directory.CreateDirectory(packageDir);
             var nupkgPath = Path.Combine(packageDir, $"{id}.{version.ToNormalizedString()}.nupkg");
@@ -256,7 +257,7 @@ namespace DanaProcessing.Ide.Compilation.PackageManagement
             {
                 var ok = await findResource.CopyNupkgToStreamAsync(id, version, fileStream, cache, logger, ct);
                 if (!ok)
-                    throw new InvalidOperationException("nuget.org no devolvio el paquete.");
+                    throw new InvalidOperationException(Loc.Tr("nuget.org no devolvio el paquete.", "nuget.org did not return the package."));
             }
 
             List<string> extracted;

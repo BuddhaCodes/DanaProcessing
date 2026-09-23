@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.IO;
 using System.Runtime.CompilerServices;
 using AvaloniaEdit.Document;
+using DanaProcessing.Ide.Localization;
 
 namespace DanaProcessing.Ide.Editor
 {
@@ -49,7 +50,7 @@ namespace DanaProcessing.Ide.Editor
 
         /// <summary>Text shown on the tab header: file name (or "Sin nombre") plus a dirty marker.</summary>
         public string Title =>
-            (FilePath is null ? "Sin nombre" : Path.GetFileNameWithoutExtension(FilePath)) + (IsDirty ? " *" : "");
+            (FilePath is null ? Loc.Tr("Sin nombre", "Untitled") : Path.GetFileNameWithoutExtension(FilePath)) + (IsDirty ? " *" : "");
 
         public EditorTab(string? filePath, string initialText)
         {

@@ -4,6 +4,7 @@ using System.IO;
 using Avalonia.Controls;
 using DanaProcessing.AvaloniaHost;
 using DanaProcessing.Ide.Compilation;
+using DanaProcessing.Ide.Localization;
 using DanaProcessing.Ide.Theme;
 
 namespace DanaProcessing.Ide.Export
@@ -72,7 +73,7 @@ namespace DanaProcessing.Ide.Export
         {
             return new Window
             {
-                Title = "No se pudo iniciar el sketch",
+                Title = Loc.Tr("No se pudo iniciar el sketch", "Could not start the sketch"),
                 Width = 640,
                 Height = 420,
                 Background = ClayTheme.Base,
@@ -80,7 +81,7 @@ namespace DanaProcessing.Ide.Export
                 {
                     Content = new TextBlock
                     {
-                        Text = "No se pudo compilar este sketch exportado:\n\n" + string.Join("\n\n", errors),
+                        Text = Loc.Tr("No se pudo compilar este sketch exportado:\n\n", "Could not compile this exported sketch:\n\n") + string.Join("\n\n", errors),
                         Foreground = ClayTheme.TextPrimary,
                         FontFamily = ClayTheme.FontMono,
                         FontSize = 12.5,

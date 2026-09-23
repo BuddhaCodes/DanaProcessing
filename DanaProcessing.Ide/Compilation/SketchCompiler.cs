@@ -8,6 +8,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using DanaProcessing;
 using DanaProcessing.Ide.Compilation.PackageManagement;
+using DanaProcessing.Ide.Localization;
 
 namespace DanaProcessing.Ide.Compilation
 {
@@ -130,7 +131,7 @@ namespace DanaProcessing.Ide.Compilation
                 .FirstOrDefault(t => typeof(Sketch).IsAssignableFrom(t) && !t.IsAbstract);
 
             if (sketchType is null)
-                return new CompileResult(null, new[] { "No se encontro ninguna clase publica que herede de Sketch." });
+                return new CompileResult(null, new[] { Loc.Tr("No se encontro ninguna clase publica que herede de Sketch.", "No public class inheriting from Sketch was found.") });
 
             var instance = (Sketch)Activator.CreateInstance(sketchType)!;
             return new CompileResult(instance, Array.Empty<string>());

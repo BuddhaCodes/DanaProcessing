@@ -63,16 +63,19 @@ namespace DanaProcessing
     /// (Silk.NET.Core / Silk.NET.Maths come along as transitive dependencies.)
     ///
     /// HOW A FRAME WORKS
-    /// 1. BeginFrame(): bind our FBO, clear the depth buffer (color gets
-    ///    cleared by Background(), same as the 2D path), reset the model
-    ///    matrix stack, and clear the active light list -- Processing
-    ///    itself requires lights()/pointLight()/etc. to be called every
-    ///    draw() to stay active, so this mirrors that exactly.
+    /// 1. BeginFrame(): bind our FBO (or, with MSAA on, the separate
+    ///    multisampled _msaaFbo instead — see SetUpMsaaFramebuffer()), clear
+    ///    the depth buffer (color gets cleared by Background(), same as the
+    ///    2D path), reset the model matrix stack, and clear the active light
+    ///    list -- Processing itself requires lights()/pointLight()/etc. to
+    ///    be called every draw() to stay active, so this mirrors that exactly.
     /// 2. Sketch/PGraphics code calls PushMatrix/Translate/RotateX/.../Box —
     ///    each Box()/Sphere() issues one draw call against the current
     ///    model matrix and the current light list.
-    /// 3. EndFrame(): glReadPixels the FBO's color attachment back into a
-    ///    plain Skia raster Surface — that's what IGraphicsBackend.Canvas/
+    /// 3. EndFrame(): with MSAA on, first resolves _msaaFbo into _fbo with a
+    ///    glBlitFramebuffer (glReadPixels can't read a multisampled
+    ///    attachment). Either way, glReadPixels's the FBO's color attachment
+    ///    back into a plain Skia raster Surface — that's what IGraphicsBackend.Canvas/
     ///    Surface expose, so Get()/Save()/LoadPixels() work identically
     ///    whether a PGraphics is 2D or 3D. Any Fill()/Text()/Rect() called
     ///    AFTER the 3D geometry in the same frame draws with Skia directly
@@ -105,6 +108,16 @@ namespace DanaProcessing
         private readonly GL _gl;
 
         private uint _fbo, _colorTexture, _depthRbo;
+
+        // MSAA (antialiasing) -- see SetUpMsaaFramebuffer()'s remark for the
+        // full design. _sampleCount == 0 means AA is off: BeginFrame() binds
+        // _fbo directly, same as before this existed. > 0 means BeginFrame()
+        // renders into this SEPARATE multisampled FBO instead, and EndFrame()
+        // resolves it into _fbo (a plain glBlitFramebuffer) before the
+        // existing ReadPixels/Skia-copy code, which never needs to know MSAA
+        // is involved at all.
+        private readonly int _sampleCount;
+        private uint _msaaFbo, _msaaColorRbo, _msaaDepthRbo;
 
         // _defaultShaderProgram is DanaProcessing's own built-in shader,
         // compiled once in SetUpShader() and never swapped out from under
@@ -260,7 +273,7 @@ namespace DanaProcessing
 
         private bool _disposed;
 
-        private Renderer3DBackend(int width, int height, IWindow window, GL gl, SKSurface surface)
+        private Renderer3DBackend(int width, int height, IWindow window, GL gl, SKSurface surface, int sampleCount)
         {
             _width = width;
             _height = height;
@@ -268,9 +281,16 @@ namespace DanaProcessing
             _gl = gl;
             Surface = surface;
             Canvas = surface.Canvas;
+            _sampleCount = sampleCount;
         }
 
-        public static Renderer3DBackend Create(int width, int height)
+        /// <summary>samples &lt; 0 (the default) reads Renderer3DSettings.DefaultSampleCount
+        /// instead of a literal — see that class's own remark for why. 0 disables
+        /// MSAA entirely (same zero-AA behavior as before this existed); any
+        /// positive value gets clamped to GL_MAX_SAMPLES for the actual GPU/driver,
+        /// since requesting more samples than supported is a GL error, not a
+        /// silent clamp.</summary>
+        public static Renderer3DBackend Create(int width, int height, int samples = -1)
         {
             var options = WindowOptions.Default with
             {
@@ -284,11 +304,21 @@ namespace DanaProcessing
             window.Initialize(); // no window.Run() -- we drive rendering manually, frame by frame.
             var gl = GL.GetApi(window);
 
+            var requested = samples < 0 ? Renderer3DSettings.DefaultSampleCount : samples;
+            var sampleCount = 0;
+            if (requested > 0)
+            {
+                gl.GetInteger(GLEnum.MaxSamples, out int maxSamples);
+                sampleCount = Math.Min(requested, maxSamples);
+            }
+
             var raster = SKSurface.Create(new SKImageInfo(width, height, SKColorType.Rgba8888, SKAlphaType.Premul))
                 ?? throw new InvalidOperationException($"No se pudo crear la superficie de lectura de {width}x{height}.");
 
-            var backend = new Renderer3DBackend(width, height, window, gl, raster);
+            var backend = new Renderer3DBackend(width, height, window, gl, raster, sampleCount);
             backend.SetUpFramebuffer();
+            if (sampleCount > 0)
+                backend.SetUpMsaaFramebuffer(sampleCount);
             backend.SetUpShader();
             backend.SetUpCubeMesh();
             backend.SetDefaultCamera();
@@ -334,6 +364,40 @@ namespace DanaProcessing
 
             _gl.Viewport(0, 0, (uint)_width, (uint)_height);
             _gl.Enable(EnableCap.DepthTest);
+        }
+
+        /// <summary>
+        /// A second, separate FBO that's the ACTUAL draw target when MSAA is
+        /// on (BeginFrame() binds this instead of _fbo) — color and depth as
+        /// multisampled renderbuffers rather than _fbo's plain texture/
+        /// renderbuffer pair, since you can't glReadPixels a multisampled
+        /// attachment directly. EndFrame() resolves this into _fbo with a
+        /// single glBlitFramebuffer before the existing (unchanged) ReadPixels
+        /// call — _fbo stays exactly what it always was: the plain,
+        /// single-sampled surface the rest of this class already knows how to
+        /// read back to Skia. Same width/height as _fbo — MSAA supersamples
+        /// each pixel's EDGES internally (N samples per final pixel), it
+        /// doesn't need the whole framebuffer sized up the way the IDE's
+        /// separate 2D supersampling setting does.
+        /// </summary>
+        private void SetUpMsaaFramebuffer(int samples)
+        {
+            _msaaFbo = _gl.GenFramebuffer();
+            _gl.BindFramebuffer(FramebufferTarget.Framebuffer, _msaaFbo);
+
+            _msaaColorRbo = _gl.GenRenderbuffer();
+            _gl.BindRenderbuffer(RenderbufferTarget.Renderbuffer, _msaaColorRbo);
+            _gl.RenderbufferStorageMultisample(RenderbufferTarget.Renderbuffer, (uint)samples, InternalFormat.Rgba8, (uint)_width, (uint)_height);
+            _gl.FramebufferRenderbuffer(FramebufferTarget.Framebuffer, FramebufferAttachment.ColorAttachment0, RenderbufferTarget.Renderbuffer, _msaaColorRbo);
+
+            _msaaDepthRbo = _gl.GenRenderbuffer();
+            _gl.BindRenderbuffer(RenderbufferTarget.Renderbuffer, _msaaDepthRbo);
+            _gl.RenderbufferStorageMultisample(RenderbufferTarget.Renderbuffer, (uint)samples, InternalFormat.DepthComponent24, (uint)_width, (uint)_height);
+            _gl.FramebufferRenderbuffer(FramebufferTarget.Framebuffer, FramebufferAttachment.DepthAttachment, RenderbufferTarget.Renderbuffer, _msaaDepthRbo);
+
+            var status = _gl.CheckFramebufferStatus(FramebufferTarget.Framebuffer);
+            if (status != GLEnum.FramebufferComplete)
+                throw new InvalidOperationException($"El framebuffer MSAA quedo incompleto: {status}.");
         }
 
         // Multi-light Blinn-Phong shader. uLightCount == 0 (the default --
@@ -930,7 +994,7 @@ void main()
             // punteros de función inválidos para ESE hilo -> AccessViolation.
             _window.GLContext?.MakeCurrent();
 
-            _gl.BindFramebuffer(FramebufferTarget.Framebuffer, _fbo);
+            _gl.BindFramebuffer(FramebufferTarget.Framebuffer, _sampleCount > 0 ? _msaaFbo : _fbo);
             _gl.Viewport(0, 0, (uint)_width, (uint)_height);
 
             // Fondo fijo gris oscuro -- no hay Background()/clear-color configurable
@@ -958,6 +1022,18 @@ void main()
             // crash si algún día algo corre EndFrame() sin pasar por
             // BeginFrame() en el mismo hilo justo antes.
             _window.GLContext?.MakeCurrent();
+
+            if (_sampleCount > 0)
+            {
+                // Resolve the multisampled color buffer down into _fbo's
+                // plain texture -- glReadPixels can't read a multisampled
+                // attachment directly, so this MUST happen before the
+                // ReadPixels call below. Depth doesn't need resolving: nothing
+                // downstream of this method ever reads it back.
+                _gl.BindFramebuffer(FramebufferTarget.ReadFramebuffer, _msaaFbo);
+                _gl.BindFramebuffer(FramebufferTarget.DrawFramebuffer, _fbo);
+                _gl.BlitFramebuffer(0, 0, _width, _height, 0, 0, _width, _height, ClearBufferMask.ColorBufferBit, BlitFramebufferFilter.Nearest);
+            }
 
             _gl.BindFramebuffer(FramebufferTarget.Framebuffer, _fbo);
             _gl.Finish();
@@ -1373,6 +1449,12 @@ void main()
             _gl.DeleteFramebuffer(_fbo);
             _gl.DeleteTexture(_colorTexture);
             _gl.DeleteRenderbuffer(_depthRbo);
+            if (_sampleCount > 0)
+            {
+                _gl.DeleteFramebuffer(_msaaFbo);
+                _gl.DeleteRenderbuffer(_msaaColorRbo);
+                _gl.DeleteRenderbuffer(_msaaDepthRbo);
+            }
             Surface.Dispose();
             _window.Dispose();
             _disposed = true;

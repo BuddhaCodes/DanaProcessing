@@ -7,6 +7,7 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using DanaProcessing.Ide.Compilation.PackageManagement;
+using DanaProcessing.Ide.Localization;
 
 namespace DanaProcessing.Ide.Export
 {
@@ -52,14 +53,14 @@ namespace DanaProcessing.Ide.Export
                 fullExportPath.StartsWith(fullInstallPath + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
             {
                 return new ExportResult(false, null,
-                    new[] { "La carpeta de destino no puede estar dentro de la instalacion del IDE." });
+                    new[] { Loc.Tr("La carpeta de destino no puede estar dentro de la instalacion del IDE.", "The destination folder cannot be inside the IDE installation.") });
             }
 
             var extraAssemblyPaths = new List<string>();
             var directives = PackageDirectiveParser.Parse(source);
             if (directives.Count > 0)
             {
-                progress?.Report("Resolviendo paquetes NuGet...");
+                progress?.Report(Loc.Tr("Resolviendo paquetes NuGet...", "Resolving NuGet packages..."));
                 var resolution = await NuGetPackageResolver.ResolveAsync(directives, progress, ct);
                 if (!resolution.Success)
                     return new ExportResult(false, null, resolution.Errors);
@@ -75,7 +76,7 @@ namespace DanaProcessing.Ide.Export
                 var rid = GetCurrentRid();
                 if (projectPath != null && rid != null)
                 {
-                    progress?.Report("Compilando un build standalone de un solo archivo (puede tardar)...");
+                    progress?.Report(Loc.Tr("Compilando un build standalone de un solo archivo (puede tardar)...", "Building a standalone single-file build (this may take a while)..."));
                     published = await TryPublishAsync(projectPath, exportFolder, rid, ct);
                     if (!published)
                     {
@@ -84,13 +85,13 @@ namespace DanaProcessing.Ide.Export
                         // only overwrites what it actually knows about).
                         foreach (var leftover in Directory.GetFileSystemEntries(exportFolder))
                             DeleteEntry(leftover);
-                        progress?.Report("No se pudo compilar un build de un solo archivo — copiando la instalacion actual en su lugar.");
+                        progress?.Report(Loc.Tr("No se pudo compilar un build de un solo archivo — copiando la instalacion actual en su lugar.", "Could not build a single-file build — copying the current installation instead."));
                     }
                 }
 
                 if (!published)
                 {
-                    progress?.Report("Copiando el runtime...");
+                    progress?.Report(Loc.Tr("Copiando el runtime...", "Copying the runtime..."));
                     CopyDirectory(installDir, exportFolder, ct);
                 }
                 else
@@ -107,17 +108,17 @@ namespace DanaProcessing.Ide.Export
 
                 if (extraAssemblyPaths.Count > 0)
                 {
-                    progress?.Report("Copiando dependencias...");
+                    progress?.Report(Loc.Tr("Copiando dependencias...", "Copying dependencies..."));
                     foreach (var path in extraAssemblyPaths)
                         File.Copy(path, Path.Combine(exportFolder, Path.GetFileName(path)), overwrite: true);
                 }
 
-                progress?.Report("Escribiendo el sketch...");
+                progress?.Report(Loc.Tr("Escribiendo el sketch...", "Writing the sketch..."));
                 await File.WriteAllTextAsync(Path.Combine(exportFolder, ExportedSketchRunner.MarkerFileName), source, ct);
             }
             catch (Exception ex)
             {
-                return new ExportResult(false, null, new[] { $"Error exportando: {ex.Message}" });
+                return new ExportResult(false, null, new[] { Loc.Tr($"Error exportando: {ex.Message}", $"Error exporting: {ex.Message}") });
             }
 
             return new ExportResult(true, exportFolder, Array.Empty<string>());

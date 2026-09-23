@@ -9,6 +9,7 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Threading;
 using DanaProcessing.Ide.Compilation.PackageManagement;
+using DanaProcessing.Ide.Localization;
 using DanaProcessing.Ide.Theme;
 
 namespace DanaProcessing.Ide.Editor
@@ -25,7 +26,7 @@ namespace DanaProcessing.Ide.Editor
     /// </summary>
     public class NuGetPackagesWindow : Window
     {
-        private const string LatestLabel = "(ultima estable)";
+        private static readonly string LatestLabel = Loc.Tr("(ultima estable)", "(latest stable)");
 
         private enum Tab { Browse, Installed }
 
@@ -70,7 +71,7 @@ namespace DanaProcessing.Ide.Editor
             _working = current.ToList();
             _onSave = onSave;
 
-            Title = "Paquetes NuGet — DanaProcessing IDE";
+            Title = Loc.Tr("Paquetes NuGet — DanaProcessing IDE", "NuGet Packages — DanaProcessing IDE");
             Width = 860;
             Height = 640;
             MinWidth = 680;
@@ -86,7 +87,7 @@ namespace DanaProcessing.Ide.Editor
                 {
                     new TextBlock
                     {
-                        Text = "Paquetes NuGet del sketch",
+                        Text = Loc.Tr("Paquetes NuGet del sketch", "Sketch NuGet Packages"),
                         Foreground = ClayTheme.TextPrimary,
                         FontFamily = ClayTheme.FontDisplay,
                         FontWeight = FontWeight.SemiBold,
@@ -94,7 +95,7 @@ namespace DanaProcessing.Ide.Editor
                     },
                     new TextBlock
                     {
-                        Text = "Buscá en NuGet.org o gestioná lo que ya está instalado. Los cambios se aplican al guardar.",
+                        Text = Loc.Tr("Buscá en NuGet.org o gestioná lo que ya está instalado. Los cambios se aplican al guardar.", "Search NuGet.org or manage what's already installed. Changes apply when you save."),
                         Foreground = ClayTheme.TextMuted,
                         FontFamily = ClayTheme.FontBody,
                         FontSize = 12,
@@ -115,7 +116,7 @@ namespace DanaProcessing.Ide.Editor
             // --- "Buscar" pane: search box + result rows ---
             _searchBox = new TextBox
             {
-                PlaceholderText = "Buscar paquetes en NuGet.org...",
+                PlaceholderText = Loc.Tr("Buscar paquetes en NuGet.org...", "Search for packages on NuGet.org..."),
                 FontFamily = ClayTheme.FontBody,
                 FontSize = 13,
                 Margin = new Thickness(0, 0, 0, 8),
@@ -138,7 +139,7 @@ namespace DanaProcessing.Ide.Editor
 
             _searchStatusText = new TextBlock
             {
-                Text = "Escribi para buscar paquetes en NuGet.org.",
+                Text = Loc.Tr("Escribi para buscar paquetes en NuGet.org.", "Type to search for packages on NuGet.org."),
                 Foreground = ClayTheme.TextMuted,
                 FontFamily = ClayTheme.FontBody,
                 FontSize = 12.5,
@@ -212,14 +213,14 @@ namespace DanaProcessing.Ide.Editor
         {
             var browse = new Button
             {
-                Content = "Buscar",
+                Content = Loc.Tr("Buscar", "Search"),
                 Classes = { "clay-toggle" },
                 Padding = new Thickness(16, 7),
                 FontSize = 12.5,
             };
             var installed = new Button
             {
-                Content = "Instalados",
+                Content = Loc.Tr("Instalados", "Installed"),
                 Classes = { "clay-toggle" },
                 Padding = new Thickness(16, 7),
                 FontSize = 12.5,
@@ -246,12 +247,12 @@ namespace DanaProcessing.Ide.Editor
 
             if (query.Length == 0)
             {
-                _searchStatusText.Text = "Escribi para buscar paquetes en NuGet.org.";
+                _searchStatusText.Text = Loc.Tr("Escribi para buscar paquetes en NuGet.org.", "Type to search for packages on NuGet.org.");
                 _searchStatusText.IsVisible = true;
                 return;
             }
 
-            _searchStatusText.Text = "Buscando...";
+            _searchStatusText.Text = Loc.Tr("Buscando...", "Searching...");
             _searchStatusText.IsVisible = true;
 
             IReadOnlyList<PackageSearchResult> results;
@@ -263,7 +264,7 @@ namespace DanaProcessing.Ide.Editor
             {
                 if (generation != _searchGeneration)
                     return;
-                _searchStatusText.Text = $"Error buscando en NuGet.org: {ex.Message}";
+                _searchStatusText.Text = Loc.Tr($"Error buscando en NuGet.org: {ex.Message}", $"Error searching NuGet.org: {ex.Message}");
                 return;
             }
 
@@ -275,7 +276,7 @@ namespace DanaProcessing.Ide.Editor
 
             if (results.Count == 0)
             {
-                _searchStatusText.Text = "Sin resultados.";
+                _searchStatusText.Text = Loc.Tr("Sin resultados.", "No results.");
                 return;
             }
 
@@ -321,7 +322,7 @@ namespace DanaProcessing.Ide.Editor
             }
 
             var metaParts = new List<string>();
-            if (r.DownloadCount.HasValue) metaParts.Add($"{FormatCount(r.DownloadCount.Value)} descargas");
+            if (r.DownloadCount.HasValue) metaParts.Add(Loc.Tr($"{FormatCount(r.DownloadCount.Value)} descargas", $"{FormatCount(r.DownloadCount.Value)} downloads"));
             if (!string.IsNullOrWhiteSpace(r.Authors)) metaParts.Add(r.Authors!);
             if (metaParts.Count > 0)
             {
@@ -339,7 +340,7 @@ namespace DanaProcessing.Ide.Editor
             {
                 content.Children.Add(new TextBlock
                 {
-                    Text = "✓ Instalado",
+                    Text = Loc.Tr("✓ Instalado", "✓ Installed"),
                     Foreground = ClayTheme.Success,
                     FontFamily = ClayTheme.FontBody,
                     FontWeight = FontWeight.SemiBold,
@@ -412,7 +413,7 @@ namespace DanaProcessing.Ide.Editor
             _detailsContent.Children.Clear();
             _detailsContent.Children.Add(new TextBlock
             {
-                Text = "Selecciona un paquete de la lista para ver mas detalles.",
+                Text = Loc.Tr("Selecciona un paquete de la lista para ver mas detalles.", "Select a package from the list to see more details."),
                 Foreground = ClayTheme.TextMuted,
                 FontFamily = ClayTheme.FontBody,
                 FontSize = 12.5,
@@ -451,7 +452,7 @@ namespace DanaProcessing.Ide.Editor
 
             var metaParts = new List<string>();
             if (!string.IsNullOrWhiteSpace(s.Authors)) metaParts.Add(s.Authors!);
-            if (s.Downloads.HasValue) metaParts.Add($"{FormatCount(s.Downloads.Value)} descargas");
+            if (s.Downloads.HasValue) metaParts.Add(Loc.Tr($"{FormatCount(s.Downloads.Value)} descargas", $"{FormatCount(s.Downloads.Value)} downloads"));
             if (metaParts.Count > 0)
             {
                 _detailsContent.Children.Add(new TextBlock
@@ -479,7 +480,7 @@ namespace DanaProcessing.Ide.Editor
 
             _detailsContent.Children.Add(new TextBlock
             {
-                Text = "Version",
+                Text = Loc.Tr("Version", "Version"),
                 Foreground = ClayTheme.TextSecondary,
                 FontFamily = ClayTheme.FontBody,
                 FontSize = 12,
@@ -509,7 +510,7 @@ namespace DanaProcessing.Ide.Editor
             {
                 _detailsContent.Children.Add(new TextBlock
                 {
-                    Text = "Cargando versiones disponibles...",
+                    Text = Loc.Tr("Cargando versiones disponibles...", "Loading available versions..."),
                     Foreground = ClayTheme.TextMuted,
                     FontFamily = ClayTheme.FontBody,
                     FontSize = 11,
@@ -524,7 +525,7 @@ namespace DanaProcessing.Ide.Editor
             {
                 var updateButton = new Button
                 {
-                    Content = "Actualizar version",
+                    Content = Loc.Tr("Actualizar version", "Update version"),
                     Classes = { "clay-run" },
                     Padding = new Thickness(14, 8),
                     CornerRadius = ClayTheme.RadiusButton,
@@ -534,7 +535,7 @@ namespace DanaProcessing.Ide.Editor
 
                 var removeButton = new Button
                 {
-                    Content = "Quitar",
+                    Content = Loc.Tr("Quitar", "Remove"),
                     Classes = { "clay-secondary" },
                     Padding = new Thickness(14, 8),
                     FontSize = 12.5,
@@ -548,7 +549,7 @@ namespace DanaProcessing.Ide.Editor
             {
                 var installButton = new Button
                 {
-                    Content = "+ Instalar",
+                    Content = Loc.Tr("+ Instalar", "+ Install"),
                     Classes = { "clay-run" },
                     Padding = new Thickness(14, 8),
                     CornerRadius = ClayTheme.RadiusButton,
@@ -580,13 +581,13 @@ namespace DanaProcessing.Ide.Editor
         private void RefreshInstalledList()
         {
             _installedList.Children.Clear();
-            _installedTabButton.Content = _working.Count == 0 ? "Instalados" : $"Instalados ({_working.Count})";
+            _installedTabButton.Content = _working.Count == 0 ? Loc.Tr("Instalados", "Installed") : Loc.Tr($"Instalados ({_working.Count})", $"Installed ({_working.Count})");
 
             if (_working.Count == 0)
             {
                 _installedList.Children.Add(new TextBlock
                 {
-                    Text = "Este sketch todavia no usa ningun paquete NuGet.",
+                    Text = Loc.Tr("Este sketch todavia no usa ningun paquete NuGet.", "This sketch doesn't use any NuGet packages yet."),
                     Foreground = ClayTheme.TextMuted,
                     FontFamily = ClayTheme.FontBody,
                     FontSize = 12.5,
@@ -612,7 +613,7 @@ namespace DanaProcessing.Ide.Editor
             };
             var versionText = new TextBlock
             {
-                Text = directive.Version ?? "ultima version estable",
+                Text = directive.Version ?? Loc.Tr("ultima version estable", "latest stable version"),
                 Foreground = ClayTheme.TextMuted,
                 FontFamily = ClayTheme.FontMono,
                 FontSize = 11.5,
@@ -635,7 +636,7 @@ namespace DanaProcessing.Ide.Editor
         {
             var cancelButton = new Button
             {
-                Content = "Cancelar",
+                Content = Loc.Tr("Cancelar", "Cancel"),
                 Classes = { "clay-secondary" },
                 Padding = new Thickness(14, 8),
                 FontSize = 12.5,
@@ -645,7 +646,7 @@ namespace DanaProcessing.Ide.Editor
 
             var saveButton = new Button
             {
-                Content = "Guardar",
+                Content = Loc.Tr("Guardar", "Save"),
                 Classes = { "clay-run" },
                 Padding = new Thickness(16, 8),
                 CornerRadius = ClayTheme.RadiusButton,

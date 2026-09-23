@@ -13,6 +13,7 @@ using AvaloniaEdit.CodeCompletion;
 using AvaloniaEdit.TextMate;
 using DanaProcessing.Ide.Compilation;
 using DanaProcessing.Ide.Compilation.PackageManagement;
+using DanaProcessing.Ide.Localization;
 using DanaProcessing.Ide.Theme;
 using System;
 using System.Collections.ObjectModel;
@@ -183,7 +184,7 @@ namespace DanaProcessing.Ide.Editor
                 HorizontalContentAlignment = HorizontalAlignment.Center,
                 VerticalContentAlignment = VerticalAlignment.Center,
             };
-            ToolTip.SetTip(addTabButton, "Nueva pestaña");
+            ToolTip.SetTip(addTabButton, Loc.Tr("Nueva pestaña", "New tab"));
             addTabButton.Click += (_, _) => AddNewTab();
 
             var tabStripRow = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
@@ -306,7 +307,7 @@ namespace DanaProcessing.Ide.Editor
 
             var newSketchFromEmptyStateButton = new Button
             {
-                Content = "+ Crear nuevo sketch",
+                Content = Loc.Tr("+ Crear nuevo sketch", "+ Create new sketch"),
                 Classes = { "clay-run" },
                 Padding = new Thickness(20, 10),
                 CornerRadius = ClayTheme.RadiusButton,
@@ -335,7 +336,7 @@ namespace DanaProcessing.Ide.Editor
                         emptyStateIconBadge,
                         new TextBlock
                         {
-                            Text = "No hay ningún sketch abierto",
+                            Text = Loc.Tr("No hay ningún sketch abierto", "No sketch is open"),
                             Foreground = ClayTheme.TextPrimary,
                             FontFamily = ClayTheme.FontDisplay,
                             FontWeight = FontWeight.SemiBold,
@@ -347,7 +348,7 @@ namespace DanaProcessing.Ide.Editor
                         },
                         new TextBlock
                         {
-                            Text = "Empezá uno nuevo para seguir dibujando.",
+                            Text = Loc.Tr("Empezá uno nuevo para seguir dibujando.", "Start a new one to keep drawing."),
                             Foreground = ClayTheme.TextMuted,
                             FontFamily = ClayTheme.FontBody,
                             FontSize = 13,
@@ -688,7 +689,7 @@ namespace DanaProcessing.Ide.Editor
 
             var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
             {
-                Title = "Abrir sketch",
+                Title = Loc.Tr("Abrir sketch", "Open sketch"),
                 AllowMultiple = false,
                 FileTypeFilter = new[] { new FilePickerFileType("C# / Sketch") { Patterns = new[] { "*.cs" } } }
             });
@@ -727,7 +728,7 @@ namespace DanaProcessing.Ide.Editor
 
             var file = await topLevel.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
             {
-                Title = "Guardar sketch",
+                Title = Loc.Tr("Guardar sketch", "Save sketch"),
                 SuggestedFileName = _activeTab.FilePath is null ? "Sketch.cs" : Path.GetFileName(_activeTab.FilePath),
                 DefaultExtension = "cs",
                 FileTypeChoices = new[] { new FilePickerFileType("C# / Sketch") { Patterns = new[] { "*.cs" } } }

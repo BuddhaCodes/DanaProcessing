@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
+using DanaProcessing.Ide.Localization;
 using DanaProcessing.Ide.Theme;
 using System.Threading.Tasks;
 
@@ -75,7 +76,11 @@ namespace DanaProcessing.Ide.Editor
         /// defaults to NOT performing the destructive action.</summary>
         public static Task<bool> ShowAsync(
             Window owner, string title, string message,
-            string confirmLabel = "Continuar", string cancelLabel = "Cancelar")
-            => new ConfirmDialog(title, message, confirmLabel, cancelLabel).ShowDialog<bool>(owner);
+            string? confirmLabel = null, string? cancelLabel = null)
+            => new ConfirmDialog(
+                title, message,
+                confirmLabel ?? Loc.Tr("Continuar", "Continue"),
+                cancelLabel ?? Loc.Tr("Cancelar", "Cancel")
+            ).ShowDialog<bool>(owner);
     }
 }
