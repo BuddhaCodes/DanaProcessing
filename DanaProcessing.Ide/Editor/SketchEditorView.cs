@@ -17,6 +17,7 @@ using DanaProcessing.Ide.Compilation;
 using DanaProcessing.Ide.Compilation.PackageManagement;
 using DanaProcessing.Ide.Localization;
 using DanaProcessing.Ide.Theme;
+using Microsoft.CodeAnalysis;
 using System;
 using System.Collections.ObjectModel;
 using System.IO;
@@ -622,6 +623,62 @@ namespace DanaProcessing.Ide.Editor
         }
 
         /// <summary>
+        /// Called by MainWindow right after a Run resolves `// nuget:` packages
+        /// successfully, passing the exact same extra references SketchCompiler.Compile()
+        /// just used. Without this, a package's types compile and run fine but keep
+        /// showing as unresolved-symbol red squiggles in the editor forever, since the
+        /// live-diagnostics engine's project references were otherwise fixed when it was
+        /// first created — see the remark on RoslynCompletionEngine.UpdateReferences.
+        /// </summary>
+        public void UpdateNuGetReferences(IReadOnlyList<MetadataReference> extraReferences)
+        {
+            _completionEngine.UpdateReferences(extraReferences);
+            _ = RefreshDiagnosticsAsync();
+        }
+
+        // Signature (sorted "Id@Version" joined) of the `// nuget:` directives
+        // EnsureNuGetReferencesForCurrentTextAsync last resolved successfully —
+        // lets it skip re-resolving on every debounce tick once a given package
+        // set is already reflected in the completion engine's references.
+        private string? _lastResolvedNuGetSignature;
+
+        /// <summary>
+        /// Resolves whatever `// nuget:` directives are in <paramref name="text"/> and
+        /// feeds them to the completion/diagnostics engine — proactively, on its own,
+        /// not just as a side effect of pressing Run. Without this, opening a sample
+        /// (or pasting/typing a `// nuget:` line) shows unresolved-symbol red squiggles
+        /// for every type from that package until the user presses Run at least once,
+        /// which reads as "the IDE is broken" rather than "hasn't looked yet". A no-op
+        /// once a given directive set has already been resolved this session (nothing
+        /// to redo on every keystroke elsewhere in the file), and a silent no-op on
+        /// failure too — Run's own error panel is still the place that surfaces a real
+        /// resolution failure, this is just best-effort for the live-diagnostics pass.
+        /// </summary>
+        private async Task EnsureNuGetReferencesForCurrentTextAsync(string text)
+        {
+            var directives = PackageDirectiveParser.Parse(text);
+            if (directives.Count == 0)
+                return;
+
+            var signature = string.Join("|", directives
+                .OrderBy(d => d.Id, StringComparer.OrdinalIgnoreCase)
+                .Select(d => d.Id + "@" + (d.Version ?? "*")));
+
+            if (signature == _lastResolvedNuGetSignature)
+                return;
+
+            var resolution = await NuGetPackageResolver.ResolveAsync(directives);
+            if (!resolution.Success)
+                return;
+
+            var extraReferences = resolution.AllAssemblyPaths
+                .Select(path => (MetadataReference)MetadataReference.CreateFromFile(path))
+                .ToList();
+            _completionEngine.UpdateReferences(extraReferences);
+            _lastResolvedNuGetSignature = signature;
+        }
+
+        /// <summary>
         /// Re-asks Roslyn for diagnostics against the *active* tab's current text and
         /// repaints the squiggles. Called on a debounce after every edit, and immediately
         /// on tab switch. GetDiagnosticsAsync is the same semantic-model-only check
@@ -634,7 +691,9 @@ namespace DanaProcessing.Ide.Editor
             if (tab is null)
                 return;
 
-            _completionEngine.UpdateText(_editor.Document.Text);
+            var text = _editor.Document.Text;
+            _completionEngine.UpdateText(text);
+            await EnsureNuGetReferencesForCurrentTextAsync(text);
             var diagnostics = await _completionEngine.GetDiagnosticsAsync();
 
             // The user may have switched tabs (or closed this one) while the

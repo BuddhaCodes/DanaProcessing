@@ -41,11 +41,13 @@ namespace DanaProcessing.Ide.Compilation
     public sealed class RoslynCompletionEngine
     {
         private readonly AdhocWorkspace _workspace = new();
+        private readonly ProjectId _projectId;
         private DocumentId _documentId;
 
         public RoslynCompletionEngine()
         {
             var projectId = ProjectId.CreateNewId();
+            _projectId = projectId;
 
             var projectInfo = ProjectInfo.Create(
                 projectId,
@@ -106,6 +108,24 @@ namespace DanaProcessing.Ide.Compilation
         public void UpdateText(string text)
         {
             var solution = _workspace.CurrentSolution.WithDocumentText(_documentId, SourceText.From(text));
+            _workspace.TryApplyChanges(solution);
+        }
+
+        /// <summary>
+        /// Adds resolved `// nuget:` package assemblies to the completion/diagnostics
+        /// project, on top of the shared BCL + DanaProcessing references it was built
+        /// with. Without this, a NuGet package's types compile and run fine via
+        /// SketchCompiler.Compile() (which gets the same extra references passed
+        /// directly) but keep showing as unresolved-symbol red squiggles here forever,
+        /// since this engine's project references were otherwise fixed at construction
+        /// time. Call it right after a successful NuGetPackageResolver.ResolveAsync(),
+        /// same as SketchCompiler.SetNuGetAssemblies() already does for the compiler
+        /// side of this exact problem.
+        /// </summary>
+        public void UpdateReferences(IReadOnlyList<MetadataReference> extraReferences)
+        {
+            var allReferences = SketchCompiler.GetSharedReferences().Concat(extraReferences);
+            var solution = _workspace.CurrentSolution.WithProjectMetadataReferences(_projectId, allReferences);
             _workspace.TryApplyChanges(solution);
         }
 

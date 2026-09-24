@@ -184,6 +184,18 @@ namespace DanaProcessing.Ide.Editor
                 Loc.Tr("Un panel 3D con una textura generada en código (un PGraphics 2D convertido a PImage con Get()) mapeada por Vertex(x,y,z,u,v) -- Texture(img) antes de BeginShape() le dice al shape qué imagen indexan esas coordenadas. Arrastrá para rotar y ver el mapeo desde otros ángulos.",
                        "A 3D panel with a texture generated in code (a 2D PGraphics converted to a PImage with Get()) mapped via Vertex(x,y,z,u,v) -- Texture(img) before BeginShape() tells the shape which image those coordinates index into. Drag to rotate and see the mapping from other angles."),
                 TexturedBillboard),
+
+            new SketchSample(
+                Loc.Tr("Audio reactivo: FFT en vivo (NAudio)", "Audio-reactive: live FFT (NAudio)"),
+                Loc.Tr("Un `// nuget: NAudio` capturando el audio del sistema (sin micrófono) y corriéndolo por una FFT para mover un anillo de 40 barras -- cualquier cosa que esté sonando en la máquina mueve el dibujo en vivo. La tecla S detiene/reinicia la captura.",
+                       "A `// nuget: NAudio` sketch capturing system audio (no microphone) and running it through an FFT to drive a ring of 40 bars -- whatever's playing on the machine moves the drawing live. The S key stops/restarts the capture."),
+                AudioReactive),
+
+            new SketchSample(
+                Loc.Tr("Instalación reactiva: MIDI + OSC (NAudio.Midi, Rug.Osc)", "Reactive installation: MIDI + OSC (NAudio.Midi, Rug.Osc)"),
+                Loc.Tr("Dos paquetes NuGet a la vez alimentando la misma grilla de \"ripples\" estilo instalación/VJ: notas y CC de un controlador MIDI conectado, y cualquier mensaje OSC a /dana/pulse <float> por UDP -- ninguno de los dos es obligatorio (sin ambos igual podés hacer click para ver cómo reacciona).",
+                       "Two NuGet packages at once feeding the same installation/VJ-style \"ripple\" grid: notes and CC from a connected MIDI controller, and any OSC message to /dana/pulse <float> over UDP -- neither is required (click anywhere without either to see it react)."),
+                ControllerInstallation),
         };
 
         private const string CircleRain =
@@ -2404,6 +2416,362 @@ public class MySketch : Sketch
         _qx = nx / norm;
         _qy = ny / norm;
         _qz = nz / norm;
+    }
+}
+";
+
+        private const string AudioReactive =
+@"// nuget: NAudio, 2.2.1
+
+using System;
+using NAudio.Wave;
+
+// Audio-reactive spectrum -- captures whatever the system is currently
+// playing (WasapiLoopbackCapture: system audio output, no microphone
+// needed) and runs it through an FFT to drive a ring of bars. NAudio.Dsp's
+// FastFourierTransform does the actual transform; everything else here is
+// just turning 40 frequency-bin averages into an angle and a length.
+//
+// Known caveat: nothing in the engine calls a cleanup hook on the old
+// Sketch instance when you press Run again (there's no IDisposable/Stop()
+// contract yet), so the WASAPI capture started in Setup() keeps running
+// in the background even after a re-Run. It's harmless -- Windows allows
+// many simultaneous loopback captures, and the orphaned one just feeds a
+// Sketch instance nobody's drawing anymore -- but press S first if you'd
+// rather stop it by hand before closing the IDE.
+public class MySketch : Sketch
+{
+    private const int FftSize = 1024;   // must be a power of two
+    private const int FftLog2 = 10;     // log2(FftSize)
+    private const int Bars = 40;
+    private const int BinsPerBar = 10;  // 40 * 10 = first 400 of 512 usable bins (~18.7kHz at 48kHz)
+    private const float Gain = 26f;     // raw FFT magnitudes are small; scale up to fill the bars
+    private const float Decay = 0.85f;  // per-update falloff, so bars settle instead of flickering
+
+    private WasapiLoopbackCapture? _capture;
+    private readonly NAudio.Dsp.Complex[] _fft = new NAudio.Dsp.Complex[FftSize];
+    private int _fftWritePos;
+    private readonly float[] _bars = new float[Bars];
+    private readonly object _lock = new object();
+    private volatile bool _capturing;
+
+    public override void Setup()
+    {
+        Size(700, 700);
+        StartCapture();
+    }
+
+    public override void Draw()
+    {
+        Background(12, 14, 20);
+
+        float[] snapshot;
+        lock (_lock)
+            snapshot = (float[])_bars.Clone();
+
+        PushMatrix();
+        Translate(Width / 2f, Height / 2f);
+
+        float baseRadius = 90f;
+        for (int i = 0; i < Bars; i++)
+        {
+            float angle = Map(i, 0, Bars, 0, TWO_PI);
+            float len = Map(Constrain(snapshot[i], 0f, 1f), 0, 1, 0, 220);
+
+            float x1 = Cos(angle) * baseRadius;
+            float y1 = Sin(angle) * baseRadius;
+            float x2 = Cos(angle) * (baseRadius + len);
+            float y2 = Sin(angle) * (baseRadius + len);
+
+            StrokeWeight(6);
+            StrokeHSB(Map(i, 0, Bars, 0, 300), 80, 100);
+            Line(x1, y1, x2, y2);
+        }
+
+        NoFill();
+        StrokeHSB(0, 0, 35);
+        StrokeWeight(1);
+        Circle(0, 0, baseRadius * 2);
+        PopMatrix();
+
+        Fill(255);
+        NoStroke();
+        TextSize(13);
+        Text(_capturing ? ""Playing back system audio -- try starting some music"" : ""Capture stopped"", 16, Height - 40);
+        Text(""S: start/stop capture"", 16, Height - 20);
+    }
+
+    public override void KeyPressed()
+    {
+        if (Key != 's')
+            return;
+
+        if (_capturing)
+            StopCapture();
+        else
+            StartCapture();
+    }
+
+    private void StartCapture()
+    {
+        var capture = new WasapiLoopbackCapture();
+        _fftWritePos = 0;
+        Array.Clear(_bars, 0, _bars.Length);
+
+        capture.DataAvailable += (s, e) =>
+        {
+            int bytesPerSample = capture.WaveFormat.BitsPerSample / 8;
+            int channels = capture.WaveFormat.Channels;
+            int frameSize = bytesPerSample * channels;
+            int frames = e.BytesRecorded / frameSize;
+
+            for (int i = 0; i < frames; i++)
+            {
+                float sum = 0f;
+                for (int ch = 0; ch < channels; ch++)
+                    sum += BitConverter.ToSingle(e.Buffer, i * frameSize + ch * bytesPerSample);
+                float mono = sum / channels;
+
+                _fft[_fftWritePos].X = (float)(mono * NAudio.Dsp.FastFourierTransform.HammingWindow(_fftWritePos, FftSize));
+                _fft[_fftWritePos].Y = 0f;
+                _fftWritePos++;
+
+                if (_fftWritePos >= FftSize)
+                {
+                    _fftWritePos = 0;
+                    NAudio.Dsp.FastFourierTransform.FFT(true, FftLog2, _fft);
+                    UpdateBars();
+                }
+            }
+        };
+        capture.RecordingStopped += (s, e) => _capturing = false;
+
+        _capture = capture;
+        capture.StartRecording();
+        _capturing = true;
+    }
+
+    private void StopCapture()
+    {
+        _capture?.StopRecording();
+        _capture?.Dispose();
+        _capture = null;
+        _capturing = false;
+    }
+
+    private void UpdateBars()
+    {
+        lock (_lock)
+        {
+            for (int b = 0; b < Bars; b++)
+            {
+                float sum = 0f;
+                int start = 1 + b * BinsPerBar; // skip bin 0 (DC offset)
+                for (int k = 0; k < BinsPerBar; k++)
+                    sum += Mag(_fft[start + k].X, _fft[start + k].Y);
+
+                // Sqrt compresses the dynamic range upward -- raw FFT magnitude for
+                // typical (non-full-scale) playback is small enough that a linear
+                // scale barely moves the bars; sqrt makes quiet/moderate audio show
+                // up clearly instead of only loud peaks registering.
+                float value = Sqrt(sum / BinsPerBar) * Gain;
+                _bars[b] = Max(value, _bars[b] * Decay);
+            }
+        }
+    }
+}
+";
+
+        private const string ControllerInstallation =
+@"// nuget: NAudio, 2.2.1
+// nuget: Rug.Osc, 1.2.5
+
+using System;
+using System.Collections.Generic;
+using NAudio.Midi;
+using Rug.Osc;
+
+// Installation-style visual reacting to two different ""controller"" inputs
+// at once: MIDI notes/CC from a connected device (NAudio.Midi -- a thin
+// wrapper over the OS's own winmm.dll, so no extra native asset to manage),
+// and OSC messages over UDP (Rug.Osc -- e.g. from TouchOSC, Max/MSP, or any
+// OSC sender on the same machine/network). Both just feed the same ripple
+// field below, so it doesn't matter which one -- or both -- you actually
+// have available.
+//
+// A grid of cells is lit by expanding ""ripples"": a MIDI Note On spawns one
+// at an X position mapped from the note number (so playing a scale sends
+// ripples marching left to right), colored by note and sized by velocity.
+// A MIDI CC controls how fast ripples expand. Any OSC message sent to
+// /dana/pulse <float 0..1> spawns one from the center with that float as
+// its strength.
+//
+// Same caveat as the NAudio sample: the background MIDI listener and the
+// OSC UDP socket started here aren't torn down on a second Run (nothing in
+// the engine calls a cleanup hook on the old Sketch instance yet) --
+// harmless, just an orphaned listener until the IDE closes.
+public class MySketch : Sketch
+{
+    private const int Cols = 36;
+    private const int Rows = 24;
+    private const float CellSize = 20f;
+    private const float RingThickness = 40f;
+    private const int MaxRipples = 24;
+
+    private struct Ripple
+    {
+        public float OriginCol, OriginRow;
+        public long StartMillis;
+        public float Hue;
+        public float Strength;
+    }
+
+    private readonly List<Ripple> _ripples = new List<Ripple>();
+    private readonly object _ripplesLock = new object();
+    private volatile float _rippleSpeed = 140f; // px/sec, CC-controlled
+
+    private MidiIn? _midiDevice;
+    private string? _midiDeviceName;
+    private OscReceiver? _oscReceiver;
+
+    public override void Setup()
+    {
+        Size((int)(Cols * CellSize), (int)(Rows * CellSize));
+        StartMidi();
+        StartOsc();
+    }
+
+    public override void Draw()
+    {
+        Background(8, 9, 14);
+
+        List<Ripple> snapshot;
+        lock (_ripplesLock)
+            snapshot = new List<Ripple>(_ripples);
+
+        long now = Millis();
+
+        for (int cy = 0; cy < Rows; cy++)
+        {
+            for (int cx = 0; cx < Cols; cx++)
+            {
+                float brightness = 6f; // dim base -- reads as ""off but present"", like an LED wall
+                float hue = 0f;
+
+                foreach (var r in snapshot)
+                {
+                    float dx = (cx - r.OriginCol) * CellSize;
+                    float dy = (cy - r.OriginRow) * CellSize;
+                    float dist = Mag(dx, dy);
+                    float radius = (now - r.StartMillis) / 1000f * _rippleSpeed;
+                    float ringDist = Abs(dist - radius);
+
+                    if (ringDist < RingThickness)
+                    {
+                        float b = (1f - ringDist / RingThickness) * r.Strength * 90f;
+                        if (b > brightness)
+                        {
+                            brightness = b;
+                            hue = r.Hue;
+                        }
+                    }
+                }
+
+                NoStroke();
+                FillHSB(hue, 75, Constrain(brightness, 0, 100));
+                Rect(cx * CellSize, cy * CellSize, CellSize - 2, CellSize - 2);
+            }
+        }
+
+        // Drop ripples once they've grown past the far corner -- keeps the
+        // list from growing forever under a flood of MIDI/OSC events.
+        float maxRadius = Mag(Cols * CellSize, Rows * CellSize);
+        lock (_ripplesLock)
+        {
+            _ripples.RemoveAll(r => (now - r.StartMillis) / 1000f * _rippleSpeed - RingThickness > maxRadius);
+            while (_ripples.Count > MaxRipples)
+                _ripples.RemoveAt(0);
+        }
+
+        Fill(255);
+        TextSize(12);
+        string midiLabel = _midiDeviceName ?? ""no controller connected (that's fine)"";
+        Text($""MIDI: {midiLabel}   OSC: UDP 9000, /dana/pulse <float>   click anywhere to try it"", 10, Height - 12);
+    }
+
+    // Neither MIDI hardware nor an OSC sender is required to see this sketch
+    // do something -- click spawns a ripple right where you clicked, same as
+    // a MIDI/OSC event would, just so there's always an immediate way to see
+    // it work.
+    public override void MouseClicked()
+    {
+        float col = Constrain(MouseX / CellSize, 0, Cols);
+        float row = Constrain(MouseY / CellSize, 0, Rows);
+        AddRipple(col, row, (Millis() / 4f) % 360f, 0.9f);
+    }
+
+    private void StartMidi()
+    {
+        if (MidiIn.NumberOfDevices == 0)
+            return;
+
+        _midiDeviceName = MidiIn.DeviceInfo(0).ProductName;
+        var midiIn = new MidiIn(0);
+        midiIn.MessageReceived += (s, e) =>
+        {
+            if (e.MidiEvent is NoteOnEvent noteOn && noteOn.Velocity > 0)
+            {
+                AddRipple(
+                    Map(noteOn.NoteNumber, 0, 127, 0, Cols),
+                    Rows / 2f,
+                    Map(noteOn.NoteNumber, 0, 127, 0, 360),
+                    Map(noteOn.Velocity, 0, 127, 0.3f, 1f));
+            }
+            else if (e.MidiEvent is ControlChangeEvent cc)
+            {
+                _rippleSpeed = Map(cc.ControllerValue, 0, 127, 40, 500);
+            }
+        };
+        midiIn.Start();
+        _midiDevice = midiIn; // keep it referenced -- otherwise nothing stops the GC from collecting it out from under its own event pump
+    }
+
+    private void StartOsc()
+    {
+        _oscReceiver = new OscReceiver(9000);
+        Thread(nameof(ListenOsc));
+    }
+
+    // No parameters -- exactly what Thread() looks for via reflection.
+    private void ListenOsc()
+    {
+        var receiver = _oscReceiver!;
+        try
+        {
+            receiver.Connect();
+            while (receiver.State == OscSocketState.Connected)
+            {
+                var packet = receiver.Receive();
+                if (packet is OscMessage message && message.Address == ""/dana/pulse"" && message.Count > 0)
+                {
+                    float strength = Constrain(Convert.ToSingle(message[0]), 0f, 1f);
+                    AddRipple(Cols / 2f, Rows / 2f, (Millis() / 5f) % 360f, Max(strength, 0.2f));
+                }
+            }
+        }
+        catch (Exception)
+        {
+            // Socket closed (or a malformed packet) -- nothing to recover,
+            // just stop listening instead of crashing the sketch.
+        }
+    }
+
+    private void AddRipple(float col, float row, float hue, float strength)
+    {
+        lock (_ripplesLock)
+        {
+            _ripples.Add(new Ripple { OriginCol = col, OriginRow = row, StartMillis = Millis(), Hue = hue, Strength = strength });
+        }
     }
 }
 ";

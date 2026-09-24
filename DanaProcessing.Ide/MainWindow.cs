@@ -987,6 +987,7 @@ namespace DanaProcessing.Ide
                     extraReferences = resolution.AllAssemblyPaths
                         .Select(path => (MetadataReference)MetadataReference.CreateFromFile(path))
                         .ToList();
+                    _editorView.UpdateNuGetReferences(extraReferences);
                     _outputText.Text = "";
                 }
 
