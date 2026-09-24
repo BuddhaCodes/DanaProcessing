@@ -58,6 +58,12 @@ namespace DanaProcessing.Ide
             ("English", AppLanguage.English),
         };
 
+        private static readonly (string Label, bool Value)[] AutoUpdateCheckOptions =
+        {
+            (Loc.Tr("Sí", "Yes"), true),
+            (Loc.Tr("No", "No"), false),
+        };
+
         private readonly List<(string Label, Func<ThemeSettings, string> Get, Action<ThemeSettings, string> Set)> _colorFields;
 
         private readonly List<(string Label, Func<ThemeSettings, double> Get, Action<ThemeSettings, double> Set, double Max)> _radiusFields;
@@ -192,6 +198,32 @@ namespace DanaProcessing.Ide
                 LanguageOptions,
                 () => _workingLanguage,
                 v => _workingLanguage = v));
+
+            root.Children.Add(SectionTitle(Loc.Tr("Actualizaciones", "Updates"), topMargin: 20));
+            root.Children.Add(new TextBlock
+            {
+                Text = Loc.Tr(
+                    "Si está activado, la IDE consulta GitHub al arrancar para avisarte si hay una versión más nueva -- solo avisa, nunca descarga ni reemplaza nada por su cuenta. \"Buscar actualizaciones...\" en el menú ☰ siempre funciona, esté activado esto o no.",
+                    "When on, the IDE checks GitHub on startup to let you know if a newer version exists -- it only notifies, it never downloads or replaces anything on its own. \"Check for updates...\" in the ☰ menu always works regardless of this setting."),
+                Foreground = ClayTheme.TextMuted,
+                FontFamily = ClayTheme.FontBody,
+                FontSize = 11.5,
+                TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+                Margin = new Thickness(0, 0, 0, 8),
+            });
+            // Saved immediately on change, unlike the working-copy fields
+            // above -- nothing currently on screen depends on this setting,
+            // so there's no live preview to apply-on-OK or revert-on-Cancel.
+            root.Children.Add(BuildComboRow(
+                Loc.Tr("Buscar actualizaciones automáticamente", "Automatically check for updates"),
+                AutoUpdateCheckOptions,
+                () => Updates.UpdateSettingsStore.Load().AutoCheckEnabled,
+                v =>
+                {
+                    var settings = Updates.UpdateSettingsStore.Load();
+                    settings.AutoCheckEnabled = v;
+                    Updates.UpdateSettingsStore.Save(settings);
+                }));
 
             root.Children.Add(BuildButtonRow());
 

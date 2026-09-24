@@ -196,6 +196,12 @@ namespace DanaProcessing.Ide.Editor
                 Loc.Tr("Dos paquetes NuGet a la vez alimentando la misma grilla de \"ripples\" estilo instalación/VJ: notas y CC de un controlador MIDI conectado, y cualquier mensaje OSC a /dana/pulse <float> por UDP -- ninguno de los dos es obligatorio (sin ambos igual podés hacer click para ver cómo reacciona).",
                        "Two NuGet packages at once feeding the same installation/VJ-style \"ripple\" grid: notes and CC from a connected MIDI controller, and any OSC message to /dana/pulse <float> over UDP -- neither is required (click anywhere without either to see it react)."),
                 ControllerInstallation),
+
+            new SketchSample(
+                Loc.Tr("Probador de Hot Reload: juego de vuelo", "Hot Reload testbed: flying game"),
+                Loc.Tr("Un juego chico estilo \"flappy bird\" hecho a propósito para el botón ⚡ Hot Reload -- toda la sensación del juego (gravedad, fuerza del aleteo, velocidad/separación de los tubos) está en constantes al principio del archivo. Jugá, cambiá un número, y apretá Hot Reload en vez de Run: la física nueva se siente al toque sin perder el puntaje ni reiniciar la partida.",
+                       "A small \"flappy bird\"-style game built on purpose for the ⚡ Hot Reload button -- everything about how it feels (gravity, flap strength, pipe speed/spacing) sits in constants at the top of the file. Play it, change a number, and press Hot Reload instead of Run: the new physics apply instantly without losing your score or restarting the run."),
+                HotReloadFlapper),
         };
 
         private const string CircleRain =
@@ -2772,6 +2778,174 @@ public class MySketch : Sketch
         {
             _ripples.Add(new Ripple { OriginCol = col, OriginRow = row, StartMillis = Millis(), Hue = hue, Strength = strength });
         }
+    }
+}
+";
+
+        private const string HotReloadFlapper =
+@"using System.Collections.Generic;
+
+// A small flappy-bird-style game, built specifically as a Hot Reload
+// testbed: every constant that shapes how it FEELS lives at the top, and
+// everything that makes a run worth continuing (score, best score, player
+// position/velocity, the pipes already on screen) lives in instance fields.
+// Play it, then while it's still running, tweak one of the constants below
+// and press HOT RELOAD (the lightning-bolt button, not Run) -- the new
+// physics apply on the very next frame without losing your run or your
+// score, because those are exactly the instance fields SketchHotReload
+// transplants. Press Run instead and you'll see the normal full restart:
+// same new physics, but score/position back to zero.
+//
+// One deliberate design choice worth calling out: pipes are three PARALLEL
+// List<float>/List<bool> fields, not one List<Pipe> of a small struct that
+// would otherwise be the more natural shape. A struct/class declared inside
+// the sketch itself gets a brand-new type identity every single recompile
+// (it lives in that compile's own throwaway assembly, unlike Sketch/PVector/
+// etc., which live in the one stable DanaProcessing.dll) -- so even a
+// same-name, same-shape Pipe from an unrelated one-constant tweak reads as
+// ""this field's type changed"" to SketchHotReload, and Hot Reload falls back
+// to a full restart every single time, on every edit, no matter how small.
+// Parallel List<float>/List<bool> fields (or List<PVector>, or anything else
+// built entirely out of stable framework/DanaProcessing types) sidestep that
+// completely.
+public class MySketch : Sketch
+{
+    // ---- Tweak these while playing, then Hot Reload to feel the change ----
+    private const float Gravity = 1400f;      // px/s^2 -- how hard the player falls
+    private const float FlapStrength = 480f;  // px/s -- upward kick on flap
+    private const float PipeSpeed = 220f;     // px/s -- how fast pipes scroll left
+    private const float PipeGap = 170f;       // px -- vertical opening between top/bottom pipe
+    private const float PipeSpacing = 260f;   // px -- horizontal distance between pipes
+    private const float PlayerRadius = 16f;
+    private const float PipeWidth = 60f;
+    // -------------------------------------------------------------------
+
+    private float _playerY;
+    private float _playerVelocity;
+    private readonly List<float> _pipeX = new List<float>();
+    private readonly List<float> _pipeGapCenterY = new List<float>();
+    private readonly List<bool> _pipeScored = new List<bool>();
+    private int _score;
+    private int _bestScore;
+    private bool _gameOver;
+    private float _lastFrameMillis;
+
+    public override void Setup()
+    {
+        Size(480, 640);
+        ResetGame();
+    }
+
+    public override void Draw()
+    {
+        float now = Millis();
+        // Clamped so a paused debugger, a slow frame, or the brief gap a Hot
+        // Reload itself takes never shows up as one giant physics jump.
+        float dt = Constrain((now - _lastFrameMillis) / 1000f, 0f, 0.05f);
+        _lastFrameMillis = now;
+
+        Background(20, 24, 34);
+
+        if (!_gameOver)
+        {
+            _playerVelocity += Gravity * dt;
+            _playerY += _playerVelocity * dt;
+
+            float playerX = Width * 0.3f;
+
+            for (int i = 0; i < _pipeX.Count; i++)
+            {
+                _pipeX[i] -= PipeSpeed * dt;
+
+                bool withinX = playerX + PlayerRadius > _pipeX[i] && playerX - PlayerRadius < _pipeX[i] + PipeWidth;
+                bool withinGap = _playerY - PlayerRadius > _pipeGapCenterY[i] - PipeGap / 2f
+                               && _playerY + PlayerRadius < _pipeGapCenterY[i] + PipeGap / 2f;
+                if (withinX && !withinGap)
+                    _gameOver = true;
+
+                if (!_pipeScored[i] && _pipeX[i] + PipeWidth < playerX)
+                {
+                    _pipeScored[i] = true;
+                    _score++;
+                }
+            }
+
+            if (_pipeX.Count == 0 || _pipeX[_pipeX.Count - 1] < Width - PipeSpacing)
+            {
+                _pipeX.Add(Width);
+                _pipeGapCenterY.Add(Random(PipeGap, Height - PipeGap));
+                _pipeScored.Add(false);
+            }
+
+            // Drop pipes that scrolled off the left edge -- keep all three
+            // lists in lockstep since they're really one array-of-structs
+            // split into parallel columns.
+            while (_pipeX.Count > 0 && _pipeX[0] < -PipeWidth)
+            {
+                _pipeX.RemoveAt(0);
+                _pipeGapCenterY.RemoveAt(0);
+                _pipeScored.RemoveAt(0);
+            }
+
+            if (_playerY - PlayerRadius < 0 || _playerY + PlayerRadius > Height)
+                _gameOver = true;
+
+            if (_gameOver)
+                _bestScore = Max(_bestScore, _score);
+        }
+
+        NoStroke();
+        Fill(90, 200, 140);
+        for (int i = 0; i < _pipeX.Count; i++)
+        {
+            Rect(_pipeX[i], 0, PipeWidth, _pipeGapCenterY[i] - PipeGap / 2f);
+            Rect(_pipeX[i], _pipeGapCenterY[i] + PipeGap / 2f, PipeWidth, Height - (_pipeGapCenterY[i] + PipeGap / 2f));
+        }
+
+        Fill(_gameOver ? new Color(220, 90, 90) : new Color(255, 200, 90));
+        Circle(Width * 0.3f, _playerY, PlayerRadius * 2);
+
+        Fill(255);
+        TextSize(28);
+        Text(_score.ToString(), Width / 2f - 8, 40);
+        TextSize(13);
+        Text($""Best: {_bestScore}"", 12, Height - 40);
+        Text(""Click or SPACE to flap"", 12, Height - 20);
+
+        if (_gameOver)
+        {
+            TextSize(20);
+            Text(""Game over -- click to try again"", Width / 2f - 150, Height / 2f);
+        }
+    }
+
+    public override void MouseClicked() => Flap();
+
+    public override void KeyPressed()
+    {
+        if (Key == ' ')
+            Flap();
+    }
+
+    private void Flap()
+    {
+        if (_gameOver)
+        {
+            ResetGame();
+            return;
+        }
+        _playerVelocity = -FlapStrength;
+    }
+
+    private void ResetGame()
+    {
+        _playerY = Height / 2f;
+        _playerVelocity = 0f;
+        _pipeX.Clear();
+        _pipeGapCenterY.Clear();
+        _pipeScored.Clear();
+        _score = 0;
+        _gameOver = false;
     }
 }
 ";

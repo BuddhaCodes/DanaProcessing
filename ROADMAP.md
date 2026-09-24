@@ -20,7 +20,7 @@ Status labels: **Idea** (scoped, not started) · **In progress** · **Shipped**.
 
 ---
 
-## 2. True hot-reload — Idea
+## 2. True hot-reload — In progress
 
 **The pitch.** Pressing Run today does exactly what Processing's own Run does: recompile and start over from a blank `Setup()`. For anything performance- or exploration-oriented — a particle system you've been tuning for ten minutes, a generative piece mid-evolution — that's ten minutes gone every time you tweak a number. Edit-in-place, keep the state running, is a real live-coding feature (think Smalltalk-image or a shader live-editor), not something Processing or p5.js's own editors offer.
 
@@ -31,6 +31,8 @@ Status labels: **Idea** (scoped, not started) · **In progress** · **Shipped**.
 - Triggering on file save (a `FileSystemWatcher` on the active tab, or reusing whatever the editor's live-diagnostics pass already watches) rather than requiring an explicit second button, so it actually feels like live coding instead of "Run but faster."
 
 **Suggested scope for a first cut.** Don't try to handle every edge case at once — ship it for the common case (same fields, same types, sketch didn't add/remove a field) with a visible, honest fallback (full restart + a status-bar note) for anything the reflection-based copy can't confidently handle. Better to be clear about the boundary than to guess wrong silently.
+
+**First cut shipped.** A ⚡ button next to Run does exactly the above — same-fields-same-types reflection copy (`SketchHotReload` in the core project), honest all-or-nothing fallback to a full restart with the mismatch reason shown, enabled only while the tab you're looking at is the one actually running. Deliberately an *explicit* button rather than triggering on file save — the automatic, "feels like live coding" version above is still a real next step, just a separate, bigger UX call (does every pause-while-typing recompile? what if you're mid-edit and don't want the visual to change yet?) that's worth its own decision later rather than bundling into the first cut.
 
 ---
 

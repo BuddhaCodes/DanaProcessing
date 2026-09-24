@@ -143,6 +143,7 @@ namespace DanaProcessing.Ide.Editor
                                 // to OpenTabs.CollectionChanged below) takes over
                                 // with its own "crear un nuevo sketch" prompt.
                                 _activeTab = null;
+                                ActiveTabChanged?.Invoke();
                                 ClearDiagnosticsDisplay();
                             }
                         }
@@ -571,6 +572,17 @@ namespace DanaProcessing.Ide.Editor
 
         public string? ActiveSourceText => _activeTab?.Document.Text;
 
+        /// <summary>The tab currently shown in the editor, or null when the last tab was
+        /// just closed and the empty state is showing instead. MainWindow uses this
+        /// (together with ActiveTabChanged) to know whether the Hot Reload button's
+        /// target still matches whatever's actually loaded in the shared canvas.</summary>
+        public EditorTab? ActiveTab => _activeTab;
+
+        /// <summary>Fired every time ActiveTab changes — a tab switch, or the last tab
+        /// closing (ActiveTab going null). Mirrors CaretPositionChanged/LiveDiagnosticsChanged
+        /// in spirit: a plain event a host can subscribe to instead of polling.</summary>
+        public event Action? ActiveTabChanged;
+
         /// <summary>A reasonable default name to suggest for the active tab when
         /// exporting it (see MainWindow's "Exportar sketch..."): the saved file's
         /// name if it has one, otherwise a generic fallback for an unsaved tab.</summary>
@@ -609,6 +621,7 @@ namespace DanaProcessing.Ide.Editor
         private void ActivateTab(EditorTab tab)
         {
             _activeTab = tab;
+            ActiveTabChanged?.Invoke();
             _editor.Document = tab.Document;
             _completionEngine.UpdateText(tab.Document.Text);
 

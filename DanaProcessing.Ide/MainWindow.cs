@@ -17,9 +17,11 @@ using DanaProcessing.Ide.Editor;
 using DanaProcessing.Ide.Export;
 using DanaProcessing.Ide.Localization;
 using DanaProcessing.Ide.Theme;
+using DanaProcessing.Ide.Updates;
 using Microsoft.CodeAnalysis;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -46,7 +48,17 @@ namespace DanaProcessing.Ide
         private const double NarrowBreakpoint = 900;
         private bool _hasRunOnce;
         private bool _isRunning;
+        // Which tab's compiled sketch is actually loaded into the shared
+        // _canvas right now -- Hot Reload only makes sense while this is the
+        // same tab the editor has active (there's one canvas shared across
+        // every tab, same as the editor's one shared TextEditor).
+        private EditorTab? _runningTab;
         private readonly Button _runButton;
+        private readonly Button _hotReloadButton;
+        private readonly Border _updateBanner;
+        private readonly TextBlock _updateBannerText;
+        private string? _pendingUpdateReleaseUrl;
+        private string? _pendingUpdateVersion;
         private readonly SketchEditorView _editorView;
         private readonly AvaloniaSketchCanvas _canvas;
         private readonly TextBlock _outputText;
@@ -153,6 +165,28 @@ namespace DanaProcessing.Ide
             };
             _runButton.Click += async (_, _) => await RunCurrentSketchAsync();
 
+            // Disabled until a Run has happened AND the active tab is the one
+            // that Run loaded -- hot-reloading only makes sense against a
+            // sketch that's actually running right now (see _runningTab).
+            _hotReloadButton = new Button
+            {
+                Content = "⚡",
+                Classes = { "clay-chrome" },
+                Width = 36,
+                Height = 36,
+                Padding = new Avalonia.Thickness(0),
+                FontSize = 16,
+                HorizontalContentAlignment = HorizontalAlignment.Center,
+                VerticalContentAlignment = VerticalAlignment.Center,
+                IsEnabled = false,
+            };
+            ToolTip.SetTip(_hotReloadButton, Loc.Tr(
+                "Hot reload -- recompila sin perder el estado del sketch (si los campos no cambiaron)",
+                "Hot reload -- recompiles without losing the sketch's state (if its fields didn't change)"));
+            _hotReloadButton.Click += async (_, _) => await HotReloadCurrentSketchAsync();
+
+            _editorView.ActiveTabChanged += UpdateHotReloadButtonEnabled;
+
             // Botón cuadrado fijo (36x36) con el ícono centrado explícitamente
             // en ambos ejes -- antes dependía del centrado por defecto del
             // ContentPresenter, que con un botón de ancho variable (Padding
@@ -182,7 +216,7 @@ namespace DanaProcessing.Ide
             (_paneTogglePill, _codeToggleButton, _resultToggleButton) = BuildPaneToggle();
             UpdatePaneToggleVisuals();
 
-            var titleBarRoot = BuildTitleBar(_runButton, settingsButton, fileMenuButton, _paneTogglePill);
+            var titleBarRoot = BuildTitleBar(_runButton, _hotReloadButton, settingsButton, fileMenuButton, _paneTogglePill);
 
             _outputText = new TextBlock
             {
@@ -390,6 +424,80 @@ namespace DanaProcessing.Ide
                 Child = statusGrid,
             };
 
+            // --- Update banner: hidden (IsVisible=false, Auto-height row
+            // collapses to 0) until a startup or manual check finds something
+            // newer than AppVersion.Current. See CheckForUpdatesAsync. ---
+            _updateBannerText = new TextBlock
+            {
+                Foreground = ClayTheme.OnAccent,
+                FontFamily = ClayTheme.FontBody,
+                FontSize = 12.5,
+                VerticalAlignment = VerticalAlignment.Center,
+            };
+            // Styled explicitly rather than with the "clay-secondary" class:
+            // that class's ContentPresenter-level template overrides (see the
+            // "FIX ContentPresenter: Foreground" styles further down in
+            // ClayTheme) exist specifically because a plain Button.Foreground
+            // setter didn't flow through for it — not a safe bet to reuse on
+            // this banner's unusual accent-colored background, where the
+            // class's own default (TextSecondary, tuned for the app's neutral
+            // surfaces) would read poorly.
+            var updateDownloadButton = new Button
+            {
+                Content = Loc.Tr("Descargar", "Download"),
+                Background = ClayTheme.OnAccent,
+                Foreground = ClayTheme.Accent,
+                CornerRadius = ClayTheme.RadiusSmall,
+                Padding = new Avalonia.Thickness(14, 6),
+                FontSize = 12,
+                FontWeight = FontWeight.SemiBold,
+                Cursor = new Avalonia.Input.Cursor(Avalonia.Input.StandardCursorType.Hand),
+            };
+            updateDownloadButton.Click += (_, _) =>
+            {
+                if (_pendingUpdateReleaseUrl is { } url)
+                    Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+            };
+            var updateLaterButton = new Button
+            {
+                Content = Loc.Tr("Después", "Later"),
+                Background = Avalonia.Media.Brushes.Transparent,
+                Foreground = ClayTheme.OnAccent,
+                BorderThickness = new Avalonia.Thickness(0),
+                Padding = new Avalonia.Thickness(14, 6),
+                FontSize = 12,
+                Margin = new Avalonia.Thickness(8, 0, 0, 0),
+                Cursor = new Avalonia.Input.Cursor(Avalonia.Input.StandardCursorType.Hand),
+            };
+            updateLaterButton.Click += (_, _) =>
+            {
+                _updateBanner.IsVisible = false;
+                if (_pendingUpdateVersion is { } version)
+                {
+                    var settings = UpdateSettingsStore.Load();
+                    settings.DismissedVersion = version;
+                    UpdateSettingsStore.Save(settings);
+                }
+            };
+            var updateBannerButtons = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                Children = { updateDownloadButton, updateLaterButton },
+            };
+            var updateBannerGrid = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
+            Grid.SetColumn(_updateBannerText, 0);
+            Grid.SetColumn(updateBannerButtons, 1);
+            updateBannerGrid.Children.Add(_updateBannerText);
+            updateBannerGrid.Children.Add(updateBannerButtons);
+
+            _updateBanner = new Border
+            {
+                Background = ClayTheme.Accent,
+                Padding = new Avalonia.Thickness(20, 8),
+                IsVisible = false,
+                Child = updateBannerGrid,
+            };
+
             // Column definitions, margins, and per-card visibility are all
             // owned by UpdateResponsiveLayout — it runs once below to set the
             // initial state and again on every resize that crosses the
@@ -403,16 +511,19 @@ namespace DanaProcessing.Ide
 
             var rootGrid = new Grid();
             rootGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(56) });
+            rootGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             rootGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
             rootGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             rootGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
             Grid.SetRow(titleBarRoot, 0);
-            Grid.SetRow(_contentGrid, 1);
-            Grid.SetRow(_outputPanel, 2);
-            Grid.SetRow(statusBar, 3);
+            Grid.SetRow(_updateBanner, 1);
+            Grid.SetRow(_contentGrid, 2);
+            Grid.SetRow(_outputPanel, 3);
+            Grid.SetRow(statusBar, 4);
 
             rootGrid.Children.Add(titleBarRoot);
+            rootGrid.Children.Add(_updateBanner);
             rootGrid.Children.Add(_contentGrid);
             rootGrid.Children.Add(_outputPanel);
             rootGrid.Children.Add(statusBar);
@@ -431,7 +542,11 @@ namespace DanaProcessing.Ide
             {
                 new Avalonia.Animation.DoubleTransition { Property = OpacityProperty, Duration = TimeSpan.FromMilliseconds(220) }
             };
-            Opened += (_, _) => Opacity = 1;
+            Opened += (_, _) =>
+            {
+                Opacity = 1;
+                _ = CheckForUpdatesOnStartupAsync();
+            };
         }
 
         private void SetCardFocused(Border glow, bool focused) => glow.Opacity = focused ? 1 : 0;
@@ -812,6 +927,8 @@ namespace DanaProcessing.Ide
             }));
             menuPanel.Children.Add(Separator());
             menuPanel.Children.Add(BuildItem("📤", Loc.Tr("Exportar sketch...", "Export sketch..."), () => _ = ExportActiveSketchAsync()));
+            menuPanel.Children.Add(Separator());
+            menuPanel.Children.Add(BuildItem("⬆", Loc.Tr("Buscar actualizaciones...", "Check for updates..."), () => _ = CheckForUpdatesManuallyAsync()));
 
             flyout = new Flyout
             {
@@ -841,7 +958,7 @@ namespace DanaProcessing.Ide
             return menuButton;
         }
 
-        private Border BuildTitleBar(Button runButton, Button settingsButton, Button fileMenuButton, Border paneTogglePill)
+        private Border BuildTitleBar(Button runButton, Button hotReloadButton, Button settingsButton, Button fileMenuButton, Border paneTogglePill)
         {
             var logoDot = new Ellipse
             {
@@ -883,7 +1000,7 @@ namespace DanaProcessing.Ide
                 Orientation = Orientation.Horizontal,
                 Spacing = 8,
                 Margin = new Avalonia.Thickness(0, 0, 16, 0),
-                Children = { paneTogglePill, fileMenuButton, settingsButton, runButton, minButton, maxButton, closeButton }
+                Children = { paneTogglePill, fileMenuButton, settingsButton, hotReloadButton, runButton, minButton, maxButton, closeButton }
             };
 
             var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
@@ -939,59 +1056,155 @@ namespace DanaProcessing.Ide
             Renderer3DSettings.DefaultSampleCount = settings.MsaaSamples3D;
         }
 
+        /// <summary>
+        /// The mechanical half of Run/Hot Reload that's identical either way:
+        /// parse `// nuget:` directives, resolve+link them if there are any
+        /// (updating both the compiler's and the live-diagnostics engine's view
+        /// of the extra assemblies), then compile. Returns null for "nothing
+        /// more for the caller to do" — either there was no source to compile,
+        /// or NuGet resolution itself failed and this method already put the
+        /// failure on screen (output text + status pill) the exact same way Run
+        /// always has. A non-null result with Success == false means the C#
+        /// compile itself failed — callers show that themselves, since Run and
+        /// Hot Reload want visibly different success messaging.
+        /// </summary>
+        private async Task<CompileResult?> ResolveAndCompileActiveSketchAsync()
+        {
+            var source = _editorView.ActiveSourceText;
+            if (string.IsNullOrWhiteSpace(source))
+                return null;
+
+            var directives = PackageDirectiveParser.Parse(source);
+            IReadOnlyList<MetadataReference>? extraReferences = null;
+
+            if (directives.Count > 0)
+            {
+                _outputText.Text = "";
+                SetBottomTab(BottomTab.Run);
+                _outputPanel.IsVisible = true;
+
+                _statusDot.Fill = ClayTheme.Accent;
+                _statusLabel.Text = Loc.Tr("Restaurando paquetes NuGet...", "Restoring NuGet packages...");
+                ((Border)_statusPill).Background = ClayTheme.SurfaceHigher;
+
+                var progress = new Progress<string>(message =>
+                    _outputText.Text = string.IsNullOrEmpty(_outputText.Text) ? message : _outputText.Text + Environment.NewLine + message);
+
+                var resolution = await NuGetPackageResolver.ResolveAsync(directives, progress);
+
+                if (!resolution.Success)
+                {
+                    _outputText.Text = string.Join(Environment.NewLine, resolution.Errors);
+                    _runTabDot.Fill = ClayTheme.Danger;
+                    SetBottomTab(BottomTab.Run);
+                    RefreshBottomPanelVisibility();
+
+                    _statusDot.Fill = ClayTheme.Danger;
+                    _statusLabel.Text = Loc.Tr("Error restaurando NuGet", "Error restoring NuGet");
+                    ((Border)_statusPill).Background = ClayTheme.DangerSurface;
+                    return null;
+                }
+
+                SketchCompiler.SetNuGetAssemblies(resolution.Packages);
+                extraReferences = resolution.AllAssemblyPaths
+                    .Select(path => (MetadataReference)MetadataReference.CreateFromFile(path))
+                    .ToList();
+                _editorView.UpdateNuGetReferences(extraReferences);
+                _outputText.Text = "";
+            }
+
+            return SketchCompiler.Compile(source, extraReferences);
+        }
+
+        /// <summary>Enables the Hot Reload button only while it would actually mean
+        /// something: a sketch is running (_runningTab != null) AND the tab you're
+        /// looking at right now is that same tab — the canvas is shared across every
+        /// tab, so hot-reloading while looking at a DIFFERENT tab than the one that's
+        /// actually loaded would transplant state between two unrelated sketches.</summary>
+        private void UpdateHotReloadButtonEnabled()
+        {
+            _hotReloadButton.IsEnabled = !_isRunning && _runningTab != null && _runningTab == _editorView.ActiveTab;
+        }
+
+        /// <summary>Fire-and-forget startup check — silent either way: shows the banner
+        /// on a real update, says nothing at all if there isn't one or the check
+        /// couldn't complete (offline, GitHub unreachable, rate-limited, ...). Only
+        /// runs if UpdateSettings.AutoCheckEnabled; the file menu's manual "Check for
+        /// updates" always runs regardless, since clicking it is explicit intent.</summary>
+        private async Task CheckForUpdatesOnStartupAsync()
+        {
+            if (!UpdateSettingsStore.Load().AutoCheckEnabled)
+                return;
+
+            var result = await UpdateChecker.CheckAsync();
+            if (result is null || !result.IsNewer)
+                return;
+
+            if (UpdateSettingsStore.Load().DismissedVersion == result.LatestVersion)
+                return;
+
+            ShowUpdateBanner(result);
+        }
+
+        /// <summary>The file menu's "Check for updates" — unlike the startup check, this
+        /// always gives visible feedback (a status-pill message) even when there's
+        /// nothing new, since a manual action that appears to do nothing reads as
+        /// broken. Ignores DismissedVersion too: asking explicitly overrides a
+        /// previous "Later".</summary>
+        private async Task CheckForUpdatesManuallyAsync()
+        {
+            _statusDot.Fill = ClayTheme.Accent;
+            _statusLabel.Text = Loc.Tr("Buscando actualizaciones...", "Checking for updates...");
+            ((Border)_statusPill).Background = ClayTheme.SurfaceHigher;
+
+            var result = await UpdateChecker.CheckAsync();
+
+            if (result is null)
+            {
+                _statusDot.Fill = ClayTheme.TextMuted;
+                _statusLabel.Text = Loc.Tr("No se pudo comprobar", "Could not check");
+                ((Border)_statusPill).Background = ClayTheme.SurfaceRaised;
+                return;
+            }
+
+            if (result.IsNewer)
+            {
+                ShowUpdateBanner(result);
+                _statusDot.Fill = ClayTheme.Success;
+                _statusLabel.Text = Loc.Tr("Hay una actualización", "Update available");
+                ((Border)_statusPill).Background = ClayTheme.SuccessSurface;
+            }
+            else
+            {
+                _statusDot.Fill = ClayTheme.Success;
+                _statusLabel.Text = Loc.Tr("Ya tenés la última versión", "You're up to date");
+                ((Border)_statusPill).Background = ClayTheme.SuccessSurface;
+            }
+        }
+
+        private void ShowUpdateBanner(UpdateCheckResult result)
+        {
+            _pendingUpdateReleaseUrl = result.ReleaseUrl;
+            _pendingUpdateVersion = result.LatestVersion;
+            _updateBannerText.Text = Loc.Tr(
+                $"Hay una versión nueva disponible: v{result.LatestVersion}",
+                $"A new version is available: v{result.LatestVersion}");
+            _updateBanner.IsVisible = true;
+        }
+
         private async Task RunCurrentSketchAsync()
         {
             if (_isRunning)
                 return;
 
-            var source = _editorView.ActiveSourceText;
-            if (string.IsNullOrWhiteSpace(source))
-                return;
-
             _isRunning = true;
             _runButton.IsEnabled = false;
+            _hotReloadButton.IsEnabled = false;
             try
             {
-                var directives = PackageDirectiveParser.Parse(source);
-                IReadOnlyList<MetadataReference>? extraReferences = null;
-
-                if (directives.Count > 0)
-                {
-                    _outputText.Text = "";
-                    SetBottomTab(BottomTab.Run);
-                    _outputPanel.IsVisible = true;
-
-                    _statusDot.Fill = ClayTheme.Accent;
-                    _statusLabel.Text = Loc.Tr("Restaurando paquetes NuGet...", "Restoring NuGet packages...");
-                    ((Border)_statusPill).Background = ClayTheme.SurfaceHigher;
-
-                    var progress = new Progress<string>(message =>
-                        _outputText.Text = string.IsNullOrEmpty(_outputText.Text) ? message : _outputText.Text + Environment.NewLine + message);
-
-                    var resolution = await NuGetPackageResolver.ResolveAsync(directives, progress);
-
-                    if (!resolution.Success)
-                    {
-                        _outputText.Text = string.Join(Environment.NewLine, resolution.Errors);
-                        _runTabDot.Fill = ClayTheme.Danger;
-                        SetBottomTab(BottomTab.Run);
-                        RefreshBottomPanelVisibility();
-
-                        _statusDot.Fill = ClayTheme.Danger;
-                        _statusLabel.Text = Loc.Tr("Error restaurando NuGet", "Error restoring NuGet");
-                        ((Border)_statusPill).Background = ClayTheme.DangerSurface;
-                        return;
-                    }
-
-                    SketchCompiler.SetNuGetAssemblies(resolution.Packages);
-                    extraReferences = resolution.AllAssemblyPaths
-                        .Select(path => (MetadataReference)MetadataReference.CreateFromFile(path))
-                        .ToList();
-                    _editorView.UpdateNuGetReferences(extraReferences);
-                    _outputText.Text = "";
-                }
-
-                var result = SketchCompiler.Compile(source, extraReferences);
+                var result = await ResolveAndCompileActiveSketchAsync();
+                if (result is null)
+                    return;
 
                 if (result.Success)
                 {
@@ -1002,6 +1215,7 @@ namespace DanaProcessing.Ide
                     ApplyRenderingSettings();
                     _canvas.LoadSketch(result.Sketch!);
                     _hasRunOnce = true;
+                    _runningTab = _editorView.ActiveTab;
                     _statusDot.Fill = ClayTheme.Success;
                     _statusLabel.Text = Loc.Tr("Listo", "Ready");
                     ((Border)_statusPill).Background = ClayTheme.SuccessSurface;
@@ -1031,6 +1245,87 @@ namespace DanaProcessing.Ide
             {
                 _isRunning = false;
                 _runButton.IsEnabled = true;
+                UpdateHotReloadButtonEnabled();
+            }
+        }
+
+        /// <summary>
+        /// "Hot Reload": recompiles the active tab and, if every field of the
+        /// resulting sketch lines up with the one currently running (same
+        /// names, same types — see SketchHotReload), swaps it in WITHOUT
+        /// rerunning Setup() or losing state. Falls back to an ordinary full
+        /// restart (exactly what Run does) when it can't, explaining why in the
+        /// output panel rather than silently doing nothing.
+        /// </summary>
+        private async Task HotReloadCurrentSketchAsync()
+        {
+            if (_isRunning)
+                return;
+
+            _isRunning = true;
+            _runButton.IsEnabled = false;
+            _hotReloadButton.IsEnabled = false;
+            try
+            {
+                var result = await ResolveAndCompileActiveSketchAsync();
+                if (result is null)
+                    return;
+
+                if (!result.Success)
+                {
+                    _outputText.Text = string.Join(Environment.NewLine + Environment.NewLine, result.Errors);
+                    _runTabDot.Fill = ClayTheme.Danger;
+                    SetBottomTab(BottomTab.Run);
+                    RefreshBottomPanelVisibility();
+
+                    _statusDot.Fill = ClayTheme.Danger;
+                    _statusLabel.Text = Loc.Tr("Error de compilación", "Compile error");
+                    ((Border)_statusPill).Background = ClayTheme.DangerSurface;
+                    return;
+                }
+
+                var plan = _canvas.HotReloadSketch(result.Sketch!);
+
+                if (!plan.CanApply)
+                {
+                    // HotReloadSketch left the OLD sketch running untouched when
+                    // it can't cleanly apply — fall back to the same full
+                    // restart Run does, rather than leaving the edit unapplied.
+                    ApplyRenderingSettings();
+                    _canvas.LoadSketch(result.Sketch!);
+                }
+
+                _hasRunOnce = true;
+                _runningTab = _editorView.ActiveTab;
+                _runTabDot.Fill = ClayTheme.TextMuted;
+                RefreshBottomPanelVisibility();
+
+                if (plan.CanApply)
+                {
+                    _outputText.Text = "";
+                    _statusDot.Fill = ClayTheme.Success;
+                    _statusLabel.Text = Loc.Tr("Listo (hot reload)", "Ready (hot reload)");
+                    ((Border)_statusPill).Background = ClayTheme.SuccessSurface;
+                }
+                else
+                {
+                    var reasons = string.Join(", ", plan.Reasons);
+                    _outputText.Text = Loc.Tr(
+                        $"Hot reload no pudo aplicarse -- se reinició por completo. Motivo: {reasons}",
+                        $"Hot reload couldn't apply -- restarted completely instead. Reason: {reasons}");
+                    _statusDot.Fill = ClayTheme.Success;
+                    _statusLabel.Text = Loc.Tr("Reiniciado (hot reload no pudo aplicarse)", "Restarted (hot reload couldn't apply)");
+                    ((Border)_statusPill).Background = ClayTheme.SuccessSurface;
+                }
+
+                if (_isNarrow == true)
+                    SetNarrowPane(showCanvas: true);
+            }
+            finally
+            {
+                _isRunning = false;
+                _runButton.IsEnabled = true;
+                UpdateHotReloadButtonEnabled();
             }
         }
 

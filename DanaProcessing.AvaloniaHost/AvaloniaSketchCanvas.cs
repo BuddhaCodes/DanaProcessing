@@ -30,6 +30,18 @@ namespace DanaProcessing.AvaloniaHost
     public class AvaloniaSketchCanvas : Control
     {
         private Sketch _sketch;
+
+        // Guards every read/reassignment of _sketch (and the canvas-binding
+        // fields touched alongside it). Draw() runs from Avalonia's render/
+        // compositor thread, NOT the UI thread that Setup(), button clicks,
+        // and LoadSketch()/HotReloadSketch() run on -- confirmed directly by
+        // Renderer3DBackend's own MakeCurrent() comments, which exist for
+        // exactly this reason on the GL side. Without this lock, a
+        // hot-reload's field transplant (many reads off the live old
+        // instance) could interleave with an in-flight RenderFrame() on that
+        // same instance.
+        private readonly object _sketchLock = new();
+
         private readonly DispatcherTimer _timer;
         private bool _didSetup = false;
         private int _lastKnownFrameRate = -1;
@@ -120,21 +132,65 @@ namespace DanaProcessing.AvaloniaHost
         /// </summary>
         public void LoadSketch(Sketch newSketch)
         {
-            _sketch.SizeChanged -= OnSketchSizeChanged;
-            _sketch = newSketch;
-            _sketch.SizeChanged += OnSketchSizeChanged;
+            lock (_sketchLock)
+            {
+                _sketch.SizeChanged -= OnSketchSizeChanged;
+                _sketch = newSketch;
+                _sketch.SizeChanged += OnSketchSizeChanged;
 
-            _didSetup = false;
-            _crashed = false;
-            _crashException = null;
-            _crashContext = "";
-            _lastKnownFrameRate = -1; // forces the timer interval to resync on the next tick
+                _didSetup = false;
+                _crashed = false;
+                _crashException = null;
+                _crashContext = "";
+                _lastKnownFrameRate = -1; // forces the timer interval to resync on the next tick
+            }
 
             // The old sketch's size no longer applies. Ask for a fresh layout
             // pass now — MeasureOverride below runs the new sketch's Setup()
             // (which decides its real size) as part of that pass, instead of
             // us finding out only once the next frame happens to render.
             InvalidateMeasure();
+        }
+
+        /// <summary>
+        /// The "Hot Reload" button's entry point: tries to swap in
+        /// <paramref name="newSketch"/> WITHOUT rerunning Setup() or losing the
+        /// currently-running sketch's state, by transplanting every matching
+        /// field from the old instance onto the new one (see SketchHotReload).
+        /// Only actually swaps if SketchHotReload.Analyze() says every field
+        /// lines up (same names, same types) — the caller should fall back to
+        /// LoadSketch(newSketch) (an ordinary full restart) when this returns a
+        /// plan with CanApply == false, using its Reasons to explain why.
+        /// </summary>
+        public SketchHotReload.Plan HotReloadSketch(Sketch newSketch)
+        {
+            lock (_sketchLock)
+            {
+                var plan = SketchHotReload.Analyze(_sketch, newSketch);
+                if (!plan.CanApply)
+                    return plan;
+
+                SketchHotReload.Transplant(_sketch, newSketch);
+
+                _sketch.SizeChanged -= OnSketchSizeChanged;
+                _sketch = newSketch;
+                _sketch.SizeChanged += OnSketchSizeChanged;
+
+                _crashed = false;
+                _crashException = null;
+                _crashContext = "";
+                // _didSetup stays true on purpose -- Setup() must NOT run again,
+                // that's the entire point of hot reload. EnsureSetupRun() (which
+                // is what normally calls SetCanvas() + Setup()) gets skipped on
+                // the next paint because of that, so bind the canvas by hand
+                // here instead. Safe to reuse _offscreenSurface as-is: Width/
+                // Height were just transplanted from the old instance, so the
+                // size the surface was sized for can't have changed.
+                if (_offscreenSurface != null)
+                    _sketch.SetCanvas(_offscreenSurface.Canvas, _offscreenSurface);
+
+                return plan;
+            }
         }
 
         /// <summary>
@@ -375,24 +431,31 @@ namespace DanaProcessing.AvaloniaHost
             if (_offscreenScale > 1)
                 offscreenCanvas.Scale(_offscreenScale);
 
-            // DESPUÉS:
-            if (!_crashed)
+            // Locked for the same reason _sketchLock exists at all: this is the
+            // render/compositor thread calling into _sketch, and a hot reload
+            // (or a plain Run) can reassign _sketch from the UI thread at any
+            // moment — holding the lock for this whole per-frame block is what
+            // stops a swap from landing mid-Draw().
+            lock (_sketchLock)
             {
-                // RenderFrame() incrementa FrameCount y, si el sketch pidió
-                // RendererKind.Renderer3D via Size(), maneja el backend GPU
-                // (BeginFrame/EndFrame + blit sobre este mismo offscreenCanvas) solo --
-                // ver Sketch.RenderFrame(). Para Renderer2D es idéntico a antes.
-                RunSafely(_sketch.RenderFrame, "Draw");
+                if (!_crashed)
+                {
+                    // RenderFrame() incrementa FrameCount y, si el sketch pidió
+                    // RendererKind.Renderer3D via Size(), maneja el backend GPU
+                    // (BeginFrame/EndFrame + blit sobre este mismo offscreenCanvas) solo --
+                    // ver Sketch.RenderFrame(). Para Renderer2D es idéntico a antes.
+                    RunSafely(_sketch.RenderFrame, "Draw");
 
-                _sketch.PMouseX = _sketch.MouseX;
-                _sketch.PMouseY = _sketch.MouseY;
-            }
+                    _sketch.PMouseX = _sketch.MouseX;
+                    _sketch.PMouseY = _sketch.MouseY;
+                }
 
-            if (_crashed && _crashException != null)
-            {
-                // Drawn into the offscreen surface too, so it gets the same
-                // scaling treatment below and is itself save-able.
-                DrawErrorOverlay(offscreenCanvas, _crashException, _crashContext, _sketch.Width, _sketch.Height);
+                if (_crashed && _crashException != null)
+                {
+                    // Drawn into the offscreen surface too, so it gets the same
+                    // scaling treatment below and is itself save-able.
+                    DrawErrorOverlay(offscreenCanvas, _crashException, _crashContext, _sketch.Width, _sketch.Height);
+                }
             }
 
             offscreenCanvas.Restore();
