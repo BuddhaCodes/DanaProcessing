@@ -1,0 +1,47 @@
+# Roadmap
+
+DanaProcessing v0.1 beta is a solid Processing port: the same `Setup()`/`Draw()` model, in both 2D and real 3D, inside an IDE that's already ahead of Processing's own (live diagnostics, in-sketch NuGet, one-click export). That's the foundation, not the pitch. The two initiatives below are what would give the project its own identity instead of staying "Processing, but C#" — each is a genuine capability Processing/p5.js can't easily match, not just a nicer version of something they already have.
+
+Status labels: **Idea** (scoped, not started) · **In progress** · **Shipped**.
+
+---
+
+## 1. "Any NuGet package is a sketch library" — Idea
+
+**The pitch.** Installing a library in real Processing means the Library Manager, a restart, and hoping the jar plays nice. In DanaProcessing it's a comment line — `// nuget: PackageName, 1.2.3` — already fully working (search, resolve, cache, link, all before Run compiles the sketch). That's not a nice-to-have, it's structural: the entire .NET/NuGet ecosystem is a sketch library, today, with zero extra engine work. Nobody knows that yet because nothing has shown them what it's for.
+
+**What "done" looks like.** A handful of flagship example sketches — real, working, in the sample gallery — that couldn't exist as one-comment integrations in Processing or p5.js:
+
+- **ML.NET / ONNX Runtime** — an on-device generative-art or style-transfer sketch. Points at "creative coding" being a real on-ramp into ML, not just shapes.
+- **NAudio** — low-latency audio-reactive visuals. Processing's own audio libraries are a known pain point (latency, platform quirks); a clean NAudio sketch is a direct, visible win.
+- **MIDI/OSC** (e.g. `Sanford.Multimedia.Midi`, `Rug.Osc`) — an installation/live-performance-style sketch reacting to a controller. Speaks directly to the VJ/installation crowd Processing already has.
+
+**Why this order.** Each example is self-contained and additive — no engine changes, no breaking anything already shipped. The risk is entirely "does anyone see it," not "does it work." Natural follow-up once a few of these land: a short post/video per example, since "look what one comment gets you" is the whole argument and it's a visual one.
+
+---
+
+## 2. True hot-reload — Idea
+
+**The pitch.** Pressing Run today does exactly what Processing's own Run does: recompile and start over from a blank `Setup()`. For anything performance- or exploration-oriented — a particle system you've been tuning for ten minutes, a generative piece mid-evolution — that's ten minutes gone every time you tweak a number. Edit-in-place, keep the state running, is a real live-coding feature (think Smalltalk-image or a shader live-editor), not something Processing or p5.js's own editors offer.
+
+**Why it's a bigger bet than #1.** This isn't examples — it's a real engineering problem. A fresh `Run` produces a *new compiled assembly* with a *new* `Sketch` instance; hot-reload means recompiling while somehow carrying forward the fields of the *old* instance (positions, velocities, accumulated frame count, whatever the sketch's own state is) into the new one. Rough shape of what that needs:
+
+- Detecting which fields exist on both the old and new compiled `Sketch` types and copying matching ones across (reflection-based field copy is the obvious first cut; doesn't handle a renamed/retyped field gracefully, which needs its own fallback — probably "just reset," with a clear message, rather than a silent wrong value).
+- Deciding what "matching" means when a field's *type* changed, not just added/removed fields.
+- Triggering on file save (a `FileSystemWatcher` on the active tab, or reusing whatever the editor's live-diagnostics pass already watches) rather than requiring an explicit second button, so it actually feels like live coding instead of "Run but faster."
+
+**Suggested scope for a first cut.** Don't try to handle every edge case at once — ship it for the common case (same fields, same types, sketch didn't add/remove a field) with a visible, honest fallback (full restart + a status-bar note) for anything the reflection-based copy can't confidently handle. Better to be clear about the boundary than to guess wrong silently.
+
+---
+
+## Other directions worth a line, not yet scoped
+
+Came up while thinking through #1 and #2 but aren't fleshed out — flagging so they don't get lost, not committing to them:
+
+- **Export beyond Windows.** The engine (Avalonia + Silk.NET) is cross-platform already; only the CI/export pipeline is Windows-only right now. macOS/Linux export is plausible without new engine work.
+- **A sketch-sharing gallery**, OpenProcessing-style, even as something as light as a GitHub-backed community samples browser inside the IDE.
+- **Compute-shader-leaning 3D** — GPU particle systems, GPU noise — pushing into TouchDesigner-adjacent territory Processing's P3D doesn't really compete in.
+
+---
+
+*This file exists so these ideas don't just live in a chat transcript. Update it as initiatives move between status labels, and add to "Other directions" freely — the bar for landing there is "worth remembering," not "worth committing to."*

@@ -106,6 +106,10 @@ Full API reference lives in [`index.html`](index.html) — open it locally in a 
 | In-IDE compilation | Roslyn (`Microsoft.CodeAnalysis`) — sketches compile in memory, no disk round-trip |
 | Package resolution | `NuGet.Protocol`, resolved straight from `// nuget:` comments |
 
+## Roadmap
+
+See [`ROADMAP.md`](ROADMAP.md) for where this is headed — right now that's leaning into "any NuGet package is a sketch library" and true hot-reload.
+
 ## Contributing
 
 Issues and pull requests are welcome — whether that's a bug, a new example sketch, or an idea for the API. If you build something with DanaProcessing, open an issue and show it off.
