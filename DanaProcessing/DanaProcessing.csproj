@@ -7,13 +7,13 @@
     <RootNamespace>DanaProcessing</RootNamespace>
   </PropertyGroup>
 
-  <!-- NuGet package metadata. Fill Authors in for real before publishing. -->
+  <!-- NuGet package metadata. -->
   <PropertyGroup>
     <PackageId>DanaProcessing</PackageId>
-    <Version>0.1.0</Version>
-    <Authors>Tu nombre aqui</Authors>
-    <Description>Nucleo multiplataforma de creative coding para C#, inspirado en Processing. Sin dependencias de UI: usa DanaProcessing.Wpf o DanaProcessing.AvaloniaHost para ejecutar sketches en una ventana o control embebible.</Description>
-    <PackageTags>creative-coding;graphics;processing;skiasharp</PackageTags>
+    <Version>0.1.0-beta</Version>
+    <Authors>BuddhaCodes</Authors>
+    <Description>Cross-platform creative-coding core for C#, inspired by Processing — 2D (SkiaSharp) and 3D (Silk.NET/OpenGL) rendering behind one Sketch API. No UI dependency of its own: use DanaProcessing.AvaloniaHost to run a sketch in a window or embeddable control.</Description>
+    <PackageTags>creative-coding;graphics;processing;skiasharp;opengl</PackageTags>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 

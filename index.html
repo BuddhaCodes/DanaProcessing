@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DanaProcessing — Reference Documentation</title>
-<meta name="description" content="Reference documentation for DanaProcessing, a Processing-style creative coding library for C# built on SkiaSharp.">
+<meta name="description" content="Reference documentation for DanaProcessing, a Processing-style creative coding framework for C# — 2D (SkiaSharp) and real 3D (OpenGL) behind one Sketch API, with a purpose-built desktop IDE.">
 
 <!-- Phosphor Icons -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css">
@@ -1140,7 +1140,7 @@
       <div class="sidebar-logo">◆</div>
       <div class="sidebar-brand">
         DanaProcessing
-        <small>v0 · reference</small>
+        <small>v0.1 · beta</small>
       </div>
     </div>
 
@@ -1210,7 +1210,7 @@
       </div>
 
        <a class="sidebar-download" href="https://github.com/BuddhaCodes/DanaProcessing/releases/latest/download/DanaProcessingIde-win-x64.zip">
-        <i class="ph-bold ph-download-simple"></i> Descargar IDE
+        <i class="ph-bold ph-download-simple"></i> Download IDE
       </a>
     </nav>
 
@@ -1237,12 +1237,12 @@
     </span>
   </div>
   <div style="display:flex;align-items:center;gap:14px;">
-    <button class="mode-toggle" id="modeToggle" aria-label="Cambiar entre documentación 2D y 3D" title="Cambiar entre documentación 2D y 3D">
+    <button class="mode-toggle" id="modeToggle" aria-label="Switch between 2D and 3D documentation" title="Switch between 2D and 3D documentation">
       <span class="mode-pill" aria-hidden="true"></span>
       <span class="mode-2d-label active"><i class="ph-bold ph-square"></i> 2D</span>
       <span class="mode-3d-label"><i class="ph-bold ph-cube"></i> 3D</span>
     </button>
-    <div class="badge">v0 · stable</div>
+    <div class="badge">v0.1 · beta</div>
   </div>
 </div>
 
@@ -1252,7 +1252,7 @@
       <section class="hero">
         <div class="hero-content">
           <h1>DanaProcessing</h1>
-          <p class="lede">A Processing-style creative coding library for C#, built on SkiaSharp. Write a <code class="inline">Sketch</code>, override <code class="inline">Setup()</code> and <code class="inline">Draw()</code>, and get the same drawing vocabulary Processing sketchers already know.</p>
+          <p class="lede">A Processing-style creative coding framework for C#. Write a <code class="inline">Sketch</code>, override <code class="inline">Setup()</code> and <code class="inline">Draw()</code>, and get the same drawing vocabulary Processing sketchers already know — in 2D on SkiaSharp, or in real 3D on OpenGL, both through the desktop IDE built just for this.</p>
           <div class="hero-actions">
             <a class="btn btn-ghost" href="https://github.com/BuddhaCodes/DanaProcessing/releases/latest/download/DanaProcessingIde-win-x64.zip">
               <i class="ph-bold ph-download-simple"></i> Download
@@ -1276,6 +1276,8 @@
             <h2>What DanaProcessing is</h2>
             <p class="section-intro">DanaProcessing ports the shape and feel of the Processing language to C#. Instead of Java's <code class="inline">color()</code> function and bit-packed ints, colors are a real <code class="inline">Color</code> struct. Instead of a fixed window, a <code class="inline">Sketch</code> can be hosted inside Avalonia or the bundled IDE. Everything else — the mental model of <code class="inline">Setup()</code> once and <code class="inline">Draw()</code> every frame, fill/stroke state, <code class="inline">beginShape()</code>/<code class="inline">endShape()</code>, <code class="inline">noise()</code> — is carried over on purpose.</p>
 
+            <p class="section-intro">The same <code class="inline">Sketch</code> has a second renderer built in: pass <code class="inline">RendererKind.Renderer3D</code> to <code class="inline">Size()</code> and the exact same <code class="inline">Setup()</code>/<code class="inline">Draw()</code> model gets you real OpenGL geometry — <code class="inline">Box()</code>/<code class="inline">Sphere()</code>, lights, cameras, materials, custom shaders — no separate engine, no second API to learn (see <a href="#getting-started-3d">Getting started in 3D</a>). All of it runs inside a desktop IDE built specifically for this workflow: diagnostics underline mistakes as you type, a <code class="inline">// nuget:</code> comment resolves a package before you hit Run, and Run itself compiles in memory and swaps the canvas in well under a second (see <a href="#ide">The IDE</a>).</p>
+
             <div class="note"><strong>Where things live.</strong> Drawing state and operations are defined once on <code class="inline">GraphicsContext</code>, inherited by both <code class="inline">Sketch</code> and <code class="inline">PGraphics</code>. Sketch adds lifecycle, input, time, and randomness — things an offscreen buffer doesn't need.</div>
 
             <h3 class="entry-title" id="minimal-sketch">Minimal sketch</h3>
@@ -1295,7 +1297,7 @@
         Ellipse(MouseX, MouseY, <span class="str">60</span>, <span class="str">60</span>);
     }
 }</pre>
-  <button class="dana-test-btn" data-target="minimal-sketch-code" title="Correr en DanaProcessing IDE">
+  <button class="dana-test-btn" data-target="minimal-sketch-code" title="Run in DanaProcessing IDE">
     <i class="ph-bold ph-play"></i>
     <span class="dana-test-label">Test in Dana</span>
   </button>
@@ -1536,38 +1538,27 @@
 
             <h3 class="entry-title" id="renderer3d-setup">Size(w, h, RendererKind.Renderer3D) · CreateGraphics(w, h, RendererKind.Renderer3D)</h3>
             <p class="entry-desc">Requests the 3D pipeline for the main sketch canvas, or for an offscreen buffer. The renderer is fixed for that context's entire lifetime — calling either again with a different <code class="inline">RendererKind</code> later throws, matching Processing's own restriction that <code class="inline">size(w, h, renderer)</code> can't switch renderers mid-sketch.</p>
-            <div class="note"><strong>The common pattern is an offscreen buffer.</strong> Most sketches keep the main canvas on the default 2D renderer and create a <em>separate</em> 3D <code class="inline">PGraphics</code> with <code class="inline">CreateGraphics()</code> — that way HUD text, UI, and 2D overlays stay on the easy Skia path, and the 3D scene gets composited on top with a single <code class="inline">Image()</code> call each frame.</div>
+            <div class="note"><strong>Set it directly on the main canvas — compositing is automatic.</strong> Pass <code class="inline">RendererKind.Renderer3D</code> straight to the sketch's own <code class="inline">Size()</code> in <code class="inline">Setup()</code>. <code class="inline">Sketch.RenderFrame()</code> already runs your 3D draw calls against the GPU backend and composites the result with any 2D overlay — <code class="inline">Fill()</code>/<code class="inline">Text()</code> calls after your 3D geometry — automatically, every frame. Every built-in 3D example uses this direct form; a separate offscreen 3D <code class="inline">PGraphics</code> via <code class="inline">CreateGraphics()</code> is still there for when you actually want one (a texture rendered once in <code class="inline">Setup()</code>, say), just not as the default.</div>
 
             <h3 class="entry-title" id="renderer3d-frame">BeginDraw() / EndDraw()</h3>
-            <p class="entry-desc">A 3D <code class="inline">PGraphics</code> only accepts drawing calls between these two — <code class="inline">Box()</code>, <code class="inline">Sphere()</code>, <code class="inline">Lights()</code>, custom <code class="inline">Vertex()</code>/<code class="inline">EndShape()</code>, all of it. Calling any of them outside the bracket throws <code class="inline">InvalidOperationException</code> ("Llamada de dibujo fuera de BeginDraw()/EndDraw()").</p>
+            <p class="entry-desc">Only needed for an <em>offscreen</em> 3D <code class="inline">PGraphics</code> (from <code class="inline">CreateGraphics()</code>) — the main sketch canvas never needs them, since <code class="inline">RenderFrame()</code> calls the GPU backend's begin/end for you. An offscreen 3D buffer only accepts drawing calls between these two — <code class="inline">Box()</code>, <code class="inline">Sphere()</code>, <code class="inline">Lights()</code>, custom <code class="inline">Vertex()</code>/<code class="inline">EndShape()</code>, all of it — and throws <code class="inline">InvalidOperationException</code> outside the bracket.</p>
             <div class="note"><strong>Exception: CreateShape3D().</strong> Building a reusable mesh doesn't need the bracket — it claims and releases the GL context on its own, so it's safe to call once, loose, in <code class="inline">Setup()</code>. See <a href="#createshape3d">Custom 3D shapes</a>.</div>
 
             <div class="code-block">
 <pre><span class="kw">public class</span> <span class="tp">MySketch</span> : <span class="tp">Sketch</span>
 {
-    <span class="kw">private</span> <span class="tp">PGraphics</span> _scene3d;
-
-    <span class="kw">public override void</span> Setup()
-    {
-        Size(<span class="str">700</span>, <span class="str">500</span>);
-        _scene3d = CreateGraphics(Width, Height, <span class="tp">RendererKind</span>.Renderer3D);
-    }
+    <span class="kw">public override void</span> Setup() =&gt; Size(<span class="str">700</span>, <span class="str">500</span>, <span class="tp">RendererKind</span>.Renderer3D);
 
     <span class="kw">public override void</span> Draw()
     {
         Background(<span class="str">20</span>);
-
-        _scene3d.BeginDraw();
-        _scene3d.Lights();                     <span class="cm">// cada frame — ver Lights()</span>
-        _scene3d.Fill(<span class="str">160</span>, <span class="str">200</span>, <span class="str">255</span>);
-        _scene3d.PushMatrix();
-        _scene3d.Translate(Width / <span class="str">2f</span>, Height / <span class="str">2f</span>, <span class="str">0</span>);
-        _scene3d.RotateY(FrameCount / <span class="str">60f</span>);
-        _scene3d.Box(<span class="str">160</span>);
-        _scene3d.PopMatrix();
-        _scene3d.EndDraw();
-
-        Image(_scene3d.Get(), <span class="str">0</span>, <span class="str">0</span>);  <span class="cm">// compone la escena 3D sobre el canvas 2D</span>
+        Lights();                              <span class="cm">// every frame — see Lights()</span>
+        Fill(<span class="str">160</span>, <span class="str">200</span>, <span class="str">255</span>);
+        PushMatrix();
+        Translate(Width / <span class="str">2f</span>, Height / <span class="str">2f</span>, <span class="str">0</span>);
+        RotateY(FrameCount / <span class="str">60f</span>);
+        Box(<span class="str">160</span>);
+        PopMatrix();
     }
 }</pre>
             </div>
@@ -1719,16 +1710,16 @@
             </div>
 
             <div class="code-block">
-<pre><span class="cm">// Octaedro facetado -- cada cara llama Normal() (via PVector.Cross()</span>
-<span class="cm">// entre dos aristas) antes de sus 3 Vertex(), para sombreado plano.</span>
-g.BeginShape(<span class="tp">ShapeKind</span>.Triangles);
+<pre><span class="cm">// Faceted octahedron -- each face calls Normal() (via PVector.Cross()</span>
+<span class="cm">// between two edges) before its 3 Vertex() calls, for flat shading.</span>
+BeginShape(<span class="tp">ShapeKind</span>.Triangles);
 <span class="kw">var</span> faceNormal = <span class="tp">PVector</span>.Cross(<span class="tp">PVector</span>.Sub(b, a), <span class="tp">PVector</span>.Sub(c, a)).Normalize();
-g.Normal(faceNormal.X, faceNormal.Y, faceNormal.Z);
-g.Vertex(a.X, a.Y, a.Z);
-g.Vertex(b.X, b.Y, b.Z);
-g.Vertex(c.X, c.Y, c.Z);
-<span class="cm">// ... repetir por cada cara ...</span>
-g.EndShape();</pre>
+Normal(faceNormal.X, faceNormal.Y, faceNormal.Z);
+Vertex(a.X, a.Y, a.Z);
+Vertex(b.X, b.Y, b.Z);
+Vertex(c.X, c.Y, c.Z);
+<span class="cm">// ... repeat per face ...</span>
+EndShape();</pre>
             </div>
 
             <h3 class="entry-title" id="createshape3d">CreateShape3D(<span class="tp">ShapeKind</span> kind, <span class="tp">Action</span> buildVertices) <span class="sig-return">→ PShape</span></h3>
@@ -1737,16 +1728,16 @@ g.EndShape();</pre>
             <div class="note"><strong>Texture() goes inside the callback.</strong> <code class="inline">BeginShape()</code> (called internally by <code class="inline">CreateShape3D()</code>, before <code class="inline">buildVertices</code> runs) resets the shape's texture — so call <code class="inline">Texture(img)</code> as the <em>first line inside</em> <code class="inline">buildVertices</code>, not before <code class="inline">CreateShape3D()</code>.</div>
 
             <div class="code-block">
-<pre>_gemShape = _scene3d.CreateShape3D(<span class="tp">ShapeKind</span>.Triangles, () =&gt;
+<pre>_gemShape = CreateShape3D(<span class="tp">ShapeKind</span>.Triangles, () =&gt;
 {
-    <span class="cm">// ... Normal()/Vertex() por cada cara, como arriba ...</span>
+    <span class="cm">// ... Normal()/Vertex() per face, as above ...</span>
 });
 
-<span class="cm">// cada frame, en Draw():</span>
-_scene3d.PushMatrix();
-_scene3d.Translate(x, y, z);
-_scene3d.Shape(_gemShape, <span class="str">0</span>, <span class="str">0</span>);   <span class="cm">// sin re-triangular ni re-subir nada</span>
-_scene3d.PopMatrix();</pre>
+<span class="cm">// every frame, in Draw():</span>
+PushMatrix();
+Translate(x, y, z);
+Shape(_gemShape, <span class="str">0</span>, <span class="str">0</span>);   <span class="cm">// no re-triangulating or re-uploading anything</span>
+PopMatrix();</pre>
             </div>
             <div class="note"><strong>Scaling.</strong> Unlike the 2D <code class="inline">Shape()</code> overload, <code class="inline">w</code>/<code class="inline">h</code> scaling isn't supported for a 3D mesh — a baked mesh's own coordinates already define its size. Wrap the call in your own <code class="inline">PushMatrix()</code>/<code class="inline">Scale()</code>/<code class="inline">Rotate()</code>/<code class="inline">PopMatrix()</code> instead.</div>
           </section>
@@ -2188,8 +2179,8 @@ _scene3d.PopMatrix();</pre>
 <span class="kw">for</span> (<span class="kw">int</span> i = <span class="str">0</span>; i &lt; <span class="str">24</span>; i++)
     heights.Append(Random(<span class="str">40</span>, Height - <span class="str">40</span>));
 
-heights.Shuffle();               <span class="cm">// reordena en el lugar</span>
-<span class="kw">float</span> avg = heights.Average();  <span class="cm">// resumen numérico</span></pre>
+heights.Shuffle();               <span class="cm">// reorders in place</span>
+<span class="kw">float</span> avg = heights.Average();  <span class="cm">// numeric summary</span></pre>
             </div>
           </section>
 
@@ -2365,20 +2356,52 @@ heights.Shuffle();               <span class="cm">// reordena en el lugar</span>
           <section class="doc-section" id="ide">
             <div class="section-kicker">21 · Hosting &amp; Tooling</div>
             <h2>The IDE</h2>
-            <p class="section-intro">A self-contained editor + canvas window for iterating on sketches without a separate build step.</p>
+            <p class="section-intro">A self-contained editor + canvas window for iterating on sketches without a separate build step — not a thin wrapper around the library, but a purpose-built environment: diagnostics as you type, packages resolved from a single comment, 28 ready-made examples, and a one-click path to a standalone app.</p>
 
             <h3 class="entry-title" id="sketchcompiler-compile">SketchCompiler.Compile(<span class="tp">string</span> sourceCode) <span class="sig-return">→ CompileResult</span></h3>
-            <p class="entry-desc">Parses the editor's text with Roslyn, compiles it in memory, and instantiates the first <code class="inline">Sketch</code> found.</p>
+            <p class="entry-desc">Parses the editor's text with Roslyn, compiles it in memory, and instantiates the first <code class="inline">Sketch</code> found — this is what pressing <strong>Run</strong> does, start to finish, well under a second for a typical sketch.</p>
             <div class="note"><strong>SkiaSharp stays hidden.</strong> The compiler deliberately does not reference <code class="inline">SkiaSharp.dll</code> — sketch code never needs to know SkiaSharp exists.</div>
 
             <h3 class="entry-title" id="sketcheditorview">SketchEditorView</h3>
-            <p class="entry-desc">A tabbed code editor with C# syntax highlighting.</p>
+            <p class="entry-desc">A tabbed code editor with C# syntax highlighting, live Roslyn diagnostics, and autocomplete.</p>
+            <div class="note"><strong>Live diagnostics.</strong> Errors and warnings are computed from the same Roslyn workspace <code class="inline">SketchCompiler</code> uses, underlined directly in the editor as you type — no need to press Run to find a typo. Click a diagnostic in the bottom panel's "Errores en vivo" tab and the caret jumps straight to it.</div>
+            <div class="note"><strong>Autocomplete.</strong> Completion suggestions know the full <code class="inline">Sketch</code> API — every method documented on this page shows up as you type, with the same signatures.</div>
+
+            <h3 class="entry-title" id="nuget-directives">NuGet packages in a sketch</h3>
+            <p class="entry-desc">Drop a <code class="inline">// nuget:</code> comment at the top of a sketch and pressing <strong>Run</strong> resolves, downloads (cached under <code class="inline">%AppData%\DanaProcessingIde</code>), and links the package before compiling — no <code class="inline">.csproj</code> to create or edit.</p>
+            <div class="code-block">
+<pre><span class="cm">// nuget: Newtonsoft.Json, 13.0.3</span>
+
+<span class="kw">public class</span> <span class="tp">MySketch</span> : <span class="tp">Sketch</span>
+{
+    <span class="kw">public override void</span> Setup() =&gt; Size(<span class="str">600</span>, <span class="str">400</span>);
+}</pre>
+            </div>
+            <p class="entry-desc">The 📦 <strong>Paquetes NuGet</strong> menu item opens a Browse/Installed package manager (search NuGet.org, pick a version, install/update/remove) that writes these directives for you.</p>
+
+            <h3 class="entry-title" id="sample-gallery">Example gallery</h3>
+            <p class="entry-desc">28 built-in sample sketches, open via the 🧩 <strong>Ejemplos</strong> menu item — 2D and 3D, from a minimal <code class="inline">Setup()</code>/<code class="inline">Draw()</code> to an orbiting camera, a GPU-uploaded 3D swarm, parallel prime search, and PDF export. Each one is commented to explain not just what it draws but why it's built that way — a working answer to "how would I actually do X" for most of the API on this page.</p>
+
+            <h3 class="entry-title" id="export">Standalone export</h3>
+            <p class="entry-desc">The 📤 <strong>Exportar sketch</strong> menu item packages the active sketch as a single, self-contained, double-clickable executable via <code class="inline">dotnet publish</code> — no .NET runtime install required on the machine that opens it, nothing to explain to whoever you send it to.</p>
+
+            <h3 class="entry-title" id="settings-window">Settings</h3>
+            <p class="entry-desc">The ⚙ title-bar button opens a Settings window with four sections, each previewed live where that's possible:</p>
+            <div class="table-wrap">
+              <table>
+                <tr><th>Section</th><th>Controls</th></tr>
+                <tr><td>Colors</td><td>Every <code class="inline">ClayTheme</code> color — applied instantly to the running window.</td></tr>
+                <tr><td>Shapes &amp; Typography</td><td>Corner radii and font stacks — take effect on the next app restart.</td></tr>
+                <tr><td>Rendering</td><td>2D antialiasing (supersampling, up to 4×) and 3D antialiasing (MSAA, up to 8×) — applied on the next <strong>Run</strong>, no restart needed.</td></tr>
+                <tr><td>Language</td><td>Switches the entire interface between Spanish and English — takes effect on the next app restart.</td></tr>
+              </table>
+            </div>
 
             <h3 class="entry-title" id="mainwindow">MainWindow</h3>
             <p class="entry-desc">The full IDE shell: editor and canvas side by side, a custom title bar, status bar, and error panel.</p>
 
             <h3 class="entry-title" id="claytheme">ClayTheme</h3>
-            <p class="entry-desc">The IDE's visual language — warm off-white surfaces, soft shadows, and an ember-orange accent.</p>
+            <p class="entry-desc">The IDE's visual language — warm off-white surfaces, soft shadows, and an ember-orange accent — driven by the Settings window's Colors section above.</p>
           </section>
 
           <!-- ================= INDEX ================= -->
@@ -2393,7 +2416,7 @@ heights.Shuffle();               <span class="cm">// reordena en el lugar</span>
 
           <!-- ================= FOOTER ================= -->
           <footer class="doc-footer">
-            DanaProcessing reference documentation. Generated from the current source tree — GraphicsContext, Sketch, PVector, PImage, PGraphics, PShape, PFont, JSONObject/JSONArray, XML, Table, PerlinNoise, the Avalonia host, and the IDE.
+            DanaProcessing reference documentation. Generated from the current source tree — GraphicsContext, Sketch, Renderer3D (Silk.NET/OpenGL), PShader, PVector, PImage, PGraphics, PShape, PFont, JSONObject/JSONArray, XML, Table, PerlinNoise, the Avalonia host, and the IDE (live diagnostics, NuGet packages, sample gallery, export, settings).
           </footer>
 
         </div><!-- /main-col -->

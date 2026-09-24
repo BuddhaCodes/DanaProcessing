@@ -345,7 +345,7 @@ namespace DanaProcessing.Ide
             };
             var appLabel = new TextBlock
             {
-                Text = "DanaProcessing IDE",
+                Text = $"DanaProcessing IDE  ·  v{AppVersion.Current}",
                 Foreground = ClayTheme.TextMuted,
                 FontFamily = ClayTheme.FontBody,
                 FontSize = 11,

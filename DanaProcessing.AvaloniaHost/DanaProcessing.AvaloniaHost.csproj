@@ -9,8 +9,8 @@
 
   <PropertyGroup>
     <PackageId>DanaProcessing.AvaloniaHost</PackageId>
-    <Version>0.1.0</Version>
-    <Description>Host de Avalonia para DanaProcessing: AvaloniaSketchCanvas (control embebible) y AvaloniaSketchWindow (ventana standalone), multiplataforma.</Description>
+    <Version>0.1.0-beta</Version>
+    <Description>Avalonia host for DanaProcessing: AvaloniaSketchCanvas (an embeddable control) and AvaloniaSketchWindow (a standalone window), cross-platform.</Description>
   </PropertyGroup>
 
   <ItemGroup>
@@ -23,8 +23,8 @@
     <!--
       Avalonia.Desktop 12 -> Avalonia.Skia 12 requires SkiaSharp >= 3.119.3-preview.1.1.
       Pinning it explicitly here (only in this project) satisfies that floor
-      without touching the core library or the WPF host, which stay on the
-      2.88.8 series for SkiaSharp.Views.WPF compatibility.
+      without dragging the core library's own SkiaSharp reference (2.88.8,
+      chosen for its own stability reasons) up to a preview version too.
     -->
     <PackageReference Include="SkiaSharp" Version="3.119.3-preview.1.1" />
     <PackageReference Include="Avalonia" Version="12.0.0" />

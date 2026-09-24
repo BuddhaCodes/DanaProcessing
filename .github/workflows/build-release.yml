@@ -26,6 +26,18 @@ jobs:
       - name: Restore
         run: dotnet restore DanaProcessing.Ide/DanaProcessing.Ide.csproj
 
+      # Reads the <Version> the .csproj already declares (see
+      # DanaProcessing.Ide.csproj) instead of inventing a separate number
+      # here, so the tag on the GitHub Release always matches what
+      # AppVersion.Current shows inside the running app. `-getProperty` is a
+      # plain `dotnet msbuild` feature (no custom parsing script needed).
+      - name: Read version
+        id: version
+        shell: pwsh
+        run: |
+          $version = dotnet msbuild DanaProcessing.Ide/DanaProcessing.Ide.csproj -getProperty:Version
+          echo "version=$version" >> $env:GITHUB_OUTPUT
+
       # --self-contained embebe el runtime de .NET en el exe: quien lo
       # descargue no necesita tener .NET instalado. PublishSingleFile lo
       # empaqueta todo en un solo .exe en vez de una carpeta con decenas
@@ -57,16 +69,23 @@ jobs:
           name: DanaProcessingIde-win-x64
           path: DanaProcessingIde-win-x64.zip
 
-      # Un Release nuevo por cada push a main, marcado como "latest".
-      # GitHub expone siempre la URL fija:
+      # A new Release on every push to master, tagged with the app's own
+      # version (e.g. "v0.1.0-beta") rather than an auto-incrementing build
+      # number — re-pushing with the SAME <Version> updates that same
+      # tag/release in place (softprops/action-gh-release does this
+      # automatically when tag_name already exists), which is what you want
+      # while iterating on a single beta. Bump <Version> in
+      # DanaProcessing.Ide.csproj when you're ready to cut the next one.
+      # GitHub always exposes the fixed URL:
       #   https://github.com/<owner>/<repo>/releases/latest/download/DanaProcessingIde-win-x64.zip
-      # que redirige al asset del Release marcado como latest — así el
-      # botón de descarga en tu web nunca tiene que cambiar de link.
+      # which redirects to whichever Release is marked "latest" — so the
+      # download button on your README/site never has to change.
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: build-${{ github.run_number }}
-          name: "Build #${{ github.run_number }}"
-          body: "Build automática desde ${{ github.sha }}."
+          tag_name: v${{ steps.version.outputs.version }}
+          name: "DanaProcessing IDE v${{ steps.version.outputs.version }}"
+          body: "Automated build from ${{ github.sha }}."
           make_latest: true
+          prerelease: ${{ contains(steps.version.outputs.version, '-') }}
           files: DanaProcessingIde-win-x64.zip
