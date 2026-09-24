@@ -6,6 +6,8 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.Media.Imaging;
+using Avalonia.Platform;
 using Avalonia.Platform.Storage;
 using DanaProcessing;
 using DanaProcessing.AvaloniaHost;
@@ -101,6 +103,26 @@ namespace DanaProcessing.Ide
             Width = 1200;
             Height = 700;
             Background = ClayTheme.WindowBackground;
+
+            // WindowDecorations.None below means there's no native title bar
+            // to show this in, but the OS taskbar/alt-tab/window-switcher
+            // still read Window.Icon directly (independent of the exe's own
+            // Win32 icon resource — see DanaProcessing.Ide.csproj's
+            // <ApplicationIcon>, which covers Explorer/the .exe file itself).
+            // Loaded from the embedded avares:// resource (AvaloniaResource
+            // in the csproj) rather than a loose file path, so this keeps
+            // working identically in a published single-file build.
+            try
+            {
+                using var iconStream = AssetLoader.Open(new Uri("avares://DanaProcessing.Ide/Theme/dana.png"));
+                Icon = new WindowIcon(iconStream);
+            }
+            catch
+            {
+                // Missing/corrupt icon asset shouldn't stop the IDE from
+                // starting — worst case the window just falls back to
+                // Avalonia's own default icon.
+            }
 
             Styles.AddRange(ClayTheme.AllStyles());
 

@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DanaProcessing — Reference Documentation</title>
 <meta name="description" content="Reference documentation for DanaProcessing, a Processing-style creative coding framework for C# — 2D (SkiaSharp) and real 3D (OpenGL) behind one Sketch API, with a purpose-built desktop IDE.">
+<link rel="icon" type="image/png" href="DanaProcessing.Ide/Theme/dana.png">
 
 <!-- Phosphor Icons -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css">
@@ -250,16 +251,17 @@
   }
   .sidebar-logo{
     width:36px; height:36px;
-    background:var(--accent);
     border-radius:var(--radius-sm);
+    overflow:hidden;
     display:flex;
     align-items:center;
     justify-content:center;
-    font-weight:700;
-    font-size:18px;
-    color:var(--text-inverse);
     flex-shrink:0;
-    transition:background var(--transition), color var(--transition);
+  }
+  .sidebar-logo img{
+    width:100%; height:100%;
+    object-fit:cover;
+    display:block;
   }
   .sidebar-brand{
     font-weight:700;
@@ -1137,7 +1139,7 @@
   <!-- ===================== SIDEBAR ===================== -->
   <aside class="sidebar" id="sidebar" aria-label="Documentation navigation">
     <div class="sidebar-header">
-      <div class="sidebar-logo">◆</div>
+      <div class="sidebar-logo"><img src="DanaProcessing.Ide/Theme/dana.png" alt="DanaProcessing logo"></div>
       <div class="sidebar-brand">
         DanaProcessing
         <small>v0.1 · beta</small>

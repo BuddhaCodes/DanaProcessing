@@ -7,7 +7,22 @@
     <Nullable>enable</Nullable>
     <Version>0.1.0-beta</Version>
     <Product>DanaProcessing IDE</Product>
+    <!-- The .exe's own Win32 icon resource: what Explorer, the taskbar,
+         and alt-tab show. Needs a real multi-resolution .ico file (not
+         .png) at build time; dana.ico is generated from dana.png (16 to
+         256px, PNG-compressed frames): regenerate it the same way if
+         dana.png ever changes. -->
+    <ApplicationIcon>Theme\dana.ico</ApplicationIcon>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Embedded as an Avalonia resource (avares://) so MainWindow can load
+         it at runtime for Window.Icon too: belt and suspenders alongside
+         ApplicationIcon above, and the only option for anything Avalonia
+         itself draws (e.g. a future in-app "About" dialog), since that API
+         needs an IBitmap/stream, not a Win32 resource. -->
+    <AvaloniaResource Include="Theme\dana.png" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Avalonia.Desktop" Version="12.0.0" />

@@ -5,7 +5,9 @@ using Avalonia.Controls.Templates;
 using Avalonia.Data;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.Media.Imaging;
 using Avalonia.Input;
+using Avalonia.Platform;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using AvaloniaEdit;
@@ -288,21 +290,31 @@ namespace DanaProcessing.Ide.Editor
             // vez de aparecer de golpe -- el "toque animado" que el resto de
             // la app reserva para pocos lugares en vez de repartirlo por todos.
             // ================================================================
+            // Background paints the logo directly (instead of an Image child)
+            // so the Border's CornerRadius clips it for free -- Avalonia
+            // doesn't clip child content to a rounded border on its own.
+            Bitmap? emptyStateLogoBitmap = null;
+            try
+            {
+                using var logoStream = AssetLoader.Open(new Uri("avares://DanaProcessing.Ide/Theme/dana.png"));
+                emptyStateLogoBitmap = new Bitmap(logoStream);
+            }
+            catch
+            {
+                // Missing/corrupt logo asset -- badge falls back to the old
+                // accent-gradient look instead of breaking the empty state.
+            }
+
             var emptyStateIconBadge = new Border
             {
-                Width = 64,
-                Height = 64,
-                CornerRadius = new CornerRadius(32),
-                Background = ClayTheme.AccentGradient,
-                BoxShadow = ClayTheme.ShadowGlow,
+                Width = 72,
+                Height = 72,
+                CornerRadius = ClayTheme.RadiusMedium,
+                Background = emptyStateLogoBitmap is not null
+                    ? new ImageBrush(emptyStateLogoBitmap) { Stretch = Stretch.UniformToFill }
+                    : ClayTheme.AccentGradient,
+                BoxShadow = ClayTheme.ShadowRaised,
                 HorizontalAlignment = HorizontalAlignment.Center,
-                Child = new TextBlock
-                {
-                    Text = "✏️",
-                    FontSize = 26,
-                    HorizontalAlignment = HorizontalAlignment.Center,
-                    VerticalAlignment = VerticalAlignment.Center,
-                }
             };
 
             var newSketchFromEmptyStateButton = new Button

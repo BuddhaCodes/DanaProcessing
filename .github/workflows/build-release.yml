@@ -56,6 +56,71 @@ jobs:
           -p:IncludeNativeLibrariesForSelfExtract=true
           -o publish/win-x64
 
+      # ------------------------------------------------------------------
+      # Code signing (Microsoft Artifact Signing, formerly "Trusted
+      # Signing" — Microsoft renamed the service; old docs/URLs redirect)
+      # — INACTIVE until the six secrets below exist in this repo's
+      # Settings > Secrets and variables > Actions. Until then this step's
+      # `if:` is false, it's skipped, and the build comes out exactly as
+      # unsigned as it does today — nothing else in this workflow depends
+      # on signing having happened.
+      #
+      # Why Artifact Signing over a traditional code-signing certificate:
+      # it's Microsoft's own signing service, priced per-month rather than
+      # per-year (Basic tier ~$10/mo as of writing, vs. $100-500+/yr for a
+      # CA-issued cert), and because the signing key lives with Microsoft
+      # rather than a third-party CA, Windows SmartScreen tends to build
+      # reputation for it faster than a standard (non-EV) certificate
+      # does. It still asks for real identity verification — that part
+      # can't be automated from here, it's a one-time setup at
+      # https://learn.microsoft.com/azure/artifact-signing/quickstart.
+      #
+      # Once that's done, add these 6 repo secrets and this step turns
+      # itself on automatically, no further edits needed:
+      #   AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET  — from an
+      #     Entra app registration / service principal with the "Artifact
+      #     Signing Certificate Profile Signer" role on your account.
+      #   TRUSTED_SIGNING_ENDPOINT     — region endpoint, e.g.
+      #     https://eus.codesigning.azure.net (must match the Azure region
+      #     you created the account in — a mismatch here is the #1 cause
+      #     of a 403 at signing time).
+      #   TRUSTED_SIGNING_ACCOUNT      — the Artifact Signing account name.
+      #   TRUSTED_SIGNING_CERT_PROFILE — the certificate profile name
+      #     (Public Trust profile, for a publicly-downloaded app like this).
+      #
+      # Action is azure/artifact-signing-action@v2 (the old
+      # azure/trusted-signing-action name now just redirects to this repo).
+      # The exclude-*-credential inputs below are recommended by the
+      # action's own docs when authenticating with a client secret instead
+      # of OIDC, so it doesn't waste time probing other credential types
+      # first.
+      - name: Sign executable
+        if: ${{ secrets.AZURE_TENANT_ID != '' }}
+        uses: azure/artifact-signing-action@v2
+        with:
+          azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          endpoint: ${{ secrets.TRUSTED_SIGNING_ENDPOINT }}
+          signing-account-name: ${{ secrets.TRUSTED_SIGNING_ACCOUNT }}
+          certificate-profile-name: ${{ secrets.TRUSTED_SIGNING_CERT_PROFILE }}
+          files-folder: publish/win-x64
+          files-folder-filter: exe
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+          exclude-environment-credential: false
+          exclude-workload-identity-credential: true
+          exclude-managed-identity-credential: true
+          exclude-shared-token-cache-credential: true
+          exclude-visual-studio-credential: true
+          exclude-visual-studio-code-credential: true
+          exclude-azure-cli-credential: true
+          exclude-azure-powershell-credential: true
+          exclude-azure-developer-cli-credential: true
+          exclude-interactive-browser-credential: true
+      # ------------------------------------------------------------------
+
       - name: Zip build
         shell: pwsh
         run: Compress-Archive -Path publish/win-x64/* -DestinationPath DanaProcessingIde-win-x64.zip

@@ -67,7 +67,12 @@ public class MySketch : Sketch
 
 **[Download for Windows](https://github.com/BuddhaCodes/DanaProcessing/releases/latest/download/DanaProcessingIde-win-x64.zip)**
 
-Unzip it, run `DanaProcessing.Ide.exe`, and press **Run** on the sketch that's already open. (Windows SmartScreen may flag it as from an unrecognized publisher on first launch — that's expected for an unsigned indie build; choose **More info → Run anyway**.)
+The build isn't code-signed yet, so Windows marks the download as coming from the internet and Defender SmartScreen will ask if you're sure before it runs — that's expected, not a sign anything's wrong. Clearing it takes one extra step:
+
+1. Right-click the downloaded `.zip` → **Properties** → check **Unblock** → **OK** (or run `Unblock-File .\DanaProcessingIde-win-x64.zip` in PowerShell) — do this *before* extracting, so every extracted file inherits the unblocked state.
+2. Extract the zip and run `DanaProcessing.Ide.exe`, then press **Run** on the sketch that's already open.
+
+If you extracted first and still see the SmartScreen prompt, it's the same fix one level down: **More info → Run anyway**, or right-click `DanaProcessing.Ide.exe` itself → Properties → Unblock.
 
 **Building from source instead?** You'll need the [.NET 8 SDK](https://dotnet.microsoft.com/download):
 
