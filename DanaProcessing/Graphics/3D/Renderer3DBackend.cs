@@ -93,7 +93,7 @@ namespace DanaProcessing
     /// transpose: true does the opposite (cancels that free transpose) and
     /// silently breaks the perspective divide — don't "fix" this to true.
     /// </summary>
-    internal sealed class Renderer3DBackend : IGraphicsBackend
+    internal sealed partial class Renderer3DBackend : IGraphicsBackend
     {
         public RendererKind Kind => RendererKind.Renderer3D;
         public SKCanvas Canvas { get; }
@@ -273,7 +273,23 @@ namespace DanaProcessing
 
         private bool _disposed;
 
-        private Renderer3DBackend(int width, int height, IWindow window, GL gl, SKSurface surface, int sampleCount)
+        // See CreateGLContext()/ProbeComputeShaderSupport() in this file's
+        // Create() region, and SupportsComputeShaders below.
+        private readonly bool _computeCapable;
+
+        /// <summary>True when this backend landed on a real GL 4.3+ core
+        /// context with a genuinely working ARB_compute_shader -- verified
+        /// by actually compiling a throwaway compute shader at Create()
+        /// time, not just by checking the reported version string (see
+        /// ProbeComputeShaderSupport()). GpuParticleSystem uses this to
+        /// choose between a real compute-shader backend and the ping-pong-
+        /// texture fallback (see Renderer3DBackend.GpuParticles.cs); nothing
+        /// else in this class depends on it. False on macOS today -- Apple's
+        /// native OpenGL implementation is hard-capped at 4.1, below the 4.3
+        /// ARB_compute_shader needs -- and on any older/software driver.</summary>
+        public bool SupportsComputeShaders => _computeCapable;
+
+        private Renderer3DBackend(int width, int height, IWindow window, GL gl, SKSurface surface, int sampleCount, bool computeCapable)
         {
             _width = width;
             _height = height;
@@ -282,6 +298,7 @@ namespace DanaProcessing
             Surface = surface;
             Canvas = surface.Canvas;
             _sampleCount = sampleCount;
+            _computeCapable = computeCapable;
         }
 
         /// <summary>samples &lt; 0 (the default) reads Renderer3DSettings.DefaultSampleCount
@@ -292,17 +309,7 @@ namespace DanaProcessing
         /// silent clamp.</summary>
         public static Renderer3DBackend Create(int width, int height, int samples = -1)
         {
-            var options = WindowOptions.Default with
-            {
-                Size = new Vector2D<int>(Math.Max(1, width), Math.Max(1, height)),
-                IsVisible = false,
-                Title = "DanaProcessing (offscreen GL context)",
-                API = new GraphicsAPI(ContextAPI.OpenGL, ContextProfile.Core, ContextFlags.Default, new APIVersion(3, 3))
-            };
-
-            var window = Window.Create(options);
-            window.Initialize(); // no window.Run() -- we drive rendering manually, frame by frame.
-            var gl = GL.GetApi(window);
+            var (window, gl, computeCapable) = CreateGLContext(width, height);
 
             var requested = samples < 0 ? Renderer3DSettings.DefaultSampleCount : samples;
             var sampleCount = 0;
@@ -315,7 +322,7 @@ namespace DanaProcessing
             var raster = SKSurface.Create(new SKImageInfo(width, height, SKColorType.Rgba8888, SKAlphaType.Premul))
                 ?? throw new InvalidOperationException($"No se pudo crear la superficie de lectura de {width}x{height}.");
 
-            var backend = new Renderer3DBackend(width, height, window, gl, raster, sampleCount);
+            var backend = new Renderer3DBackend(width, height, window, gl, raster, sampleCount, computeCapable);
             backend.SetUpFramebuffer();
             if (sampleCount > 0)
                 backend.SetUpMsaaFramebuffer(sampleCount);
@@ -336,6 +343,94 @@ namespace DanaProcessing
             window.GLContext?.Clear();
 
             return backend;
+        }
+
+        /// <summary>Tries GL 4.3 core first (needed for real GLSL compute
+        /// shaders -- see Renderer3DBackend.GpuParticles.cs), falling back
+        /// to the plain 3.3 core request every version of this method used
+        /// before compute shaders existed. Two distinct failure modes to
+        /// defend against, not just "did window creation throw":
+        ///  1. An old/software driver can reject the 4.3 request outright --
+        ///     TryCreateWindow's try/catch (and null-context check) below
+        ///     catches that.
+        ///  2. macOS's GLFW/Cocoa backend does something sneakier: it maps
+        ///     ANY requested major version >= 4 onto its own real hard cap
+        ///     of GL 4.1 WITHOUT throwing, handing back a context that looks
+        ///     fine but can't actually compile a compute shader. So this
+        ///     doesn't just trust that requesting 4.3 succeeded -- it asks
+        ///     the resulting context what it truly got (ProbeComputeShaderSupport,
+        ///     below), including a real throwaway shader compile rather than
+        ///     trusting the reported version string alone (a driver can lie
+        ///     about its version -- e.g. Mesa's MESA_GL_VERSION_OVERRIDE).
+        /// Renderer3DSettings.ForceComputeFallback lets a host force the
+        /// ping-pong-texture fallback even when 4.3 genuinely works, so that
+        /// path gets exercised on a dev machine that can't otherwise reach
+        /// the real macOS-unavailable case.</summary>
+        private static (IWindow window, GL gl, bool computeCapable) CreateGLContext(int width, int height)
+        {
+            var window = TryCreateWindow(width, height, new APIVersion(4, 3));
+            var requestedHigh = window != null;
+
+            window ??= TryCreateWindow(width, height, new APIVersion(3, 3))
+                ?? throw new InvalidOperationException("No se pudo crear ningun contexto OpenGL (ni 4.3 ni 3.3) -- revisa que el driver de GPU soporte OpenGL moderno.");
+
+            var gl = GL.GetApi(window);
+            var computeCapable = requestedHigh && !Renderer3DSettings.ForceComputeFallback && ProbeComputeShaderSupport(gl);
+
+            return (window, gl, computeCapable);
+        }
+
+        private static IWindow? TryCreateWindow(int width, int height, APIVersion apiVersion)
+        {
+            try
+            {
+                var options = WindowOptions.Default with
+                {
+                    Size = new Vector2D<int>(Math.Max(1, width), Math.Max(1, height)),
+                    IsVisible = false,
+                    Title = "DanaProcessing (offscreen GL context)",
+                    API = new GraphicsAPI(ContextAPI.OpenGL, ContextProfile.Core, ContextFlags.Default, apiVersion)
+                };
+
+                var window = Window.Create(options);
+                window.Initialize(); // no window.Run() -- we drive rendering manually, frame by frame.
+                if (window.GLContext == null)
+                {
+                    window.Dispose();
+                    return null;
+                }
+                return window;
+            }
+            catch
+            {
+                return null; // el driver rechazo la version de GL pedida
+            }
+        }
+
+        // GL_MAJOR_VERSION/GL_MINOR_VERSION alone aren't proof enough -- a
+        // driver can report >= 4.3 (via an override env var, say) without
+        // genuinely implementing ARB_compute_shader. Compiling a real (if
+        // trivial) compute shader is the actual ground truth.
+        private static bool ProbeComputeShaderSupport(GL gl)
+        {
+            gl.GetInteger(GLEnum.MajorVersion, out int major);
+            gl.GetInteger(GLEnum.MinorVersion, out int minor);
+            if (major < 4 || (major == 4 && minor < 3))
+                return false;
+
+            try
+            {
+                var shader = gl.CreateShader(ShaderType.ComputeShader);
+                gl.ShaderSource(shader, "#version 430 core\nlayout(local_size_x=1) in;\nvoid main(){}\n");
+                gl.CompileShader(shader);
+                gl.GetShader(shader, ShaderParameterName.CompileStatus, out int status);
+                gl.DeleteShader(shader);
+                return status != 0;
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         private void SetUpFramebuffer()
@@ -1446,6 +1541,19 @@ void main()
             _gl.DeleteProgram(_defaultShaderProgram);
             if (_shaderProgram != 0 && _shaderProgram != _defaultShaderProgram)
                 _gl.DeleteProgram(_shaderProgram);
+            // Shared fullscreen quad backing the ping-pong-texture GPU
+            // particle fallback (Renderer3DBackend.GpuParticles.cs) -- lazily
+            // built the first time ANY GpuParticleSystem on this backend
+            // needs it, reused by every one afterward, so it's cleaned up
+            // here rather than per-system. Individual particle systems'
+            // OWN GL state (SSBOs/textures/FBOs/programs) is the sketch's
+            // responsibility via GpuParticleSystem.Dispose() -- same
+            // contract CreateShape3D()'s PShape already has today.
+            if (_quadVao != 0)
+            {
+                _gl.DeleteVertexArray(_quadVao);
+                _gl.DeleteBuffer(_quadVbo);
+            }
             _gl.DeleteFramebuffer(_fbo);
             _gl.DeleteTexture(_colorTexture);
             _gl.DeleteRenderbuffer(_depthRbo);

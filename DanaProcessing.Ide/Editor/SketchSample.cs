@@ -208,6 +208,12 @@ namespace DanaProcessing.Ide.Editor
                 Loc.Tr("Un `// nuget: Microsoft.ML` de verdad -- cada click deja una semilla de color, y un modelo de regresión (entrenado ahí mismo, sin archivo ni descarga) aprende a pintar un campo generativo que se reacomoda alrededor de tus clicks. El entrenamiento corre en un hilo aparte con un aviso de \"Training...\" visible, nunca traba el dibujo.",
                        "A real `// nuget: Microsoft.ML` sketch -- every click drops a color seed, and a regression model (trained right there, no file or download involved) learns to paint a generative field that reshapes around your clicks. Training runs on a background thread with a visible \"Training...\" notice, never blocking the drawing."),
                 MLColorField),
+
+            new SketchSample(
+                Loc.Tr("200.000 partículas en la GPU: ruido curl", "200,000 GPU particles: curl noise"),
+                Loc.Tr("CreateGpuParticles() de verdad -- 200.000 partículas simuladas enteramente en la GPU, cada una moviéndose por un campo de ruido curl calculado en vivo. En esta máquina corre como un shader de cómputo real (GLSL 430, glDispatchCompute); en una Mac corre exactamente el MISMO código de sketch, pero sobre una simulación de textura ping-pong -- macOS topa OpenGL en 4.1, por debajo de lo que un compute shader necesita. La etiqueta abajo dice cuál de los dos está corriendo.",
+                       "Real CreateGpuParticles() -- 200,000 particles simulated entirely on the GPU, each one moving through a live curl-noise field. On this machine it runs as a real compute shader (GLSL 430, glDispatchCompute); on a Mac the exact SAME sketch code runs instead on a ping-pong texture simulation -- macOS caps OpenGL at 4.1, below what a compute shader needs. The label at the bottom says which of the two is actually running."),
+                GpuParticles),
         };
 
         private const string CircleRain =
@@ -3167,6 +3173,68 @@ public class MySketch : Sketch
     {
         [ColumnName(""Score"")]
         public float Score;
+    }
+}
+";
+
+        private const string GpuParticles =
+@"// 200,000 particles, simulated entirely on the GPU every frame via
+// CreateGpuParticles() -- the whole point being that a CPU port of this
+// exact particle count/motion would visibly choke, unlike the hundreds
+// this sample gallery's other particle samples use. simulationGlsl below
+// is NOT a full shader: it's a GLSL statement body the engine splices
+// into a per-particle update, reading/writing bare `position`/`velocity`
+// plus uDeltaTime/uTime and the dana_noise3()/dana_curlNoise3() helpers.
+//
+// The SAME snippet compiles into whichever backend this machine actually
+// supports, with zero branching in this sketch: a real GLSL compute
+// shader (glDispatchCompute + an SSBO) on Windows/Linux with GL 4.3+, or
+// a ping-pong render-to-texture simulation everywhere else -- notably
+// macOS, whose native OpenGL implementation is hard-capped at 4.1, below
+// what compute shaders need. _particles.UsesComputeShader (used only for
+// the on-screen label below) says which one actually engaged; nothing
+// about how this sketch behaves depends on it.
+public class MySketch : Sketch
+{
+    private const int Count = 200_000;
+    private GpuParticleSystem _particles = null!;
+
+    public override void Setup()
+    {
+        Size(900, 600, RendererKind.Renderer3D);
+
+        var positions = new PVector[Count];
+        for (int i = 0; i < Count; i++)
+            positions[i] = new PVector(Random(-300, 300), Random(-300, 300), Random(-300, 300));
+
+        string sim = @""
+            vec3 curl = dana_curlNoise3(position * 0.006 + vec3(0.0, uTime * 0.05, 0.0));
+            velocity = mix(velocity, curl * 60.0, 0.05);
+            position += velocity * uDeltaTime;
+        "";
+
+        _particles = CreateGpuParticles(Count, sim, positions);
+    }
+
+    public override void Draw()
+    {
+        Background(8, 10, 16);
+        StepParticles(_particles, 1f / 60f);
+
+        Camera(0, 0, 700, 0, 0, 0, 0, 1, 0);
+        PushMatrix();
+        RotateY(FrameCount / 400f);
+        FillHSB((FrameCount * 0.3f) % 360f, 70, 100);
+        DrawParticles(_particles, 3f);
+        PopMatrix();
+
+        Fill(255);
+        NoStroke();
+        TextSize(13);
+        string backend = _particles.UsesComputeShader
+            ? ""GLSL compute shader (glDispatchCompute)""
+            : ""fragment-shader ping-pong texture (compute unavailable here)"";
+        Text($""{Count:N0} particles, GPU curl noise -- backend: {backend}"", 14, Height - 16);
     }
 }
 ";

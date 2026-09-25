@@ -46,12 +46,25 @@ Status labels: **Idea** (scoped, not started) · **In progress** · **Shipped**.
 
 ---
 
+## 4. Compute-shader-leaning 3D: GPU particle systems — In progress
+
+**The pitch.** GPU particle systems and GPU noise, pushing into TouchDesigner-adjacent territory Processing's P3D doesn't really compete in — `CreateGpuParticles()` lets a sketch hand the engine a GLSL simulation snippet and get hundreds of thousands of particles simulated entirely on the GPU, every frame.
+
+**A real constraint, discovered and designed around rather than ignored.** The engine's GL context was hardcoded to OpenGL 3.3 core; real GLSL compute shaders need 4.3+. Verified via web search: **macOS's native OpenGL implementation is hard-capped at 4.1** (Apple deprecated OpenGL after 10.14 and never shipped past it), so compute shaders are categorically unavailable there through OpenGL — a real problem since macOS export just shipped (#3, above). Rather than dropping the feature on macOS or giving up on "real" compute shaders everywhere, this ships a hybrid: `Renderer3DBackend.Create()` now tries a GL 4.3 core context first, verifying what it actually got (not just trusting the request — GLFW's Cocoa backend silently downgrades rather than throwing), and falls back to a classic ping-pong-texture GPGPU simulation when 4.3 isn't genuinely available. One sketch-facing API (`CreateGpuParticles()`/`StepParticles()`/`DrawParticles()`) either way — the exact same simulation snippet compiles into a real compute shader on Windows/Linux or a fragment-shader ping-pong pass on macOS, with zero branching in sketch code.
+
+**What shipped.** Two-layer capability detection (version query + an actual throwaway compute-shader compile, since a driver can misreport its version) in `Renderer3DBackend.cs`; a full compute-shader backend (SSBO + `glDispatchCompute` + a memory barrier, `gl_VertexID`-indexed rendering with no instancing); a full ping-pong-texture fallback backend (RGBA32F position/velocity texture pairs, MRT FBOs, a shared fullscreen-quad simulation pass); a `Renderer3DSettings.ForceComputeFallback` debug switch so the fallback path is genuinely exercised on dev hardware that supports real compute shaders, not just code-reviewed; a new flagship sample ("200,000 GPU particles: curl noise") with an honest on-screen label saying which backend is actually running.
+
+**Verified for real, not just compiled.** All of it — not just "it builds." A headless test harness drove real `Sketch` instances through the real `SketchCompiler`/`RenderFrame()` pipeline and inspected actual rendered pixels: both backends independently confirmed to render correct particle motion (the fallback forced on via `ForceComputeFallback` on this same real-4.3-capable machine, since the true macOS-unavailable trigger can't happen here); the throw-vs-silent-downgrade question settled empirically (a genuinely unavailable GL version throws a real `GlfwException` on this machine's WGL driver); all 15 3D samples in the gallery (14 pre-existing + the new one) re-verified to still compile and render with zero regression after the capability-detection rewrite; 200,000 particles measured at ~6ms/frame on both backends.
+
+**What's still unverified** (the same honest gap #3 already carries): the real macOS-unavailable trigger, real Linux driver diversity, and an actual GitHub Actions run exercising this on real macOS/Linux hardware — none of that is reachable from this machine.
+
+---
+
 ## Other directions worth a line, not yet scoped
 
-Came up while thinking through #1 and #2 but aren't fleshed out — flagging so they don't get lost, not committing to them:
+Came up while thinking through the initiatives above but aren't fleshed out — flagging so they don't get lost, not committing to them:
 
 - **A sketch-sharing gallery**, OpenProcessing-style, even as something as light as a GitHub-backed community samples browser inside the IDE.
-- **Compute-shader-leaning 3D** — GPU particle systems, GPU noise — pushing into TouchDesigner-adjacent territory Processing's P3D doesn't really compete in.
 
 ---
 

@@ -441,5 +441,71 @@ namespace DanaProcessing
             EnsureReady();
             Require3D().ResetShaderProgram();
         }
+
+        // =====================================================================
+        // GPU particle systems -- same Require3D() gate as everything else in
+        // this file. See GpuParticleSystem.cs for the public type and
+        // Renderer3DBackend.GpuParticles.cs for the two backends behind it.
+        // =====================================================================
+
+        /// <summary>
+        /// Builds a GPU particle system of `count` particles -- like
+        /// CreateShape3D() but for a live simulation instead of a static
+        /// mesh. `simulationGlsl` is NOT a full shader: it's a GLSL statement
+        /// body the engine splices into a per-particle update rule, reading/
+        /// writing two bare identifiers it provides -- `position` and
+        /// `velocity` (both vec3) -- plus `uDeltaTime`/`uTime` and two GPU-
+        /// noise helpers, `dana_noise3(vec3)` and `dana_curlNoise3(vec3)`.
+        ///
+        /// CONTRACT: the snippet may only read/write ITS OWN particle's
+        /// position/velocity -- no other particle's state, no texture
+        /// sampling, no shared memory/barriers/atomics. That's what makes
+        /// the exact same snippet compile into whichever backend this
+        /// machine actually supports (a real GLSL compute shader on
+        /// Windows/Linux with GL 4.3+, or a ping-pong-texture GPGPU
+        /// simulation everywhere else -- notably macOS, whose native OpenGL
+        /// is hard-capped at 4.1, below what compute shaders need) with zero
+        /// sketch-visible branching. See GpuParticleSystem's own remarks for
+        /// the full picture.
+        ///
+        /// `seedPositions.Length` fixes `count`; `seedVelocities` defaults to
+        /// all zero if omitted. Like CreateShape3D(), this claims/releases
+        /// the GL context itself -- safe to call standalone from Setup().
+        /// </summary>
+        public GpuParticleSystem CreateGpuParticles(int count, string simulationGlsl, PVector[] seedPositions, PVector[]? seedVelocities = null)
+        {
+            var backend = Require3D();
+
+            if (seedPositions == null)
+                throw new ArgumentNullException(nameof(seedPositions));
+            if (seedPositions.Length != count)
+                throw new ArgumentException($"CreateGpuParticles(): seedPositions debe tener exactamente {count} elementos (tiene {seedPositions.Length}).", nameof(seedPositions));
+            if (seedVelocities != null && seedVelocities.Length != count)
+                throw new ArgumentException($"CreateGpuParticles(): seedVelocities debe tener exactamente {count} elementos si se pasa (tiene {seedVelocities.Length}).", nameof(seedVelocities));
+
+            var handle = backend.CreateParticleSystem(count, simulationGlsl, seedPositions, seedVelocities);
+            return new GpuParticleSystem(handle);
+        }
+
+        /// <summary>Runs one GPU simulation step for every particle in
+        /// `particles`, like Update() for a GPU particle system. Call once
+        /// per Draw(), before DrawParticles(). deltaTimeSeconds is yours to
+        /// choose (a fixed 1/60, or a real measured delta) -- the engine
+        /// doesn't impose one.</summary>
+        public void StepParticles(GpuParticleSystem particles, float deltaTimeSeconds)
+        {
+            EnsureReady();
+            Require3D().StepParticles(particles.Handle, deltaTimeSeconds);
+        }
+
+        /// <summary>Draws every particle as a round point sprite of
+        /// `pointSize` pixels, tinted by the current Fill() color, under the
+        /// current model/camera/projection transforms -- like Shape() for a
+        /// GPU particle system.</summary>
+        public void DrawParticles(GpuParticleSystem particles, float pointSize = 4f)
+        {
+            EnsureReady();
+            Require3D().DrawParticles(particles.Handle, pointSize, _fillPaint.Color);
+        }
     }
 }
