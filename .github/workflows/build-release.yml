@@ -9,7 +9,34 @@ permissions:
   contents: write # necesario para que el job pueda crear el Release
 
 jobs:
+  # Reads <Version> once (see DanaProcessing.Ide.csproj) instead of every
+  # platform job doing its own copy of this step -- every other job depends
+  # on this one so the tag on the final Release always matches
+  # AppVersion.Current, and macOS's .app bundle needs the same value for its
+  # Info.plist.
+  read-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore
+        run: dotnet restore DanaProcessing.Ide/DanaProcessing.Ide.csproj
+
+      - name: Read version
+        id: version
+        run: |
+          version=$(dotnet msbuild DanaProcessing.Ide/DanaProcessing.Ide.csproj -getProperty:Version)
+          echo "version=$version" >> $GITHUB_OUTPUT
+
   build-windows:
+    needs: read-version
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -19,24 +46,8 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
-      # AJUSTAR: ruta real de tu .csproj de la IDE dentro del repo.
-      # Asumo "DanaProcessing.Ide/DanaProcessing.Ide.csproj" por el
-      # namespace que usan todas tus clases — si tu repo tiene otra
-      # estructura, cambiá esta ruta en los tres pasos de abajo.
       - name: Restore
         run: dotnet restore DanaProcessing.Ide/DanaProcessing.Ide.csproj
-
-      # Reads the <Version> the .csproj already declares (see
-      # DanaProcessing.Ide.csproj) instead of inventing a separate number
-      # here, so the tag on the GitHub Release always matches what
-      # AppVersion.Current shows inside the running app. `-getProperty` is a
-      # plain `dotnet msbuild` feature (no custom parsing script needed).
-      - name: Read version
-        id: version
-        shell: pwsh
-        run: |
-          $version = dotnet msbuild DanaProcessing.Ide/DanaProcessing.Ide.csproj -getProperty:Version
-          echo "version=$version" >> $env:GITHUB_OUTPUT
 
       # --self-contained embebe el runtime de .NET en el exe: quien lo
       # descargue no necesita tener .NET instalado. PublishSingleFile lo
@@ -67,14 +78,131 @@ jobs:
         shell: pwsh
         run: Compress-Archive -Path publish/win-x64/* -DestinationPath DanaProcessingIde-win-x64.zip
 
-      # Además del Release de abajo, deja el zip como artifact del propio
-      # run — útil para revisar un push a una rama que no sea main, o para
-      # bajar un build puntual sin tocar el historial de Releases.
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
           name: DanaProcessingIde-win-x64
           path: DanaProcessingIde-win-x64.zip
+
+  # Real Mac runner (not a Windows/Linux cross-compile) specifically so
+  # `chmod +x` on the app's executable actually sticks -- confirmed via
+  # Avalonia's own deployment docs that plain `dotnet publish` itself
+  # cross-compiles fine from any host OS, but the executable bit doesn't
+  # survive being set from a non-Unix machine, which macos-latest sidesteps
+  # entirely. Also the only realistic place to eventually add real signing/
+  # notarization later, since codesign/notarytool are macOS-only tools.
+  build-macos:
+    needs: read-version
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        rid: [osx-x64, osx-arm64]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore
+        run: dotnet restore DanaProcessing.Ide/DanaProcessing.Ide.csproj
+
+      # UseAppHost=true is required here specifically -- without it there's
+      # no native executable stub for Contents/MacOS to point at, and the
+      # bundle just won't launch (confirmed via Avalonia's own macOS
+      # deployment docs, which call this out explicitly).
+      - name: Publish
+        run: >
+          dotnet publish DanaProcessing.Ide/DanaProcessing.Ide.csproj
+          -c Release
+          -r ${{ matrix.rid }}
+          --self-contained true
+          -p:PublishSingleFile=true
+          -p:UseAppHost=true
+          -o publish/${{ matrix.rid }}
+
+      # .app bundle structure per Avalonia's own documented layout:
+      # Contents/MacOS (the publish output), Contents/Resources (icon),
+      # Contents/Info.plist. Unsigned -- no Apple Developer Program
+      # membership (same budget call already made for Windows code
+      # signing) -- so this asks for the same "System Settings > Privacy &
+      # Security > Open Anyway" step Windows' SmartScreen paragraph already
+      # documents in the README, not a silent block.
+      - name: Assemble .app bundle
+        run: |
+          APP="DanaProcessing IDE.app"
+          mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+          cp -r publish/${{ matrix.rid }}/* "$APP/Contents/MacOS/"
+          cp DanaProcessing.Ide/Theme/dana.icns "$APP/Contents/Resources/dana.icns"
+          sed "s/__VERSION__/${{ needs.read-version.outputs.version }}/g" DanaProcessing.Ide/Theme/Info.plist.template > "$APP/Contents/Info.plist"
+          chmod +x "$APP/Contents/MacOS/DanaProcessing.Ide"
+          # ditto (not zip) preserves the bundle's resource forks/extended
+          # attributes correctly -- the standard, Apple-documented way to
+          # zip a .app for distribution.
+          ditto -c -k --sequesterRsrc --keepParent "$APP" "DanaProcessingIde-${{ matrix.rid }}.zip"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: DanaProcessingIde-${{ matrix.rid }}
+          path: DanaProcessingIde-${{ matrix.rid }}.zip
+
+  build-linux:
+    needs: read-version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore
+        run: dotnet restore DanaProcessing.Ide/DanaProcessing.Ide.csproj
+
+      - name: Publish
+        run: >
+          dotnet publish DanaProcessing.Ide/DanaProcessing.Ide.csproj
+          -c Release
+          -r linux-x64
+          --self-contained true
+          -p:PublishSingleFile=true
+          -o publish/linux-x64
+
+      # Deliberately just a chmod+x-and-run tarball for this first cut, not
+      # a .deb/AppImage -- there's no Gatekeeper-equivalent on Linux
+      # blocking a downloaded unsigned executable, just the standard
+      # execute-bit friction every Linux user already expects. The .desktop
+      # file is optional/bonus (see its own comment) for whoever wants
+      # DanaProcessing IDE in their app launcher.
+      - name: Stage extras and package
+        run: |
+          cp DanaProcessing.Ide/Theme/dana-linux-icon.png publish/linux-x64/
+          cp DanaProcessing.Ide/Theme/DanaProcessing.desktop publish/linux-x64/
+          chmod +x publish/linux-x64/DanaProcessing.Ide
+          tar -C publish/linux-x64 -czf DanaProcessingIde-linux-x64.tar.gz .
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: DanaProcessingIde-linux-x64
+          path: DanaProcessingIde-linux-x64.tar.gz
+
+  # Centralized here instead of each platform job publishing its own
+  # Release -- four concurrent jobs all hitting the same release tag would
+  # be a real race (last writer could clobber another platform's files).
+  # One job, one softprops/action-gh-release call, every artifact attached
+  # in the same update.
+  release:
+    needs: [read-version, build-windows, build-macos, build-linux]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
 
       # A new Release on every push to master, tagged with the app's own
       # version (e.g. "v0.1.0-beta") rather than an auto-incrementing build
@@ -85,14 +213,15 @@ jobs:
       # DanaProcessing.Ide.csproj when you're ready to cut the next one.
       # GitHub always exposes the fixed URL:
       #   https://github.com/<owner>/<repo>/releases/latest/download/DanaProcessingIde-win-x64.zip
-      # which redirects to whichever Release is marked "latest" — so the
-      # download button on your README/site never has to change.
+      # (same pattern for the other platforms' filenames) which redirects
+      # to whichever Release is marked "latest" — so download buttons on
+      # your README/site never have to change.
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ steps.version.outputs.version }}
-          name: "DanaProcessing IDE v${{ steps.version.outputs.version }}"
+          tag_name: v${{ needs.read-version.outputs.version }}
+          name: "DanaProcessing IDE v${{ needs.read-version.outputs.version }}"
           body: "Automated build from ${{ github.sha }}."
           make_latest: true
-          prerelease: ${{ contains(steps.version.outputs.version, '-') }}
-          files: DanaProcessingIde-win-x64.zip
+          prerelease: ${{ contains(needs.read-version.outputs.version, '-') }}
+          files: artifacts/**/*

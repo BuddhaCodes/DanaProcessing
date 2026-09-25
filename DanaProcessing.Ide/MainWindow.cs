@@ -9,6 +9,7 @@ using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using Avalonia.Platform.Storage;
+using Avalonia.Threading;
 using DanaProcessing;
 using DanaProcessing.AvaloniaHost;
 using DanaProcessing.Ide.Compilation;
@@ -57,6 +58,8 @@ namespace DanaProcessing.Ide
         private readonly Button _hotReloadButton;
         private readonly Border _updateBanner;
         private readonly TextBlock _updateBannerText;
+        private readonly StackPanel _loadingSpinner;
+        private readonly DispatcherTimer _loadingSpinnerTimer;
         private string? _pendingUpdateReleaseUrl;
         private string? _pendingUpdateVersion;
         private readonly SketchEditorView _editorView;
@@ -378,6 +381,45 @@ namespace DanaProcessing.Ide
             // --- Status bar: reports real state instead of decorating. ---
             _statusDot = new Ellipse { Width = 8, Height = 8, Fill = ClayTheme.Success, VerticalAlignment = VerticalAlignment.Center };
             _statusLabel = new TextBlock { Text = Loc.Tr("Listo", "Ready"), Foreground = ClayTheme.TextSecondary, FontFamily = ClayTheme.FontBody, FontSize = 11.5 };
+
+            // --- Loading spinner: three dots pulsing in sequence, shown only
+            // while resolving `// nuget:` packages -- a heavy one (see the
+            // Microsoft.ML sample: ~9 packages, ~18s on a first, uncached
+            // resolve) left with nothing but static text made that wait read
+            // as "did this hang?" instead of "this is working." ---
+            var loadingDots = new Ellipse[3];
+            for (int i = 0; i < loadingDots.Length; i++)
+            {
+                loadingDots[i] = new Ellipse
+                {
+                    Width = 4,
+                    Height = 4,
+                    Fill = ClayTheme.Accent,
+                    Opacity = 0.25,
+                    Transitions = new Avalonia.Animation.Transitions
+                    {
+                        new Avalonia.Animation.DoubleTransition { Property = OpacityProperty, Duration = TimeSpan.FromMilliseconds(200) }
+                    },
+                };
+            }
+            _loadingSpinner = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                Spacing = 3,
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Avalonia.Thickness(2, 0, 0, 0),
+                IsVisible = false,
+                Children = { loadingDots[0], loadingDots[1], loadingDots[2] },
+            };
+            int loadingSpinnerFrame = 0;
+            _loadingSpinnerTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(300) };
+            _loadingSpinnerTimer.Tick += (_, _) =>
+            {
+                loadingSpinnerFrame = (loadingSpinnerFrame + 1) % loadingDots.Length;
+                for (int i = 0; i < loadingDots.Length; i++)
+                    loadingDots[i].Opacity = i == loadingSpinnerFrame ? 1.0 : 0.25;
+            };
+
             _statusPill = new Border
             {
                 Background = ClayTheme.SuccessSurface,
@@ -387,7 +429,7 @@ namespace DanaProcessing.Ide
                 {
                     Orientation = Orientation.Horizontal,
                     Spacing = 6,
-                    Children = { _statusDot, _statusLabel }
+                    Children = { _statusDot, _statusLabel, _loadingSpinner }
                 }
             };
             _caretLabel = new TextBlock
@@ -1090,7 +1132,16 @@ namespace DanaProcessing.Ide
                 var progress = new Progress<string>(message =>
                     _outputText.Text = string.IsNullOrEmpty(_outputText.Text) ? message : _outputText.Text + Environment.NewLine + message);
 
-                var resolution = await NuGetPackageResolver.ResolveAsync(directives, progress);
+                NuGetResolutionResult resolution;
+                StartLoadingSpinner();
+                try
+                {
+                    resolution = await NuGetPackageResolver.ResolveAsync(directives, progress);
+                }
+                finally
+                {
+                    StopLoadingSpinner();
+                }
 
                 if (!resolution.Success)
                 {
@@ -1114,6 +1165,18 @@ namespace DanaProcessing.Ide
             }
 
             return SketchCompiler.Compile(source, extraReferences);
+        }
+
+        private void StartLoadingSpinner()
+        {
+            _loadingSpinner.IsVisible = true;
+            _loadingSpinnerTimer.Start();
+        }
+
+        private void StopLoadingSpinner()
+        {
+            _loadingSpinnerTimer.Stop();
+            _loadingSpinner.IsVisible = false;
         }
 
         /// <summary>Enables the Hot Reload button only while it would actually mean

@@ -63,16 +63,33 @@ public class MySketch : Sketch
 
 ## Getting started
 
-**Just want to draw something?** Grab the latest build — a single `.exe`, nothing to install:
+**Just want to draw something?** Grab the latest build for your platform — self-contained, nothing to install:
 
-**[Download for Windows](https://github.com/BuddhaCodes/DanaProcessing/releases/latest/download/DanaProcessingIde-win-x64.zip)**
+**[Windows](https://github.com/BuddhaCodes/DanaProcessing/releases/latest/download/DanaProcessingIde-win-x64.zip)** · **[macOS (Apple Silicon)](https://github.com/BuddhaCodes/DanaProcessing/releases/latest/download/DanaProcessingIde-osx-arm64.zip)** · **[macOS (Intel)](https://github.com/BuddhaCodes/DanaProcessing/releases/latest/download/DanaProcessingIde-osx-x64.zip)** · **[Linux](https://github.com/BuddhaCodes/DanaProcessing/releases/latest/download/DanaProcessingIde-linux-x64.tar.gz)**
 
-The build isn't code-signed yet, so Windows marks the download as coming from the internet and Defender SmartScreen will ask if you're sure before it runs — that's expected, not a sign anything's wrong. Clearing it takes one extra step:
+None of these are code-signed yet (that costs real money on every platform, and there's no budget for it right now — see [`ROADMAP.md`](ROADMAP.md) if you're curious about the tradeoffs), so each OS will ask if you're sure before running something downloaded from the internet. That's expected, not a sign anything's wrong.
+
+**Windows** — Defender SmartScreen:
 
 1. Right-click the downloaded `.zip` → **Properties** → check **Unblock** → **OK** (or run `Unblock-File .\DanaProcessingIde-win-x64.zip` in PowerShell) — do this *before* extracting, so every extracted file inherits the unblocked state.
 2. Extract the zip and run `DanaProcessing.Ide.exe`, then press **Run** on the sketch that's already open.
 
 If you extracted first and still see the SmartScreen prompt, it's the same fix one level down: **More info → Run anyway**, or right-click `DanaProcessing.Ide.exe` itself → Properties → Unblock.
+
+**macOS** — Gatekeeper:
+
+1. Unzip and try opening **DanaProcessing IDE.app** — macOS will say it can't check the app for malicious software (or that the developer can't be verified).
+2. Open **System Settings → Privacy & Security**, scroll to the Security section, and click **Open Anyway** next to DanaProcessing IDE, then confirm **Open** in the dialog that reappears. macOS remembers this afterward.
+
+**Linux** — just the usual execute bit:
+
+```bash
+tar -xzf DanaProcessingIde-linux-x64.tar.gz
+chmod +x DanaProcessing.Ide
+./DanaProcessing.Ide
+```
+
+A `DanaProcessing.desktop` file is included if you want it in your app launcher — see the comment at the top of that file for how to wire it up.
 
 **Building from source instead?** You'll need the [.NET 8 SDK](https://dotnet.microsoft.com/download):
 

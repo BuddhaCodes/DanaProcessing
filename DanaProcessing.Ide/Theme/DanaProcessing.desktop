@@ -1,0 +1,15 @@
+# Optional: only needed if you want DanaProcessing IDE to show up in your
+# desktop's app launcher/menu. Not required to just run it -- extract the
+# tarball, `chmod +x DanaProcessing.Ide`, and `./DanaProcessing.Ide` works
+# on its own. To use this file, copy it (and dana-linux-icon.png) into
+# ~/.local/share/applications/ and fix the Exec/Icon paths below to point
+# at wherever you actually extracted the tarball -- they're left as plain
+# filenames here since the real install location varies per user.
+[Desktop Entry]
+Type=Application
+Name=DanaProcessing IDE
+Comment=Creative coding IDE in the style of Processing/p5.js
+Exec=DanaProcessing.Ide
+Icon=dana-linux-icon.png
+Categories=Development;IDE;Graphics;
+Terminal=false

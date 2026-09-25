@@ -6,17 +6,17 @@ Status labels: **Idea** (scoped, not started) · **In progress** · **Shipped**.
 
 ---
 
-## 1. "Any NuGet package is a sketch library" — Idea
+## 1. "Any NuGet package is a sketch library" — Shipped
 
 **The pitch.** Installing a library in real Processing means the Library Manager, a restart, and hoping the jar plays nice. In DanaProcessing it's a comment line — `// nuget: PackageName, 1.2.3` — already fully working (search, resolve, cache, link, all before Run compiles the sketch). That's not a nice-to-have, it's structural: the entire .NET/NuGet ecosystem is a sketch library, today, with zero extra engine work. Nobody knows that yet because nothing has shown them what it's for.
 
-**What "done" looks like.** A handful of flagship example sketches — real, working, in the sample gallery — that couldn't exist as one-comment integrations in Processing or p5.js:
+**What "done" looks like.** A handful of flagship example sketches — real, working, in the sample gallery — that couldn't exist as one-comment integrations in Processing or p5.js. All three shipped:
 
-- **ML.NET / ONNX Runtime** — an on-device generative-art or style-transfer sketch. Points at "creative coding" being a real on-ramp into ML, not just shapes.
-- **NAudio** — low-latency audio-reactive visuals. Processing's own audio libraries are a known pain point (latency, platform quirks); a clean NAudio sketch is a direct, visible win.
-- **MIDI/OSC** (e.g. `Sanford.Multimedia.Midi`, `Rug.Osc`) — an installation/live-performance-style sketch reacting to a controller. Speaks directly to the VJ/installation crowd Processing already has.
+- ~~**NAudio** — low-latency audio-reactive visuals.~~ **Shipped**: "Audio-reactive: live FFT (NAudio)" — `WasapiLoopbackCapture` + a real FFT driving 40 bars off whatever's playing on the system.
+- ~~**MIDI/OSC** (`Sanford.Multimedia.Midi` → switched to `NAudio.Midi`, `Rug.Osc`) — an installation/live-performance-style sketch.~~ **Shipped**: "Reactive installation: MIDI + OSC" — NAudio.Midi notes/CC and Rug.Osc UDP messages both driving one ripple grid, click-to-test when neither is connected.
+- ~~**ML.NET / ONNX Runtime** — an on-device generative-art or style-transfer sketch.~~ **Shipped**: "ML.NET color field: live learning" — a real `Microsoft.ML` regression model, trained live (no external model file) on colored seed points you click in, painting a generative field around them. Found and fixed a real trap along the way: SDCA's default trainer is open-ended convergence-based and measured 40+ seconds on this sketch's tiny/sparse data shape with no predictable pattern — capping `MaximumNumberOfIterations` explicitly brought every run back to single-digit milliseconds.
 
-**Why this order.** Each example is self-contained and additive — no engine changes, no breaking anything already shipped. The risk is entirely "does anyone see it," not "does it work." Natural follow-up once a few of these land: a short post/video per example, since "look what one comment gets you" is the whole argument and it's a visual one.
+**Why this order.** Each example is self-contained and additive — no engine changes, no breaking anything already shipped. The risk is entirely "does anyone see it," not "does it work." Natural follow-up now that all three have landed: a short post/video per example, since "look what one comment gets you" is the whole argument and it's a visual one.
 
 ---
 
@@ -36,11 +36,20 @@ Status labels: **Idea** (scoped, not started) · **In progress** · **Shipped**.
 
 ---
 
+## 3. Cross-platform export (macOS + Linux) — In progress
+
+**The pitch.** The engine (Avalonia + Silk.NET) was already cross-platform — confirmed by grep, exactly two `OperatingSystem.IsWindows()`-gated spots in the whole codebase, both already cleanly conditional. What was actually Windows-only was narrower: the CI release pipeline only built `win-x64`, and the "Export sketch as standalone app" feature hardcoded `null` for anything but Windows.
+
+**What shipped.** `SketchExporter.GetCurrentRid()` now returns the right RID (`win-x64/x86/arm64`, `osx-x64/arm64`, `linux-x64/arm64`) for whichever OS + architecture is actually running, instead of hardcoding Windows. `build-release.yml` was restructured into a `read-version` → `{build-windows, build-macos, build-linux}` → `release` job graph: macOS builds a real unsigned `.app` bundle (via a real `macos-latest` runner, since `chmod +x` needs a Unix machine to stick) for both `osx-x64` and `osx-arm64`, Linux ships a `chmod +x`-and-run tarball with an optional `.desktop` launcher entry, and the final `release` job attaches all four platform artifacts to one GitHub Release instead of racing four concurrent release calls. Unsigned on every platform (same budget call already made for Windows) — README now documents the macOS Gatekeeper "Open Anyway" path and the Linux execute-bit step alongside the existing Windows SmartScreen paragraph.
+
+**What's still unverified.** Real cross-compiled `dotnet publish` runs for all three non-Windows RIDs were run right here on this Windows machine and produced the expected output shape (single-file executable + correct native `.so`/`.dylib` deps) — but a real GitHub Actions run of the restructured workflow hasn't happened yet, so the `.app`-bundle assembly step (which needs `ditto`/`chmod` from a real macOS runner) is still unverified end-to-end, and nobody's actually launched the app on real macOS or Linux hardware.
+
+---
+
 ## Other directions worth a line, not yet scoped
 
 Came up while thinking through #1 and #2 but aren't fleshed out — flagging so they don't get lost, not committing to them:
 
-- **Export beyond Windows.** The engine (Avalonia + Silk.NET) is cross-platform already; only the CI/export pipeline is Windows-only right now. macOS/Linux export is plausible without new engine work.
 - **A sketch-sharing gallery**, OpenProcessing-style, even as something as light as a GitHub-backed community samples browser inside the IDE.
 - **Compute-shader-leaning 3D** — GPU particle systems, GPU noise — pushing into TouchDesigner-adjacent territory Processing's P3D doesn't really compete in.
 

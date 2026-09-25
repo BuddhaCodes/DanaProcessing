@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleExecutable</key>
+    <string>DanaProcessing.Ide</string>
+    <key>CFBundleIconFile</key>
+    <string>dana.icns</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.buddhacodes.danaprocessing</string>
+    <key>CFBundleName</key>
+    <string>DanaProcessing</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+    <key>CFBundleVersion</key>
+    <string>__VERSION__</string>
+    <key>CFBundleShortVersionString</key>
+    <string>__VERSION__</string>
+    <key>NSHighResolutionCapable</key>
+    <true/>
+    <!-- Soft floor, not a precisely-verified hard cutoff: .NET 8's own
+         actively-supported/tested macOS versions (per Microsoft's own
+         release notes as of when this was written) are considerably newer
+         (14+), but that's a support-window commitment, not necessarily the
+         true minimum an app can technically run on. Worth revisiting if
+         real-world reports say otherwise. -->
+    <key>LSMinimumSystemVersion</key>
+    <string>12.0</string>
+</dict>
+</plist>

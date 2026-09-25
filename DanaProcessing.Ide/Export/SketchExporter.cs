@@ -144,18 +144,46 @@ namespace DanaProcessing.Ide.Export
             return null;
         }
 
+        /// <summary>The RID for whichever OS+architecture this copy of the IDE is
+        /// actually running on right now — the export always targets the machine
+        /// it's running on, never cross-targets. Null only for a genuinely
+        /// unrecognized OS/architecture combination, in which case the caller
+        /// falls back to the plain-copy export path instead of a single-file
+        /// publish.</summary>
         private static string? GetCurrentRid()
         {
-            if (!OperatingSystem.IsWindows())
-                return null; // this app only ships/runs on Windows today
-
-            return RuntimeInformation.ProcessArchitecture switch
+            if (OperatingSystem.IsWindows())
             {
-                Architecture.X64 => "win-x64",
-                Architecture.X86 => "win-x86",
-                Architecture.Arm64 => "win-arm64",
-                _ => null,
-            };
+                return RuntimeInformation.ProcessArchitecture switch
+                {
+                    Architecture.X64 => "win-x64",
+                    Architecture.X86 => "win-x86",
+                    Architecture.Arm64 => "win-arm64",
+                    _ => null,
+                };
+            }
+
+            if (OperatingSystem.IsMacOS())
+            {
+                return RuntimeInformation.ProcessArchitecture switch
+                {
+                    Architecture.X64 => "osx-x64",
+                    Architecture.Arm64 => "osx-arm64",
+                    _ => null,
+                };
+            }
+
+            if (OperatingSystem.IsLinux())
+            {
+                return RuntimeInformation.ProcessArchitecture switch
+                {
+                    Architecture.X64 => "linux-x64",
+                    Architecture.Arm64 => "linux-arm64",
+                    _ => null,
+                };
+            }
+
+            return null;
         }
 
         /// <summary>
@@ -286,10 +314,16 @@ namespace DanaProcessing.Ide.Export
             // right one wherever it ends up running; a real .NET publish for
             // a specific RID would already prune this automatically, but a
             // plain build never does. This was ~238MB of a ~299MB export in
-            // testing — by far the single biggest win available here, and
-            // this app only ever runs on Windows anyway (see the
-            // OperatingSystem.IsWindows() guards throughout Program.cs).
+            // testing — by far the single biggest win available here. Keep
+            // only the CURRENT platform's folders (matching GetCurrentRid's
+            // own OS checks) rather than hardcoding "win", since this copy-
+            // based fallback path now runs on whichever OS the IDE itself is
+            // running on.
             var isRuntimesFolder = Path.GetFileName(sourceDir).Equals("runtimes", StringComparison.OrdinalIgnoreCase);
+            var currentRuntimePrefix = OperatingSystem.IsWindows() ? "win"
+                : OperatingSystem.IsMacOS() ? "osx"
+                : OperatingSystem.IsLinux() ? "linux"
+                : null;
 
             foreach (var subDir in Directory.GetDirectories(sourceDir))
             {
@@ -297,7 +331,7 @@ namespace DanaProcessing.Ide.Export
 
                 if (SkipDirectoryNames.Contains(subDirName))
                     continue;
-                if (isRuntimesFolder && !subDirName.StartsWith("win", StringComparison.OrdinalIgnoreCase))
+                if (isRuntimesFolder && currentRuntimePrefix != null && !subDirName.StartsWith(currentRuntimePrefix, StringComparison.OrdinalIgnoreCase))
                     continue;
 
                 var destSubDir = Path.Combine(destDir, subDirName);
