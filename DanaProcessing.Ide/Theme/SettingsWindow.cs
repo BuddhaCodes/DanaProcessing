@@ -58,6 +58,12 @@ namespace DanaProcessing.Ide
             ("English", AppLanguage.English),
         };
 
+        private static readonly (string Label, string Value)[] AgentProviderOptions =
+        {
+            ("Anthropic (Claude)", "Anthropic"),
+            ("OpenAI", "OpenAI"),
+        };
+
         private static readonly (string Label, bool Value)[] AutoUpdateCheckOptions =
         {
             (Loc.Tr("Sí", "Yes"), true),
@@ -224,6 +230,44 @@ namespace DanaProcessing.Ide
                     settings.AutoCheckEnabled = v;
                     Updates.UpdateSettingsStore.Save(settings);
                 }));
+
+            root.Children.Add(SectionTitle(Loc.Tr("Asistente (Agent mode)", "Assistant (Agent mode)"), topMargin: 20));
+            root.Children.Add(new TextBlock
+            {
+                Text = Loc.Tr(
+                    "Un asistente de IA con acceso al sketch actual y a la referencia de la API -- necesita tu propia API key del proveedor que elijas (la IDE no paga ni incluye ninguna).",
+                    "An AI assistant with access to the current sketch and the API reference -- needs your own API key for whichever provider you pick (the IDE doesn't pay for or include one)."),
+                Foreground = ClayTheme.TextMuted,
+                FontFamily = ClayTheme.FontBody,
+                FontSize = 11.5,
+                TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+                Margin = new Thickness(0, 0, 0, 8),
+            });
+            // Saved immediately on change, same as the update-check setting
+            // above -- no live preview to apply-on-OK or revert-on-Cancel.
+            root.Children.Add(BuildComboRow(
+                Loc.Tr("Proveedor", "Provider"),
+                AgentProviderOptions,
+                () => Agent.AgentSettingsStore.Load().Provider,
+                v =>
+                {
+                    var settings = Agent.AgentSettingsStore.Load();
+                    settings.Provider = v;
+                    Agent.AgentSettingsStore.Save(settings);
+                }));
+            root.Children.Add(BuildAgentApiKeyRow());
+            root.Children.Add(BuildAgentModelRow());
+            root.Children.Add(new TextBlock
+            {
+                Text = Loc.Tr(
+                    "Tu API key se guarda en texto plano en %APPDATA%\\DanaProcessingIde\\agent-settings.json -- no la compartas ni la subas a ningún repositorio.",
+                    "Your API key is stored in plain text at %APPDATA%\\DanaProcessingIde\\agent-settings.json -- don't share it or upload it to any repository."),
+                Foreground = ClayTheme.Danger,
+                FontFamily = ClayTheme.FontBody,
+                FontSize = 11,
+                TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+                Margin = new Thickness(0, 4, 0, 0),
+            });
 
             root.Children.Add(BuildButtonRow());
 
@@ -392,6 +436,83 @@ namespace DanaProcessing.Ide
                 Spacing = 10,
                 Margin = new Thickness(0, 3),
                 Children = { labelBlock, combo }
+            };
+        }
+
+        private Control BuildAgentApiKeyRow()
+        {
+            var textBox = new TextBox
+            {
+                Text = Agent.AgentSettingsStore.Load().ApiKey ?? "",
+                PasswordChar = '•',
+                Width = 260,
+                FontFamily = ClayTheme.FontMono,
+                FontSize = 12.5,
+                VerticalContentAlignment = VerticalAlignment.Center,
+            };
+            // Save on every keystroke, like the color hex fields above --
+            // there's no "Guardar" step for this section (see the
+            // save-immediately remark on the update-check row).
+            textBox.TextChanged += (_, _) =>
+            {
+                var settings = Agent.AgentSettingsStore.Load();
+                settings.ApiKey = textBox.Text;
+                Agent.AgentSettingsStore.Save(settings);
+            };
+
+            var labelBlock = new TextBlock
+            {
+                Text = Loc.Tr("API key", "API key"),
+                Foreground = ClayTheme.TextSecondary,
+                FontFamily = ClayTheme.FontBody,
+                FontSize = 13,
+                VerticalAlignment = VerticalAlignment.Center,
+                Width = 230,
+            };
+
+            return new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                Spacing = 10,
+                Margin = new Thickness(0, 3),
+                Children = { labelBlock, textBox },
+            };
+        }
+
+        private Control BuildAgentModelRow()
+        {
+            var textBox = new TextBox
+            {
+                Text = Agent.AgentSettingsStore.Load().Model ?? "",
+                PlaceholderText = Loc.Tr("vacío = valor por defecto del proveedor", "blank = provider's own default"),
+                Width = 260,
+                FontFamily = ClayTheme.FontMono,
+                FontSize = 12.5,
+                VerticalContentAlignment = VerticalAlignment.Center,
+            };
+            textBox.TextChanged += (_, _) =>
+            {
+                var settings = Agent.AgentSettingsStore.Load();
+                settings.Model = string.IsNullOrWhiteSpace(textBox.Text) ? null : textBox.Text;
+                Agent.AgentSettingsStore.Save(settings);
+            };
+
+            var labelBlock = new TextBlock
+            {
+                Text = Loc.Tr("Modelo (opcional)", "Model (optional)"),
+                Foreground = ClayTheme.TextSecondary,
+                FontFamily = ClayTheme.FontBody,
+                FontSize = 13,
+                VerticalAlignment = VerticalAlignment.Center,
+                Width = 230,
+            };
+
+            return new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                Spacing = 10,
+                Margin = new Thickness(0, 3),
+                Children = { labelBlock, textBox },
             };
         }
 

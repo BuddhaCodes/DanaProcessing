@@ -50,6 +50,25 @@ namespace DanaProcessing.AvaloniaHost
         private Exception? _crashException = null;
         private string _crashContext = "";
 
+        /// <summary>Whether the loaded sketch has crashed (an unhandled
+        /// exception from Setup()/Draw()/an input handler) since it was last
+        /// loaded/run. Used by Agent mode's run_sketch tool to detect a
+        /// runtime failure, which a compile-time-only check (SketchCompiler's
+        /// CompileResult) can't see -- Setup()/Draw() only actually run on
+        /// the NEXT composited frame after Run(), asynchronously, so a tool
+        /// that just triggered Run needs to poll this for a short window
+        /// rather than read it immediately. Plain reads, no lock -- same
+        /// acceptable-benign-staleness precedent as MLColorField's
+        /// non-volatile _gridColors swap (a background-thread field another
+        /// thread reads without a lock, worst case one frame stale).</summary>
+        public bool HasCrashed => _crashed;
+
+        /// <summary>The exception RunSafely caught, if HasCrashed is true.</summary>
+        public Exception? LastCrashException => _crashException;
+
+        /// <summary>Which lifecycle method threw ("Setup"/"Draw"/etc.), if HasCrashed is true.</summary>
+        public string LastCrashContext => _crashContext;
+
         // --- Our own offscreen surface, sized in DIPs (matching what we pass
         // to _sketch.Size(...)) times SupersampleScale — recreated whenever
         // that size (or the scale) changes. This is what gives Sketch.Surface

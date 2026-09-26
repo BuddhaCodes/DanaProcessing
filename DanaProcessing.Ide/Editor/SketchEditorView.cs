@@ -602,6 +602,21 @@ namespace DanaProcessing.Ide.Editor
             _activeTab.Document.Text = PackageDirectiveParser.Apply(_activeTab.Document.Text, directives);
         }
 
+        /// <summary>Replaces the active tab's ENTIRE source with <paramref name="newSource"/> --
+        /// used by Agent mode's edit_sketch tool. Same direct-assign as
+        /// ApplyPackageDirectives above (fires the same TextChanged path a real
+        /// keystroke would: dirty flag, live diagnostics, all still work). A
+        /// no-op if there's no active tab -- the caller (AgentTools) checks
+        /// ActiveSourceText != null first and treats "no tab open" as its own
+        /// tool-result error rather than silently doing nothing.</summary>
+        public void ReplaceActiveSourceText(string newSource)
+        {
+            if (_activeTab is null)
+                return;
+
+            _activeTab.Document.Text = newSource;
+        }
+
         /// <summary>Clears the squiggles/banner/live-errors-tab for whatever was
         /// showing before — used when switching tabs (a new document's diagnostics
         /// haven't been computed yet) and when the last tab closes (nothing left to

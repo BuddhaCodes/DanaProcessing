@@ -25,6 +25,15 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The API reference (Sketch/PVector/etc. method docs), embedded so
+         Agent/ApiDocsIndex.cs can load it via Assembly.GetManifestResourceStream
+         regardless of the working directory a published exe runs from:
+         confirmed nothing in this project referenced index.html before this,
+         so it wasn't shipped/locatable at runtime at all until now. -->
+    <EmbeddedResource Include="..\index.html" LogicalName="DanaProcessing.Ide.index.html" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Avalonia.Desktop" Version="12.0.0" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="12.0.0" />
 	  <PackageReference Include="AvaloniaEdit.TextMate" Version="12.0.0" />

@@ -67,6 +67,13 @@ namespace DanaProcessing.Ide
         private readonly TextBlock _outputText;
         private readonly Border _outputPanel;
 
+        // Exposed for Agent mode (DanaProcessing.Ide.Agent.AgentTools), same
+        // assembly -- lets its tools reach the real editor/canvas/run-result
+        // instead of duplicating this window's own Run plumbing.
+        internal SketchEditorView EditorView => _editorView;
+        internal AvaloniaSketchCanvas Canvas => _canvas;
+        internal IReadOnlyList<string> LastCompileErrors { get; private set; } = Array.Empty<string>();
+
         // --- Panel de abajo: dos tabs en vez de un solo panel de errores de
         // Run. "Live" = diagnósticos de Roslyn mientras se escribe (los mismos
         // que ahora subrayan el editor, ver EditorDiagnosticsColorizer); "Run"
@@ -210,6 +217,23 @@ namespace DanaProcessing.Ide
             ToolTip.SetTip(settingsButton, Loc.Tr("Configuración", "Settings"));
             settingsButton.Click += (_, _) => new SettingsWindow().ShowDialog(this);
 
+            // Non-modal (.Show(), not .ShowDialog()) -- unlike Settings, the
+            // whole point of Agent mode is to stay open while you keep
+            // working in the editor.
+            var agentButton = new Button
+            {
+                Content = "✦",
+                Classes = { "clay-chrome" },
+                Width = 36,
+                Height = 36,
+                Padding = new Avalonia.Thickness(0),
+                FontSize = 17,
+                HorizontalContentAlignment = HorizontalAlignment.Center,
+                VerticalContentAlignment = VerticalAlignment.Center,
+            };
+            ToolTip.SetTip(agentButton, Loc.Tr("Asistente", "Assistant"));
+            agentButton.Click += (_, _) => new Agent.AgentWindow(this).Show();
+
             // El botón de "Samples" suelto salió de acá -- ahora vive como
             // una entrada más adentro del menú ☰ (junto con Nuevo/Abrir/
             // Guardar/Guardar como), en vez de competir por espacio propio
@@ -219,7 +243,7 @@ namespace DanaProcessing.Ide
             (_paneTogglePill, _codeToggleButton, _resultToggleButton) = BuildPaneToggle();
             UpdatePaneToggleVisuals();
 
-            var titleBarRoot = BuildTitleBar(_runButton, _hotReloadButton, settingsButton, fileMenuButton, _paneTogglePill);
+            var titleBarRoot = BuildTitleBar(_runButton, _hotReloadButton, settingsButton, agentButton, fileMenuButton, _paneTogglePill);
 
             _outputText = new TextBlock
             {
@@ -1000,7 +1024,7 @@ namespace DanaProcessing.Ide
             return menuButton;
         }
 
-        private Border BuildTitleBar(Button runButton, Button hotReloadButton, Button settingsButton, Button fileMenuButton, Border paneTogglePill)
+        private Border BuildTitleBar(Button runButton, Button hotReloadButton, Button settingsButton, Button agentButton, Button fileMenuButton, Border paneTogglePill)
         {
             var logoDot = new Ellipse
             {
@@ -1042,7 +1066,7 @@ namespace DanaProcessing.Ide
                 Orientation = Orientation.Horizontal,
                 Spacing = 8,
                 Margin = new Avalonia.Thickness(0, 0, 16, 0),
-                Children = { paneTogglePill, fileMenuButton, settingsButton, hotReloadButton, runButton, minButton, maxButton, closeButton }
+                Children = { paneTogglePill, fileMenuButton, settingsButton, agentButton, hotReloadButton, runButton, minButton, maxButton, closeButton }
             };
 
             var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
@@ -1255,7 +1279,10 @@ namespace DanaProcessing.Ide
             _updateBanner.IsVisible = true;
         }
 
-        private async Task RunCurrentSketchAsync()
+        // internal (was private) so Agent mode's run_sketch tool can trigger
+        // exactly the same Run a human pressing the button would -- no
+        // separate/duplicated compile-and-load path to keep in sync.
+        internal async Task RunCurrentSketchAsync()
         {
             if (_isRunning)
                 return;
@@ -1271,6 +1298,7 @@ namespace DanaProcessing.Ide
 
                 if (result.Success)
                 {
+                    LastCompileErrors = Array.Empty<string>();
                     _outputText.Text = "";
                     _runTabDot.Fill = ClayTheme.TextMuted;
                     RefreshBottomPanelVisibility();
@@ -1292,6 +1320,7 @@ namespace DanaProcessing.Ide
                 }
                 else
                 {
+                    LastCompileErrors = result.Errors;
                     _outputText.Text = string.Join(Environment.NewLine + Environment.NewLine, result.Errors);
                     _runTabDot.Fill = ClayTheme.Danger;
                     // Un fallo de Run es lo que el usuario vino a mirar -- llevarlo

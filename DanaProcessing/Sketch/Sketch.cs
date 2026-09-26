@@ -74,18 +74,33 @@ namespace DanaProcessing
         public void Loop() => IsLooping = true;
 
         /// <summary>
-        /// Halts the calling thread for ms milliseconds, like Processing's
-        /// delay() — https://processing.org/reference/delay_.html. Draw()
-        /// runs on whatever thread the host pumps its render loop on, so a
-        /// long Delay() here blocks that same thread/frame — exactly like
-        /// Processing blocking its own animation thread. NOT meant for
+        /// Skips redrawing for ms milliseconds, like Processing's delay() —
+        /// https://processing.org/reference/delay_.html. NOT meant for
         /// pacing smooth animation (use FrameRate() for that); it's meant
         /// for sketches that only need to redraw occasionally and want to
         /// spend the rest of the time idle instead of burning CPU on frames
         /// nobody will see change (a slow-updating clock, a sensor readout,
         /// a battery-friendly ambient display...).
+        ///
+        /// Deliberately NOT a real Thread.Sleep() (an earlier version of
+        /// this was, matching Processing's own "halts the calling thread"
+        /// wording literally) — Draw() runs on Avalonia's shared render/
+        /// compositor thread, which composites the ENTIRE window every
+        /// frame, not just this sketch. Actually blocking that thread for
+        /// e.g. a full second stalled repainting for the whole IDE (menus,
+        /// the text editor, everything), not just the sketch, which is a
+        /// real reported bug, not a theoretical one. Instead, Delay() just
+        /// records when it's safe to draw again; RenderFrame() checks that
+        /// and skips calling Draw() (a near-instant no-op) until it's
+        /// elapsed, letting the render thread keep servicing the rest of
+        /// the window in the meantime. The host's offscreen surface persists
+        /// across frames, so a skipped frame simply leaves the previous
+        /// frame's pixels on screen — exactly the "don't redraw" effect this
+        /// is for, without ever holding a thread hostage.
         /// </summary>
-        public void Delay(int ms) => System.Threading.Thread.Sleep(Math.Max(0, ms));
+        public void Delay(int ms) => _skipDrawUntilTicks = Environment.TickCount64 + Math.Max(0, ms);
+
+        private long _skipDrawUntilTicks;
 
         /// <summary>
         /// Runs a no-argument method of this sketch on a background thread
@@ -168,6 +183,12 @@ namespace DanaProcessing
         /// </summary>
         internal void RenderFrame()
         {
+            // See Delay()'s own remarks -- skipping the frame entirely (not
+            // blocking here) is what keeps a long Delay() from stalling the
+            // shared render/compositor thread for the whole IDE.
+            if (Environment.TickCount64 < _skipDrawUntilTicks)
+                return;
+
             FrameCount++;
 
             if (Renderer != RendererKind.Renderer3D)

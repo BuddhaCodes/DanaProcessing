@@ -204,10 +204,22 @@ namespace DanaProcessing.Ide.Editor
                 HotReloadFlapper),
 
             new SketchSample(
+                Loc.Tr("ML.NET paso a paso: regresión lineal en vivo", "ML.NET step by step: live linear regression"),
+                Loc.Tr("El ejemplo de ML.NET más simple posible, pensado para VER el aprendizaje, no solo el resultado: una línea recta se reentrena un poquito más cada frame (un paso de descenso de gradiente a la vez) sobre los puntos que clickeás, y el cartel de arriba muestra la iteración y el error (MSE) bajando en vivo. R reinicia con puntos al azar.",
+                       "The simplest possible ML.NET example, built to SHOW the learning instead of just the result: a straight line retrains a little more every frame (one gradient-descent step at a time) against the points you click, with the iteration count and error (MSE) visibly dropping frame by frame. R restarts with random points."),
+                SimpleLinearRegression),
+
+            new SketchSample(
                 Loc.Tr("Campo de color con ML.NET: aprendizaje en vivo", "ML.NET color field: live learning"),
                 Loc.Tr("Un `// nuget: Microsoft.ML` de verdad -- cada click deja una semilla de color, y un modelo de regresión (entrenado ahí mismo, sin archivo ni descarga) aprende a pintar un campo generativo que se reacomoda alrededor de tus clicks. El entrenamiento corre en un hilo aparte con un aviso de \"Training...\" visible, nunca traba el dibujo.",
                        "A real `// nuget: Microsoft.ML` sketch -- every click drops a color seed, and a regression model (trained right there, no file or download involved) learns to paint a generative field that reshapes around your clicks. Training runs on a background thread with a visible \"Training...\" notice, never blocking the drawing."),
                 MLColorField),
+
+            new SketchSample(
+                Loc.Tr("Flappy autoaprendiz: ML.NET juega solo", "Self-learning flappy: ML.NET plays itself"),
+                Loc.Tr("ML.NET no trae reinforcement learning de fábrica, así que este ejemplo lo arma con lo que SÍ tiene: cada tanto, 60 intentos simulados (con algo de ruido) corren en un hilo aparte; los mejores le enseñan a un clasificador cuándo aletear, y ese modelo se vuelve el nuevo campeón SOLO si de verdad juega mejor que el anterior. El pájaro que ves jugando en pantalla siempre usa al campeón vigente -- mirá cómo el puntaje mejora generación tras generación, sin que vos toques nada.",
+                       "ML.NET has no reinforcement learning built in, so this example builds one out of what it DOES have: every so often, 60 simulated attempts (with a bit of noise) run on a background thread; the best ones teach a classifier when to flap, and that model becomes the new champion ONLY if it genuinely plays better than the last one. The bird playing on screen always uses the current champion -- watch the score climb generation after generation, without you touching anything."),
+                SelfPlayingFlapper),
 
             new SketchSample(
                 Loc.Tr("200.000 partículas en la GPU: ruido curl", "200,000 GPU particles: curl noise"),
@@ -2962,6 +2974,200 @@ public class MySketch : Sketch
 }
 ";
 
+        private const string SimpleLinearRegression =
+@"// nuget: Microsoft.ML, 4.0.2
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using Microsoft.ML;
+using Microsoft.ML.Trainers;
+
+// The simplest possible ML.NET example, built to make the LEARNING itself
+// visible instead of just showing a finished result: a straight line fit
+// to the points you click, redrawn a little closer to the data every
+// single frame while an on-screen counter and error number climb/drop in
+// real time.
+//
+// The trick that makes step-by-step progress visible without writing a
+// custom training loop: OnlineGradientDescentTrainer's NumberOfIterations
+// is literally ""how many passes over the data to run"" -- so refitting
+// from scratch every frame with NumberOfIterations = the current frame's
+// iteration count reproduces the exact same weight/bias trajectory real
+// online gradient descent would take if it ran one step per frame live.
+// It repeats earlier work every frame (not the fastest way to train), but
+// for a handful of points and a couple hundred iterations that's still
+// well under a millisecond, and it keeps this sketch's own code as simple
+// as ""ask for N iterations, read out the line, draw it.""
+public class MySketch : Sketch
+{
+    private const int MaxIterations = 150;
+    private const float PlotLeft = 44, PlotRight = 20, PlotTop = 20, PlotBottom = 40;
+
+    // Draw() runs on the render thread while MouseClicked()/KeyPressed()
+    // run on the UI thread (see AvaloniaSketchCanvas -- OnKeyDown/
+    // OnPointerPressed call straight into the sketch synchronously, from a
+    // different thread than PaintSketch's RenderFrame()). _xs/_ys get
+    // mutated from the UI thread (a click, or R clearing+reseeding) while
+    // Draw() reads them on the render thread to train -- without a lock,
+    // List<T>'s enumerator throws InvalidOperationException the instant a
+    // Clear()/Add() lands mid-enumeration, which is exactly what
+    // LoadFromEnumerable's internal parallel cursoring surfaced as a deep
+    // ML.NET ""Splitter/consolidator worker"" exception. Every read AND
+    // write of _xs/_ys goes through _dataLock so that can't happen; Draw()
+    // takes one snapshot copy per frame and works from that everywhere
+    // else in the method, rather than touching the live lists directly.
+    private readonly object _dataLock = new object();
+    private readonly List<float> _xs = new List<float>();
+    private readonly List<float> _ys = new List<float>();
+    private readonly MLContext _ml = new MLContext(seed: 1);
+
+    private int _iteration;
+    private float _weight;
+    private float _bias;
+    private float _mse;
+    private bool _trained;
+
+    public override void Setup()
+    {
+        Size(700, 480);
+        SeedRandomPoints();
+    }
+
+    public override void Draw()
+    {
+        Background(18, 20, 26);
+
+        Stroke(70);
+        StrokeWeight(1);
+        Line(PlotLeft, Height - PlotBottom, Width - PlotRight, Height - PlotBottom);
+        Line(PlotLeft, PlotTop, PlotLeft, Height - PlotBottom);
+
+        float[] xs, ys;
+        lock (_dataLock)
+        {
+            xs = _xs.ToArray();
+            ys = _ys.ToArray();
+        }
+
+        // One more gradient-descent step per frame, up to MaxIterations --
+        // this line is the entire ""watch it learn"" mechanic.
+        if (_iteration < MaxIterations && xs.Length >= 2)
+        {
+            _iteration++;
+            Train(xs, ys, _iteration);
+        }
+
+        NoStroke();
+        Fill(120, 200, 255);
+        for (int i = 0; i < xs.Length; i++)
+            Circle(ToScreenX(xs[i]), ToScreenY(ys[i]), 8);
+
+        if (_trained)
+        {
+            Stroke(255, 160, 90);
+            StrokeWeight(3);
+            Line(ToScreenX(0f), ToScreenY(_bias), ToScreenX(1f), ToScreenY(_weight + _bias));
+        }
+
+        Fill(255);
+        NoStroke();
+        TextSize(14);
+        string status = xs.Length < 2
+            ? ""Click para agregar al menos 2 puntos...""
+            : $""Iteración {_iteration}/{MaxIterations} -- y = {_weight:F2}x + {_bias:F2}"";
+        Text(status, PlotLeft, 16);
+        if (_trained)
+            Text($""Error (MSE): {_mse:F4}"", PlotLeft, 36);
+
+        TextSize(12);
+        Text(""Click agrega un punto y reentrena desde cero -- R reinicia con puntos al azar."", PlotLeft, Height - 12);
+    }
+
+    public override void MouseClicked()
+    {
+        if (MouseY > Height - PlotBottom || MouseX < PlotLeft) return;
+        lock (_dataLock)
+        {
+            _xs.Add(ToDataX(MouseX));
+            _ys.Add(ToDataY(MouseY));
+        }
+        _iteration = 0; // watch it learn again from scratch, now with this point included
+    }
+
+    public override void KeyPressed()
+    {
+        if (Key == 'r' || Key == 'R')
+            SeedRandomPoints();
+    }
+
+    private void SeedRandomPoints()
+    {
+        float trueSlope = Random(-1.2f, 1.2f);
+        float trueIntercept = Random(0.2f, 0.8f);
+        lock (_dataLock)
+        {
+            _xs.Clear();
+            _ys.Clear();
+            for (int i = 0; i < 12; i++)
+            {
+                float x = Random(0f, 1f);
+                float y = Constrain(trueSlope * x + trueIntercept + Random(-0.1f, 0.1f), 0f, 1f);
+                _xs.Add(x);
+                _ys.Add(y);
+            }
+        }
+        _iteration = 0;
+        _trained = false;
+    }
+
+    private void Train(float[] xs, float[] ys, int iterations)
+    {
+        var rows = Enumerable.Range(0, xs.Length).Select(i => new PointSample { X = xs[i], Label = ys[i] });
+        var data = _ml.Data.LoadFromEnumerable(rows);
+
+        var pipeline = _ml.Transforms.Concatenate(""Features"", nameof(PointSample.X))
+            .Append(_ml.Regression.Trainers.OnlineGradientDescent(new OnlineGradientDescentTrainer.Options
+            {
+                LabelColumnName = ""Label"",
+                FeatureColumnName = ""Features"",
+                NumberOfIterations = iterations,
+                LearningRate = 0.5f,
+                Shuffle = false,
+            }));
+
+        var model = pipeline.Fit(data);
+        var linear = model.LastTransformer.Model;
+        _weight = linear.Weights[0];
+        _bias = linear.Bias;
+
+        // Mean squared error against the same points -- a real number that
+        // visibly trends toward zero as _iteration climbs, exactly like a
+        // real training-loss curve.
+        float sumSq = 0f;
+        for (int i = 0; i < xs.Length; i++)
+        {
+            float pred = _weight * xs[i] + _bias;
+            float err = pred - ys[i];
+            sumSq += err * err;
+        }
+        _mse = sumSq / xs.Length;
+        _trained = true;
+    }
+
+    private float ToScreenX(float x) => PlotLeft + x * (Width - PlotLeft - PlotRight);
+    private float ToScreenY(float y) => (Height - PlotBottom) - y * (Height - PlotBottom - PlotTop);
+    private float ToDataX(float screenX) => (screenX - PlotLeft) / (Width - PlotLeft - PlotRight);
+    private float ToDataY(float screenY) => ((Height - PlotBottom) - screenY) / (Height - PlotBottom - PlotTop);
+
+    private class PointSample
+    {
+        public float X;
+        public float Label;
+    }
+}
+";
+
         private const string MLColorField =
 @"// nuget: Microsoft.ML, 4.0.2
 
@@ -3173,6 +3379,430 @@ public class MySketch : Sketch
     {
         [ColumnName(""Score"")]
         public float Score;
+    }
+}
+";
+
+        private const string SelfPlayingFlapper =
+@"// nuget: Microsoft.ML, 4.0.2
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using Microsoft.ML;
+using Microsoft.ML.Data;
+using Microsoft.ML.Trainers;
+
+// ML.NET has no reinforcement-learning trainer -- no Q-learning, no policy
+// gradients, nothing that natively ""plays a game and learns from reward"".
+// What it DOES have is ordinary binary classification, which is enough to
+// build a real (if simple) self-play loop out of, using a classic technique
+// called the cross-entropy method:
+//   1. Simulate a POPULATION of attempts (headless, no rendering) using the
+//      current CHAMPION policy plus a bit of per-episode noise (see
+//      SimulateEpisode()'s own remark for why per-EPISODE, not per-frame).
+//   2. Keep the ELITE (the best-performing attempts).
+//   3. Train a classifier to imitate ""what the elite did"" -- state in,
+//      flap-or-not out.
+//   4. Evaluate that freshly-trained CANDIDATE cleanly (no noise). Only
+//      promote it to champion if it's actually at least as good as the
+//      current one -- see TrainForever()'s own remark on why blindly
+//      trusting every fresh fit collapses the whole thing.
+// Each round is one ""generation"".
+//
+// This runs on a background thread (TrainForever(), started once from
+// Setup()) so it never blocks Draw() -- the bird you see playing always
+// uses whichever champion has been proven best so far, picked up via a
+// single reference swap (_championModel), the same safe pattern the
+// ""Campo de color"" ML.NET sample already uses for its own background
+// training. Training is capped at MaxGenerations: a self-play loop with no
+// stopping point would keep a background thread spinning forever even
+// after you switch to a different sample (there's no engine hook yet for
+// ""this sketch was replaced, stop your threads"") -- capping generations
+// is what keeps this sample's CPU cost bounded and predictable instead of
+// silently running forever in the background.
+public class MySketch : Sketch
+{
+    private const float Gravity = 1400f;
+    private const float FlapStrength = 480f;
+    private const float PipeSpeed = 220f;
+    private const float PipeGap = 190f;
+    private const float PipeSpacing = 260f;
+    private const float PlayerRadius = 16f;
+    private const float PipeWidth = 60f;
+    private const float CanvasWidth = 480f;
+    private const float CanvasHeight = 640f;
+    private const float PlayerX = CanvasWidth * 0.3f;
+    private const float SimDt = 1f / 60f; // fixed timestep -- headless training and the displayed bird must experience IDENTICAL physics, so this isn't measured via Millis() like a normal game loop would
+    private const float Lookahead = 0.35f; // seconds -- see ComputeFeatures()'s F5 remark
+
+    private const int MaxSimFrames = 1800;   // a 30-second-equivalent cap per simulated attempt, so a great run can't loop forever
+    private const int PopulationSize = 60;
+    private const int EliteCount = 15;
+    private const int MaxGenerations = 35;
+    private const int EvalRuns = 8;          // clean (no-noise) episodes used to score a candidate before trusting it
+    private const int PauseBetweenGenerationsMs = 1200; // see TrainForever()'s own remark -- pacing, not busywork
+
+    // ---- displayed game state -- Draw()/render thread only ----
+    private float _playerY;
+    private float _playerVelocity;
+    private readonly List<float> _pipeX = new List<float>();
+    private readonly List<float> _pipeGapCenterY = new List<float>();
+    private readonly List<bool> _pipeScored = new List<bool>();
+    private int _displayScore;
+    private int _displayBest;
+    private readonly MLContext _displayMl = new MLContext(seed: 2); // separate MLContext than training's -- see remark on _ml below
+    private PredictionEngine<BirdState, FlapPrediction> _displayEngine;
+    private ITransformer _displayEngineBuiltFor;
+
+    // ---- training state -- TrainForever()/background thread only, except
+    // _championModel and the volatile fields below, which Draw() reads ----
+    private readonly MLContext _ml = new MLContext(seed: 1);
+    // TWO separate MLContext instances, not one shared between threads --
+    // deliberately sidesteps ever needing to know whether concurrently
+    // calling one MLContext's LoadFromEnumerable()/Fit() (background
+    // thread) and CreatePredictionEngine() (render thread) is actually
+    // safe. An ITransformer (a fitted model) is happily usable from any
+    // MLContext, so this costs nothing.
+    private readonly Random _trainRand = new Random();
+    private readonly Random _evalRand = new Random();
+    // The background thread's OWN random generators -- never Sketch's own
+    // Random()/_rand, which Draw() uses on a different thread. Sharing one
+    // System.Random across threads is exactly the bug the ""ML.NET paso a
+    // paso"" sample hit with its List<float> fields (see its own remarks) --
+    // applying that lesson here before it becomes a repeat bug.
+    private ITransformer _championModel; // plain reference swap when a generation promotes a new champion -- both threads only ever read or replace the whole reference, never mutate through it
+
+    private volatile int _generation;
+    private double _championScore = -1; // not volatile -- double can't be (a C# language restriction); Draw() only ever reads this for display, a one-frame-stale value is harmless
+    private volatile bool _trainingDone;
+
+    public override void Setup()
+    {
+        Size((int)CanvasWidth, (int)CanvasHeight);
+        _playerY = CanvasHeight / 2f;
+        Thread(nameof(TrainForever));
+    }
+
+    public override void Draw()
+    {
+        Background(20, 24, 34);
+
+        if (_championModel != null && !ReferenceEquals(_championModel, _displayEngineBuiltFor))
+        {
+            _displayEngine?.Dispose();
+            _displayEngine = _displayMl.Model.CreatePredictionEngine<BirdState, FlapPrediction>(_championModel);
+            _displayEngineBuiltFor = _championModel;
+        }
+
+        StepDisplayBird();
+
+        NoStroke();
+        Fill(90, 200, 140);
+        for (int i = 0; i < _pipeX.Count; i++)
+        {
+            Rect(_pipeX[i], 0, PipeWidth, _pipeGapCenterY[i] - PipeGap / 2f);
+            Rect(_pipeX[i], _pipeGapCenterY[i] + PipeGap / 2f, PipeWidth, CanvasHeight - (_pipeGapCenterY[i] + PipeGap / 2f));
+        }
+
+        Fill(255, 200, 90);
+        Circle(PlayerX, _playerY, PlayerRadius * 2);
+
+        Fill(255);
+        TextSize(24);
+        Text(_displayScore.ToString(), Width / 2f - 8, 36);
+        TextSize(13);
+        string genLabel = _trainingDone
+            ? $""Entrenamiento terminado ({MaxGenerations} generaciones)""
+            : $""Generación {_generation}/{MaxGenerations} -- entrenando en 2do plano..."";
+        Text(genLabel, 12, Height - 60);
+        Text($""Mejor logrado en el entrenamiento: {_championScore:F1} tubos (promedio limpio)"", 12, Height - 40);
+        Text($""Esta partida: {_displayScore} (mejor de esta partida: {_displayBest})"", 12, Height - 20);
+    }
+
+    private void StepDisplayBird()
+    {
+        var state = ComputeFeatures(_pipeX, _pipeGapCenterY, _playerY, _playerVelocity);
+
+        // Deliberately dumb (random, ignores the pipe entirely) while
+        // waiting for the very first generation to finish -- purely
+        // cosmetic, so the very first thing you SEE is obviously
+        // unskilled, setting up a real before/after. The background
+        // trainer's OWN bootstrap (SimulateEpisode()'s engine==null
+        // branch, below) stays the smarter F4-based heuristic -- that one
+        // actually needs to correlate with the right answer, or the
+        // classifier has nothing true to imitate and never learns
+        // anything at all (confirmed the hard way: a from-scratch random
+        // bootstrap here never got past a 0.0 average, generation after
+        // generation -- there has to be SOME real signal to refine).
+        bool flap = _displayEngine != null
+            ? _displayEngine.Predict(state).PredictedLabel
+            : Random(0f, 1f) < 0.1f;
+
+        bool dead = StepPhysics(_pipeX, _pipeGapCenterY, _pipeScored, ref _playerY, ref _playerVelocity, flap,
+            (min, max) => Random(min, max), ref _displayScore);
+
+        if (dead)
+        {
+            _displayBest = Max(_displayBest, _displayScore);
+            _playerY = CanvasHeight / 2f;
+            _playerVelocity = 0f;
+            _pipeX.Clear();
+            _pipeGapCenterY.Clear();
+            _pipeScored.Clear();
+            _displayScore = 0;
+        }
+    }
+
+    // No parameters -- exactly what Thread() looks for via reflection.
+    private void TrainForever()
+    {
+        for (int generation = 0; generation < MaxGenerations; generation++)
+        {
+            var championSnapshot = _championModel;
+            using var engine = championSnapshot != null ? _ml.Model.CreatePredictionEngine<BirdState, FlapPrediction>(championSnapshot) : null;
+
+            // Exploration starts noticeable and decays -- see
+            // SimulateEpisode()'s own remark for why this is a single
+            // per-EPISODE bias, not independent per-frame noise.
+            float exploration = Max(0.02f, 0.15f - generation * 0.005f);
+
+            var episodes = new List<(int pipes, int frames, List<(BirdState state, bool action)> traj)>();
+            for (int p = 0; p < PopulationSize; p++)
+                episodes.Add(SimulateEpisode(engine, exploration, _trainRand));
+
+            // Fitness = pipes cleared first, frames survived as the
+            // fine-grained tiebreaker -- pipes-cleared alone is almost
+            // always zero for a weak policy, which gives the elite
+            // selection nothing to differentiate on; frames survived gives
+            // a real, graded signal even before the first pipe ever clears.
+            episodes.Sort((a, b) => (b.pipes * 1_000_000 + b.frames).CompareTo(a.pipes * 1_000_000 + a.frames));
+            var elite = episodes.Take(EliteCount);
+
+            // Only frames where a pipe is meaningfully close (F3 < 0.6,
+            // i.e. within 60% of a canvas-width ahead) -- most of a
+            // trajectory is open-space ""nothing to decide"" filler that
+            // dilutes the actually decision-critical navigation frames.
+            var allRows = elite.SelectMany(e => e.traj.Where(t => t.state.F3 < 0.6f).Select(t => new BirdState
+            {
+                F1 = t.state.F1,
+                F2 = t.state.F2,
+                F3 = t.state.F3,
+                F4 = t.state.F4,
+                F5 = t.state.F5,
+                Label = t.action,
+            })).ToList();
+
+            // Flap is a rare action (a handful of frames out of hundreds) --
+            // an unweighted classifier trivially ""wins"" by always
+            // predicting false. Balance by oversampling the minority
+            // (flap=true) class up to roughly match the majority.
+            var trueRows = allRows.Where(r => r.Label).ToList();
+            var falseRows = allRows.Where(r => !r.Label).ToList();
+            var rows = new List<BirdState>(falseRows);
+            for (int i = 0; trueRows.Count > 0 && rows.Count < falseRows.Count * 2; i++)
+                rows.Add(trueRows[i % trueRows.Count]);
+
+            var data = _ml.Data.LoadFromEnumerable(rows);
+            var pipeline = _ml.Transforms.Concatenate(""Features"", nameof(BirdState.F1), nameof(BirdState.F2), nameof(BirdState.F3), nameof(BirdState.F4), nameof(BirdState.F5))
+                .Append(_ml.BinaryClassification.Trainers.SdcaLogisticRegression(new SdcaLogisticRegressionBinaryTrainer.Options
+                {
+                    LabelColumnName = ""Label"",
+                    FeatureColumnName = ""Features"",
+                    MaximumNumberOfIterations = 50,
+                }));
+
+            var candidateModel = pipeline.Fit(data);
+
+            // Elitism: only ADOPT the freshly-fit model if it genuinely
+            // evaluates at least as well as the current champion, cleanly
+            // (zero noise). Pure ""always take the newest fit"" collapsed
+            // hard after just a few generations in testing -- a single bad
+            // Fit() (SDCA's own optimizer has real run-to-run variance) got
+            // entrenched forever, since every later generation then trained
+            // on THAT bad model's own degraded behavior with nothing to
+            // correct it. Keeping the best-known model as the thing future
+            // generations explore AROUND (instead of blindly trusting
+            // whatever was just fit) is standard practice in evolutionary
+            // methods for exactly this reason.
+            using var candidateEngine = _ml.Model.CreatePredictionEngine<BirdState, FlapPrediction>(candidateModel);
+            double candidateScore = 0;
+            for (int e = 0; e < EvalRuns; e++)
+                candidateScore += SimulateEpisode(candidateEngine, 0f, _evalRand).pipes;
+            candidateScore /= EvalRuns;
+
+            if (candidateScore >= _championScore)
+            {
+                _championModel = candidateModel;
+                _championScore = candidateScore;
+            }
+
+            _generation = generation + 1;
+
+            // A deliberate pause, not busywork left in by accident. Two
+            // real problems this fixes at once, confirmed by actually
+            // profiling this sample earlier (not guessed at): (1) the
+            // 60-episode simulation above runs single-threaded and pegs
+            // one CPU core almost continuously without it, and (2) SDCA's
+            // own Fit() call periodically bursts across every core it can
+            // get -- together, a generation with no breathing room between
+            // it and the next made the whole IDE feel sluggish while this
+            // sample was open, not just this sketch's own drawing. Pausing
+            // here gives the render/UI threads real gaps to catch up in,
+            // and as a bonus makes each generation's result something you
+            // can actually watch land, one at a time, instead of the
+            // champion jumping through several generations' worth of
+            // improvement before you'd even had a chance to see the
+            // previous one play.
+            System.Threading.Thread.Sleep(PauseBetweenGenerationsMs);
+        }
+        _trainingDone = true;
+    }
+
+    // Headless -- no Sketch drawing calls, no shared Sketch.Random(). Safe
+    // to call from the background thread.
+    private (int pipes, int frames, List<(BirdState state, bool action)> traj) SimulateEpisode(PredictionEngine<BirdState, FlapPrediction> engine, float explorationScale, Random rand)
+    {
+        // Episode-level parameter noise instead of per-frame action flips.
+        // The first version of this sample flipped the flap decision
+        // independently each frame with small probability -- even at just
+        // 1%, that's roughly a 60% chance of at least one flip within a
+        // typical ~90-frame stretch (1-0.99^90), and flappy bird is fragile
+        // enough that a single mistimed flap near a gap is often fatal.
+        // Every population member ended up corrupted before reaching
+        // anything worth learning from, and training never improved past
+        // pure luck. A single consistent per-EPISODE bias explores ""what
+        // if the policy leaned a bit more eager/cautious"" instead, without
+        // randomly sabotaging individual frames -- this one change is what
+        // made training actually work.
+        float biasF4 = explorationScale > 0 ? (float)((rand.NextDouble() * 2 - 1) * explorationScale) : 0f;
+
+        float playerY = CanvasHeight / 2f;
+        float playerVelocity = 0f;
+        var pipeX = new List<float>();
+        var pipeGapCenterY = new List<float>();
+        var pipeScored = new List<bool>();
+        int score = 0;
+        var traj = new List<(BirdState, bool)>();
+        int frame = 0;
+
+        for (; frame < MaxSimFrames; frame++)
+        {
+            var state = ComputeFeatures(pipeX, pipeGapCenterY, playerY, playerVelocity);
+            var biasedState = new BirdState { F1 = state.F1, F2 = state.F2, F3 = state.F3, F4 = state.F4 + biasF4, F5 = state.F5 };
+
+            bool flap = engine != null ? engine.Predict(biasedState).PredictedLabel : biasedState.F4 < 0f;
+
+            traj.Add((state, flap)); // records the TRUE (unbiased) state alongside the actual action taken
+
+            bool dead = StepPhysics(pipeX, pipeGapCenterY, pipeScored, ref playerY, ref playerVelocity, flap,
+                (min, max) => min + (float)(rand.NextDouble() * (max - min)), ref score);
+
+            if (dead) { frame++; break; }
+        }
+
+        return (score, frame, traj);
+    }
+
+    // ---- shared physics, used verbatim by both SimulateEpisode() (headless,
+    // background thread) and StepDisplayBird() (Draw(), render thread) --
+    // the whole point of a self-play trainer is that the physics a policy
+    // was TRAINED against and the physics it's actually SHOWN playing under
+    // are identical. nextGapRandom is the one deliberate difference: each
+    // caller hands in whichever random generator belongs to its own thread. ----
+
+    private static bool StepPhysics(
+        List<float> pipeX, List<float> pipeGapCenterY, List<bool> pipeScored,
+        ref float playerY, ref float playerVelocity, bool flap,
+        Func<float, float, float> nextGapRandom, ref int score)
+    {
+        if (flap)
+            playerVelocity = -FlapStrength;
+        playerVelocity += Gravity * SimDt;
+        playerY += playerVelocity * SimDt;
+
+        bool dead = false;
+        for (int i = 0; i < pipeX.Count; i++)
+        {
+            pipeX[i] -= PipeSpeed * SimDt;
+
+            bool withinX = PlayerX + PlayerRadius > pipeX[i] && PlayerX - PlayerRadius < pipeX[i] + PipeWidth;
+            bool withinGap = playerY - PlayerRadius > pipeGapCenterY[i] - PipeGap / 2f
+                           && playerY + PlayerRadius < pipeGapCenterY[i] + PipeGap / 2f;
+            if (withinX && !withinGap)
+                dead = true;
+
+            if (!pipeScored[i] && pipeX[i] + PipeWidth < PlayerX)
+            {
+                pipeScored[i] = true;
+                score++;
+            }
+        }
+
+        if (pipeX.Count == 0 || pipeX[pipeX.Count - 1] < CanvasWidth - PipeSpacing)
+        {
+            pipeX.Add(CanvasWidth);
+            pipeGapCenterY.Add(nextGapRandom(PipeGap, CanvasHeight - PipeGap));
+            pipeScored.Add(false);
+        }
+
+        while (pipeX.Count > 0 && pipeX[0] < -PipeWidth)
+        {
+            pipeX.RemoveAt(0);
+            pipeGapCenterY.RemoveAt(0);
+            pipeScored.RemoveAt(0);
+        }
+
+        if (playerY - PlayerRadius < 0 || playerY + PlayerRadius > CanvasHeight)
+            dead = true;
+
+        return dead;
+    }
+
+    // Ballistic lookahead (F5): where will the bird be in `Lookahead`
+    // seconds if it does NOT flap again, given its current velocity?
+    // Positive means that projected position falls below the gap's bottom
+    // edge -- i.e. inaction leads to a collision. This folds the
+    // velocity/position INTERACTION a plain linear model can't discover on
+    // its own directly into one feature, alongside the simpler F4
+    // (instantaneous gap offset) the model also gets.
+    private static BirdState ComputeFeatures(List<float> pipeX, List<float> pipeGapCenterY, float playerY, float playerVelocity)
+    {
+        float nextPipeX = PlayerX + CanvasWidth;
+        float nextGapY = CanvasHeight / 2f;
+        for (int i = 0; i < pipeX.Count; i++)
+        {
+            if (pipeX[i] + PipeWidth >= PlayerX)
+            {
+                nextPipeX = pipeX[i];
+                nextGapY = pipeGapCenterY[i];
+                break;
+            }
+        }
+
+        float predictedY = playerY + playerVelocity * Lookahead + 0.5f * Gravity * Lookahead * Lookahead;
+        float gapBottom = nextGapY + PipeGap / 2f;
+
+        return new BirdState
+        {
+            F1 = playerY / CanvasHeight,
+            F2 = playerVelocity / 1000f,
+            F3 = (nextPipeX - PlayerX) / CanvasWidth,
+            F4 = (nextGapY - playerY) / CanvasHeight, // instantaneous: negative = gap is above the bird right now
+            F5 = (predictedY - gapBottom) / CanvasHeight, // projected: positive = inaction leads to a collision soon
+        };
+    }
+
+    private class BirdState
+    {
+        public float F1, F2, F3, F4, F5;
+        public bool Label;
+    }
+
+    private class FlapPrediction
+    {
+        [ColumnName(""PredictedLabel"")]
+        public bool PredictedLabel;
     }
 }
 ";
