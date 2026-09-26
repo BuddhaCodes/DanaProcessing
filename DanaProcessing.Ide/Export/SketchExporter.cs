@@ -17,8 +17,11 @@ namespace DanaProcessing.Ide.Export
     /// Packages a sketch as a standalone, double-clickable app, plus the sketch's
     /// source dropped in as a plain `sketch.cs` file next to the exe, plus any
     /// `// nuget:` packages the sketch declares, resolved once here and copied in
-    /// as .dll files. See ExportedSketchRunner for what the exe does differently
-    /// on startup when it finds that file sitting next to itself.
+    /// as .dll files. `windowless` additionally drops an empty `sketch.windowless`
+    /// marker file next to it -- "gadget mode": the exported app opens with no OS
+    /// title bar at all (see AvaloniaSketchWindow's own remark on how it's then
+    /// dragged/closed instead). See ExportedSketchRunner for what the exe does
+    /// differently on startup when it finds those files sitting next to itself.
     ///
     /// Two ways to get that standalone build, tried in order:
     ///
@@ -41,6 +44,7 @@ namespace DanaProcessing.Ide.Export
             string source,
             string destinationParentFolder,
             string sketchName,
+            bool windowless = false,
             IProgress<string>? progress = null,
             CancellationToken ct = default)
         {
@@ -115,6 +119,9 @@ namespace DanaProcessing.Ide.Export
 
                 progress?.Report(Loc.Tr("Escribiendo el sketch...", "Writing the sketch..."));
                 await File.WriteAllTextAsync(Path.Combine(exportFolder, ExportedSketchRunner.MarkerFileName), source, ct);
+
+                if (windowless)
+                    await File.WriteAllTextAsync(Path.Combine(exportFolder, ExportedSketchRunner.WindowlessMarkerFileName), "", ct);
             }
             catch (Exception ex)
             {

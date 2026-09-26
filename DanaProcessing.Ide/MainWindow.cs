@@ -1438,6 +1438,11 @@ namespace DanaProcessing.Ide
             if (string.IsNullOrWhiteSpace(source))
                 return;
 
+            var exportOptions = await ExportOptionsWindow.ShowAsync(this);
+            if (exportOptions is null)
+                return; // cancelled
+            var windowless = exportOptions.Value;
+
             var topLevel = TopLevel.GetTopLevel(this);
             if (topLevel?.StorageProvider is null)
                 return;
@@ -1468,7 +1473,7 @@ namespace DanaProcessing.Ide
                 var progress = new Progress<string>(message =>
                     _outputText.Text = string.IsNullOrEmpty(_outputText.Text) ? message : _outputText.Text + Environment.NewLine + message);
 
-                var result = await SketchExporter.ExportAsync(source, destinationFolder, sketchName, progress);
+                var result = await SketchExporter.ExportAsync(source, destinationFolder, sketchName, windowless, progress);
 
                 if (result.Success)
                 {

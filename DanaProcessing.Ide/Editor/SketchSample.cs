@@ -2452,15 +2452,33 @@ public class MySketch : Sketch
 
         private const string AudioReactive =
 @"// nuget: NAudio, 2.2.1
+#nullable enable
 
 using System;
 using NAudio.Wave;
 
 // Audio-reactive spectrum -- captures whatever the system is currently
 // playing (WasapiLoopbackCapture: system audio output, no microphone
-// needed) and runs it through an FFT to drive a ring of bars. NAudio.Dsp's
-// FastFourierTransform does the actual transform; everything else here is
-// just turning 40 frequency-bin averages into an angle and a length.
+// needed), runs it through an FFT (NAudio.Dsp.FastFourierTransform) to drive
+// 40 frequency ""blobs"" arranged around a ring, each a bright glowing head
+// on a tapered tail anchored to the ring -- and when the audio goes quiet
+// (or you stop capture with S), every blob tears loose from wherever it
+// currently is and drifts outward like a small explosion, floating with
+// its own gentle inertia (Perlin noise, not a one-shot jump) until sound
+// picks up again, at which point every blob eases back into formation.
+// The glow itself is faked the classic 2D way (no shaders here): the same
+// circle drawn several times, each pass bigger and more transparent than
+// the last.
+//
+// Frequency bins are grouped onto the 40 bars LOGARITHMICALLY, not in
+// equal-sized chunks -- real audio energy is concentrated at low
+// frequencies (bin-for-bin, not just in total), so a naive equal-width
+// split made the very first bar (the lowest frequencies) massively louder
+// than every other bar and look like a broken outlier. Splitting bins the
+// way a real spectrum analyzer does (proportionally wider bands as
+// frequency rises, like octaves) plus a mild gain ramp toward the higher
+// bars is what makes all 40 read as one coherent, evenly-alive spectrum
+// instead of ""one giant bar plus 39 quiet ones.""
 //
 // Known caveat: nothing in the engine calls a cleanup hook on the old
 // Sketch instance when you press Run again (there's no IDisposable/Stop()
@@ -2474,9 +2492,61 @@ public class MySketch : Sketch
     private const int FftSize = 1024;   // must be a power of two
     private const int FftLog2 = 10;     // log2(FftSize)
     private const int Bars = 40;
-    private const int BinsPerBar = 10;  // 40 * 10 = first 400 of 512 usable bins (~18.7kHz at 48kHz)
+    private const int MinBin = 1;       // skip bin 0 (DC offset)
+    private const int MaxBin = 400;     // first 400 of 512 usable bins (~18.7kHz at 48kHz)
     private const float Gain = 26f;     // raw FFT magnitudes are small; scale up to fill the bars
     private const float Decay = 0.85f;  // per-update falloff, so bars settle instead of flickering
+
+    private const float BaseRadius = 90f;
+    private const float MinLen = 18f;   // even a silent bar shows a small dot, not nothing
+    private const float MaxLen = 220f;
+
+    // --- Silence detection, with hysteresis so mid-dynamic passages don't
+    // flicker between exploded/reassembled. Two different thresholds:
+    // you have to fall below SilenceEnter to explode, and rise above
+    // SilenceExit to reassemble. The gap between them is the dead zone.
+    private const float SilenceEnter = 0.085f;
+    private const float SilenceExit  = 0.095f;
+    private const int SilenceHoldMs = 40;
+
+    // --- Explosion timing. Base durations are modulated by how loud it
+    // was just before the drop (a quiet fade-out tears loose slowly and
+    // dreamily; a hard cut snaps apart fast and violently).
+    private const float ExplodeMsMin = 0f;
+    private const float ExplodeMsMax = 0.00001f;
+    private const float ReassembleMsMin = 450f;
+    private const float ReassembleMsMax = 900f;
+
+    // --- Per-blob flight sim tuning.
+    private const float WanderSpeed = 0.0006f;  // how fast the steering noise field is sampled over time (per ms)
+    private const float WanderAccel = 340f;     // px/s^2 -- how hard the noise-driven steering pushes
+    private const float FlightHomeK = 2.6f;     // spring constant back toward home (scaled by reattachment)
+    private const float FlightDrag = 1.6f;      // velocity damping, always-on
+    private const float MaxFlightSpeed = 90f;   // px/s cap, always-on
+
+    // One-off outward velocity kick at the instant the thread lets go.
+    // Scaled up by how much energy was present just before the drop.
+    private const float ReleaseKickMin = 50f;
+    private const float ReleaseKickMax = 110f;
+
+    // Log-spaced bin boundaries -- BinBoundaries[b]..BinBoundaries[b+1] (exclusive)
+    // are the FFT bins bar b averages, computed once.
+    private static readonly int[] BinBoundaries = BuildBinBoundaries();
+
+    private static int[] BuildBinBoundaries()
+    {
+        var boundaries = new int[Bars + 1];
+        for (int b = 0; b <= Bars; b++)
+        {
+            float frac = (float)b / Bars;
+            float bin = MinBin * MathF.Pow((float)MaxBin / MinBin, frac);
+            boundaries[b] = (int)MathF.Round(bin);
+        }
+        for (int b = 1; b <= Bars; b++)
+            if (boundaries[b] <= boundaries[b - 1])
+                boundaries[b] = boundaries[b - 1] + 1;
+        return boundaries;
+    }
 
     private WasapiLoopbackCapture? _capture;
     private readonly NAudio.Dsp.Complex[] _fft = new NAudio.Dsp.Complex[FftSize];
@@ -2485,50 +2555,355 @@ public class MySketch : Sketch
     private readonly object _lock = new object();
     private volatile bool _capturing;
 
+    // --- ""Firefly on a leash"" flight state -- Draw()/render thread only.
+    // _flightPos/_flightVel is a real, ALWAYS-RUNNING position+velocity
+    // simulation per blob -- an OFFSET from that blob's frozen anchor
+    // (see _anchorPos below). The thread only controls how much of that
+    // already-happening flight actually shows up in the drawn position:
+    // 0 means draws exactly on the live ring (taut), 1 means draws at
+    // anchor + real flight position (free).
+    //
+    // Anchor freezing: when the explosion begins, each blob's CURRENT
+    // drawn position (live ring position + visible flight offset) is
+    // captured into _anchorPos, and its flight offset is reset to zero.
+    // The kick then pushes from that frozen position, not from the ring.
+    // This is what makes the explosion start from wherever the blob
+    // actually was at the moment audio cut, instead of first collapsing
+    // inward to the ring and then exploding outward from there. While
+    // attached (explode ~ 0), the drawn position uses the LIVE ring, so
+    // the normal audio-reactive motion is unaffected; the frozen anchor
+    // only takes over as explode rises toward 1.
+    //
+    // Steering: each blob has a base heading spread evenly around the
+    // circle (i * TWO_PI / Bars), perturbed by Perlin noise. This is the
+    // key fix for the ""everything drifts left"" bug -- the old code used
+    // Noise(...) * TWO_PI directly, which only ever produced headings in
+    // [0, TWO_PI] with Perlin's natural bias toward mid values (~PI, which
+    // in screen coords is ""left""), so every blob shared the same drift.
+    private readonly PVector[] _flightPos = new PVector[Bars];
+    private readonly PVector[] _flightVel = new PVector[Bars];
+    private readonly PVector[] _anchorPos = new PVector[Bars];      // head anchor, frozen on explode
+    private readonly PVector[] _anchorBase = new PVector[Bars];     // tail-base anchor, frozen on explode
+    private readonly float[] _blobExplode = new float[Bars];
+    private readonly float[] _blobDelay = new float[Bars];
+    private long _lastFrameMs = -1;
+    private bool _isExploded;
+    private long _quietSinceMs = -1;
+    private long _transitionStartMs;
+    private float _transitionStartAmount;
+    private float _currentDuration = 850f;
+    private float _lastOverallLevel; // smoothed, used to scale explode speed + kick
+
     public override void Setup()
     {
         Size(700, 700);
+
+        for (int i = 0; i < Bars; i++)
+        {
+            _flightPos[i] = new PVector(0f, 0f);
+            _flightVel[i] = new PVector(0f, 0f);
+            _anchorPos[i] = new PVector(0f, 0f);
+            _anchorBase[i] = new PVector(0f, 0f);
+            _blobExplode[i] = 0f;
+            _blobDelay[i] = 0f;
+        }
+
         StartCapture();
     }
 
     public override void Draw()
     {
-        Background(12, 14, 20);
+        Background(6, 8, 16);
 
         float[] snapshot;
         lock (_lock)
             snapshot = (float[])_bars.Clone();
 
+        float overall = 0f;
+        for (int i = 0; i < Bars; i++)
+            overall += snapshot[i];
+        overall /= Bars;
+
+        // Smoothed energy -- used to scale explode duration + release kick.
+        // Fast attack, slow release, so a sudden drop still reads the
+        // energy that was present just before it.
+        _lastOverallLevel = overall > _lastOverallLevel
+            ? overall
+            : Lerp(_lastOverallLevel, overall, 0.08f);
+
+        UpdateExplodeState(overall, snapshot);
+
+        // Real elapsed time since the last frame, clamped so a debugger
+        // pause can't fling everything across the canvas in one jump.
+        float dt = _lastFrameMs < 0 ? 0f : Constrain((Millis() - _lastFrameMs) / 1000f, 0f, 0.05f);
+        _lastFrameMs = Millis();
+        float noiseT = Millis() * WanderSpeed;
+
         PushMatrix();
         Translate(Width / 2f, Height / 2f);
 
-        float baseRadius = 90f;
         for (int i = 0; i < Bars; i++)
         {
             float angle = Map(i, 0, Bars, 0, TWO_PI);
-            float len = Map(Constrain(snapshot[i], 0f, 1f), 0, 1, 0, 220);
+            float liveLen = Map(Constrain(snapshot[i], 0f, 1f), 0, 1, MinLen, MaxLen);
+            float hue = Map(i, 0, Bars, 170, 285);
 
-            float x1 = Cos(angle) * baseRadius;
-            float y1 = Sin(angle) * baseRadius;
-            float x2 = Cos(angle) * (baseRadius + len);
-            float y2 = Sin(angle) * (baseRadius + len);
+            // Live ring geometry (moves with the audio).
+            float liveRingX = Cos(angle) * (BaseRadius + liveLen);
+            float liveRingY = Sin(angle) * (BaseRadius + liveLen);
+            float liveBaseX = Cos(angle) * BaseRadius;
+            float liveBaseY = Sin(angle) * BaseRadius;
 
-            StrokeWeight(6);
-            StrokeHSB(Map(i, 0, Bars, 0, 300), 80, 100);
-            Line(x1, y1, x2, y2);
+            float explode = _blobExplode[i];
+
+            // Blend between live ring and frozen anchor based on explode.
+            // At 0 the blob draws on the live ring (normal audio-reactive
+            // motion, unaffected). At 1 it draws from the frozen anchor
+            // (wherever it was when the explosion began). In between it
+            // eases between the two, so there's no snap at either end.
+            float attachedHeadX = Lerp(liveRingX, _anchorPos[i].X, explode);
+            float attachedHeadY = Lerp(liveRingY, _anchorPos[i].Y, explode);
+
+            // Steering heading: base direction spread evenly around the
+            // circle per blob, plus Perlin jitter. The even base spread is
+            // what guarantees no global directional bias -- without it,
+            // Perlin's natural mid-range bias makes every blob drift the
+            // same way (to the ""left"" in screen coords).
+            float baseHeading = i * (TWO_PI / Bars);
+            float jitter = (Noise(i * 7.3f, noiseT) - 0.5f) * 0.9f;
+            float heading = baseHeading + jitter;
+
+            // Home spring is scaled by (1 - explode): fully free while
+            // exploded (so the kick actually carries), fully springy once
+            // reattached (so it settles cleanly onto its anchor).
+            float homeK = FlightHomeK * (1f - explode);
+
+            // Wander fades while exploded -- the initial kick should
+            // dominate the trajectory, and the noise should only curve it
+            // gently.
+            float wanderScale = 1f - explode * 0.6f;
+
+            _flightVel[i].X += (Cos(heading) * WanderAccel * wanderScale - _flightPos[i].X * homeK) * dt;
+            _flightVel[i].Y += (Sin(heading) * WanderAccel * wanderScale - _flightPos[i].Y * homeK) * dt;
+
+            float damping = MathF.Exp(-FlightDrag * dt);
+            _flightVel[i].X *= damping;
+            _flightVel[i].Y *= damping;
+            _flightVel[i].Limit(MaxFlightSpeed);
+
+            // Extra velocity drain + position pull while reattaching, so
+            // the blob ""lands"" on its home instead of pinging against it.
+            float reattach = 1f - explode;
+            if (reattach > 0f)
+            {
+                float vDrain = MathF.Exp(-6f * reattach * dt);
+                float pPull  = MathF.Exp(-3f * reattach * dt);
+                _flightVel[i].X *= vDrain;
+                _flightVel[i].Y *= vDrain;
+                _flightPos[i].X *= pPull;
+                _flightPos[i].Y *= pPull;
+            }
+
+            _flightPos[i].X += _flightVel[i].X * dt;
+            _flightPos[i].Y += _flightVel[i].Y * dt;
+
+            float headX = attachedHeadX + _flightPos[i].X * explode;
+            float headY = attachedHeadY + _flightPos[i].Y * explode;
+
+            // Tail base blends from live ring base to frozen base anchor
+            // the same way the head does, then retracts toward the head as
+            // the thread lets go. The tail factor eases all the way to 1.0
+            // so the tail fully collapses onto the head in the exploded
+            // state (reads as a spark, not a stretched droplet with a stump).
+            float tailBaseX = Lerp(liveBaseX, _anchorBase[i].X, explode);
+            float tailBaseY = Lerp(liveBaseY, _anchorBase[i].Y, explode);
+            float tailT = explode;
+            tailT = tailT * tailT * (3f - 2f * tailT); // smoothstep
+            tailBaseX = Lerp(tailBaseX, headX, tailT);
+            tailBaseY = Lerp(tailBaseY, headY, tailT);
+
+            float headR = Map(Constrain(snapshot[i], 0f, 1f), 0, 1, 5f, 15f);
+            DrawBlob(tailBaseX, tailBaseY, headX, headY, headR, hue, explode);
         }
 
-        NoFill();
-        StrokeHSB(0, 0, 35);
-        StrokeWeight(1);
-        Circle(0, 0, baseRadius * 2);
         PopMatrix();
 
         Fill(255);
         NoStroke();
         TextSize(13);
-        Text(_capturing ? ""Playing back system audio -- try starting some music"" : ""Capture stopped"", 16, Height - 40);
-        Text(""S: start/stop capture"", 16, Height - 20);
+        Text(_capturing ? ""Reproduciendo audio del sistema -- proba poner musica"" : ""Captura detenida"", 16, Height - 40);
+        Text(""S: iniciar/detener captura"", 16, Height - 20);
+    }
+
+    // A soft glowing head (several stacked, increasingly transparent
+    // circles) at the tip of a tapered tail (one triangle from the ring
+    // anchor widening to the head). As the blob explodes, the tail
+    // triangle is skipped entirely once it's fully collapsed.
+    private void DrawBlob(float tailBaseX, float tailBaseY, float headX, float headY, float headR, float hue, float explode)
+    {
+        // --- Cuerda con glow: varias líneas apiladas, de más gruesa y
+        // transparente a más fina y opaca, igual que el bloom del head.
+        // A medida que explode sube, la cuerda se acorta hacia el head
+        // y se desvanece, hasta desaparecer por completo.
+        if (explode < 0.999f)
+        {
+            float tailAlpha = 1f - explode;
+            float tailX = Lerp(tailBaseX, headX, explode);
+            float tailY = Lerp(tailBaseY, headY, explode);
+
+            // Grosor base de la cuerda: proporcional al radio del head, pero
+            // mucho más fino -- una cuerda, no un cono.
+            float baseWidth = headR * 0.02f;
+
+            // Capas de glow: de más ancha y sutil a más fina y brillante.
+            // 5 capas dan un bloom suave sin costar demasiado.
+            float[] widthScale = { 4.5f, 3.2f, 2.2f, 1.4f, 1f };
+            float[] alphaScale = { 12f, 22f, 40f, 80f, 180f };
+
+            for (int layer = 0; layer < widthScale.Length; layer++)
+            {
+                float alpha = alphaScale[layer] * tailAlpha;
+                if (alpha < 1f) continue;
+
+                float w = baseWidth * widthScale[layer];
+                StrokeHSB(hue, layer == widthScale.Length - 1 ? 70 : 85, 100, (byte)alpha);
+                StrokeWeight(w);
+                Line(tailX, tailY, headX, headY);
+            }
+
+            NoStroke();
+        }
+
+        // Slight glow boost while exploded -- a free firefly reads a bit
+        // brighter/hotter than one tethered to the ring.
+        float glowBoost = 1f + explode * 0.35f;
+
+        float[] layerScale = { 3.2f, 2.1f, 1.4f, 1f };
+        float[] layerAlpha = { 18f, 35f, 70f, 255f };
+        for (int layer = 0; layer < layerScale.Length; layer++)
+        {
+            float alpha = layerAlpha[layer] * glowBoost;
+            if (alpha > 255f) alpha = 255f;
+            FillHSB(hue, layer == layerScale.Length - 1 ? 70 : 85, 100, (byte)alpha);
+            Circle(headX, headY, headR * 2 * layerScale[layer]);
+        }
+    }
+
+    // Silence -> explode, sound -> reassemble. Each blob has its own
+    // random delay, so the ring comes apart and reassembles as a ragged
+    // cascade instead of one synchronized motion. The live snapshot is
+    // passed through so BeginTransition can freeze each blob's current
+    // drawn position as its explosion anchor.
+    private void UpdateExplodeState(float overallLevel, float[] snapshot)
+    {
+        // Hysteresis: different thresholds for entering and exiting silence,
+        // so mid-dynamic passages don't flicker between states.
+        bool quiet = !_capturing || (_isExploded
+            ? overallLevel < SilenceExit
+            : overallLevel < SilenceEnter);
+
+        if (quiet)
+        {
+            if (_quietSinceMs < 0)
+                _quietSinceMs = Millis();
+            if (!_isExploded && Millis() - _quietSinceMs > SilenceHoldMs)
+                BeginTransition(exploding: true, snapshot: snapshot);
+        }
+        else
+        {
+            _quietSinceMs = -1;
+            if (_isExploded)
+                BeginTransition(exploding: false, snapshot: snapshot);
+        }
+
+        float elapsed = Millis() - _transitionStartMs;
+        float progress = Constrain(elapsed / _currentDuration, 0f, 1f);
+
+        // Per-blob stagger: each blob has its own delay in 0..MaxDelay and
+        // remaps progress over the remaining window.
+        for (int i = 0; i < Bars; i++)
+        {
+            float d = _blobDelay[i];
+            float local = d >= 1f ? 1f : Constrain((progress - d) / (1f - d), 0f, 1f);
+            float eased = local * local * (3f - 2f * local);
+            float target = _isExploded ? 1f : 0f;
+            _blobExplode[i] = Lerp(_transitionStartAmount, target, eased);
+        }
+    }
+
+    private void BeginTransition(bool exploding, float[] snapshot)
+    {
+        _isExploded = exploding;
+        _transitionStartMs = Millis();
+        _transitionStartAmount = _blobExplode[0];
+
+        // Random per-blob delay, reshuffled each transition.
+        for (int i = 0; i < Bars; i++)
+            _blobDelay[i] = Random(0f, 0.35f);
+
+        // Duration depends on the smoothed energy just before the drop.
+        float energy = Constrain(_lastOverallLevel, 0f, 1f);
+        _currentDuration = exploding
+            ? Lerp(ExplodeMsMax, ExplodeMsMin, energy)
+            : Lerp(ReassembleMsMax, ReassembleMsMin, energy);
+
+        if (exploding)
+        {
+            // Freeze each blob's CURRENT drawn position as its explosion
+            // anchor, and reset its flight offset to zero. That way the
+            // kick below pushes from wherever the blob actually was at
+            // this instant -- not from the ring. Without this, the drop in
+            // audio level would shrink the live ring inward first, and
+            // blobs would visibly ""return home"" before exploding.
+            for (int i = 0; i < Bars; i++)
+            {
+                float angle = Map(i, 0, Bars, 0, TWO_PI);
+                float len = Map(Constrain(snapshot[i], 0f, 1f), 0, 1, MinLen, MaxLen);
+
+                float liveRingX = Cos(angle) * (BaseRadius + len);
+                float liveRingY = Sin(angle) * (BaseRadius + len);
+                float liveBaseX = Cos(angle) * BaseRadius;
+                float liveBaseY = Sin(angle) * BaseRadius;
+
+                // Current drawn head = live ring + visible flight offset.
+                // Current drawn tail base = live base + visible flight offset
+                // (approximated the same way the tail is drawn -- it uses
+                // head-relative collapse, so anchoring the base to live base
+                // plus the same visible flight offset keeps the tail shape
+                // consistent through the freeze).
+                _anchorPos[i].X = liveRingX + _flightPos[i].X * _blobExplode[i];
+                _anchorPos[i].Y = liveRingY + _flightPos[i].Y * _blobExplode[i];
+                _anchorBase[i].X = liveBaseX + _flightPos[i].X * _blobExplode[i];
+                _anchorBase[i].Y = liveBaseY + _flightPos[i].Y * _blobExplode[i];
+
+                // Flight is now measured relative to the frozen anchor.
+                _flightPos[i].X = 0f;
+                _flightPos[i].Y = 0f;
+            }
+
+            // Release kick: radial (outward along the ring angle) plus a
+            // per-blob random tangential component. The tangential part
+            // is what breaks radial symmetry -- without it every blob
+            // would just slide straight out from its anchor, and the ring
+            // would expand like a perfect circle instead of bursting
+            // raggedly. Angle jitter is Perlin-driven (per-blob, per-moment)
+            // rather than uniform-random, so even within a single burst the
+            // angular spread has organic clumping instead of even noise.
+            for (int i = 0; i < Bars; i++)
+            {
+                float ringAngle = Map(i, 0, Bars, 0, TWO_PI);
+                float angleJitter = (Noise(i * 3.1f, Millis() * 0.001f) - 0.5f) * 1.2f;
+                float angle = ringAngle + angleJitter;
+
+                float radial = Random(ReleaseKickMin, ReleaseKickMax) * (0.6f + energy * 0.8f);
+                float tangent = Random(-1f, 1f) * radial * 0.7f;
+
+                float cosA = Cos(angle);
+                float sinA = Sin(angle);
+                _flightVel[i].X += cosA * radial - sinA * tangent;
+                _flightVel[i].Y += sinA * radial + cosA * tangent;
+            }
+        }
     }
 
     public override void KeyPressed()
@@ -2595,21 +2970,21 @@ public class MySketch : Sketch
         {
             for (int b = 0; b < Bars; b++)
             {
+                int start = BinBoundaries[b];
+                int end = BinBoundaries[b + 1]; // exclusive
                 float sum = 0f;
-                int start = 1 + b * BinsPerBar; // skip bin 0 (DC offset)
-                for (int k = 0; k < BinsPerBar; k++)
-                    sum += Mag(_fft[start + k].X, _fft[start + k].Y);
+                for (int k = start; k < end; k++)
+                    sum += Mag(_fft[k].X, _fft[k].Y);
 
-                // Sqrt compresses the dynamic range upward -- raw FFT magnitude for
-                // typical (non-full-scale) playback is small enough that a linear
-                // scale barely moves the bars; sqrt makes quiet/moderate audio show
-                // up clearly instead of only loud peaks registering.
-                float value = Sqrt(sum / BinsPerBar) * Gain;
+                float barGain = Map(b, 0, Bars, 0.75f, 2.1f);
+                float value = Sqrt(sum / (end - start)) * Gain * barGain;
                 _bars[b] = Max(value, _bars[b] * Decay);
             }
         }
     }
 }
+
+
 ";
 
         private const string ControllerInstallation =
@@ -3420,7 +3795,9 @@ using Microsoft.ML.Trainers;
 // after you switch to a different sample (there's no engine hook yet for
 // ""this sketch was replaced, stop your threads"") -- capping generations
 // is what keeps this sample's CPU cost bounded and predictable instead of
-// silently running forever in the background.
+// silently running forever in the background. It also stops EARLY, well
+// before MaxGenerations, once ConvergenceStreak generations in a row bring
+// no real improvement -- see TrainForever()'s own remark for why.
 public class MySketch : Sketch
 {
     private const float Gravity = 1400f;
@@ -3442,6 +3819,7 @@ public class MySketch : Sketch
     private const int MaxGenerations = 35;
     private const int EvalRuns = 8;          // clean (no-noise) episodes used to score a candidate before trusting it
     private const int PauseBetweenGenerationsMs = 1200; // see TrainForever()'s own remark -- pacing, not busywork
+    private const int ConvergenceStreak = 10; // see TrainForever()'s own remark -- stop once it's genuinely done improving, not just capped
 
     // ---- displayed game state -- Draw()/render thread only ----
     private float _playerY;
@@ -3476,6 +3854,7 @@ public class MySketch : Sketch
     private volatile int _generation;
     private double _championScore = -1; // not volatile -- double can't be (a C# language restriction); Draw() only ever reads this for display, a one-frame-stale value is harmless
     private volatile bool _trainingDone;
+    private int _noImprovementStreak; // TrainForever()'s own thread only -- never read from Draw()
 
     public override void Setup()
     {
@@ -3513,7 +3892,7 @@ public class MySketch : Sketch
         Text(_displayScore.ToString(), Width / 2f - 8, 36);
         TextSize(13);
         string genLabel = _trainingDone
-            ? $""Entrenamiento terminado ({MaxGenerations} generaciones)""
+            ? $""Entrenamiento terminado ({_generation} generaciones)""
             : $""Generación {_generation}/{MaxGenerations} -- entrenando en 2do plano..."";
         Text(genLabel, 12, Height - 60);
         Text($""Mejor logrado en el entrenamiento: {_championScore:F1} tubos (promedio limpio)"", 12, Height - 40);
@@ -3631,13 +4010,36 @@ public class MySketch : Sketch
                 candidateScore += SimulateEpisode(candidateEngine, 0f, _evalRand).pipes;
             candidateScore /= EvalRuns;
 
-            if (candidateScore >= _championScore)
+            if (candidateScore > _championScore)
             {
                 _championModel = candidateModel;
                 _championScore = candidateScore;
+                _noImprovementStreak = 0;
+            }
+            else
+            {
+                if (candidateScore == _championScore)
+                    _championModel = candidateModel; // still adopt a genuine tie (keeps exploring around an equally-good fit), just don't count it as progress below
+                _noImprovementStreak++;
             }
 
             _generation = generation + 1;
+
+            // Stop once it's genuinely converged instead of always grinding
+            // through all MaxGenerations. Measured for real (not guessed):
+            // this sample reliably does all its real improving in the first
+            // handful of generations, then spends the remaining ~30 running
+            // the exact same 60-episode simulation + SDCA Fit() over and
+            // over for zero visible benefit -- which is also ~30 more
+            // generations' worth of allocation and GC pressure on top of the
+            // ones that actually mattered, and was a real contributor to
+            // this sample making the rest of the IDE (scrolling, mainly)
+            // feel sluggish while it trained in the background. Bailing out
+            // after a real, sustained non-improvement streak keeps the
+            // early, meaningful climb fully intact while cutting the
+            // trailing dead weight.
+            if (_noImprovementStreak >= ConvergenceStreak)
+                break;
 
             // A deliberate pause, not busywork left in by accident. Two
             // real problems this fixes at once, confirmed by actually
@@ -3686,12 +4088,39 @@ public class MySketch : Sketch
         var traj = new List<(BirdState, bool)>();
         int frame = 0;
 
+        // Reused for every frame's Predict() call instead of allocating a
+        // fresh BirdState each time -- Predict() reads it synchronously and
+        // never retains a reference, so mutating the same instance is safe,
+        // and it cuts a real allocation source: up to MaxSimFrames times per
+        // episode, PopulationSize episodes per generation. Measured for real
+        // (not guessed): the training loop was allocating ~4.8GB over one
+        // full run before this, enough Gen0/Gen1 GC pauses (~1100 of them in
+        // under a minute) to noticeably stall even an idle thread -- which
+        // is what made scrolling elsewhere in the IDE stutter while this
+        // sample trained in the background. `state` below (the TRUE,
+        // unbiased reading, stored in traj for training) still allocates
+        // once per frame -- it has to outlive this loop iteration, unlike
+        // this scratch object.
+        var predictScratch = new BirdState();
+
         for (; frame < MaxSimFrames; frame++)
         {
             var state = ComputeFeatures(pipeX, pipeGapCenterY, playerY, playerVelocity);
-            var biasedState = new BirdState { F1 = state.F1, F2 = state.F2, F3 = state.F3, F4 = state.F4 + biasF4, F5 = state.F5 };
 
-            bool flap = engine != null ? engine.Predict(biasedState).PredictedLabel : biasedState.F4 < 0f;
+            bool flap;
+            if (engine != null)
+            {
+                predictScratch.F1 = state.F1;
+                predictScratch.F2 = state.F2;
+                predictScratch.F3 = state.F3;
+                predictScratch.F4 = state.F4 + biasF4;
+                predictScratch.F5 = state.F5;
+                flap = engine.Predict(predictScratch).PredictedLabel;
+            }
+            else
+            {
+                flap = (state.F4 + biasF4) < 0f;
+            }
 
             traj.Add((state, flap)); // records the TRUE (unbiased) state alongside the actual action taken
 

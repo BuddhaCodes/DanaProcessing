@@ -1,4 +1,6 @@
 using Avalonia.Controls;
+using Avalonia.Input;
+using Avalonia.Interactivity;
 using DanaProcessing;
 
 namespace DanaProcessing.AvaloniaHost
@@ -11,7 +13,16 @@ namespace DanaProcessing.AvaloniaHost
     {
         public AvaloniaSketchCanvas Canvas { get; }
 
-        public AvaloniaSketchWindow(Sketch sketch, string title = "DanaProcessing Sketch")
+        /// <summary>windowless: no OS title bar/caption buttons at all (see
+        /// ExportedSketchRunner/SketchExporter — this is what "gadget mode"
+        /// export produces) — dragged by Alt+left-click-holding anywhere on
+        /// the drawing instead (plain left-click still reaches the sketch's
+        /// own MousePressed/MouseClicked unmolested — see the Tunnel-phase
+        /// remark below for why that split actually works), closed with
+        /// Alt+F4 (still works with no visible chrome — it's an OS-level
+        /// shortcut, not dependent on the title bar existing) since there's
+        /// no close button to click.</summary>
+        public AvaloniaSketchWindow(Sketch sketch, string title = "DanaProcessing Sketch", bool windowless = false)
         {
             Title = title;
 
@@ -35,6 +46,52 @@ namespace DanaProcessing.AvaloniaHost
 
             Canvas = new AvaloniaSketchCanvas(sketch);
             Content = Canvas;
+
+            if (windowless)
+            {
+                WindowDecorations = WindowDecorations.None;
+
+                // Full manual control over sizing instead of leaning on
+                // SizeToContent (still used above for the non-windowless
+                // case): running SizeToContent's own automatic re-fitting
+                // AND a separate Min/Max lock at the same time turned out to
+                // fight each other -- neither reliably won, so the window
+                // still visibly resized in testing. One explicit owner
+                // (this callback, setting Width/Height AND Min/Max together
+                // every time) replaces that with a single, unambiguous
+                // source of truth for this window's size. Starts at
+                // Sketch's own known default (600x400) so it opens at a
+                // sane size before Setup() has even run once.
+                SizeToContent = SizeToContent.Manual;
+                Width = 600;
+                Height = 400;
+                Canvas.SketchSizeChanged += (w, h) =>
+                {
+                    Width = w;
+                    Height = h;
+                    MinWidth = MaxWidth = w;
+                    MinHeight = MaxHeight = h;
+                };
+
+                // Tunnel-only, and marking Handled ourselves: the previous
+                // approach (listen on Bubble with handledEventsToo, after
+                // Canvas's own PointerPressed had already run) never
+                // actually triggered a drag in testing. Tunnel reaches this
+                // handler FIRST, before Canvas (or anything else) sees the
+                // event at all -- an Alt+left-click is consumed for the
+                // drag right here and never reaches Canvas; a plain
+                // left-click (no Alt) is left alone and continues on to
+                // Canvas exactly as before, so sketch interaction is
+                // unaffected.
+                AddHandler(PointerPressedEvent, (_, e) =>
+                {
+                    if (e.KeyModifiers.HasFlag(KeyModifiers.Alt) && e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+                    {
+                        e.Handled = true;
+                        BeginMoveDrag(e);
+                    }
+                }, RoutingStrategies.Tunnel);
+            }
         }
     }
 }

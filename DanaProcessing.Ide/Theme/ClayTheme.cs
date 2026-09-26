@@ -1103,6 +1103,91 @@ namespace DanaProcessing.Ide.Theme
             {
                 Setters = { new Setter(TemplatedControl.ForegroundProperty, TextMuted) }
             },
+
+            // ============================================================
+            // === CHECKBOX: same root cause as TextBox/ScrollBar/Popup
+            // above -- RequestedThemeVariant = Dark means CheckBox falls
+            // back to Fluent's own dark-theme foreground unless explicitly
+            // overridden. The label's REST-state foreground already comes
+            // from whatever Foreground each CheckBox instance sets directly
+            // (a local value, which ordinary inheritance already carries
+            // down to its ContentPresenter child) -- the bug is specifically
+            // :pointerover: confirmed against Avalonia's actual CheckBox.xaml
+            // source, Fluent's own ControlTheme targets that ContentPresenter
+            // DIRECTLY there (Style Selector="^:unchecked:pointerover
+            // /template/ ContentPresenter#PART_ContentPresenter", plus
+            // matching :checked/:indeterminate variants), which wins over
+            // inherited Foreground no matter how the parent CheckBox's own
+            // value was set -- exactly why hovering turned the label
+            // unreadable-white even though it looked fine at rest. Three
+            // separate rules below because Fluent's own three are each that
+            // specific -- a single plain ""CheckBox:pointerover"" rule is
+            // LESS specific than Fluent's compound selector and would lose.
+            // ============================================================
+            new Style(x => x.OfType<CheckBox>())
+            {
+                Setters = { new Setter(TemplatedControl.ForegroundProperty, TextPrimary) }
+            },
+            new Style(x => x.OfType<CheckBox>().Class(":unchecked").Class(":pointerover")
+                .Template().OfType<ContentPresenter>().Name("PART_ContentPresenter"))
+            {
+                Setters = { new Setter(TextBlock.ForegroundProperty, TextPrimary) }
+            },
+            new Style(x => x.OfType<CheckBox>().Class(":checked").Class(":pointerover")
+                .Template().OfType<ContentPresenter>().Name("PART_ContentPresenter"))
+            {
+                Setters = { new Setter(TextBlock.ForegroundProperty, TextPrimary) }
+            },
+            new Style(x => x.OfType<CheckBox>().Class(":indeterminate").Class(":pointerover")
+                .Template().OfType<ContentPresenter>().Name("PART_ContentPresenter"))
+            {
+                Setters = { new Setter(TextBlock.ForegroundProperty, TextPrimary) }
+            },
+
+            // The 20x20 check-glyph box itself (Border#NormalRectangle) --
+            // same story as the label above: Fluent drives its Background/
+            // BorderBrush from dark-theme DynamicResources per state
+            // (Style Selector="^:unchecked /template/ Border#NormalRectangle"
+            // and friends, confirmed against Avalonia's actual CheckBox.xaml
+            // source), which is a light/white outline meant to read against
+            // Fluent's own dark background -- against ClayTheme's light
+            // background that's the ""borde blanco... no se nota"" bug.
+            new Style(x => x.OfType<CheckBox>().Class(":unchecked")
+                .Template().OfType<Border>().Name("NormalRectangle"))
+            {
+                Setters =
+                {
+                    new Setter(Border.BackgroundProperty, Surface),
+                    new Setter(Border.BorderBrushProperty, new SolidColorBrush(Avalonia.Media.Color.Parse("#B8AFA0"))),
+                }
+            },
+            new Style(x => x.OfType<CheckBox>().Class(":unchecked").Class(":pointerover")
+                .Template().OfType<Border>().Name("NormalRectangle"))
+            {
+                Setters =
+                {
+                    new Setter(Border.BackgroundProperty, SurfaceHover),
+                    new Setter(Border.BorderBrushProperty, AccentDim),
+                }
+            },
+            new Style(x => x.OfType<CheckBox>().Class(":checked")
+                .Template().OfType<Border>().Name("NormalRectangle"))
+            {
+                Setters =
+                {
+                    new Setter(Border.BackgroundProperty, Accent),
+                    new Setter(Border.BorderBrushProperty, Accent),
+                }
+            },
+            new Style(x => x.OfType<CheckBox>().Class(":checked").Class(":pointerover")
+                .Template().OfType<Border>().Name("NormalRectangle"))
+            {
+                Setters =
+                {
+                    new Setter(Border.BackgroundProperty, AccentDim),
+                    new Setter(Border.BorderBrushProperty, AccentDim),
+                }
+            },
         };
 
         /// <summary>Todos los estilos combinados.</summary>

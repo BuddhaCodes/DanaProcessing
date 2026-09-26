@@ -27,13 +27,22 @@ namespace DanaProcessing.Ide.Export
     {
         public const string MarkerFileName = "sketch.cs";
 
+        /// <summary>Presence alone means "gadget mode" (see SketchExporter's
+        /// own windowless option) -- an empty file, same "existence is the
+        /// whole signal" shape as MarkerFileName itself, just for one extra
+        /// boolean instead of inventing a config file format for it.</summary>
+        public const string WindowlessMarkerFileName = "sketch.windowless";
+
         public static string? SketchFilePath { get; private set; }
+        public static bool IsWindowless { get; private set; }
 
         public static void DetectAndStash()
         {
             var candidate = Path.Combine(ExeDirectory, MarkerFileName);
             if (File.Exists(candidate))
                 SketchFilePath = candidate;
+
+            IsWindowless = File.Exists(Path.Combine(ExeDirectory, WindowlessMarkerFileName));
         }
 
         /// <summary>
@@ -64,7 +73,7 @@ namespace DanaProcessing.Ide.Export
             var result = SketchCompiler.Compile(source, extraReferences);
 
             if (result.Success)
-                return new AvaloniaSketchWindow(result.Sketch!, result.Sketch!.GetType().Name);
+                return new AvaloniaSketchWindow(result.Sketch!, result.Sketch!.GetType().Name, windowless: IsWindowless);
 
             return BuildErrorWindow(result.Errors);
         }
