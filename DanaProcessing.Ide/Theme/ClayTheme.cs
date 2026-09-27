@@ -5,10 +5,12 @@ using Avalonia.Controls.Presenters;
 using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Shapes;
 using Avalonia.Controls.Templates;
+using Avalonia.Data;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Styling;
 using AvaloniaEdit.CodeCompletion;
+using AvaloniaEdit.Search;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -894,6 +896,119 @@ namespace DanaProcessing.Ide.Theme
             },
         };
 
+        /// <summary>SearchPanel's own default Fluent template turned out too thin to fix
+        /// with property Setters alone (confirmed visually -- a barely-visible pill with
+        /// unstyled icon buttons floating over the code, same class of problem as the
+        /// FlyoutPresenter fix above). Same solution: replace the whole Template with our
+        /// own, built from plain ClayTheme pieces (the same ".clay-toggle" Button class
+        /// the bottom-panel tabs use) instead of trying to patch Fluent's dark chrome
+        /// piecemeal.</summary>
+        public static Style[] SearchPanelStyles() => new[]
+        {
+            new Style(x => x.OfType<SearchPanel>())
+            {
+                Setters =
+                {
+                    new Setter(TemplatedControl.BackgroundProperty, Brushes.Transparent),
+                    new Setter(TemplatedControl.BorderThicknessProperty, new Thickness(0)),
+                    new Setter(TemplatedControl.TemplateProperty, new FuncControlTemplate<SearchPanel>((panel, _) =>
+                    {
+                        var searchBox = new TextBox
+                        {
+                            Watermark = "Buscar...",
+                            Width = 160,
+                            Background = Brushes.Transparent,
+                            BorderThickness = new Thickness(0),
+                            Foreground = TextPrimary,
+                            FontFamily = FontMono,
+                            FontSize = 13,
+                            Padding = new Thickness(6, 4),
+                            VerticalContentAlignment = VerticalAlignment.Center,
+                        };
+                        searchBox.Bind(TextBox.TextProperty, new Binding(nameof(SearchPanel.SearchPattern))
+                        {
+                            Source = panel,
+                            Mode = BindingMode.TwoWay,
+                        });
+
+                        Button MakeActionButton(string glyph, string tooltip, Action onClick)
+                        {
+                            var button = new Button
+                            {
+                                Classes = { "clay-toggle" },
+                                Content = glyph,
+                                Padding = new Thickness(8, 4),
+                                FontSize = 12,
+                                MinWidth = 0,
+                            };
+                            ToolTip.SetTip(button, tooltip);
+                            button.Click += (_, _) => onClick();
+                            return button;
+                        }
+
+                        Button MakeToggleButton(string glyph, string tooltip, StyledProperty<bool> property)
+                        {
+                            var button = new Button
+                            {
+                                Classes = { "clay-toggle" },
+                                Content = glyph,
+                                Padding = new Thickness(8, 4),
+                                FontSize = 12,
+                                MinWidth = 0,
+                            };
+                            ToolTip.SetTip(button, tooltip);
+                            button.Classes.Set("active", panel.GetValue(property));
+                            button.Click += (_, _) =>
+                            {
+                                var next = !panel.GetValue(property);
+                                panel.SetValue(property, next);
+                                button.Classes.Set("active", next);
+                            };
+                            return button;
+                        }
+
+                        var row = new StackPanel
+                        {
+                            Orientation = Orientation.Horizontal,
+                            Spacing = 4,
+                            VerticalAlignment = VerticalAlignment.Center,
+                            Children =
+                            {
+                                searchBox,
+                                MakeToggleButton("Aa", "Coincidir mayúsculas/minúsculas", SearchPanel.MatchCaseProperty),
+                                MakeToggleButton("ab", "Palabra completa", SearchPanel.WholeWordsProperty),
+                                MakeToggleButton(".*", "Usar expresión regular", SearchPanel.UseRegexProperty),
+                                MakeActionButton("↑", "Anterior (Shift+Enter)", () => panel.FindPrevious()),
+                                MakeActionButton("↓", "Siguiente (Enter)", () => panel.FindNext(panel.TextEditor?.CaretOffset ?? 0)),
+                                MakeActionButton("✕", "Cerrar (Esc)", () => panel.Close()),
+                            }
+                        };
+
+                        // SearchPanel itself gets stretched to fill the whole TextView
+                        // viewport (that's how it stays positioned/sized as the editor
+                        // resizes) -- without an explicit alignment here, a Border root
+                        // inherits that stretch and balloons into a full-size blank card
+                        // instead of a small floating find bar. Anchoring it to the
+                        // top-right corner (the standard find-bar position) makes it
+                        // size to its own content regardless of the parent's bounds.
+                        return new Border
+                        {
+                            HorizontalAlignment = HorizontalAlignment.Right,
+                            VerticalAlignment = VerticalAlignment.Top,
+                            Margin = new Thickness(0, 8, 20, 0),
+                            Background = SurfaceRaised,
+                            BorderBrush = new SolidColorBrush(Avalonia.Media.Color.Parse("#E8E2DA")),
+                            BorderThickness = new Thickness(1),
+                            CornerRadius = RadiusChrome,
+                            Padding = new Thickness(8, 6),
+                            BoxShadow = ShadowRaised,
+                            Child = row,
+                        };
+                    })),
+                }
+            },
+        };
+
         /// <summary>
         /// App.cs sets RequestedThemeVariant = Dark on the whole Application
         /// (needed for other chrome), which means any control we haven't
@@ -1192,6 +1307,6 @@ namespace DanaProcessing.Ide.Theme
 
         /// <summary>Todos los estilos combinados.</summary>
         public static Style[] AllStyles() =>
-            ButtonEffectStyles().Concat(TabStripStates()).Concat(CompletionWindowStyles()).ToArray();
+            ButtonEffectStyles().Concat(TabStripStates()).Concat(CompletionWindowStyles()).Concat(SearchPanelStyles()).ToArray();
     }
 }

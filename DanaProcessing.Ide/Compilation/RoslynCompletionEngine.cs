@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Completion;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.FindSymbols;
 using Microsoft.CodeAnalysis.Text;
 
 namespace DanaProcessing.Ide.Compilation
@@ -20,6 +21,26 @@ namespace DanaProcessing.Ide.Compilation
     /// <summary>One compiler diagnostic mapped to plain offsets, so the editor UI
     /// doesn't need to know about TextSpan/Roslyn types.</summary>
     public sealed record SketchDiagnostic(int Start, int Length, string Message, bool IsError);
+
+    /// <summary>Distinguishes the three outcomes a navigation query (Go to
+    /// Definition/Implementation, Find All References) can have -- deliberately
+    /// not just "found or null", since "there's a real symbol here but it lives
+    /// in DanaProcessing's own compiled DLL, which carries no source" is a
+    /// distinct, expected case that needs its own message, not a silent no-op.</summary>
+    public enum NavigationKind { NoSymbol, NoSourceAvailable, Found }
+
+    /// <summary>One navigable span mapped to plain offsets, same boundary as SketchDiagnostic.</summary>
+    public sealed record NavigationLocation(int Start, int Length);
+
+    /// <summary>Result of a Go to Definition/Implementation/Find-References query.
+    /// SymbolDisplayName is populated whenever a real symbol was resolved (even
+    /// with no navigable source), so the UI can name it in its feedback message.</summary>
+    public sealed record NavigationResult(NavigationKind Kind, string? SymbolDisplayName, IReadOnlyList<NavigationLocation> Locations)
+    {
+        public static readonly NavigationResult None = new(NavigationKind.NoSymbol, null, Array.Empty<NavigationLocation>());
+        public static NavigationResult NoSource(string displayName) => new(NavigationKind.NoSourceAvailable, displayName, Array.Empty<NavigationLocation>());
+        public static NavigationResult Found(string displayName, IReadOnlyList<NavigationLocation> locations) => new(NavigationKind.Found, displayName, locations);
+    }
 
     /// <summary>
     /// Wraps a single-document Roslyn <see cref="AdhocWorkspace"/> so the editor
@@ -179,6 +200,140 @@ namespace DanaProcessing.Ide.Compilation
             var change = await service.GetChangeAsync(document, item, cancellationToken: ct);
             var span = change.TextChange.Span;
             return (span.Start, span.Length, change.TextChange.NewText ?? "");
+        }
+
+        /// <summary>Resolves whatever symbol sits at (or just before) <paramref name="offset"/>,
+        /// covering both "caret on a usage" (GetSymbolInfo) and "caret on a declaration itself"
+        /// (GetDeclaredSymbol, e.g. standing on the method name in "public override void Draw()").</summary>
+        private async Task<ISymbol?> ResolveSymbolAtAsync(int offset, CancellationToken ct)
+        {
+            var document = _workspace.CurrentSolution.GetDocument(_documentId);
+            if (document is null)
+                return null;
+
+            var root = await document.GetSyntaxRootAsync(ct);
+            var model = await document.GetSemanticModelAsync(ct);
+            if (root is null || model is null)
+                return null;
+
+            var clamped = Math.Clamp(offset, 0, root.FullSpan.Length);
+            var token = root.FindToken(clamped);
+            // El caret justo despues de un identificador (el caso mas comun de
+            // F12 con el cursor ahi parado) hace que FindToken devuelva el
+            // SIGUIENTE token en vez del identificador mismo -- mirar uno atras
+            // en ese caso.
+            if (!IsNavigable(token) && clamped > 0)
+            {
+                var prev = root.FindToken(clamped - 1);
+                if (IsNavigable(prev))
+                    token = prev;
+            }
+            if (!IsNavigable(token))
+                return null;
+
+            var node = token.Parent;
+            if (node is null)
+                return null;
+
+            return model.GetDeclaredSymbol(node, ct)
+                ?? model.GetSymbolInfo(node, ct).Symbol
+                ?? (node.Parent is null ? null : model.GetSymbolInfo(node.Parent, ct).Symbol);
+        }
+
+        private static bool IsNavigable(SyntaxToken token) =>
+            token.IsKind(SyntaxKind.IdentifierToken) || SyntaxFacts.IsKeywordKind(token.Kind());
+
+        /// <summary>Only the current document's own source counts as navigable --
+        /// the synthetic ImplicitUsings.cs tree is invisible to the user, and any
+        /// metadata symbol (DanaProcessing.dll's own API, BCL types) carries no
+        /// source location at all, same filter GetDiagnosticsAsync already relies on.</summary>
+        private static IReadOnlyList<NavigationLocation> SourceLocationsOf(ISymbol symbol) =>
+            symbol.Locations
+                .Where(l => l.IsInSource && l.SourceTree?.FilePath == "Sketch.cs")
+                .Select(l => new NavigationLocation(l.SourceSpan.Start, l.SourceSpan.Length))
+                .ToList();
+
+        private async Task<NavigationResult> BuildDefinitionResultAsync(ISymbol symbol, CancellationToken ct)
+        {
+            var definition = await SymbolFinder.FindSourceDefinitionAsync(symbol, _workspace.CurrentSolution, ct) ?? symbol;
+            var locations = SourceLocationsOf(definition);
+            return locations.Count > 0
+                ? NavigationResult.Found(definition.ToDisplayString(), locations)
+                : NavigationResult.NoSource(definition.ToDisplayString());
+        }
+
+        /// <summary>Jumps to where the symbol under the caret is declared. For a symbol
+        /// from DanaProcessing's own engine API (Circle, PVector, Sketch itself, ...) this
+        /// resolves a real symbol but returns NoSourceAvailable -- that DLL carries no PDB,
+        /// so there is nothing to navigate to (see SketchCompiler.GetSharedReferences).</summary>
+        public async Task<NavigationResult> GoToDefinitionAsync(int caretOffset, CancellationToken ct = default)
+        {
+            var symbol = await ResolveSymbolAtAsync(caretOffset, ct);
+            return symbol is null ? NavigationResult.None : await BuildDefinitionResultAsync(symbol, ct);
+        }
+
+        /// <summary>All references to the symbol under the caret, within this one document --
+        /// there's nothing else in the workspace to search, since each sketch is its own
+        /// independent single-file compilation.</summary>
+        public async Task<NavigationResult> FindReferencesAsync(int caretOffset, CancellationToken ct = default)
+        {
+            var symbol = await ResolveSymbolAtAsync(caretOffset, ct);
+            if (symbol is null)
+                return NavigationResult.None;
+
+            var definition = await SymbolFinder.FindSourceDefinitionAsync(symbol, _workspace.CurrentSolution, ct) ?? symbol;
+            var declarationLocations = SourceLocationsOf(definition);
+            if (declarationLocations.Count == 0)
+                return NavigationResult.NoSource(definition.ToDisplayString());
+
+            var referencedSymbols = await SymbolFinder.FindReferencesAsync(definition, _workspace.CurrentSolution, ct);
+            var referenceLocations = referencedSymbols
+                .SelectMany(rs => rs.Locations)
+                .Select(rl => rl.Location)
+                .Where(l => l.IsInSource && l.SourceTree?.FilePath == "Sketch.cs")
+                .Select(l => new NavigationLocation(l.SourceSpan.Start, l.SourceSpan.Length));
+
+            var locations = declarationLocations
+                .Concat(referenceLocations)
+                .Distinct()
+                .OrderBy(l => l.Start)
+                .ToList();
+
+            return NavigationResult.Found(definition.ToDisplayString(), locations);
+        }
+
+        /// <summary>For a virtual/abstract/override member (e.g. the Sketch base class's
+        /// Setup/Draw/MousePressed/... hooks), jumps to the user's own concrete override(s)
+        /// in this document instead of dead-ending on the (metadata-only) base declaration.
+        /// For anything else, behaves exactly like GoToDefinitionAsync -- the standard IDE
+        /// convention for a non-overridable member.</summary>
+        public async Task<NavigationResult> GoToImplementationAsync(int caretOffset, CancellationToken ct = default)
+        {
+            var symbol = await ResolveSymbolAtAsync(caretOffset, ct);
+            if (symbol is null)
+                return NavigationResult.None;
+
+            if (symbol is not IMethodSymbol { } method || !(method.IsVirtual || method.IsAbstract || method.IsOverride))
+                return await BuildDefinitionResultAsync(symbol, ct);
+
+            var root = method;
+            while (root.OverriddenMethod is { } baseMethod)
+                root = baseMethod;
+
+            var overrides = await SymbolFinder.FindOverridesAsync(root, _workspace.CurrentSolution, cancellationToken: ct);
+            var locations = overrides
+                .SelectMany(SourceLocationsOf)
+                .Distinct()
+                .OrderBy(l => l.Start)
+                .ToList();
+
+            // El caso mas comun es invocar esto parado YA en la unica override que
+            // existe -- FindOverridesAsync busca overrides de "root" hacia abajo, asi
+            // que no incluye a "symbol" mismo si symbol ya es esa override. Caer a
+            // Go to Definition cubre ese caso en vez de reportar "no encontrado".
+            return locations.Count > 0
+                ? NavigationResult.Found(root.ToDisplayString(), locations)
+                : await BuildDefinitionResultAsync(symbol, ct);
         }
     }
 }

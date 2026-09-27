@@ -80,15 +80,20 @@ namespace DanaProcessing.Ide
         // que ahora subrayan el editor, ver EditorDiagnosticsColorizer); "Run"
         // = lo que siempre hubo acá, la salida de SketchCompiler.Compile()
         // tras apretar Run. ---
-        private enum BottomTab { Live, Run }
+        private enum BottomTab { Live, Run, References }
         private BottomTab _activeBottomTab = BottomTab.Live;
         private readonly Button _liveErrorsTabButton;
         private readonly Button _runErrorsTabButton;
+        private readonly Button _referencesTabButton;
         private readonly Ellipse _liveTabDot;
         private readonly Ellipse _runTabDot;
+        private readonly Ellipse _referencesTabDot;
         private readonly StackPanel _liveDiagnosticsList;
+        private readonly StackPanel _referencesList;
         private readonly ScrollViewer _liveDiagnosticsScroll;
         private readonly ScrollViewer _runOutputScroll;
+        private readonly ScrollViewer _referencesScroll;
+        private DispatcherTimer? _transientStatusTimer;
 
         private readonly Border _editorGlow;
         private readonly Border _canvasGlow;
@@ -166,6 +171,8 @@ namespace DanaProcessing.Ide
             _canvas.SketchSizeChanged += (_, _) => RecomputeCanvasOversized();
             _editorView.CaretPositionChanged += (line, col) => _caretLabel.Text = $"Ln {line}, Col {col}";
             _editorView.LiveDiagnosticsChanged += UpdateLiveDiagnostics;
+            _editorView.ReferencesFound += UpdateReferencesFound;
+            _editorView.StatusMessageRequested += ShowTransientStatus;
 
             _runButton = new Button
             {
@@ -306,15 +313,42 @@ namespace DanaProcessing.Ide
             };
             _runErrorsTabButton.Click += (_, _) => SetBottomTab(BottomTab.Run);
 
+            _referencesList = new StackPanel { Spacing = 4 };
+            _referencesScroll = new ScrollViewer
+            {
+                Content = _referencesList,
+                MaxHeight = 150,
+                Margin = new Avalonia.Thickness(16, 8, 16, 12),
+            };
+
+            _referencesTabDot = new Ellipse { Width = 7, Height = 7, Fill = ClayTheme.TextMuted, VerticalAlignment = VerticalAlignment.Center };
+            _referencesTabButton = new Button
+            {
+                Classes = { "clay-toggle" },
+                Padding = new Avalonia.Thickness(14, 6),
+                FontSize = 12,
+                Content = new StackPanel
+                {
+                    Orientation = Orientation.Horizontal,
+                    Spacing = 6,
+                    Children =
+                    {
+                        _referencesTabDot,
+                        new TextBlock { Text = Loc.Tr("Referencias", "References") }
+                    }
+                }
+            };
+            _referencesTabButton.Click += (_, _) => SetBottomTab(BottomTab.References);
+
             var bottomTabsRow = new StackPanel
             {
                 Orientation = Orientation.Horizontal,
                 Spacing = 6,
                 Margin = new Avalonia.Thickness(16, 10, 16, 0),
-                Children = { _liveErrorsTabButton, _runErrorsTabButton }
+                Children = { _liveErrorsTabButton, _runErrorsTabButton, _referencesTabButton }
             };
 
-            var bottomBody = new Panel { Children = { _liveDiagnosticsScroll, _runOutputScroll } };
+            var bottomBody = new Panel { Children = { _liveDiagnosticsScroll, _runOutputScroll, _referencesScroll } };
 
             _outputPanel = new Border
             {
@@ -1572,8 +1606,10 @@ namespace DanaProcessing.Ide
             _activeBottomTab = tab;
             _liveErrorsTabButton.Classes.Set("active", tab == BottomTab.Live);
             _runErrorsTabButton.Classes.Set("active", tab == BottomTab.Run);
+            _referencesTabButton.Classes.Set("active", tab == BottomTab.References);
             _liveDiagnosticsScroll.IsVisible = tab == BottomTab.Live;
             _runOutputScroll.IsVisible = tab == BottomTab.Run;
+            _referencesScroll.IsVisible = tab == BottomTab.References;
         }
 
         /// <summary>Called every time SketchEditorView's live Roslyn diagnostics change
@@ -1649,13 +1685,93 @@ namespace DanaProcessing.Ide
             return button;
         }
 
-        /// <summary>The panel is only worth showing when at least one of the two tabs has
+        /// <summary>One clickable row in the "Referencias" tab: clicking it jumps the
+        /// editor's caret to that reference's location. Mirrors BuildDiagnosticRow, minus
+        /// the severity dot (a reference isn't an error/warning, there's nothing to color).</summary>
+        private Control BuildReferenceRow(ReferenceResultInfo r)
+        {
+            var locationText = new TextBlock
+            {
+                Text = $"({r.Line},{r.Column})",
+                Foreground = ClayTheme.TextMuted,
+                FontFamily = ClayTheme.FontMono,
+                FontSize = 11.5,
+                VerticalAlignment = VerticalAlignment.Center,
+            };
+            var lineText = new TextBlock
+            {
+                Text = r.LineText,
+                Foreground = ClayTheme.TextPrimary,
+                FontFamily = ClayTheme.FontMono,
+                FontSize = 12,
+                TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+                VerticalAlignment = VerticalAlignment.Center,
+            };
+
+            var row = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                Spacing = 8,
+                Children = { locationText, lineText },
+            };
+
+            var button = new Button
+            {
+                Content = row,
+                Background = Brushes.Transparent,
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                HorizontalContentAlignment = HorizontalAlignment.Left,
+                Padding = new Avalonia.Thickness(6, 3),
+                CornerRadius = new CornerRadius(6),
+            };
+            button.Click += (_, _) => _editorView.GoToOffset(r.Offset);
+            return button;
+        }
+
+        /// <summary>Called when SketchEditorView resolves a Find All References (Shift+F12)
+        /// or a multi-candidate Go to Implementation. Unlike UpdateLiveDiagnostics -- which
+        /// arrives passively on every debounced keystroke and deliberately avoids stealing
+        /// focus from an unresolved Run error -- this only ever fires as the direct result
+        /// of an explicit user action, so it always switches to the tab immediately.</summary>
+        private void UpdateReferencesFound(IReadOnlyList<ReferenceResultInfo> results)
+        {
+            _referencesList.Children.Clear();
+            foreach (var r in results.OrderBy(r => r.Offset))
+                _referencesList.Children.Add(BuildReferenceRow(r));
+
+            _referencesTabDot.Fill = results.Count > 0 ? ClayTheme.Accent : ClayTheme.TextMuted;
+            RefreshBottomPanelVisibility();
+            SetBottomTab(BottomTab.References);
+        }
+
+        /// <summary>Reuses the same status pill "Restaurando NuGet..."/"Exportado"/etc.
+        /// already use, for SketchEditorView's navigation feedback ("no symbol here", "no
+        /// source available for X") — a transient message rather than a permanent one, so
+        /// it auto-reverts to "Listo" instead of sitting there looking stale forever.</summary>
+        private void ShowTransientStatus(string message)
+        {
+            _statusLabel.Text = message;
+            _statusPill.Background = ClayTheme.SurfaceHigher;
+
+            _transientStatusTimer?.Stop();
+            _transientStatusTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(2500) };
+            _transientStatusTimer.Tick += (_, _) =>
+            {
+                _transientStatusTimer!.Stop();
+                _statusLabel.Text = Loc.Tr("Listo", "Ready");
+                _statusPill.Background = ClayTheme.SuccessSurface;
+            };
+            _transientStatusTimer.Start();
+        }
+
+        /// <summary>The panel is only worth showing when at least one of the tabs has
         /// something in it — no empty red box sitting there by default.</summary>
         private void RefreshBottomPanelVisibility()
         {
             var hasLive = _liveDiagnosticsList.Children.Count > 0;
             var hasRun = !string.IsNullOrEmpty(_outputText.Text);
-            _outputPanel.IsVisible = hasLive || hasRun;
+            var hasReferences = _referencesList.Children.Count > 0;
+            _outputPanel.IsVisible = hasLive || hasRun || hasReferences;
         }
 
         public void LoadAndRunSketch(string source)

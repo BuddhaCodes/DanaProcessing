@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Templates;
 using Avalonia.Data;
+using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
@@ -12,6 +13,7 @@ using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using AvaloniaEdit;
 using AvaloniaEdit.CodeCompletion;
+using AvaloniaEdit.Search;
 using AvaloniaEdit.TextMate;
 using DanaProcessing.Ide.Compilation;
 using DanaProcessing.Ide.Compilation.PackageManagement;
@@ -27,6 +29,11 @@ using TextMateSharp.Grammars;
 
 namespace DanaProcessing.Ide.Editor
 {
+    /// <summary>One location a Find All References (or a multi-candidate Go to
+    /// Implementation) turned up — plain offsets plus the line's own text, so
+    /// MainWindow's "Referencias" tab can render a row without touching AvaloniaEdit.</summary>
+    public sealed record ReferenceResultInfo(int Offset, int Line, int Column, string LineText);
+
     public class SketchEditorView : UserControl
     {
         public ObservableCollection<EditorTab> OpenTabs { get; } = new();
@@ -38,8 +45,19 @@ namespace DanaProcessing.Ide.Editor
         /// or immediately on tab switch) — MainWindow's "Errores en vivo" tab renders from this.</summary>
         public event Action<IReadOnlyList<LiveDiagnosticInfo>>? LiveDiagnosticsChanged;
 
+        /// <summary>Fired when Find All References (Shift+F12) resolves, or when Go to
+        /// Implementation (Ctrl+F12) finds more than one override — MainWindow's
+        /// "Referencias" tab renders from this.</summary>
+        public event Action<IReadOnlyList<ReferenceResultInfo>>? ReferencesFound;
+
+        /// <summary>Fired for the two non-navigable navigation outcomes ("no symbol
+        /// under the caret" / "resolved, but that symbol has no source to jump to") —
+        /// MainWindow shows this in its transient status pill.</summary>
+        public event Action<string>? StatusMessageRequested;
+
         private readonly TabStrip _tabStrip;
         private readonly TextEditor _editor;
+        private readonly SearchPanel _searchPanel;
         private readonly Border _emptyStateOverlay;
 
         // FIX: ThemeName.DarkPlus pinta el texto base en gris claro/blanco,
@@ -280,6 +298,29 @@ namespace DanaProcessing.Ide.Editor
             _editor.TextArea.KeyDown += OnEditorKeyDown;
 
             // ================================================================
+            // BÚSQUEDA (AvaloniaEdit.Search.SearchPanel, no una propia a mano)
+            // ================================================================
+            // Se instala UNA sola vez sobre el TextArea compartido -- igual que
+            // el resto de este editor, cambiar de tab solo reasigna _editor
+            // .Document, así que el panel sigue operando sobre el documento que
+            // esté activo en cada momento sin ningún cableado extra por tab.
+            _searchPanel = SearchPanel.Install(_editor);
+
+            // ================================================================
+            // NAVEGACIÓN (Go to Definition / Implementation / Find All References)
+            // ================================================================
+            _editor.ContextMenu = BuildEditorContextMenu();
+            // Tunnel, not a plain PointerPressed +=: AvaloniaEdit's own TextArea
+            // handles right-click internally (and marks it Handled) before it
+            // would ever bubble back up to _editor, so a normal Bubble-phase
+            // subscriber here never runs -- the caret never moves to the click
+            // point, and every navigation action ends up acting on wherever the
+            // caret last was instead of wherever was actually right-clicked.
+            // Tunnel fires top-down, before that inner handling, so this always
+            // gets first look at the event.
+            _editor.AddHandler(InputElement.PointerPressedEvent, OnEditorPointerPressedForContextMenu, RoutingStrategies.Tunnel);
+
+            // ================================================================
             // ESTADO VACÍO: se muestra en vez del editor cuando se cierra la
             // última pestaña (ver el closeButton.Click de más arriba) -- ya
             // no se crea una pestaña en blanco automáticamente, así que esto
@@ -469,6 +510,27 @@ namespace DanaProcessing.Ide.Editor
             {
                 e.Handled = true;
                 _ = ShowCompletionAsync();
+                return;
+            }
+            // F12 / Shift+F12 / Ctrl+F12 -- misma convención que Visual Studio y
+            // VS Code (las tres coinciden ahí), así que no hay atajo nuevo que
+            // aprender para quien ya usa cualquiera de los dos.
+            if (e.Key == Key.F12 && e.KeyModifiers == KeyModifiers.None)
+            {
+                e.Handled = true;
+                _ = GoToDefinitionAsync();
+                return;
+            }
+            if (e.Key == Key.F12 && e.KeyModifiers == KeyModifiers.Shift)
+            {
+                e.Handled = true;
+                _ = FindAllReferencesAsync();
+                return;
+            }
+            if (e.Key == Key.F12 && e.KeyModifiers == KeyModifiers.Control)
+            {
+                e.Handled = true;
+                _ = GoToImplementationAsync();
             }
         }
 
@@ -754,6 +816,135 @@ namespace DanaProcessing.Ide.Editor
             _editor.TextArea.Caret.BringCaretToView();
             _editor.Focus();
         }
+
+        // ================================================================
+        // NAVEGACIÓN (Go to Definition / Implementation / Find All References)
+        // ================================================================
+
+        private ContextMenu BuildEditorContextMenu()
+        {
+            var cut = new MenuItem { Header = Loc.Tr("Cortar", "Cut") };
+            cut.Click += (_, _) => _editor.Cut();
+
+            var copy = new MenuItem { Header = Loc.Tr("Copiar", "Copy") };
+            copy.Click += (_, _) => _editor.Copy();
+
+            var paste = new MenuItem { Header = Loc.Tr("Pegar", "Paste") };
+            paste.Click += (_, _) => _editor.Paste();
+
+            var goToDefinition = new MenuItem { Header = Loc.Tr("Ir a la definición", "Go to Definition") };
+            goToDefinition.Click += (_, _) => _ = GoToDefinitionAsync();
+
+            var goToImplementation = new MenuItem { Header = Loc.Tr("Ir a la implementación", "Go to Implementation") };
+            goToImplementation.Click += (_, _) => _ = GoToImplementationAsync();
+
+            var findReferences = new MenuItem { Header = Loc.Tr("Buscar todas las referencias", "Find All References") };
+            findReferences.Click += (_, _) => _ = FindAllReferencesAsync();
+
+            return new ContextMenu
+            {
+                ItemsSource = new object[]
+                {
+                    cut, copy, paste,
+                    new Separator(),
+                    goToDefinition, goToImplementation, findReferences,
+                }
+            };
+        }
+
+        /// <summary>AvaloniaEdit doesn't move the caret to the click point before opening
+        /// a right-click context menu on its own — without this, "Go to Definition" from
+        /// the menu would act on wherever the caret last happened to be, not on whatever
+        /// the user actually right-clicked.</summary>
+        private void OnEditorPointerPressedForContextMenu(object? sender, PointerPressedEventArgs e)
+        {
+            if (!e.GetCurrentPoint(_editor).Properties.IsRightButtonPressed)
+                return;
+
+            var position = _editor.TextArea.TextView.GetPosition(e.GetPosition(_editor.TextArea.TextView));
+            if (position.HasValue)
+                _editor.CaretOffset = _editor.Document.GetOffset(position.Value.Location);
+        }
+
+        private async Task GoToDefinitionAsync()
+        {
+            if (_activeTab is null)
+                return;
+            _completionEngine.UpdateText(_editor.Document.Text);
+            HandleSingleLocationResult(await _completionEngine.GoToDefinitionAsync(_editor.CaretOffset));
+        }
+
+        private async Task GoToImplementationAsync()
+        {
+            if (_activeTab is null)
+                return;
+            _completionEngine.UpdateText(_editor.Document.Text);
+            HandleSingleLocationResult(await _completionEngine.GoToImplementationAsync(_editor.CaretOffset));
+        }
+
+        private async Task FindAllReferencesAsync()
+        {
+            if (_activeTab is null)
+                return;
+            _completionEngine.UpdateText(_editor.Document.Text);
+            HandleReferencesResult(await _completionEngine.FindReferencesAsync(_editor.CaretOffset));
+        }
+
+        /// <summary>Go to Definition / Go to Implementation: jump straight there when
+        /// there's exactly one candidate (by far the common case — one class, usually
+        /// one override) rather than opening a results list for a single row. Only the
+        /// rare multi-candidate case (Go to Implementation with several overrides) routes
+        /// through the same "Referencias" panel Find All References always uses.</summary>
+        private void HandleSingleLocationResult(NavigationResult result)
+        {
+            switch (result.Kind)
+            {
+                case NavigationKind.NoSymbol:
+                    StatusMessageRequested?.Invoke(Loc.Tr("No hay ningún símbolo en esa posición.", "No symbol at that position."));
+                    break;
+                case NavigationKind.NoSourceAvailable:
+                    StatusMessageRequested?.Invoke(string.Format(
+                        Loc.Tr("No hay definición de código fuente disponible para '{0}'.", "No source definition available for '{0}'."),
+                        result.SymbolDisplayName));
+                    break;
+                case NavigationKind.Found when result.Locations.Count == 1:
+                    GoToOffset(result.Locations[0].Start);
+                    break;
+                case NavigationKind.Found:
+                    ReferencesFound?.Invoke(BuildReferenceInfos(result.Locations));
+                    break;
+            }
+        }
+
+        /// <summary>Find All References: always shows the panel, even for a single row --
+        /// unlike Go to Definition/Implementation, this is an inherently list-oriented
+        /// command; invoking Shift+F12 means "show me the count/list", not "teleport me".</summary>
+        private void HandleReferencesResult(NavigationResult result)
+        {
+            switch (result.Kind)
+            {
+                case NavigationKind.NoSymbol:
+                    StatusMessageRequested?.Invoke(Loc.Tr("No hay ningún símbolo en esa posición.", "No symbol at that position."));
+                    break;
+                case NavigationKind.NoSourceAvailable:
+                    StatusMessageRequested?.Invoke(string.Format(
+                        Loc.Tr("No se pueden buscar referencias de '{0}' (símbolo del motor, sin código fuente).", "Can't find references for '{0}' (engine symbol, no source available)."),
+                        result.SymbolDisplayName));
+                    break;
+                case NavigationKind.Found:
+                    ReferencesFound?.Invoke(BuildReferenceInfos(result.Locations));
+                    break;
+            }
+        }
+
+        private IReadOnlyList<ReferenceResultInfo> BuildReferenceInfos(IReadOnlyList<NavigationLocation> locations) =>
+            locations.Select(l =>
+            {
+                var loc = _editor.Document.GetLocation(Math.Min(l.Start, _editor.Document.TextLength));
+                var docLine = _editor.Document.GetLineByOffset(Math.Min(l.Start, _editor.Document.TextLength));
+                var lineText = _editor.Document.GetText(docLine.Offset, docLine.Length).Trim();
+                return new ReferenceResultInfo(l.Start, loc.Line, loc.Column, lineText);
+            }).ToList();
 
         /// <summary>Shows the message of whichever diagnostic sits under the caret right
         /// now, or hides the banner if there isn't one.</summary>
