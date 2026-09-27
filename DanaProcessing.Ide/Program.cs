@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using System.Text;
 using Avalonia;
+using DanaProcessing.Ide.CrashReporting;
 using DanaProcessing.Ide.Export;
 using Microsoft.Win32;
 
@@ -18,6 +19,21 @@ namespace DanaProcessing.Ide
         [STAThread]
         public static void Main(string[] args)
         {
+            // As early as physically possible, before anything else can
+            // throw -- see CrashReportStore's own remark on why this only
+            // does a best-effort local file write (gated on the opt-in
+            // Settings toggle) and nothing more: the process is actively
+            // dying by the time this handler runs, so trying to show UI or
+            // make a network call here would be building on sand. The
+            // actual "want to report this?" prompt happens on the NEXT
+            // startup instead (MainWindow.CheckForPendingCrashReportAsync),
+            // once the app is in a normal, working state again.
+            AppDomain.CurrentDomain.UnhandledException += (_, e) =>
+            {
+                if (e.ExceptionObject is Exception ex)
+                    CrashReportStore.WriteBestEffort(CrashReportStore.Build(ex, "AppDomain.UnhandledException"));
+            };
+
             // An exported standalone sketch (see DanaProcessing.Ide.Export) is a
             // plain copy of this same exe with a "sketch.cs" file dropped next to
             // it. Checked first and unconditionally: none of the IDE-only startup

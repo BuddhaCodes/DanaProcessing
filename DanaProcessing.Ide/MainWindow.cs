@@ -13,6 +13,7 @@ using Avalonia.Threading;
 using DanaProcessing;
 using DanaProcessing.AvaloniaHost;
 using DanaProcessing.Ide.Compilation;
+using DanaProcessing.Ide.CrashReporting;
 using DanaProcessing.Ide.Compilation.PackageManagement;
 using DanaProcessing.Ide.Editor;
 using DanaProcessing.Ide.Export;
@@ -612,6 +613,7 @@ namespace DanaProcessing.Ide
             {
                 Opacity = 1;
                 _ = CheckForUpdatesOnStartupAsync();
+                _ = CheckForPendingCrashReportAsync();
             };
         }
 
@@ -995,6 +997,7 @@ namespace DanaProcessing.Ide
             menuPanel.Children.Add(BuildItem("📤", Loc.Tr("Exportar sketch...", "Export sketch..."), () => _ = ExportActiveSketchAsync()));
             menuPanel.Children.Add(Separator());
             menuPanel.Children.Add(BuildItem("⬆", Loc.Tr("Buscar actualizaciones...", "Check for updates..."), () => _ = CheckForUpdatesManuallyAsync()));
+            menuPanel.Children.Add(BuildItem("🐛", Loc.Tr("Reportar un problema...", "Report a problem..."), ReportProblemManually));
 
             flyout = new Flyout
             {
@@ -1231,6 +1234,64 @@ namespace DanaProcessing.Ide
                 return;
 
             ShowUpdateBanner(result);
+        }
+
+        /// <summary>
+        /// If the previous run of the IDE crashed (see Program.cs's
+        /// AppDomain.UnhandledException hook) AND crash reporting is opted
+        /// in, asks once whether to report it -- reporting just opens a
+        /// prefilled GitHub "new issue" page in the browser (see
+        /// GitHubIssueUrlBuilder) for the user to review and submit
+        /// themselves; nothing is ever sent from inside the IDE itself.
+        /// Only the single most recent crash is offered (multiple crashes
+        /// in a row from a genuinely broken build would otherwise queue up
+        /// a prompt per launch) -- either way, pending reports are cleared
+        /// once asked about, so this never nags twice about the same crash.
+        /// </summary>
+        private async Task CheckForPendingCrashReportAsync()
+        {
+            if (!CrashReportSettingsStore.Load().Enabled)
+                return;
+
+            var pending = CrashReportStore.LoadPending();
+            if (pending.Count == 0)
+                return;
+
+            var mostRecent = pending[^1];
+            try
+            {
+                var confirmed = await ConfirmDialog.ShowAsync(
+                    this,
+                    Loc.Tr("La IDE se cerró de forma inesperada", "The IDE closed unexpectedly"),
+                    Loc.Tr(
+                        $"La sesión anterior terminó con un error inesperado ({mostRecent.ExceptionType}). ¿Querés reportarlo? Se va a abrir GitHub en el navegador con los detalles ya completados para que los revises antes de mandarlo -- no se envía nada automáticamente.",
+                        $"The previous session ended with an unexpected error ({mostRecent.ExceptionType}). Want to report it? This opens GitHub in your browser with the details already filled in for you to review before sending -- nothing is sent automatically."),
+                    confirmLabel: Loc.Tr("Reportar en GitHub", "Report on GitHub"),
+                    cancelLabel: Loc.Tr("Ahora no", "Not now"));
+
+                if (confirmed)
+                {
+                    var url = GitHubIssueUrlBuilder.BuildForCrash(mostRecent);
+                    Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+                }
+            }
+            finally
+            {
+                CrashReportStore.ClearPending();
+            }
+        }
+
+        /// <summary>The ☰ menu's "Reportar un problema..." -- a plain
+        /// support/feedback entry point, no crash or CrashReportSettings
+        /// opt-in required (this is an explicit action the user just
+        /// clicked, unlike the automatic post-crash prompt above, so it
+        /// doesn't need its own confirmation step first). Opens the same
+        /// kind of prefilled-but-not-yet-submitted GitHub page, just with
+        /// environment info instead of exception details.</summary>
+        private void ReportProblemManually()
+        {
+            var url = GitHubIssueUrlBuilder.BuildManual();
+            Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
         }
 
         /// <summary>The file menu's "Check for updates" — unlike the startup check, this

@@ -1736,7 +1736,7 @@ public class MySketch : Sketch
 public class MySketch : Sketch
 {
     private volatile int _primesFound;
-    private volatile long _lastPrime;
+    private volatile int _lastPrime;
     private volatile bool _searching;
     private float _spin;
  
@@ -1789,7 +1789,7 @@ public class MySketch : Sketch
     // No parameters -- exactly what Thread() looks for via reflection.
     private void SearchPrimes()
     {
-        for (long n = 2; n < 2_000_000; n++)
+        for (int n = 2; n < 2_000_000; n++)
         {
             if (IsPrime(n))
             {
@@ -1800,11 +1800,11 @@ public class MySketch : Sketch
         _searching = false;
     }
  
-    private static bool IsPrime(long n)
+    private static bool IsPrime(int n)
     {
         if (n < 2)
             return false;
-        for (long d = 2; d * d <= n; d++)
+        for (int d = 2; d * d <= n; d++)
         {
             if (n % d == 0)
                 return false;

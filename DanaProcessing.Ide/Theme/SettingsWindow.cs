@@ -6,6 +6,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
+using DanaProcessing.Ide.CrashReporting;
 using DanaProcessing.Ide.Localization;
 using DanaProcessing.Ide.Theme;
 
@@ -229,6 +230,29 @@ namespace DanaProcessing.Ide
                     var settings = Updates.UpdateSettingsStore.Load();
                     settings.AutoCheckEnabled = v;
                     Updates.UpdateSettingsStore.Save(settings);
+                }));
+
+            root.Children.Add(SectionTitle(Loc.Tr("Reporte de errores", "Error reporting"), topMargin: 20));
+            root.Children.Add(new TextBlock
+            {
+                Text = Loc.Tr(
+                    "Si está activado, cuando la IDE se cierra de forma inesperada te va a preguntar la próxima vez que la abras si querés reportarlo. Reportar solo abre GitHub en el navegador con los detalles ya completados -- vos revisás y mandás el issue vos mismo, la IDE nunca envía nada por su cuenta.",
+                    "When on, if the IDE ever closes unexpectedly, it'll ask the next time you open it whether you want to report it. Reporting just opens GitHub in your browser with the details already filled in -- you review and submit the issue yourself, the IDE never sends anything on its own."),
+                Foreground = ClayTheme.TextMuted,
+                FontFamily = ClayTheme.FontBody,
+                FontSize = 11.5,
+                TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+                Margin = new Thickness(0, 0, 0, 8),
+            });
+            root.Children.Add(BuildComboRow(
+                Loc.Tr("Ofrecer reportar crashes de la IDE", "Offer to report IDE crashes"),
+                AutoUpdateCheckOptions,
+                () => CrashReportSettingsStore.Load().Enabled,
+                v =>
+                {
+                    var settings = CrashReportSettingsStore.Load();
+                    settings.Enabled = v;
+                    CrashReportSettingsStore.Save(settings);
                 }));
 
             root.Children.Add(SectionTitle(Loc.Tr("Asistente (Agent mode)", "Assistant (Agent mode)"), topMargin: 20));

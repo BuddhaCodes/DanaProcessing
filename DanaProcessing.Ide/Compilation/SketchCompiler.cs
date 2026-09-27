@@ -35,9 +35,23 @@ namespace DanaProcessing.Ide.Compilation
 
         /// <summary>
         /// A synthetic, invisible-to-the-user source file containing just the
-        /// global usings every sketch should get "for free" — currently just
-        /// DanaProcessing itself, so sketches can write `public class MySketch
-        /// : Sketch` without their own `using DanaProcessing;` line.
+        /// global usings every sketch should get "for free" — DanaProcessing
+        /// itself, so sketches can write `public class MySketch : Sketch`
+        /// without their own `using DanaProcessing;` line, plus the same
+        /// handful of BCL namespaces a real `dotnet new` project's
+        /// &lt;ImplicitUsings&gt;enable&lt;/ImplicitUsings&gt; already gives every C#
+        /// file for free (System, System.Collections.Generic, System.Linq,
+        /// etc.). Without these, a sketch that writes `List&lt;T&gt;` with no
+        /// `using System.Collections.Generic;` of its own fails to compile
+        /// here even though the exact same code compiles fine as a normal
+        /// project — a real bug three shipped gallery samples actually hit
+        /// (CircleRain/ShapeFleet/StrokeBackup all use List&lt;T&gt; with no
+        /// explicit using), not just a harness quirk: SketchCompiler.Compile()
+        /// is the SAME method the real Run button calls, so this would have
+        /// failed identically for an actual user pressing Run on those
+        /// samples. RoslynCompletionEngine (live diagnostics/autocomplete)
+        /// references this exact same constant, so the fix covers both at
+        /// once.
         ///
         /// Deliberately NOT adding `using SkiaSharp;` here (and not
         /// referencing SkiaSharp.dll in GetReferences() below either): every
@@ -47,7 +61,14 @@ namespace DanaProcessing.Ide.Compilation
         /// leaks an SKColor/SKPoint/etc. into a public method signature,
         /// that's the bug to fix — not a reason to add SkiaSharp back here.
         /// </summary>
-        internal const string ImplicitUsingsSource = "global using DanaProcessing;";
+        internal const string ImplicitUsingsSource =
+            "global using System;\n" +
+            "global using System.Collections.Generic;\n" +
+            "global using System.Linq;\n" +
+            "global using System.IO;\n" +
+            "global using System.Threading;\n" +
+            "global using System.Threading.Tasks;\n" +
+            "global using DanaProcessing;";
 
         /// <summary>Language version pinned here too, so a completion-time syntax tree
         /// and a Run-time syntax tree never disagree about what's valid C#.</summary>
