@@ -531,6 +531,15 @@ namespace DanaProcessing.Ide.Editor
             {
                 e.Handled = true;
                 _ = GoToImplementationAsync();
+                return;
+            }
+            // No había ningún atajo de teclado para guardar hasta ahora (solo el
+            // ítem "Guardar" del menú ☰) -- necesario para que "hot reload on
+            // save" sea realmente utilizable en un loop de edición rápida.
+            if (e.Key == Key.S && e.KeyModifiers == KeyModifiers.Control)
+            {
+                e.Handled = true;
+                _ = SaveActiveTabAsync();
             }
         }
 

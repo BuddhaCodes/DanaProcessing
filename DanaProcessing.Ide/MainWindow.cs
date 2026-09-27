@@ -173,6 +173,7 @@ namespace DanaProcessing.Ide
             _editorView.LiveDiagnosticsChanged += UpdateLiveDiagnostics;
             _editorView.ReferencesFound += UpdateReferencesFound;
             _editorView.StatusMessageRequested += ShowTransientStatus;
+            _editorView.TabSaved += OnTabSaved;
 
             _runButton = new Button
             {
@@ -1434,6 +1435,17 @@ namespace DanaProcessing.Ide
                 _runButton.IsEnabled = true;
                 UpdateHotReloadButtonEnabled();
             }
+        }
+
+        /// <summary>Hot reload on save: guarding on the exact same condition
+        /// UpdateHotReloadButtonEnabled already uses (not running right now, and
+        /// the tab that just got saved is the one actually live in the canvas) --
+        /// saving a tab that was never run, or a DIFFERENT tab than the one
+        /// currently running, should just save and do nothing else.</summary>
+        private void OnTabSaved(EditorTab tab)
+        {
+            if (!_isRunning && _runningTab == tab)
+                _ = HotReloadCurrentSketchAsync();
         }
 
         /// <summary>
