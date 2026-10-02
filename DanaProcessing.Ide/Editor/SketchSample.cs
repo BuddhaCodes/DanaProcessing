@@ -2845,7 +2845,8 @@ public class MySketch : Sketch
         float energy = Constrain(_lastOverallLevel, 0f, 1f);
         _currentDuration = exploding
             ? Lerp(ExplodeMsMax, ExplodeMsMin, energy)
-            : Lerp(ReassembleMsMax, ReassembleMsMin, energy);
+            : Lerp(ReassembleMsMax, ReassembleMsMin, energy);s
+
 
         if (exploding)
         {

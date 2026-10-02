@@ -91,13 +91,28 @@ namespace DanaProcessing.AvaloniaHost
         /// before anyone opens Options — the IDE's SettingsWindow overrides
         /// this (see MainWindow's RenderingSettings wiring) for its own
         /// preview; an exported standalone sketch just keeps this default.
-        /// Read fresh each time EnsureOffscreenSurface() runs (not cached at
-        /// construction), so changing it takes effect on the very next frame
-        /// that also triggers a surface rebuild (e.g. the next LoadSketch()/
-        /// Run(), which always invalidates the size) rather than needing this
-        /// control itself recreated.
+        /// Read fresh every frame (PaintSketch calls EnsureOffscreenSurface
+        /// unconditionally, which is a cheap no-op when nothing changed), so
+        /// changing this takes effect live on the very next frame — no resize
+        /// or reload needed. Used for exactly that: MainWindow temporarily
+        /// drops this to 1 while you're actively typing (see
+        /// OnTypingActivityChanged), trading a touch of edge smoothness for
+        /// less per-frame cost right when nobody's looking closely at the
+        /// canvas anyway, then restores the real configured value once you pause.
         /// </summary>
         public int SupersampleScale { get; set; } = 2;
+
+        /// <summary>
+        /// A host-settable pause, independent of IsEffectivelyVisible/minimized --
+        /// this control has no opinion on WHY it should pause (a reusable control
+        /// in DanaProcessing.AvaloniaHost has no business knowing "the code editor
+        /// has focus"), it just honors whatever the host decides. The IDE's
+        /// MainWindow sets this from SketchEditorView.EditorFocusChanged, so the
+        /// sketch actually stops running the moment your attention is on the code
+        /// -- not just when the canvas happens to be physically hidden, which
+        /// only ever applies in the narrow single-pane layout.
+        /// </summary>
+        public bool IsPaused { get; set; }
 
         /// <summary>The current width the loaded sketch has requested via Size(w, h) — what this control asks the layout system for, not necessarily what the parent ends up giving it.</summary>
         public int SketchWidth => _sketch.Width;
@@ -133,7 +148,23 @@ namespace DanaProcessing.AvaloniaHost
                 if (_sketch.TargetFrameRate != _lastKnownFrameRate)
                     SetTimerInterval(_sketch.TargetFrameRate);
 
-                if (_sketch.IsLooping || _crashed)
+                // IsEffectivelyVisible is false whenever this control OR any
+                // ancestor is hidden -- in particular, MainWindow's narrow
+                // layout (SetNarrowPane) hides the whole canvas card while
+                // "Código" is selected. Skipping InvalidateVisual() there
+                // means Draw() genuinely stops running (not just "stops being
+                // composited"): no wasted CPU, and critically no allocations
+                // from whatever the sketch does per frame, while you can't
+                // even see the result anyway. Same reasoning covers _crashed --
+                // no point repainting a crash overlay nobody can see either.
+                //
+                // Minimizing the window doesn't flip IsEffectivelyVisible on
+                // its own (Avalonia keeps the content subtree "visible", the
+                // OS just isn't compositing it) -- checked separately so a
+                // minimized IDE (or an exported standalone sketch) doesn't
+                // keep a heavy sketch running at full tilt in the background.
+                var isMinimized = TopLevel.GetTopLevel(this) is Window { WindowState: WindowState.Minimized };
+                if ((_sketch.IsLooping || _crashed) && IsEffectivelyVisible && !isMinimized && !IsPaused)
                     InvalidateVisual();
             };
             _timer.Start();
@@ -423,6 +454,15 @@ namespace DanaProcessing.AvaloniaHost
         {
             if (!_didSetup)
                 EnsureSetupRun(); // fallback: normally already run by MeasureOverride before the first Render
+            else
+                // EnsureOffscreenSurface() is a cheap no-op when nothing changed
+                // (an int comparison), but calling it here too -- not just from
+                // EnsureSetupRun()/OnSketchSizeChanged() -- is what makes a live
+                // SupersampleScale change (e.g. MainWindow dropping it while the
+                // user is actively typing) actually take effect on the very next
+                // frame, instead of silently sitting there unapplied until the
+                // sketch happens to resize or get reloaded.
+                EnsureOffscreenSurface(_sketch.Width, _sketch.Height);
 
             if (_offscreenSurface == null)
                 return; // sketch size not yet valid — nothing to draw

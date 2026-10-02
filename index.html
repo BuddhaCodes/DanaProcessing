@@ -2358,7 +2358,7 @@ heights.Shuffle();               <span class="cm">// reorders in place</span>
           <section class="doc-section" id="ide">
             <div class="section-kicker">21 · Hosting &amp; Tooling</div>
             <h2>The IDE</h2>
-            <p class="section-intro">A self-contained editor + canvas window for iterating on sketches without a separate build step — not a thin wrapper around the library, but a purpose-built environment: diagnostics as you type, packages resolved from a single comment, 28 ready-made examples, and a one-click path to a standalone app.</p>
+            <p class="section-intro">A self-contained editor + canvas window for iterating on sketches without a separate build step — not a thin wrapper around the library, but a purpose-built environment: diagnostics as you type, code navigation, an AI assistant with its own tools, packages resolved from a single comment, 35 ready-made examples, and a one-click path to a standalone app.</p>
 
             <h3 class="entry-title" id="sketchcompiler-compile">SketchCompiler.Compile(<span class="tp">string</span> sourceCode) <span class="sig-return">→ CompileResult</span></h3>
             <p class="entry-desc">Parses the editor's text with Roslyn, compiles it in memory, and instantiates the first <code class="inline">Sketch</code> found — this is what pressing <strong>Run</strong> does, start to finish, well under a second for a typical sketch.</p>
@@ -2368,6 +2368,29 @@ heights.Shuffle();               <span class="cm">// reorders in place</span>
             <p class="entry-desc">A tabbed code editor with C# syntax highlighting, live Roslyn diagnostics, and autocomplete.</p>
             <div class="note"><strong>Live diagnostics.</strong> Errors and warnings are computed from the same Roslyn workspace <code class="inline">SketchCompiler</code> uses, underlined directly in the editor as you type — no need to press Run to find a typo. Click a diagnostic in the bottom panel's "Errores en vivo" tab and the caret jumps straight to it.</div>
             <div class="note"><strong>Autocomplete.</strong> Completion suggestions know the full <code class="inline">Sketch</code> API — every method documented on this page shows up as you type, with the same signatures.</div>
+
+            <h3 class="entry-title" id="code-navigation">Code navigation</h3>
+            <p class="entry-desc">Standard IDE navigation, backed by the same Roslyn semantic model live diagnostics use — scoped to the one sketch you're editing, since each sketch is its own independent compilation rather than part of a larger project.</p>
+            <div class="table-wrap">
+              <table>
+                <tr><th>Action</th><th>Shortcut</th></tr>
+                <tr><td>Find in file</td><td><code class="inline">Ctrl+F</code></td></tr>
+                <tr><td>Go to Definition</td><td><code class="inline">F12</code></td></tr>
+                <tr><td>Go to Implementation</td><td><code class="inline">Ctrl+F12</code></td></tr>
+                <tr><td>Find All References</td><td><code class="inline">Shift+F12</code></td></tr>
+                <tr><td>Save (also triggers Hot Reload, see below)</td><td><code class="inline">Ctrl+S</code></td></tr>
+              </table>
+            </div>
+            <p class="entry-desc">The three jump-to-X actions are also on the editor's right-click menu, next to Cut/Copy/Paste. References resolve within the one open sketch; a symbol from <code class="inline">DanaProcessing</code> itself (like <code class="inline">Circle</code> or <code class="inline">PVector</code>) is compiled with no attached source, so Go to Definition reports "no source available" for it instead of guessing at a location.</p>
+
+            <h3 class="entry-title" id="hot-reload">Hot Reload</h3>
+            <p class="entry-desc">Recompiles the running sketch and swaps it in without re-running <code class="inline">Setup()</code> or losing its current state, as long as every field still lines up (same names, same types) between the old and new version — falls back to a full restart otherwise, with the reason shown in the output panel. Triggers automatically whenever you <code class="inline">Ctrl+S</code> the sketch that's currently running; the ⚡ title-bar button does the same thing on demand.</p>
+
+            <h3 class="entry-title" id="run-separate-window">Run in a separate window</h3>
+            <p class="entry-desc">The ⏩ title-bar button compiles the active sketch the same way <strong>Run</strong> does, but opens the result in its own window instead of the embedded canvas — no editor, no IDE chrome around it, the way Processing's own Run button works. Fully independent of the main window's Run/Hot Reload state; pressing it again replaces the previous window instead of stacking a new one on top.</p>
+
+            <h3 class="entry-title" id="agent-mode">Agent mode</h3>
+            <p class="entry-desc">An AI assistant, opened from the ✦ title-bar button, with four tools scoped to the sketch you're working on: read the current source, replace it, compile &amp; run it (compile errors and runtime exceptions are reported straight back to the model so it can react), and search this API reference. Needs your own API key for whichever provider you set up in Settings — the IDE doesn't include or pay for one, and the key stays local, never sent anywhere but that provider.</p>
 
             <h3 class="entry-title" id="nuget-directives">NuGet packages in a sketch</h3>
             <p class="entry-desc">Drop a <code class="inline">// nuget:</code> comment at the top of a sketch and pressing <strong>Run</strong> resolves, downloads (cached under <code class="inline">%AppData%\DanaProcessingIde</code>), and links the package before compiling — no <code class="inline">.csproj</code> to create or edit.</p>
@@ -2382,25 +2405,32 @@ heights.Shuffle();               <span class="cm">// reorders in place</span>
             <p class="entry-desc">The 📦 <strong>Paquetes NuGet</strong> menu item opens a Browse/Installed package manager (search NuGet.org, pick a version, install/update/remove) that writes these directives for you.</p>
 
             <h3 class="entry-title" id="sample-gallery">Example gallery</h3>
-            <p class="entry-desc">28 built-in sample sketches, open via the 🧩 <strong>Ejemplos</strong> menu item — 2D and 3D, from a minimal <code class="inline">Setup()</code>/<code class="inline">Draw()</code> to an orbiting camera, a GPU-uploaded 3D swarm, parallel prime search, and PDF export. Each one is commented to explain not just what it draws but why it's built that way — a working answer to "how would I actually do X" for most of the API on this page.</p>
+            <p class="entry-desc">35 built-in sample sketches, open via the 🧩 <strong>Ejemplos</strong> menu item — 2D and 3D, from a minimal <code class="inline">Setup()</code>/<code class="inline">Draw()</code> to an orbiting camera, a GPU-uploaded 3D swarm, parallel prime search, a live-training ML.NET color field, a reinforcement-learning self-play demo, and PDF export. Each one is commented to explain not just what it draws but why it's built that way — a working answer to "how would I actually do X" for most of the API on this page.</p>
 
             <h3 class="entry-title" id="export">Standalone export</h3>
-            <p class="entry-desc">The 📤 <strong>Exportar sketch</strong> menu item packages the active sketch as a single, self-contained, double-clickable executable via <code class="inline">dotnet publish</code> — no .NET runtime install required on the machine that opens it, nothing to explain to whoever you send it to.</p>
+            <p class="entry-desc">The 📤 <strong>Exportar sketch</strong> menu item packages the active sketch as a single, self-contained, double-clickable executable via <code class="inline">dotnet publish</code> — no .NET runtime install required on the machine that opens it, nothing to explain to whoever you send it to. An optional "modo gadget" (windowless) mode drops the OS title bar entirely — drag it with Alt+click, close it with Alt+F4 — for running the exported sketch as a desktop widget instead of a regular app window.</p>
+
+            <h3 class="entry-title" id="crash-reporting">Crash reporting &amp; feedback</h3>
+            <p class="entry-desc">Opt-in, off by default (Settings → Reporte de errores). When enabled, an unhandled exception writes a local crash report; on the next startup, the IDE offers to open a prefilled GitHub issue for it — you review and submit it yourself, nothing is sent automatically or silently. The ☰ menu also has a standing <strong>🐛 Reportar un problema</strong> item for general feedback, with no crash required to use it.</p>
 
             <h3 class="entry-title" id="settings-window">Settings</h3>
-            <p class="entry-desc">The ⚙ title-bar button opens a Settings window with four sections, each previewed live where that's possible:</p>
+            <p class="entry-desc">The ⚙ title-bar button opens a Settings window, most of it previewed live where that's possible:</p>
             <div class="table-wrap">
               <table>
                 <tr><th>Section</th><th>Controls</th></tr>
                 <tr><td>Colors</td><td>Every <code class="inline">ClayTheme</code> color — applied instantly to the running window.</td></tr>
-                <tr><td>Shapes &amp; Typography</td><td>Corner radii and font stacks — take effect on the next app restart.</td></tr>
+                <tr><td>Shapes</td><td>Corner radii — take effect on the next app restart.</td></tr>
+                <tr><td>Typography</td><td>Font stacks — take effect on the next app restart.</td></tr>
                 <tr><td>Rendering</td><td>2D antialiasing (supersampling, up to 4×) and 3D antialiasing (MSAA, up to 8×) — applied on the next <strong>Run</strong>, no restart needed.</td></tr>
                 <tr><td>Language</td><td>Switches the entire interface between Spanish and English — takes effect on the next app restart.</td></tr>
+                <tr><td>Updates</td><td>Whether the IDE checks GitHub for a newer release on startup.</td></tr>
+                <tr><td>Reporte de errores</td><td>Opt-in crash reporting (see above) — off by default.</td></tr>
+                <tr><td>Asistente (Agent mode)</td><td>Provider, API key, and model for Agent mode (see above).</td></tr>
               </table>
             </div>
 
             <h3 class="entry-title" id="mainwindow">MainWindow</h3>
-            <p class="entry-desc">The full IDE shell: editor and canvas side by side, a custom title bar, status bar, and error panel.</p>
+            <p class="entry-desc">The full IDE shell: editor and canvas side by side on a wide window, a single "Código"/"Resultado" toggle on a narrow one, a custom title bar, status bar, and error panel. The embedded sketch genuinely stops ticking — not just stops drawing — while the code editor has keyboard focus, or while the canvas itself isn't visible, so an animation- or simulation-heavy sketch doesn't compete with the editor for CPU while you're typing.</p>
 
             <h3 class="entry-title" id="claytheme">ClayTheme</h3>
             <p class="entry-desc">The IDE's visual language — warm off-white surfaces, soft shadows, and an ember-orange accent — driven by the Settings window's Colors section above.</p>
@@ -2418,7 +2448,7 @@ heights.Shuffle();               <span class="cm">// reorders in place</span>
 
           <!-- ================= FOOTER ================= -->
           <footer class="doc-footer">
-            DanaProcessing reference documentation. Generated from the current source tree — GraphicsContext, Sketch, Renderer3D (Silk.NET/OpenGL), PShader, PVector, PImage, PGraphics, PShape, PFont, JSONObject/JSONArray, XML, Table, PerlinNoise, the Avalonia host, and the IDE (live diagnostics, NuGet packages, sample gallery, export, settings).
+            DanaProcessing reference documentation. Generated from the current source tree — GraphicsContext, Sketch, Renderer3D (Silk.NET/OpenGL), PShader, PVector, PImage, PGraphics, PShape, PFont, JSONObject/JSONArray, XML, Table, PerlinNoise, the Avalonia host, and the IDE (live diagnostics, code navigation, Hot Reload, Agent mode, NuGet packages, sample gallery, export, crash reporting, settings).
           </footer>
 
         </div><!-- /main-col -->
@@ -2773,6 +2803,9 @@ var navLinks = Array.from(document.querySelectorAll('.sidebar-nav a[href^="#"]')
     "SketchCompiler": "sketchcompiler-compile",
     "CompileResult": "sketchcompiler-compile",
     "SketchEditorView": "sketcheditorview",
+    "RoslynCompletionEngine": "code-navigation",
+    "AgentTools": "agent-mode",
+    "SketchHotReload": "hot-reload",
     "MainWindow": "mainwindow",
     "ClayTheme": "claytheme",
     "Redraw": "redraw",
@@ -3147,6 +3180,9 @@ var navLinks = Array.from(document.querySelectorAll('.sidebar-nav a[href^="#"]')
     ["SketchCompiler","static class"],
     ["CompileResult","record"],
     ["SketchEditorView","class"],
+    ["RoslynCompletionEngine","class"],
+    ["AgentTools","static class"],
+    ["SketchHotReload","static class"],
     ["MainWindow","class"],
     ["ClayTheme","static class"],
     ["Redraw","method"],

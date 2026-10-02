@@ -57,6 +57,8 @@ namespace DanaProcessing.Ide
         private EditorTab? _runningTab;
         private readonly Button _runButton;
         private readonly Button _hotReloadButton;
+        private readonly Button _runFastButton;
+        private AvaloniaSketchWindow? _fastRunWindow;
         private readonly Border _updateBanner;
         private readonly TextBlock _updateBannerText;
         private readonly StackPanel _loadingSpinner;
@@ -174,6 +176,8 @@ namespace DanaProcessing.Ide
             _editorView.ReferencesFound += UpdateReferencesFound;
             _editorView.StatusMessageRequested += ShowTransientStatus;
             _editorView.TabSaved += OnTabSaved;
+            _editorView.TypingActivityChanged += OnTypingActivityChanged;
+            _editorView.EditorFocusChanged += focused => _canvas.IsPaused = focused;
 
             _runButton = new Button
             {
@@ -205,6 +209,26 @@ namespace DanaProcessing.Ide
             _hotReloadButton.Click += async (_, _) => await HotReloadCurrentSketchAsync();
 
             _editorView.ActiveTabChanged += UpdateHotReloadButtonEnabled;
+
+            // "Como Processing": compila y abre el sketch en su propia ventana,
+            // sin tocar el canvas embebido ni el estado de Run/Hot Reload de
+            // este -- completamente independiente, para cuando lo que querés
+            // es simplemente ver el sketch correr, no seguir iterando en el IDE.
+            _runFastButton = new Button
+            {
+                Content = "⏩",
+                Classes = { "clay-chrome" },
+                Width = 36,
+                Height = 36,
+                Padding = new Avalonia.Thickness(0),
+                FontSize = 16,
+                HorizontalContentAlignment = HorizontalAlignment.Center,
+                VerticalContentAlignment = VerticalAlignment.Center,
+            };
+            ToolTip.SetTip(_runFastButton, Loc.Tr(
+                "Ejecutar en ventana aparte -- como Processing: compila rápido y minimalista, sin el IDE alrededor",
+                "Run in a separate window -- like Processing: compiles fast and minimal, no IDE around it"));
+            _runFastButton.Click += async (_, _) => await RunInSeparateWindowAsync();
 
             // Botón cuadrado fijo (36x36) con el ícono centrado explícitamente
             // en ambos ejes -- antes dependía del centrado por defecto del
@@ -252,7 +276,7 @@ namespace DanaProcessing.Ide
             (_paneTogglePill, _codeToggleButton, _resultToggleButton) = BuildPaneToggle();
             UpdatePaneToggleVisuals();
 
-            var titleBarRoot = BuildTitleBar(_runButton, _hotReloadButton, settingsButton, agentButton, fileMenuButton, _paneTogglePill);
+            var titleBarRoot = BuildTitleBar(_runButton, _runFastButton, _hotReloadButton, settingsButton, agentButton, fileMenuButton, _paneTogglePill);
 
             _outputText = new TextBlock
             {
@@ -1062,7 +1086,7 @@ namespace DanaProcessing.Ide
             return menuButton;
         }
 
-        private Border BuildTitleBar(Button runButton, Button hotReloadButton, Button settingsButton, Button agentButton, Button fileMenuButton, Border paneTogglePill)
+        private Border BuildTitleBar(Button runButton, Button runFastButton, Button hotReloadButton, Button settingsButton, Button agentButton, Button fileMenuButton, Border paneTogglePill)
         {
             var logoDot = new Ellipse
             {
@@ -1104,7 +1128,7 @@ namespace DanaProcessing.Ide
                 Orientation = Orientation.Horizontal,
                 Spacing = 8,
                 Margin = new Avalonia.Thickness(0, 0, 16, 0),
-                Children = { paneTogglePill, fileMenuButton, settingsButton, agentButton, hotReloadButton, runButton, minButton, maxButton, closeButton }
+                Children = { paneTogglePill, fileMenuButton, settingsButton, agentButton, runFastButton, hotReloadButton, runButton, minButton, maxButton, closeButton }
             };
 
             var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
@@ -1448,6 +1472,16 @@ namespace DanaProcessing.Ide
                 _ = HotReloadCurrentSketchAsync();
         }
 
+        /// <summary>Trades a touch of edge smoothness for less per-frame GPU/CPU cost
+        /// exactly while you're not looking closely at the canvas anyway: dropping to
+        /// 1x the instant you start typing, restoring the real configured value (whatever
+        /// Settings has, which may itself be 1x -- a harmless no-op in that case) once
+        /// you pause for the same ~450ms live diagnostics already debounce on.</summary>
+        private void OnTypingActivityChanged(bool isTyping)
+        {
+            _canvas.SupersampleScale = isTyping ? 1 : RenderingSettingsStore.Load().SupersampleScale2D;
+        }
+
         /// <summary>
         /// "Hot Reload": recompiles the active tab and, if every field of the
         /// resulting sketch lines up with the one currently running (same
@@ -1524,6 +1558,69 @@ namespace DanaProcessing.Ide
             {
                 _isRunning = false;
                 _runButton.IsEnabled = true;
+                UpdateHotReloadButtonEnabled();
+            }
+        }
+
+        /// <summary>
+        /// "Run rápido": compiles the active tab (same ResolveAndCompileActiveSketchAsync
+        /// Run/Hot Reload already use, so NuGet resolution and compile-error reporting
+        /// behave identically) and pops the result into its own AvaloniaSketchWindow --
+        /// exactly how Processing's own Run button works, a separate self-contained
+        /// window with no editor/IDE chrome around it. Deliberately independent of the
+        /// embedded canvas: doesn't touch _canvas, _runningTab, or hot-reload-on-save --
+        /// this is for when you just want to see the sketch running, not keep iterating
+        /// on it inside the IDE. Clicking it again replaces the previous popped-out
+        /// window rather than piling up a new one every time.
+        /// </summary>
+        private async Task RunInSeparateWindowAsync()
+        {
+            if (_isRunning)
+                return;
+
+            _isRunning = true;
+            _runButton.IsEnabled = false;
+            _hotReloadButton.IsEnabled = false;
+            _runFastButton.IsEnabled = false;
+            try
+            {
+                var result = await ResolveAndCompileActiveSketchAsync();
+                if (result is null)
+                    return;
+
+                if (!result.Success)
+                {
+                    LastCompileErrors = result.Errors;
+                    _outputText.Text = string.Join(Environment.NewLine + Environment.NewLine, result.Errors);
+                    _runTabDot.Fill = ClayTheme.Danger;
+                    SetBottomTab(BottomTab.Run);
+                    RefreshBottomPanelVisibility();
+
+                    _statusDot.Fill = ClayTheme.Danger;
+                    _statusLabel.Text = Loc.Tr("Error de compilación", "Compile error");
+                    ((Border)_statusPill).Background = ClayTheme.DangerSurface;
+                    return;
+                }
+
+                LastCompileErrors = Array.Empty<string>();
+                _outputText.Text = "";
+                _runTabDot.Fill = ClayTheme.TextMuted;
+                RefreshBottomPanelVisibility();
+                _statusDot.Fill = ClayTheme.Success;
+                _statusLabel.Text = Loc.Tr("Listo (ventana aparte)", "Ready (separate window)");
+                ((Border)_statusPill).Background = ClayTheme.SuccessSurface;
+
+                _fastRunWindow?.Close();
+                var title = _editorView.ActiveTab?.Title ?? "Sketch";
+                _fastRunWindow = new AvaloniaSketchWindow(result.Sketch!, title);
+                _fastRunWindow.Closed += (_, _) => _fastRunWindow = null;
+                _fastRunWindow.Show();
+            }
+            finally
+            {
+                _isRunning = false;
+                _runButton.IsEnabled = true;
+                _runFastButton.IsEnabled = true;
                 UpdateHotReloadButtonEnabled();
             }
         }

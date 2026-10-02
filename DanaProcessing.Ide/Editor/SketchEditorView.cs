@@ -55,6 +55,21 @@ namespace DanaProcessing.Ide.Editor
         /// MainWindow shows this in its transient status pill.</summary>
         public event Action<string>? StatusMessageRequested;
 
+        /// <summary>true right as the user starts typing (every keystroke), false once
+        /// they've paused for the same debounce window live diagnostics already use
+        /// (~450ms of no further edits). MainWindow uses this to temporarily drop the
+        /// canvas's supersampling while the editor has your attention, restoring it once
+        /// you pause -- see OnTypingActivityChanged.</summary>
+        public event Action<bool>? TypingActivityChanged;
+
+        /// <summary>true while the code editor itself has keyboard focus, false the
+        /// moment it doesn't (clicking into the canvas, a button, another window, ...).
+        /// Unlike TypingActivityChanged (fine-grained, debounced, meant for a subtle
+        /// quality trade-off), this is coarse and stable -- MainWindow uses it to
+        /// actually pause the running sketch while your attention is on the code, not
+        /// just while you're mid-keystroke. See MainWindow.OnEditorFocusChanged.</summary>
+        public event Action<bool>? EditorFocusChanged;
+
         private readonly TabStrip _tabStrip;
         private readonly TextEditor _editor;
         private readonly SearchPanel _searchPanel;
@@ -243,6 +258,12 @@ namespace DanaProcessing.Ide.Editor
             _textMate = _editor.InstallTextMate(_registryOptions);
             ApplyCSharpGrammar();
 
+            // TextArea, not _editor itself -- same level the existing
+            // Caret.PositionChanged wiring above already hooks into, since
+            // that's the actual focusable/input-receiving element.
+            _editor.TextArea.GotFocus += (_, _) => EditorFocusChanged?.Invoke(true);
+            _editor.TextArea.LostFocus += (_, _) => EditorFocusChanged?.Invoke(false);
+
             _editor.TextArea.Caret.PositionChanged += (_, _) =>
             {
                 CaretPositionChanged?.Invoke(_editor.TextArea.Caret.Line, _editor.TextArea.Caret.Column);
@@ -277,6 +298,7 @@ namespace DanaProcessing.Ide.Editor
             _diagnosticsTimer.Tick += async (_, _) =>
             {
                 _diagnosticsTimer.Stop();
+                TypingActivityChanged?.Invoke(false);
                 await RefreshDiagnosticsAsync();
             };
 
@@ -287,6 +309,7 @@ namespace DanaProcessing.Ide.Editor
                 _diagnosticBanner.IsVisible = false;
                 _diagnosticsTimer.Stop();
                 _diagnosticsTimer.Start();
+                TypingActivityChanged?.Invoke(true);
             };
 
             // ================================================================
