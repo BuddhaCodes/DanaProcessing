@@ -23,7 +23,7 @@ namespace DanaProcessing.Ide.Theme
     {
         public const double TitleBarHeight = 46;
 
-        private static readonly IBrush Hairline = new SolidColorBrush(Color.Parse("#E8E2DA"));
+        private static readonly IBrush Hairline = new SolidColorBrush(Avalonia.Media.Color.Parse("#E8E2DA"));
 
         /// <param name="window">Window to dress. Its Title is shown (and kept in sync) in the bar.</param>
         /// <param name="content">What goes under the title bar.</param>
