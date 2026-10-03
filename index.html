@@ -1280,6 +1280,11 @@
       </div>
 
       <div class="group">
+        <div class="group-title">Sound</div>
+        <a href="#audio"><i class="ph ph-music-notes"></i> Sound &amp; live coding</a>
+      </div>
+
+      <div class="group">
         <div class="group-title">Reference</div>
         <a href="#enums"><i class="ph ph-list-bullets"></i> Enumerations</a>
         <a href="#index"><i class="ph ph-magnifying-glass"></i> Keyword index</a>
@@ -1385,6 +1390,7 @@
             <div class="note"><strong>Where things live.</strong> Drawing state and operations are defined once on <code class="inline">GraphicsContext</code>, inherited by both <code class="inline">Sketch</code> and <code class="inline">PGraphics</code>. Sketch adds lifecycle, input, time, and randomness — things an offscreen buffer doesn't need.</div>
 
             <h3 class="entry-title" id="minimal-sketch">Minimal sketch</h3>
+            <p class="entry-desc">The smallest complete sketch: <code class="inline">Setup()</code> sets the canvas size once, <code class="inline">Draw()</code> runs every frame and paints a circle that follows the mouse.</p>
            <div class="code-block">
   <pre id="minimal-sketch-code"><span class="kw">public class</span> <span class="tp">MySketch</span> : <span class="tp">Sketch</span>
 {
@@ -1947,7 +1953,7 @@ PopMatrix();</pre>
             <h3 class="entry-title" id="imagemode">ImageMode(<span class="tp">ShapeAlignMode</span> mode)</h3>
             <p class="entry-desc">Sets how <code class="inline">Image()</code>'s x/y/w/h are interpreted — <code class="inline">Corner</code> by default (x,y is top-left, w,h is size), <code class="inline">Corners</code> (w,h is the opposite corner instead of a size), or <code class="inline">Center</code>.</p>
 
-            <h3 class="entry-title" id="image">Image(<span class="tp">PImage</span> img, x, y) · Image(img, x, y, w, h)</h3>
+            <h3 class="entry-title" id="image-draw">Image(<span class="tp">PImage</span> img, x, y) · Image(img, x, y, w, h)</h3>
             <p class="entry-desc">Draws the bitmap, respecting the current <code class="inline">Tint()</code> and <code class="inline">ImageMode()</code>.</p>
 
             <h3 class="entry-title" id="mask">img.Mask(<span class="tp">PImage</span> maskImage)</h3>
@@ -2327,6 +2333,132 @@ heights.Shuffle();               <span class="cm">// reorders in place</span>
             <p class="entry-desc">Opens a file, folder, URL, or application with the OS's default handler, like Processing's <code class="inline">launch()</code>. Fire-and-forget — returns as soon as the OS has been asked to open it. Unlike <code class="inline">SelectInput</code>/<code class="inline">Cursor</code>, this doesn't need a host at all: it goes straight to <code class="inline">Process.Start</code>.</p>
           </section>
 
+          <!-- ================= SOUND ================= -->
+          <section class="doc-section" id="audio">
+            <div class="section-kicker">18.5 · Sound</div>
+            <h2>Sound &amp; live coding</h2>
+            <p class="section-intro">DanaProcessing has its own audio engine, written from scratch in C# and running inside the sketch's own process — no SuperCollider, no external synth, no extra package. It follows <a href="https://sonic-pi.net" target="_blank" rel="noopener">Sonic Pi</a>'s way of thinking: <strong>live loops</strong> that repeat in time with each other, <code class="inline">Sleep</code> measured in beats, built-in synths and drums. Because sound and drawing share one clock, visuals can react to the exact moment a note is heard. Everything here is on <code class="inline">Sketch</code> and needs no <code class="inline">using</code> of its own.</p>
+
+            <div class="code-block">
+<pre><span class="kw">public class</span> <span class="tp">MySketch</span> : <span class="tp">Sketch</span>
+{
+    <span class="kw">float</span> flash;
+
+    <span class="kw">public override void</span> Setup()
+    {
+        Size(<span class="str">800</span>, <span class="str">500</span>);
+        Bpm = <span class="str">120</span>;
+    }
+
+    [<span class="tp">LiveLoop</span>]
+    <span class="kw">async</span> <span class="tp">Task</span> Drums()
+    {
+        Sample(<span class="str">"kick"</span>);
+        <span class="kw">await</span> Sleep(<span class="str">1</span>);
+        Sample(<span class="str">"kick"</span>);
+        Sample(<span class="str">"snare"</span>);
+        <span class="kw">await</span> Sleep(<span class="str">1</span>);
+    }
+
+    [<span class="tp">LiveLoop</span>]
+    <span class="kw">async</span> <span class="tp">Task</span> Bass()
+    {
+        UseSynth(<span class="tp">Synth</span>.Saw);
+        <span class="kw">foreach</span> (<span class="kw">var</span> note <span class="kw">in</span> <span class="kw">new</span>[] { <span class="str">"E2"</span>, <span class="str">"G2"</span>, <span class="str">"A2"</span>, <span class="str">"B2"</span> })
+        {
+            Play(note, amp: <span class="str">0.5</span>, release: <span class="str">0.3</span>, cutoff: <span class="str">80</span>);
+            <span class="kw">await</span> Sleep(<span class="str">0.5</span>);
+        }
+    }
+
+    <span class="kw">public override void</span> OnNote(<span class="tp">NoteEvent</span> e)
+    {
+        <span class="kw">if</span> (e.Sample == <span class="str">"kick"</span>) flash = <span class="str">1</span>;   <span class="cm">// exactly when the kick is heard</span>
+    }
+
+    <span class="kw">public override void</span> Draw()
+    {
+        Background(<span class="str">20</span> + flash * <span class="str">60</span>, <span class="str">20</span>, <span class="str">30</span>);
+        flash *= <span class="str">0.85f</span>;
+        <span class="kw">float</span> r = <span class="str">80</span> + Amplitude * <span class="str">600</span>;   <span class="cm">// grows with the volume</span>
+        Ellipse(Width / <span class="str">2f</span>, Height / <span class="str">2f</span>, r, r);
+    }
+}</pre>
+            </div>
+
+            <div class="note"><strong>Live coding in the IDE.</strong> While the loops play, change a note or a <code class="inline">Sleep</code> and press <strong>Run</strong> (<code class="inline">Ctrl+R</code>) or Hot Reload: the music doesn't stop. Each loop picks up its new code on its next pass, in time with the others. A loop you add joins on the next beat; a loop you delete (or whose <code class="inline">[LiveLoop]</code> you remove) finishes its current pass and stops. <strong>Sketch → Stop sound</strong> (<code class="inline">Ctrl+.</code>) silences everything. Loop errors show up in the <strong>Run</strong> tab of the bottom panel.</div>
+
+            <div class="note"><strong>How the timing stays tight.</strong> <code class="inline">Sleep</code> doesn't pause the thread for "about" that long — it advances the loop's own musical clock by exactly that many beats. Loops run about 100 ms ahead of what you hear, and every sound is stamped with its exact sample position, so however late the thread pool wakes a loop up, the beat still lands on the exact sample. The audio thread itself never allocates memory, so garbage collection doesn't cause clicks.</div>
+
+            <div class="note"><strong>Platforms.</strong> Sound output currently works on Windows (through the built-in <code class="inline">winmm</code> API, no install needed). On macOS and Linux the engine, live loops, <code class="inline">OnNote</code> and the analysis functions all run on the same clock — you just don't hear anything yet.</div>
+
+            <h3 class="entry-title" id="liveloop">[LiveLoop] <span class="sig-return">attribute on</span> async Task Name()</h3>
+            <p class="entry-desc">Marks a sketch method as a live loop, like Sonic Pi's <code class="inline">live_loop</code>: it starts after <code class="inline">Setup()</code> and repeats forever, in sync with every other loop. The method must be <code class="inline">async Task</code> with no parameters, and every pass must <code class="inline">await Sleep(...)</code> at least once — a loop that finishes a pass without sleeping is stopped (and reported) instead of freezing the audio. Each pass runs the loop's code from the <em>current</em> version of the sketch, which is what makes Run and Hot Reload swap code without a gap.</p>
+
+            <h3 class="entry-title" id="sleep">Sleep(<span class="tp">double</span> beats) <span class="sig-return">→ Task</span></h3>
+            <p class="entry-desc">Waits <code class="inline">beats</code> beats at the current <code class="inline">Bpm</code>. Always <code class="inline">await</code> it. Inside a <code class="inline">[LiveLoop]</code> it's musical time — exact, never drifting, shared with every loop. Outside a loop it's a plain real-time delay.</p>
+
+            <h3 class="entry-title" id="bpm">Bpm <span class="sig-return">→ double</span> · get/set</h3>
+            <p class="entry-desc">Tempo in beats per minute, shared by every loop. Default <code class="inline">60</code> (one beat = one second), like Sonic Pi. Usually set once in <code class="inline">Setup()</code>.</p>
+
+            <h3 class="entry-title" id="usesynth">UseSynth(<span class="tp">Synth</span> synth)</h3>
+            <p class="entry-desc">Chooses the instrument for the following <code class="inline">Play()</code> calls — per loop when called inside one, otherwise for the whole sketch. The default is <code class="inline">Synth.Sine</code>. See the <a href="#enums">Synth</a> enumeration.</p>
+
+            <h3 class="entry-title" id="play">Play(<span class="tp">double</span> note, …) · Play(<span class="tp">string</span> note, …) · Play(<span class="tp">int[]</span> notes, …)</h3>
+            <p class="entry-desc">Plays a note. <code class="inline">note</code> is a MIDI number (<code class="inline">60</code> = C4, fractions allowed for microtones), a name like <code class="inline">"C4"</code>, <code class="inline">"F#3"</code>, <code class="inline">"Eb2"</code>, or an array for a chord (<code class="inline">Play(Notes.Chord("C4", "minor"))</code>). Inside a loop the note sounds at the loop's current musical time; outside a loop (e.g. in <code class="inline">MousePressed()</code>) it sounds right away. All the optional parameters are named, Sonic Pi style:</p>
+            <div class="table-wrap">
+              <table>
+                <tr><th>parameter</th><th>default</th><th>meaning</th></tr>
+                <tr><td>amp</td><td>1</td><td>Volume. Several loud voices at once are softly limited, never hard-clipped.</td></tr>
+                <tr><td>pan</td><td>0</td><td>Stereo position, −1 (left) to 1 (right).</td></tr>
+                <tr><td>attack · decay · sustain · release</td><td>0 · 0 · 0 · 1</td><td>Envelope in seconds: rises over <code class="inline">attack</code>, falls to <code class="inline">sustainLevel</code> over <code class="inline">decay</code>, holds for <code class="inline">sustain</code>, fades out over <code class="inline">release</code>. Total length = the sum of the four.</td></tr>
+                <tr><td>sustainLevel</td><td>1</td><td>Level held during <code class="inline">sustain</code>, 0–1.</td></tr>
+                <tr><td>cutoff</td><td>0 (off)</td><td>Low-pass filter, as a MIDI note like Sonic Pi: 80 ≈ 830 Hz (dark), 110 ≈ 4.7 kHz (bright).</td></tr>
+                <tr><td>res</td><td>0</td><td>Filter resonance, 0–1.</td></tr>
+                <tr><td>synth</td><td>current</td><td>Overrides <code class="inline">UseSynth</code> for this one note.</td></tr>
+              </table>
+            </div>
+
+            <h3 class="entry-title" id="sample">Sample(<span class="tp">string</span> name, <span class="tp">double</span> amp = 1, <span class="tp">double</span> rate = 1, <span class="tp">double</span> pan = 0) · Sample(<span class="tp">SampleBuffer</span> buffer, …)</h3>
+            <p class="entry-desc">Plays a sound. The built-in drums need no files: <code class="inline">"kick"</code> (or <code class="inline">"bd"</code>), <code class="inline">"snare"</code> (<code class="inline">"sn"</code>) and <code class="inline">"hat"</code> (<code class="inline">"hh"</code>). Any other name is a path to a <code class="inline">.wav</code> file, loaded once and cached. <code class="inline">rate</code> changes speed and pitch together: <code class="inline">2</code> is an octave up and twice as fast, <code class="inline">0.5</code> an octave down.</p>
+
+            <h3 class="entry-title" id="loadsample">LoadSample(<span class="tp">string</span> path) <span class="sig-return">→ SampleBuffer</span></h3>
+            <p class="entry-desc">Loads a <code class="inline">.wav</code> file into memory (PCM 8/16/24/32-bit or float, mono or stereo, any sample rate), cached by path. Call it in <code class="inline">Setup()</code> so the first <code class="inline">Sample()</code> doesn't have to read the disk.</p>
+
+            <h3 class="entry-title" id="amplitude">Amplitude <span class="sig-return">→ float</span></h3>
+            <p class="entry-desc">How loud the sketch's sound is right now, 0–1, smoothed (rises instantly, falls gently) so it's ready to drive a size or a brightness. <code class="inline">0</code> while nothing has played.</p>
+
+            <h3 class="entry-title" id="spectrum">Spectrum(<span class="tp">float[]</span> bands)</h3>
+            <p class="entry-desc">Fills <code class="inline">bands</code> with the current spectrum: <code class="inline">bands.Length</code> bands, log-spaced from 30 Hz (index 0) to 16 kHz, each 0–1 (0 = −60 dB, 1 = full scale). Allocate the array once as a field and reuse it every frame.</p>
+
+            <h3 class="entry-title" id="waveform">Waveform(<span class="tp">float[]</span> dest)</h3>
+            <p class="entry-desc">Fills <code class="inline">dest</code> with the latest output samples (−1 to 1, mono, oldest first) — up to 4096 of them. Handy for an oscilloscope line.</p>
+
+            <h3 class="entry-title" id="onnote">OnNote(<span class="tp">NoteEvent</span> e) <span class="sig-return">→ void</span> · virtual</h3>
+            <p class="entry-desc">Called for every note and sample at the moment it reaches the speakers — not when the code that played it ran — on the drawing thread, right before <code class="inline">Draw()</code>. Override it to make visuals hit exactly on the beat. Events that pile up while drawing is paused (for instance while you type in the IDE's editor) are dropped instead of arriving in a burst.</p>
+
+            <h3 class="entry-title" id="noteevent">NoteEvent <span class="sig-return">record struct</span></h3>
+            <p class="entry-desc"><code class="inline">Time</code> (engine seconds), <code class="inline">Note</code> (MIDI number; 0 for samples), <code class="inline">Amp</code>, <code class="inline">Synth</code>, <code class="inline">Sample</code> (<code class="inline">"kick"</code>, <code class="inline">"snare"</code>, a file name… or <code class="inline">null</code> for notes) and <code class="inline">Loop</code> (the name of the <code class="inline">[LiveLoop]</code> method that played it, or <code class="inline">null</code>).</p>
+
+            <h3 class="entry-title" id="stopaudio">StopAudio()</h3>
+            <p class="entry-desc">Stops every live loop and silences every sound right away — the same as <strong>Sketch → Stop sound</strong> in the IDE.</p>
+
+            <h3 class="entry-title" id="notes-parse">Notes.Parse(<span class="tp">string</span> name) <span class="sig-return">→ int</span> · Notes.ToFrequency(<span class="tp">double</span> midi) <span class="sig-return">→ double</span></h3>
+            <p class="entry-desc">Note names to MIDI numbers and MIDI numbers to Hz. Same convention as Sonic Pi: <code class="inline">"C4"</code> = 60, <code class="inline">"A4"</code> = 69 = 440 Hz. Sharps are <code class="inline">#</code> or <code class="inline">s</code>, flats <code class="inline">b</code>; the octave defaults to 4. A static class rather than <code class="inline">Sketch</code> methods because <code class="inline">Sketch</code> already has a <code class="inline">Scale()</code> — the transform one.</p>
+
+            <h3 class="entry-title" id="notes-chord">Notes.Chord(root, <span class="tp">string</span> kind = "major") <span class="sig-return">→ int[]</span></h3>
+            <p class="entry-desc">The notes of a chord built on <code class="inline">root</code> (a name or a MIDI number): <code class="inline">Notes.Chord("C4", "minor")</code> → <code class="inline">[60, 63, 67]</code>. Kinds: <code class="inline">major</code>, <code class="inline">minor</code>, <code class="inline">dim</code>, <code class="inline">aug</code>, <code class="inline">7</code>, <code class="inline">maj7</code>, <code class="inline">m7</code>, <code class="inline">sus2</code>, <code class="inline">sus4</code>, <code class="inline">power</code>.</p>
+
+            <h3 class="entry-title" id="notes-scale">Notes.Scale(root, <span class="tp">string</span> kind = "major", <span class="tp">int</span> octaves = 1) <span class="sig-return">→ int[]</span></h3>
+            <p class="entry-desc">The notes of a scale, ending on the root an octave (or more) up, like Sonic Pi: <code class="inline">Notes.Scale("E2", "minor_pentatonic")</code> → <code class="inline">[40, 43, 45, 47, 50, 52]</code>. Kinds: <code class="inline">major</code>, <code class="inline">minor</code>, <code class="inline">harmonic_minor</code>, <code class="inline">dorian</code>, <code class="inline">phrygian</code>, <code class="inline">lydian</code>, <code class="inline">mixolydian</code>, <code class="inline">major_pentatonic</code>, <code class="inline">minor_pentatonic</code>, <code class="inline">blues</code>, <code class="inline">chromatic</code>.</p>
+
+            <h3 class="entry-title" id="samplebuffer">SampleBuffer</h3>
+            <p class="entry-desc">A sound in memory, ready for <code class="inline">Sample()</code>. <code class="inline">SampleBuffer.LoadWav(path)</code> reads a file; <code class="inline">SampleBuffer.FromMono(float[] data, int sampleRate)</code> wraps a signal you generated in code. Read-only properties: <code class="inline">Left</code>, <code class="inline">Right</code>, <code class="inline">Frames</code>, <code class="inline">SampleRate</code>, <code class="inline">Channels</code>, <code class="inline">Duration</code> (seconds), <code class="inline">Name</code>. Files at a different sample rate are resampled on playback, so they always play at the right pitch.</p>
+
+            <h3 class="entry-title" id="audioengine">AudioEngine.Shared <span class="sig-return">→ AudioEngine</span> · advanced</h3>
+            <p class="entry-desc">The one engine every sketch shares (namespace <code class="inline">DanaProcessing.Audio</code>). It outlives individual sketches, which is why pressing Run doesn't cut the music, and only opens the sound device once something actually plays. Sketches rarely need it directly; the tunables are <code class="inline">ScheduleAhead</code> (seconds loops run ahead of what you hear, default 0.1), <code class="inline">MasterVolume</code> (0–1, default 0.7) and <code class="inline">OutputDescription</code>. Hosts call <code class="inline">AudioEngine.ActivateSketch(sketch)</code> after <code class="inline">Setup()</code> and after a hot-reload swap (the Avalonia host already does), can show <code class="inline">AudioEngine.DiagnosticReported</code> messages, and stop everything with <code class="inline">AudioEngine.StopEverything()</code>.</p>
+          </section>
+
           <!-- ================= ENUMS ================= -->
           <section class="doc-section" id="enums">
             <div class="section-kicker">19 · Reference</div>
@@ -2337,6 +2469,17 @@ heights.Shuffle();               <span class="cm">// reorders in place</span>
               <caption>RendererKind</caption>
               <tr><td>Renderer2D</td><td>Skia software rasterizer — the default. Everything under <a href="#shape-primitives">Drawing</a>.</td></tr>
               <tr><td>Renderer3D</td><td>Offscreen OpenGL 3.3. Set once via <code class="inline">Size()</code>/<code class="inline">CreateGraphics()</code> and locked for that context's lifetime. See <a href="#getting-started-3d">3D — Getting started</a>.</td></tr>
+            </table>
+
+            <table class="enum-table">
+              <caption>Synth</caption>
+              <tr><td>Sine</td><td>Pure tone — the default, like Sonic Pi's <code class="inline">:beep</code>.</td></tr>
+              <tr><td>Saw</td><td>Band-limited sawtooth: bright; great for bass and leads with <code class="inline">cutoff</code>.</td></tr>
+              <tr><td>Square</td><td>Band-limited square: hollow, retro.</td></tr>
+              <tr><td>Triangle</td><td>Soft, flute-like.</td></tr>
+              <tr><td>Pluck</td><td>Plucked string (Karplus–Strong).</td></tr>
+              <tr><td>Noise</td><td>White noise — with a low <code class="inline">cutoff</code>, wind or waves.</td></tr>
+              <tr><td>Kick · Snare · Hat</td><td>Synthesized drums, also reachable as <code class="inline">Sample("kick")</code>, <code class="inline">"snare"</code>, <code class="inline">"hat"</code>. They ignore the note and the envelope.</td></tr>
             </table>
 
             <table class="enum-table">
@@ -2486,13 +2629,13 @@ heights.Shuffle();               <span class="cm">// reorders in place</span>
             <p class="entry-desc">The three jump-to-X actions are also on the editor's right-click menu, next to Cut/Copy/Paste. References resolve within the one open sketch; a symbol from <code class="inline">DanaProcessing</code> itself (like <code class="inline">Circle</code> or <code class="inline">PVector</code>) is compiled with no attached source, so Go to Definition reports "no source available" for it instead of guessing at a location.</p>
 
             <h3 class="entry-title" id="hot-reload">Hot Reload</h3>
-            <p class="entry-desc">Recompiles the running sketch and swaps it in without re-running <code class="inline">Setup()</code> or losing its current state, as long as every field still lines up (same names, same types) between the old and new version — falls back to a full restart otherwise, with the reason shown in the output panel. Triggers automatically whenever you <code class="inline">Ctrl+S</code> the sketch that's currently running; the ⚡ title-bar button does the same thing on demand.</p>
+            <p class="entry-desc">Recompiles the running sketch and swaps it in without re-running <code class="inline">Setup()</code> or losing its current state, as long as every field still lines up (same names, same types) between the old and new version — falls back to a full restart otherwise, with the reason shown in the output panel. Triggers automatically whenever you <code class="inline">Ctrl+S</code> the sketch that's currently running; <strong>Sketch → Hot reload</strong> (<code class="inline">Ctrl+Shift+R</code>, also in the ▾ next to Run) does the same thing on demand.</p>
 
             <h3 class="entry-title" id="run-separate-window">Run in a separate window</h3>
-            <p class="entry-desc">The ⏩ title-bar button compiles the active sketch the same way <strong>Run</strong> does, but opens the result in its own window instead of the embedded canvas — no editor, no IDE chrome around it, the way Processing's own Run button works. Fully independent of the main window's Run/Hot Reload state; pressing it again replaces the previous window instead of stacking a new one on top.</p>
+            <p class="entry-desc"><strong>Sketch → Run in a separate window</strong> (<code class="inline">Ctrl+F5</code>, also in the ▾ next to Run) compiles the active sketch the same way <strong>Run</strong> does, but opens the result in its own window instead of the embedded canvas — no editor, no IDE chrome around it, the way Processing's own Run button works. Fully independent of the main window's Run/Hot Reload state; pressing it again replaces the previous window instead of stacking a new one on top.</p>
 
             <h3 class="entry-title" id="agent-mode">Agent mode</h3>
-            <p class="entry-desc">An AI assistant, opened from the ✦ title-bar button, with four tools scoped to the sketch you're working on: read the current source, replace it, compile &amp; run it (compile errors and runtime exceptions are reported straight back to the model so it can react), and search this API reference. Needs your own API key for whichever provider you set up in Settings — the IDE doesn't include or pay for one, and the key stays local, never sent anywhere but that provider.</p>
+            <p class="entry-desc">An AI assistant, opened from the <strong>✦ Assistant</strong> title-bar button (or <strong>Tools → Assistant</strong>, <code class="inline">Ctrl+I</code>), with four tools scoped to the sketch you're working on: read the current source, replace it, compile &amp; run it (compile errors and runtime exceptions are reported straight back to the model so it can react), and search this API reference. Needs your own API key for whichever provider you set up in Settings — the IDE doesn't include or pay for one, and the key stays local, never sent anywhere but that provider.</p>
 
             <h3 class="entry-title" id="nuget-directives">NuGet packages in a sketch</h3>
             <p class="entry-desc">Drop a <code class="inline">// nuget:</code> comment at the top of a sketch and pressing <strong>Run</strong> resolves, downloads (cached under <code class="inline">%AppData%\DanaProcessingIde</code>), and links the package before compiling — no <code class="inline">.csproj</code> to create or edit.</p>
@@ -2504,19 +2647,19 @@ heights.Shuffle();               <span class="cm">// reorders in place</span>
     <span class="kw">public override void</span> Setup() =&gt; Size(<span class="str">600</span>, <span class="str">400</span>);
 }</pre>
             </div>
-            <p class="entry-desc">The 📦 <strong>Paquetes NuGet</strong> menu item opens a Browse/Installed package manager (search NuGet.org, pick a version, install/update/remove) that writes these directives for you.</p>
+            <p class="entry-desc"><strong>Sketch → NuGet Packages</strong> opens a Browse/Installed package manager (search NuGet.org, pick a version, install/update/remove) that writes these directives for you.</p>
 
             <h3 class="entry-title" id="sample-gallery">Example gallery</h3>
-            <p class="entry-desc">35 built-in sample sketches, open via the 🧩 <strong>Ejemplos</strong> menu item — 2D and 3D, from a minimal <code class="inline">Setup()</code>/<code class="inline">Draw()</code> to an orbiting camera, a GPU-uploaded 3D swarm, parallel prime search, a live-training ML.NET color field, a reinforcement-learning self-play demo, and PDF export. Each one is commented to explain not just what it draws but why it's built that way — a working answer to "how would I actually do X" for most of the API on this page.</p>
+            <p class="entry-desc">36 built-in sample sketches, open via <strong>Sketch → Examples</strong>. The window has a search box (accent- and case-insensitive; it also searches inside the code, so <code class="inline">PVector</code> or <code class="inline">Sphere</code> finds the samples that use them), topic tags with filter chips (2D, 3D, Audio, ML.NET, Particles, Games…), and a code preview; ↑/↓ and Enter work from the keyboard — 2D and 3D, from a minimal <code class="inline">Setup()</code>/<code class="inline">Draw()</code> to a live-coded beat with the <a href="#audio">audio engine</a>, an orbiting camera, a GPU-uploaded 3D swarm, parallel prime search, a live-training ML.NET color field, a reinforcement-learning self-play demo, and PDF export. Each one is commented to explain not just what it draws but why it's built that way — a working answer to "how would I actually do X" for most of the API on this page.</p>
 
             <h3 class="entry-title" id="export">Standalone export</h3>
-            <p class="entry-desc">The 📤 <strong>Exportar sketch</strong> menu item packages the active sketch as a single, self-contained, double-clickable executable via <code class="inline">dotnet publish</code> — no .NET runtime install required on the machine that opens it, nothing to explain to whoever you send it to. An optional "modo gadget" (windowless) mode drops the OS title bar entirely — drag it with Alt+click, close it with Alt+F4 — for running the exported sketch as a desktop widget instead of a regular app window.</p>
+            <p class="entry-desc"><strong>File → Export sketch</strong> (<code class="inline">Ctrl+E</code>) packages the active sketch as a single, self-contained, double-clickable executable via <code class="inline">dotnet publish</code> — no .NET runtime install required on the machine that opens it, nothing to explain to whoever you send it to. An optional "modo gadget" (windowless) mode drops the OS title bar entirely — drag it with Alt+click, close it with Alt+F4 — for running the exported sketch as a desktop widget instead of a regular app window.</p>
 
             <h3 class="entry-title" id="crash-reporting">Crash reporting &amp; feedback</h3>
-            <p class="entry-desc">Opt-in, off by default (Settings → Reporte de errores). When enabled, an unhandled exception writes a local crash report; on the next startup, the IDE offers to open a prefilled GitHub issue for it — you review and submit it yourself, nothing is sent automatically or silently. The ☰ menu also has a standing <strong>🐛 Reportar un problema</strong> item for general feedback, with no crash required to use it.</p>
+            <p class="entry-desc">Opt-in, off by default (Settings → Reporte de errores). When enabled, an unhandled exception writes a local crash report; on the next startup, the IDE offers to open a prefilled GitHub issue for it — you review and submit it yourself, nothing is sent automatically or silently. The <strong>Help</strong> menu also has a standing <strong>Report a problem</strong> item for general feedback, with no crash required to use it.</p>
 
             <h3 class="entry-title" id="settings-window">Settings</h3>
-            <p class="entry-desc">The ⚙ title-bar button opens a Settings window, most of it previewed live where that's possible:</p>
+            <p class="entry-desc"><strong>Tools → Settings</strong> (<code class="inline">Ctrl+,</code>) opens a Settings window, most of it previewed live where that's possible:</p>
             <div class="table-wrap">
               <table>
                 <tr><th>Section</th><th>Controls</th></tr>
@@ -2550,7 +2693,7 @@ heights.Shuffle();               <span class="cm">// reorders in place</span>
 
           <!-- ================= FOOTER ================= -->
           <footer class="doc-footer">
-            DanaProcessing reference documentation. Generated from the current source tree — GraphicsContext, Sketch, Renderer3D (Silk.NET/OpenGL), PShader, PVector, PImage, PGraphics, PShape, PFont, JSONObject/JSONArray, XML, Table, PerlinNoise, the Avalonia host, and the IDE (live diagnostics, code navigation, Hot Reload, Agent mode, NuGet packages, sample gallery, export, crash reporting, settings).
+            DanaProcessing reference documentation. Generated from the current source tree — GraphicsContext, Sketch, Renderer3D (Silk.NET/OpenGL), PShader, PVector, PImage, PGraphics, PShape, PFont, JSONObject/JSONArray, XML, Table, PerlinNoise, the audio engine (live loops, synths, samples, analysis), the Avalonia host, and the IDE (live diagnostics, code navigation, Hot Reload, Agent mode, NuGet packages, sample gallery, export, crash reporting, settings).
           </footer>
 
         </div><!-- /main-col -->

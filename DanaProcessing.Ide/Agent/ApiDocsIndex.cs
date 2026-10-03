@@ -38,8 +38,12 @@ namespace DanaProcessing.Ide.Agent
     {
         private static List<DocEntry>? _cache;
 
+        // The title group can't cross a </h3>: otherwise an entry-title with no
+        // entry-desc right after it (there was one: "Minimal sketch", followed
+        // by a code block) made the lazy match run on into the NEXT entry and
+        // swallow it -- that's how Setup() went missing from search_docs.
         private static readonly Regex EntryPattern = new(
-            @"<h3\s+class=""entry-title""\s+id=""(?<id>[^""]*)"">(?<title>.*?)</h3>\s*<p\s+class=""entry-desc"">(?<desc>.*?)</p>",
+            @"<h3\s+class=""entry-title""\s+id=""(?<id>[^""]*)"">(?<title>(?:(?!</h3>).)*?)</h3>\s*<p\s+class=""entry-desc"">(?<desc>.*?)</p>",
             RegexOptions.Singleline | RegexOptions.Compiled);
 
         private static readonly Regex TagPattern = new("<[^>]+>", RegexOptions.Compiled);
