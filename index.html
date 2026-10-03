@@ -169,6 +169,27 @@
     --border-strong: #5C529E;
   }
 
+  /* --- Acentos del modo Sonido (coral/ámbar) sobre el theme activo --- */
+  [data-mode="sound"]{
+    --accent:       #D9466F;
+    --accent-2:     #F08A24;
+    --accent-hover: #E5658A;
+    --accent-glow:  rgba(217, 70, 111, 0.20);
+  }
+  [data-theme="dark"][data-mode="sound"]{
+    --accent:       #FF7A9C;
+    --accent-2:     #FFB15C;
+    --accent-hover: #FF97B2;
+    --accent-glow:  rgba(255, 122, 156, 0.28);
+  }
+  [data-mode="sound"] .section-kicker{ color:var(--accent-2); }
+  [data-mode="sound"] .entry-title{ border-left-color:var(--accent); }
+  [data-mode="sound"] .mode-flag{
+    background:linear-gradient(135deg, rgba(217,70,111,0.14), rgba(240,138,36,0.14));
+    color:var(--accent);
+    border-color:var(--border-medium);
+  }
+
   /* --- Nebulosa ambiental: casi imperceptible en light, presente en dark --- */
   [data-mode="3d"] .space-glow{ opacity:0.30; }
   [data-theme="dark"][data-mode="3d"] .space-glow{ opacity:1; }
@@ -961,7 +982,10 @@
      ============================================================ */
   .mode-toggle{
     position:relative;
-    display:flex;
+    /* Three equal columns, so every segment is exactly as wide as the pill
+       (a flex row let "Sound" come out a few px wider than "2D"/"3D"). */
+    display:grid;
+    grid-template-columns:repeat(3, 1fr);
     align-items:center;
     gap:0;
     background:var(--bg-tertiary);
@@ -979,7 +1003,13 @@
   .mode-toggle .mode-pill{
     position:absolute;
     top:3px; bottom:3px; left:3px;
-    width:calc(50% - 3px);
+    /* The pill is itself a <span>, so the generic ".mode-toggle span" rule
+       below was also giving it padding and a min-width -- that's what made
+       it wider than a label and visibly off-center. Reset both here. */
+    padding:0;
+    min-width:0;
+    box-sizing:border-box;
+    width:calc((100% - 6px) / 3);
     border-radius:999px;
     background:linear-gradient(135deg, var(--accent), var(--accent-2, var(--accent-hover)));
     box-shadow:0 0 0 1px rgba(255,255,255,0.08) inset, 0 2px 10px var(--accent-glow);
@@ -987,6 +1017,7 @@
     z-index:0;
   }
   [data-mode="3d"] .mode-toggle .mode-pill{ transform:translateX(100%); }
+  [data-mode="sound"] .mode-toggle .mode-pill{ transform:translateX(200%); }
   .mode-toggle span{
     position:relative;
     z-index:1;
@@ -997,7 +1028,8 @@
     border-radius:999px;
     color:var(--text-muted);
     transition:color 0.25s ease;
-    min-width:56px;
+    min-width:68px;
+    box-sizing:border-box;
     justify-content:center;
   }
   .mode-toggle span.active{ color:var(--text-inverse); }
@@ -1039,6 +1071,19 @@
   [data-mode="3d"] [data-mode-section="2d"],
   [data-mode="3d"] [data-mode-nav="2d"],
   [data-mode="3d"] .only-2d{ display:none !important; }
+
+  /* Sonido es un apartado propio: fuera de su modo no aparece, y dentro de
+     su modo solo aparece él (secciones, grupos del menú y "On this page"). */
+  [data-mode="2d"] [data-mode-section="sound"],
+  [data-mode="2d"] [data-mode-nav="sound"],
+  [data-mode="3d"] [data-mode-section="sound"],
+  [data-mode="3d"] [data-mode-nav="sound"],
+  body:not([data-mode="sound"]) .only-sound{ display:none !important; }
+
+  [data-mode="sound"] .doc-section:not([data-mode-section="sound"]),
+  [data-mode="sound"] .sidebar-nav .group:not([data-mode-nav="sound"]),
+  [data-mode="sound"] #pageTocList li:not([data-mode-section="sound"]),
+  [data-mode="sound"] .hide-in-sound{ display:none !important; }
 
   .mode-copy{ display:none; }
   [data-mode="2d"] .mode-copy.copy-2d{ display:inline; }
@@ -1227,6 +1272,17 @@
     </div>
 
     <nav class="sidebar-nav">
+      <div class="group" data-mode-nav="sound">
+        <div class="group-title"><i class="ph-bold ph-music-notes" style="margin-right:4px;"></i> Sound</div>
+        <a href="#audio"><i class="ph ph-play-circle"></i> Live loops &amp; timing</a>
+        <a href="#play"><i class="ph ph-piano-keys"></i> Notes &amp; synths</a>
+        <a href="#sample"><i class="ph ph-waveform"></i> Samples</a>
+        <a href="#amplitude"><i class="ph ph-chart-bar"></i> Reacting with visuals</a>
+        <a href="#notes-parse"><i class="ph ph-music-notes-simple"></i> Chords &amp; scales</a>
+        <a href="#synth-enum"><i class="ph ph-list-bullets"></i> Synth enumeration</a>
+        <a href="#audioengine"><i class="ph ph-gear"></i> AudioEngine</a>
+      </div>
+
       <div class="group">
         <div class="group-title">Introduction</div>
         <a href="#intro" class="active"><i class="ph ph-book-open"></i> Overview</a>
@@ -1280,11 +1336,6 @@
       </div>
 
       <div class="group">
-        <div class="group-title">Sound</div>
-        <a href="#audio"><i class="ph ph-music-notes"></i> Sound &amp; live coding</a>
-      </div>
-
-      <div class="group">
         <div class="group-title">Reference</div>
         <a href="#enums"><i class="ph ph-list-bullets"></i> Enumerations</a>
         <a href="#index"><i class="ph ph-magnifying-glass"></i> Keyword index</a>
@@ -1335,10 +1386,11 @@
     </span>
   </div>
   <div style="display:flex;align-items:center;gap:14px;">
-    <button class="mode-toggle" id="modeToggle" aria-label="Switch between 2D and 3D documentation" title="Switch between 2D and 3D documentation">
+    <button class="mode-toggle" id="modeToggle" aria-label="Switch documentation: 2D, 3D or Sound" title="Switch documentation: 2D, 3D or Sound">
       <span class="mode-pill" aria-hidden="true"></span>
-      <span class="mode-2d-label active"><i class="ph-bold ph-square"></i> 2D</span>
-      <span class="mode-3d-label"><i class="ph-bold ph-cube"></i> 3D</span>
+      <span class="mode-2d-label active" data-mode-target="2d"><i class="ph-bold ph-square"></i> 2D</span>
+      <span class="mode-3d-label" data-mode-target="3d"><i class="ph-bold ph-cube"></i> 3D</span>
+      <span class="mode-sound-label" data-mode-target="sound"><i class="ph-bold ph-music-notes"></i> Sound</span>
     </button>
     <div class="badge">v0.1 · beta</div>
   </div>
@@ -1350,7 +1402,8 @@
       <section class="hero">
         <div class="hero-content">
           <h1>DanaProcessing</h1>
-          <p class="lede">A Processing-style creative coding framework for C#. Write a <code class="inline">Sketch</code>, override <code class="inline">Setup()</code> and <code class="inline">Draw()</code>, and get the same drawing vocabulary Processing sketchers already know — in 2D on SkiaSharp, or in real 3D on OpenGL, both through the desktop IDE built just for this.</p>
+          <p class="lede only-sound">DanaProcessing's own audio engine, written in C#: <strong>live loops</strong> that stay in time while you edit, synths, drums and samples — and visuals that react to the exact moment each note is heard. No external synth, no extra package.</p>
+          <p class="lede hide-in-sound">A Processing-style creative coding framework for C#. Write a <code class="inline">Sketch</code>, override <code class="inline">Setup()</code> and <code class="inline">Draw()</code>, and get the same drawing vocabulary Processing sketchers already know — in 2D on SkiaSharp, or in real 3D on OpenGL, both through the desktop IDE built just for this.</p>
           <div class="hero-actions">
             <div class="download-split">
               <a class="btn btn-ghost download-primary" href="https://github.com/BuddhaCodes/DanaProcessing/releases/latest">
@@ -1366,8 +1419,9 @@
                 <a href="https://github.com/BuddhaCodes/DanaProcessing/releases/latest" data-platform="linux"><i class="ph-bold ph-linux-logo"></i> Linux</a>
               </div>
             </div>
-  <a class="btn btn-primary" href="#intro"><i class="ph ph-book-open"></i> Read the docs</a>
-  <a class="btn btn-ghost" href="#index"><i class="ph ph-magnifying-glass"></i> Keyword index</a>
+  <a class="btn btn-primary hide-in-sound" href="#intro"><i class="ph ph-book-open"></i> Read the docs</a>
+  <a class="btn btn-ghost hide-in-sound" href="#index"><i class="ph ph-magnifying-glass"></i> Keyword index</a>
+  <a class="btn btn-primary only-sound" href="#audio"><i class="ph ph-music-notes"></i> Start with sound</a>
 </div>
         </div>
      
@@ -2334,8 +2388,8 @@ heights.Shuffle();               <span class="cm">// reorders in place</span>
           </section>
 
           <!-- ================= SOUND ================= -->
-          <section class="doc-section" id="audio">
-            <div class="section-kicker">18.5 · Sound</div>
+          <section class="doc-section" id="audio" data-mode-section="sound">
+            <div class="section-kicker">01 · Sound</div>
             <h2>Sound &amp; live coding</h2>
             <p class="section-intro">DanaProcessing has its own audio engine, written from scratch in C# and running inside the sketch's own process — no SuperCollider, no external synth, no extra package. It follows <a href="https://sonic-pi.net" target="_blank" rel="noopener">Sonic Pi</a>'s way of thinking: <strong>live loops</strong> that repeat in time with each other, <code class="inline">Sleep</code> measured in beats, built-in synths and drums. Because sound and drawing share one clock, visuals can react to the exact moment a note is heard. Everything here is on <code class="inline">Sketch</code> and needs no <code class="inline">using</code> of its own.</p>
 
@@ -2402,7 +2456,7 @@ heights.Shuffle();               <span class="cm">// reorders in place</span>
             <p class="entry-desc">Tempo in beats per minute, shared by every loop. Default <code class="inline">60</code> (one beat = one second), like Sonic Pi. Usually set once in <code class="inline">Setup()</code>.</p>
 
             <h3 class="entry-title" id="usesynth">UseSynth(<span class="tp">Synth</span> synth)</h3>
-            <p class="entry-desc">Chooses the instrument for the following <code class="inline">Play()</code> calls — per loop when called inside one, otherwise for the whole sketch. The default is <code class="inline">Synth.Sine</code>. See the <a href="#enums">Synth</a> enumeration.</p>
+            <p class="entry-desc">Chooses the instrument for the following <code class="inline">Play()</code> calls — per loop when called inside one, otherwise for the whole sketch. The default is <code class="inline">Synth.Sine</code>. See the <a href="#synth-enum">Synth</a> enumeration below.</p>
 
             <h3 class="entry-title" id="play">Play(<span class="tp">double</span> note, …) · Play(<span class="tp">string</span> note, …) · Play(<span class="tp">int[]</span> notes, …)</h3>
             <p class="entry-desc">Plays a note. <code class="inline">note</code> is a MIDI number (<code class="inline">60</code> = C4, fractions allowed for microtones), a name like <code class="inline">"C4"</code>, <code class="inline">"F#3"</code>, <code class="inline">"Eb2"</code>, or an array for a chord (<code class="inline">Play(Notes.Chord("C4", "minor"))</code>). Inside a loop the note sounds at the loop's current musical time; outside a loop (e.g. in <code class="inline">MousePressed()</code>) it sounds right away. All the optional parameters are named, Sonic Pi style:</p>
@@ -2457,6 +2511,17 @@ heights.Shuffle();               <span class="cm">// reorders in place</span>
 
             <h3 class="entry-title" id="audioengine">AudioEngine.Shared <span class="sig-return">→ AudioEngine</span> · advanced</h3>
             <p class="entry-desc">The one engine every sketch shares (namespace <code class="inline">DanaProcessing.Audio</code>). It outlives individual sketches, which is why pressing Run doesn't cut the music, and only opens the sound device once something actually plays. Sketches rarely need it directly; the tunables are <code class="inline">ScheduleAhead</code> (seconds loops run ahead of what you hear, default 0.1), <code class="inline">MasterVolume</code> (0–1, default 0.7) and <code class="inline">OutputDescription</code>. Hosts call <code class="inline">AudioEngine.ActivateSketch(sketch)</code> after <code class="inline">Setup()</code> and after a hot-reload swap (the Avalonia host already does), can show <code class="inline">AudioEngine.DiagnosticReported</code> messages, and stop everything with <code class="inline">AudioEngine.StopEverything()</code>.</p>
+
+            <table class="enum-table" id="synth-enum">
+              <caption>Synth</caption>
+              <tr><td>Sine</td><td>Pure tone — the default, like Sonic Pi's <code class="inline">:beep</code>.</td></tr>
+              <tr><td>Saw</td><td>Band-limited sawtooth: bright; great for bass and leads with <code class="inline">cutoff</code>.</td></tr>
+              <tr><td>Square</td><td>Band-limited square: hollow, retro.</td></tr>
+              <tr><td>Triangle</td><td>Soft, flute-like.</td></tr>
+              <tr><td>Pluck</td><td>Plucked string (Karplus–Strong).</td></tr>
+              <tr><td>Noise</td><td>White noise — with a low <code class="inline">cutoff</code>, wind or waves.</td></tr>
+              <tr><td>Kick · Snare · Hat</td><td>Synthesized drums, also reachable as <code class="inline">Sample("kick")</code>, <code class="inline">"snare"</code>, <code class="inline">"hat"</code>. They ignore the note and the envelope.</td></tr>
+            </table>
           </section>
 
           <!-- ================= ENUMS ================= -->
@@ -2471,16 +2536,6 @@ heights.Shuffle();               <span class="cm">// reorders in place</span>
               <tr><td>Renderer3D</td><td>Offscreen OpenGL 3.3. Set once via <code class="inline">Size()</code>/<code class="inline">CreateGraphics()</code> and locked for that context's lifetime. See <a href="#getting-started-3d">3D — Getting started</a>.</td></tr>
             </table>
 
-            <table class="enum-table">
-              <caption>Synth</caption>
-              <tr><td>Sine</td><td>Pure tone — the default, like Sonic Pi's <code class="inline">:beep</code>.</td></tr>
-              <tr><td>Saw</td><td>Band-limited sawtooth: bright; great for bass and leads with <code class="inline">cutoff</code>.</td></tr>
-              <tr><td>Square</td><td>Band-limited square: hollow, retro.</td></tr>
-              <tr><td>Triangle</td><td>Soft, flute-like.</td></tr>
-              <tr><td>Pluck</td><td>Plucked string (Karplus–Strong).</td></tr>
-              <tr><td>Noise</td><td>White noise — with a low <code class="inline">cutoff</code>, wind or waves.</td></tr>
-              <tr><td>Kick · Snare · Hat</td><td>Synthesized drums, also reachable as <code class="inline">Sample("kick")</code>, <code class="inline">"snare"</code>, <code class="inline">"hat"</code>. They ignore the note and the envelope.</td></tr>
-            </table>
 
             <table class="enum-table">
               <caption>ColorSpaceMode</caption>
@@ -2733,6 +2788,7 @@ heights.Shuffle();               <span class="cm">// reorders in place</span>
   var modeFlagIcon = document.getElementById('modeFlagIcon');
   var label2d      = modeToggle.querySelector('.mode-2d-label');
   var label3d      = modeToggle.querySelector('.mode-3d-label');
+  var labelSound   = modeToggle.querySelector('.mode-sound-label');
   var warpOverlay  = document.getElementById('warpOverlay');
 
   function applyMode(mode){
@@ -2743,10 +2799,14 @@ heights.Shuffle();               <span class="cm">// reorders in place</span>
 
     label2d.classList.toggle('active', mode === '2d');
     label3d.classList.toggle('active', mode === '3d');
+    labelSound.classList.toggle('active', mode === 'sound');
 
     if(mode === '3d'){
       modeFlagText.textContent = '3D Renderer API';
       modeFlagIcon.className = 'ph-bold ph-cube';
+    } else if(mode === 'sound'){
+      modeFlagText.textContent = 'Sound & live coding';
+      modeFlagIcon.className = 'ph-bold ph-music-notes';
     } else {
       modeFlagText.textContent = '2D Canvas API';
       modeFlagIcon.className = 'ph-bold ph-square';
@@ -2754,11 +2814,18 @@ heights.Shuffle();               <span class="cm">// reorders in place</span>
   }
 
   // Restaurar modo guardado (por defecto: 2d)
-  applyMode(localStorage.getItem('dana-mode') || '2d');
+  var savedMode = localStorage.getItem('dana-mode');
+  applyMode(savedMode === '3d' || savedMode === 'sound' ? savedMode : '2d');
 
   modeToggle.addEventListener('click', function(e){
     var current = document.body.getAttribute('data-mode');
-    var next = (current === '3d') ? '2d' : '3d';
+    // Click on a segment goes to that mode; a click elsewhere on the toggle
+    // (or Enter/Space on the focused button) cycles 2D -> 3D -> Sound.
+    var target = e && e.target && e.target.closest ? e.target.closest('[data-mode-target]') : null;
+    var order = ['2d', '3d', 'sound'];
+    var next = target ? target.getAttribute('data-mode-target')
+                      : order[(order.indexOf(current) + 1) % order.length];
+    if(next === current) return;
 
     // Posicionar el anillo del overlay en el punto del click
     var rect = modeToggle.getBoundingClientRect();
@@ -2778,11 +2845,40 @@ heights.Shuffle();               <span class="cm">// reorders in place</span>
 
     // Cambiar el modo a mitad de la animación, para que el cambio
     // de contenido quede oculto detrás del anillo en expansión.
-    setTimeout(function(){ applyMode(next); }, 320);
+    setTimeout(function(){
+      applyMode(next);
+      // Entering or leaving Sound swaps the whole page's content, so start
+      // from the top instead of landing mid-way through a hidden section.
+      if(next === 'sound' || current === 'sound'){ window.scrollTo(0, 0); document.querySelector('.main') && document.querySelector('.main').scrollTo && document.querySelector('.main').scrollTo(0, 0); }
+    }, 320);
 
     warpOverlay.addEventListener('animationend', function handler(){
       warpOverlay.classList.remove('firing');
       warpOverlay.removeEventListener('animationend', handler);
+    });
+  });
+
+  // ---------- Links into another mode ----------
+  // A link whose target only exists in another mode (e.g. the IDE section
+  // linking to the audio engine while reading 2D, or anything general while
+  // in Sound) switches to that mode first, then jumps -- instead of
+  // scrolling to an element that is display:none.
+  document.addEventListener('click', function(e){
+    var link = e.target && e.target.closest ? e.target.closest('a[href^="#"]') : null;
+    if(!link) return;
+    var id = link.getAttribute('href').slice(1);
+    var el = id ? document.getElementById(id) : null;
+    if(!el) return;
+    var section = el.closest('[data-mode-section]');
+    var needed = section ? section.getAttribute('data-mode-section') : null;
+    var current = document.body.getAttribute('data-mode');
+    if(!needed && current === 'sound' && el.closest('.doc-section')) needed = '2d';
+    if(!needed || needed === current) return;
+    e.preventDefault();
+    applyMode(needed);
+    requestAnimationFrame(function(){
+      el.scrollIntoView();
+      history.replaceState(null, '', '#' + id);
     });
   });
 
