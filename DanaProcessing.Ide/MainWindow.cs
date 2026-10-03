@@ -58,6 +58,8 @@ namespace DanaProcessing.Ide
         private readonly Button _runButton;
         private readonly Button _hotReloadButton;
         private readonly Button _runFastButton;
+        private readonly Button _agentButton;
+        private TextBlock? _wordmark;
         private AvaloniaSketchWindow? _fastRunWindow;
         private readonly Border _updateBanner;
         private readonly TextBlock _updateBannerText;
@@ -178,34 +180,32 @@ namespace DanaProcessing.Ide
             _editorView.TypingActivityChanged += OnTypingActivityChanged;
             _editorView.EditorFocusChanged += focused => _canvas.IsPaused = focused;
 
+            // --- Grupo de ejecución: [▶ Ejecutar][▾] ---
+            // Antes eran tres botones sueltos en el title bar (▶ Ejecutar, ⚡ y
+            // ⏩), y dos de ellos eran glifos sin texto que no decían nada si no
+            // conocías la app. Ahora "Ejecutar" sigue siendo el único botón
+            // primario y las dos variantes viven en el desplegable ▾, cada una
+            // con su nombre y su atajo de teclado (también están en el menú
+            // "Sketch").
+            var runRadius = ClayTheme.RadiusButton;
             _runButton = new Button
             {
                 Content = Loc.Tr("▶  Ejecutar", "▶  Run"),
                 Classes = { "clay-run" },
-                Padding = new Avalonia.Thickness(20, 8),
-                CornerRadius = ClayTheme.RadiusButton,
+                Padding = new Avalonia.Thickness(18, 8, 14, 8),
+                CornerRadius = new CornerRadius(runRadius.TopLeft, 0, 0, runRadius.BottomLeft),
             };
+            ToolTip.SetTip(_runButton, Loc.Tr("Compilar y ejecutar el sketch  (Ctrl+R)", "Compile and run the sketch  (Ctrl+R)"));
             _runButton.Click += async (_, _) => await RunCurrentSketchAsync();
 
             // Disabled until a Run has happened AND the active tab is the one
             // that Run loaded -- hot-reloading only makes sense against a
             // sketch that's actually running right now (see _runningTab).
-            _hotReloadButton = new Button
-            {
-                Content = "⚡",
-                Classes = { "clay-chrome" },
-                Width = 36,
-                Height = 36,
-                Padding = new Avalonia.Thickness(0),
-                FontSize = 16,
-                HorizontalContentAlignment = HorizontalAlignment.Center,
-                VerticalContentAlignment = VerticalAlignment.Center,
-                IsEnabled = false,
-            };
+            _hotReloadButton = BuildMenuItem("⚡", "Hot reload", "Ctrl+Shift+R", () => _ = HotReloadCurrentSketchAsync());
+            _hotReloadButton.IsEnabled = false;
             ToolTip.SetTip(_hotReloadButton, Loc.Tr(
-                "Hot reload -- recompila sin perder el estado del sketch (si los campos no cambiaron)",
-                "Hot reload -- recompiles without losing the sketch's state (if its fields didn't change)"));
-            _hotReloadButton.Click += async (_, _) => await HotReloadCurrentSketchAsync();
+                "Recompila sin perder el estado del sketch (si los campos no cambiaron)",
+                "Recompiles without losing the sketch's state (if its fields didn't change)"));
 
             _editorView.ActiveTabChanged += UpdateHotReloadButtonEnabled;
 
@@ -213,69 +213,57 @@ namespace DanaProcessing.Ide
             // sin tocar el canvas embebido ni el estado de Run/Hot Reload de
             // este -- completamente independiente, para cuando lo que querés
             // es simplemente ver el sketch correr, no seguir iterando en el IDE.
-            _runFastButton = new Button
-            {
-                Content = "⏩",
-                Classes = { "clay-chrome" },
-                Width = 36,
-                Height = 36,
-                Padding = new Avalonia.Thickness(0),
-                FontSize = 16,
-                HorizontalContentAlignment = HorizontalAlignment.Center,
-                VerticalContentAlignment = VerticalAlignment.Center,
-            };
+            _runFastButton = BuildMenuItem("⏩", Loc.Tr("Ejecutar en ventana aparte", "Run in a separate window"), "Ctrl+F5", () => _ = RunInSeparateWindowAsync());
             ToolTip.SetTip(_runFastButton, Loc.Tr(
-                "Ejecutar en ventana aparte -- como Processing: compila rápido y minimalista, sin el IDE alrededor",
-                "Run in a separate window -- like Processing: compiles fast and minimal, no IDE around it"));
-            _runFastButton.Click += async (_, _) => await RunInSeparateWindowAsync();
+                "Como Processing: compila rápido y abre el sketch solo, sin el IDE alrededor",
+                "Like Processing: compiles fast and opens the sketch on its own, no IDE around it"));
 
-            // Botón cuadrado fijo (36x36) con el ícono centrado explícitamente
-            // en ambos ejes -- antes dependía del centrado por defecto del
-            // ContentPresenter, que con un botón de ancho variable (Padding
-            // asimétrico heredado de "clay-chrome") dejaba el engranaje
-            // visualmente corrido hacia la izquierda. FontSize más grande
-            // para que el glifo se lea bien a esta escala.
-            var settingsButton = new Button
+            var runOptionsButton = new Button
             {
-                Content = "⚙",
-                Classes = { "clay-chrome" },
-                Width = 36,
-                Height = 36,
-                Padding = new Avalonia.Thickness(0),
-                FontSize = 17,
-                HorizontalContentAlignment = HorizontalAlignment.Center,
-                VerticalContentAlignment = VerticalAlignment.Center,
+                Content = "▾",
+                Classes = { "clay-run" },
+                Padding = new Avalonia.Thickness(10, 8),
+                CornerRadius = new CornerRadius(0, runRadius.TopRight, runRadius.BottomRight, 0),
             };
-            ToolTip.SetTip(settingsButton, Loc.Tr("Configuración", "Settings"));
-            settingsButton.Click += (_, _) => new SettingsWindow().ShowDialog(this);
+            ToolTip.SetTip(runOptionsButton, Loc.Tr("Más formas de ejecutar", "More ways to run"));
+            AttachMenuFlyout(runOptionsButton, PlacementMode.BottomEdgeAlignedRight, new Control[] { _hotReloadButton, _runFastButton });
 
-            // Non-modal (.Show(), not .ShowDialog()) -- unlike Settings, the
-            // whole point of Agent mode is to stay open while you keep
-            // working in the editor.
-            var agentButton = new Button
+            var runGroup = new StackPanel
             {
-                Content = "✦",
-                Classes = { "clay-chrome" },
-                Width = 36,
-                Height = 36,
-                Padding = new Avalonia.Thickness(0),
-                FontSize = 17,
-                HorizontalContentAlignment = HorizontalAlignment.Center,
-                VerticalContentAlignment = VerticalAlignment.Center,
+                Orientation = Orientation.Horizontal,
+                Spacing = 1,
+                VerticalAlignment = VerticalAlignment.Center,
+                Children = { _runButton, runOptionsButton },
             };
-            ToolTip.SetTip(agentButton, Loc.Tr("Asistente", "Assistant"));
-            agentButton.Click += (_, _) => new Agent.AgentWindow(this).Show();
 
-            // El botón de "Samples" suelto salió de acá -- ahora vive como
-            // una entrada más adentro del menú ☰ (junto con Nuevo/Abrir/
-            // Guardar/Guardar como), en vez de competir por espacio propio
-            // en el title bar con su propio ícono.
-            var fileMenuButton = BuildFileMenuButton();
+            // El Asistente es lo único que queda como botón propio fuera del
+            // grupo de ejecución, y ahora con texto en vez de un ✦ suelto.
+            // Non-modal (.Show(), not .ShowDialog()) -- the whole point of
+            // Agent mode is to stay open while you keep working in the editor.
+            _agentButton = new Button
+            {
+                Content = Loc.Tr("✦  Asistente", "✦  Assistant"),
+                Classes = { "clay-secondary" },
+                Padding = new Avalonia.Thickness(12, 7),
+                VerticalAlignment = VerticalAlignment.Center,
+            };
+            ToolTip.SetTip(_agentButton, Loc.Tr("Abrir el asistente de código  (Ctrl+I)", "Open the code assistant  (Ctrl+I)"));
+            _agentButton.Click += (_, _) => OpenAgentWindow();
+
+            // Menús con texto (Archivo / Sketch / Herramientas / Ayuda) en vez
+            // de un ☰ + ⚙ + íconos sueltos: cada acción se ve con su nombre y
+            // su atajo de teclado.
+            var menuBar = BuildMenuBar();
 
             (_paneTogglePill, _codeToggleButton, _resultToggleButton) = BuildPaneToggle();
             UpdatePaneToggleVisuals();
 
-            var titleBarRoot = BuildTitleBar(_runButton, _runFastButton, _hotReloadButton, settingsButton, agentButton, fileMenuButton, _paneTogglePill);
+            var titleBarRoot = BuildTitleBar(menuBar, runGroup, _agentButton, _paneTogglePill);
+
+            // Atajos globales de la ventana. Bubble (no Tunnel) para que lo que
+            // el editor ya maneja él mismo (Ctrl+S, Ctrl+Space, F12...) no se
+            // ejecute dos veces: si el editor lo marcó Handled, acá no llega.
+            AddHandler(KeyDownEvent, OnWindowKeyDown, RoutingStrategies.Bubble);
 
             _outputText = new TextBlock
             {
@@ -856,6 +844,12 @@ namespace DanaProcessing.Ide
             _isNarrow = narrow;
 
             _paneTogglePill.IsVisible = narrow;
+            // En angosto la píldora Código/Resultado necesita lugar: se esconden
+            // el nombre de la app y el botón Asistente (que sigue disponible en
+            // Herramientas y con Ctrl+I).
+            if (_wordmark != null)
+                _wordmark.IsVisible = !narrow;
+            _agentButton.IsVisible = !narrow;
             _splitter.IsVisible = !narrow;
 
             _contentGrid.ColumnDefinitions.Clear();
@@ -977,107 +971,113 @@ namespace DanaProcessing.Ide
         }
 
         /// <summary>
-        /// The ☰ button in the title bar: a collapsible file menu holding
-        /// Nuevo / Abrir / Guardar / Guardar como / Ejemplos. Built once here
-        /// instead of five separate buttons crowding the title bar (the old
-        /// layout had a lone 📂 "Samples" icon next to ⚙, and the editor's
-        /// own toolbar duplicated Nuevo/Abrir/Guardar/Guardar como below it —
-        /// this menu replaces both). Uses Avalonia's Flyout, which already
-        /// gives us "click to open, click outside or Escape to collapse" for
-        /// free — no bespoke Popup/IsOpen bookkeeping needed.
+        /// Una fila de menú: ícono, nombre y (opcional) atajo de teclado
+        /// alineado a la derecha. No cierra el flyout por sí sola: eso lo
+        /// agrega <see cref="AttachMenuFlyout"/> al meterla en un menú, así la
+        /// misma función sirve para cualquier menú/desplegable.
         /// </summary>
-        private Button BuildFileMenuButton()
+        private static Button BuildMenuItem(string icon, string label, string? shortcut, Action action)
         {
-            var menuButton = new Button
+            var row = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto") };
+
+            var iconText = new TextBlock
             {
-                Content = "☰",
-                Classes = { "clay-chrome" },
-                Width = 36,
-                Height = 36,
-                Padding = new Avalonia.Thickness(0),
-                FontSize = 15,
-                HorizontalContentAlignment = HorizontalAlignment.Center,
-                VerticalContentAlignment = VerticalAlignment.Center,
+                Text = icon,
+                Width = 18,
+                Margin = new Avalonia.Thickness(0, 0, 10, 0),
+                FontSize = 13,
+                Foreground = ClayTheme.TextMuted,
+                VerticalAlignment = VerticalAlignment.Center,
             };
-            ToolTip.SetTip(menuButton, Loc.Tr("Archivo", "File"));
-
-            Flyout? flyout = null;
-
-            Button BuildItem(string icon, string label, Action action)
+            var labelText = new TextBlock
             {
-                var item = new Button
+                Text = label,
+                FontFamily = ClayTheme.FontBody,
+                FontSize = 13,
+                Foreground = ClayTheme.TextPrimary,
+                VerticalAlignment = VerticalAlignment.Center,
+            };
+            Grid.SetColumn(iconText, 0);
+            Grid.SetColumn(labelText, 1);
+            row.Children.Add(iconText);
+            row.Children.Add(labelText);
+
+            if (!string.IsNullOrEmpty(shortcut))
+            {
+                var shortcutText = new TextBlock
                 {
-                    Classes = { "clay-menu-item" },
-                    Content = new StackPanel
-                    {
-                        Orientation = Orientation.Horizontal,
-                        Spacing = 10,
-                        Children =
-                        {
-                            new TextBlock
-                            {
-                                Text = icon,
-                                Width = 18,
-                                FontSize = 13,
-                                Foreground = ClayTheme.TextMuted,
-                                VerticalAlignment = VerticalAlignment.Center,
-                            },
-                            new TextBlock
-                            {
-                                Text = label,
-                                FontFamily = ClayTheme.FontBody,
-                                FontSize = 13,
-                                Foreground = ClayTheme.TextPrimary,
-                                VerticalAlignment = VerticalAlignment.Center,
-                            },
-                        }
-                    }
+                    Text = shortcut,
+                    Margin = new Avalonia.Thickness(24, 0, 2, 0),
+                    FontFamily = ClayTheme.FontBody,
+                    FontSize = 11.5,
+                    Foreground = ClayTheme.TextMuted,
+                    VerticalAlignment = VerticalAlignment.Center,
                 };
-                // Every item closes the menu after acting -- picking "Nuevo"
-                // or "Guardar" is a one-shot action, same reasoning as
-                // SamplesWindow closing itself once you pick a sample.
-                item.Click += (_, _) =>
-                {
-                    action();
-                    flyout?.Hide();
-                };
-                return item;
+                Grid.SetColumn(shortcutText, 2);
+                row.Children.Add(shortcutText);
             }
 
-            Border Separator() => new()
+            var item = new Button
             {
-                Height = 1,
-                Margin = new Avalonia.Thickness(6, 4),
-                Background = new SolidColorBrush(Avalonia.Media.Color.Parse("#E8E2DA")),
+                Classes = { "clay-menu-item" },
+                // Stretch (no Left, que es lo que pone el estilo) para que la
+                // columna del atajo quede pegada al borde derecho del menú.
+                HorizontalContentAlignment = HorizontalAlignment.Stretch,
+                Content = row,
             };
+            item.Click += (_, _) => action();
+            return item;
+        }
 
+        /// <summary>
+        /// Menu item that mirrors another button's IsEnabled -- used for the
+        /// Sketch menu's Ejecutar / Hot reload / Ventana aparte rows, so they
+        /// gray out exactly when the run group's buttons do without touching
+        /// any of the many places that already toggle those buttons.
+        /// </summary>
+        private static Button MirrorEnabled(Button item, Button source)
+        {
+            item.IsEnabled = source.IsEnabled;
+            source.PropertyChanged += (_, e) =>
+            {
+                if (e.Property == IsEnabledProperty)
+                    item.IsEnabled = source.IsEnabled;
+            };
+            return item;
+        }
+
+        private static Border MenuSeparator() => new()
+        {
+            Height = 1,
+            Margin = new Avalonia.Thickness(6, 4),
+            Background = new SolidColorBrush(Avalonia.Media.Color.Parse("#E8E2DA")),
+        };
+
+        /// <summary>
+        /// Hangs a flyout menu off <paramref name="owner"/>. Uses Avalonia's
+        /// Flyout, which already gives us "click to open, click outside or
+        /// Escape to collapse" for free. Every Button inside closes the menu
+        /// after acting -- each item is a one-shot action.
+        /// </summary>
+        private static void AttachMenuFlyout(Button owner, PlacementMode placement, IEnumerable<Control> items)
+        {
             var menuPanel = new StackPanel
             {
-                Width = 210,
+                MinWidth = 250,
                 Spacing = 1,
             };
-            menuPanel.Children.Add(BuildItem("＋", Loc.Tr("Nuevo", "New"), () => _ = ReplaceContextIfConfirmedAsync(() => _editorView.ReplaceAllTabs())));
-            menuPanel.Children.Add(BuildItem("📂", Loc.Tr("Abrir...", "Open..."), () => _ = _editorView.OpenFileAsync()));
-            menuPanel.Children.Add(Separator());
-            menuPanel.Children.Add(BuildItem("💾", Loc.Tr("Guardar", "Save"), () => _ = _editorView.SaveActiveTabAsync()));
-            menuPanel.Children.Add(BuildItem("💾", Loc.Tr("Guardar como...", "Save as..."), () => _ = _editorView.SaveActiveTabAsAsync()));
-            menuPanel.Children.Add(Separator());
-            menuPanel.Children.Add(BuildItem("🧩", Loc.Tr("Ejemplos...", "Examples..."), () =>
-                new SamplesWindow(source => _ = ReplaceContextIfConfirmedAsync(() => _editorView.ReplaceAllTabs(null, source))).ShowDialog(this)));
-            menuPanel.Children.Add(BuildItem("📦", Loc.Tr("Paquetes NuGet...", "NuGet Packages..."), () =>
+
+            Flyout? flyout = null;
+            foreach (var child in items)
             {
-                var current = PackageDirectiveParser.Parse(_editorView.ActiveSourceText);
-                new NuGetPackagesWindow(current, directives => _editorView.ApplyPackageDirectives(directives)).ShowDialog(this);
-            }));
-            menuPanel.Children.Add(Separator());
-            menuPanel.Children.Add(BuildItem("📤", Loc.Tr("Exportar sketch...", "Export sketch..."), () => _ = ExportActiveSketchAsync()));
-            menuPanel.Children.Add(Separator());
-            menuPanel.Children.Add(BuildItem("⬆", Loc.Tr("Buscar actualizaciones...", "Check for updates..."), () => _ = CheckForUpdatesManuallyAsync()));
-            menuPanel.Children.Add(BuildItem("🐛", Loc.Tr("Reportar un problema...", "Report a problem..."), ReportProblemManually));
+                menuPanel.Children.Add(child);
+                if (child is Button button)
+                    button.Click += (_, _) => flyout?.Hide();
+            }
 
             flyout = new Flyout
             {
-                Placement = PlacementMode.BottomEdgeAlignedLeft,
+                Placement = placement,
                 Content = new Border
                 {
                     Background = ClayTheme.SurfaceRaised,
@@ -1097,13 +1097,128 @@ namespace DanaProcessing.Ide
                 }
             };
 
-            FlyoutBase.SetAttachedFlyout(menuButton, flyout);
-            menuButton.Click += (_, _) => FlyoutBase.ShowAttachedFlyout(menuButton);
-
-            return menuButton;
+            FlyoutBase.SetAttachedFlyout(owner, flyout);
+            owner.Click += (_, _) => FlyoutBase.ShowAttachedFlyout(owner);
         }
 
-        private Border BuildTitleBar(Button runButton, Button runFastButton, Button hotReloadButton, Button settingsButton, Button agentButton, Button fileMenuButton, Border paneTogglePill)
+        /// <summary>A text-labeled top-level menu ("Archivo", "Sketch", ...) in the title bar.</summary>
+        private static Button BuildTextMenu(string label, IEnumerable<Control> items)
+        {
+            var button = new Button
+            {
+                Content = label,
+                Classes = { "clay-secondary" },
+                Padding = new Avalonia.Thickness(10, 6),
+                VerticalAlignment = VerticalAlignment.Center,
+            };
+            AttachMenuFlyout(button, PlacementMode.BottomEdgeAlignedLeft, items);
+            return button;
+        }
+
+        private StackPanel BuildMenuBar()
+        {
+            var fileMenu = BuildTextMenu(Loc.Tr("Archivo", "File"), new Control[]
+            {
+                BuildMenuItem("＋", Loc.Tr("Nuevo", "New"), "Ctrl+N", NewSketch),
+                BuildMenuItem("📂", Loc.Tr("Abrir...", "Open..."), "Ctrl+O", () => _ = _editorView.OpenFileAsync()),
+                MenuSeparator(),
+                BuildMenuItem("💾", Loc.Tr("Guardar", "Save"), "Ctrl+S", () => _ = _editorView.SaveActiveTabAsync()),
+                BuildMenuItem("💾", Loc.Tr("Guardar como...", "Save as..."), "Ctrl+Shift+S", () => _ = _editorView.SaveActiveTabAsAsync()),
+                MenuSeparator(),
+                BuildMenuItem("📤", Loc.Tr("Exportar sketch...", "Export sketch..."), "Ctrl+E", () => _ = ExportActiveSketchAsync()),
+            });
+
+            var sketchMenu = BuildTextMenu("Sketch", new Control[]
+            {
+                MirrorEnabled(BuildMenuItem("▶", Loc.Tr("Ejecutar", "Run"), "Ctrl+R", () => _ = RunCurrentSketchAsync()), _runButton),
+                MirrorEnabled(BuildMenuItem("⚡", "Hot reload", "Ctrl+Shift+R", () => _ = HotReloadCurrentSketchAsync()), _hotReloadButton),
+                MirrorEnabled(BuildMenuItem("⏩", Loc.Tr("Ejecutar en ventana aparte", "Run in a separate window"), "Ctrl+F5", () => _ = RunInSeparateWindowAsync()), _runFastButton),
+                MenuSeparator(),
+                BuildMenuItem("🧩", Loc.Tr("Ejemplos...", "Examples..."), null, OpenSamples),
+                BuildMenuItem("📦", Loc.Tr("Paquetes NuGet...", "NuGet Packages..."), null, OpenNuGetPackages),
+            });
+
+            var toolsMenu = BuildTextMenu(Loc.Tr("Herramientas", "Tools"), new Control[]
+            {
+                BuildMenuItem("✦", Loc.Tr("Asistente", "Assistant"), "Ctrl+I", OpenAgentWindow),
+                MenuSeparator(),
+                BuildMenuItem("⚙", Loc.Tr("Configuración...", "Settings..."), "Ctrl+,", OpenSettings),
+            });
+
+            var helpMenu = BuildTextMenu(Loc.Tr("Ayuda", "Help"), new Control[]
+            {
+                BuildMenuItem("⬆", Loc.Tr("Buscar actualizaciones...", "Check for updates..."), null, () => _ = CheckForUpdatesManuallyAsync()),
+                BuildMenuItem("🐛", Loc.Tr("Reportar un problema...", "Report a problem..."), null, ReportProblemManually),
+            });
+
+            return new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                Spacing = 2,
+                VerticalAlignment = VerticalAlignment.Center,
+                Children = { fileMenu, sketchMenu, toolsMenu, helpMenu },
+            };
+        }
+
+        private void NewSketch() => _ = ReplaceContextIfConfirmedAsync(() => _editorView.ReplaceAllTabs());
+
+        private void OpenSamples() =>
+            new SamplesWindow(source => _ = ReplaceContextIfConfirmedAsync(() => _editorView.ReplaceAllTabs(null, source))).ShowDialog(this);
+
+        private void OpenNuGetPackages()
+        {
+            var current = PackageDirectiveParser.Parse(_editorView.ActiveSourceText);
+            new NuGetPackagesWindow(current, directives => _editorView.ApplyPackageDirectives(directives)).ShowDialog(this);
+        }
+
+        private void OpenSettings() => new SettingsWindow().ShowDialog(this);
+
+        private void OpenAgentWindow() => new Agent.AgentWindow(this).Show();
+
+        /// <summary>
+        /// Window-wide keyboard shortcuts -- the same ones printed next to each
+        /// menu item. Run-related shortcuts respect the corresponding button's
+        /// IsEnabled, so Ctrl+R during a compile is a no-op exactly like
+        /// clicking the disabled button would be.
+        /// </summary>
+        private void OnWindowKeyDown(object? sender, KeyEventArgs e)
+        {
+            if (e.Handled)
+                return;
+
+            const KeyModifiers ctrl = KeyModifiers.Control;
+            const KeyModifiers ctrlShift = KeyModifiers.Control | KeyModifiers.Shift;
+            var mods = e.KeyModifiers;
+
+            void Run(Action action)
+            {
+                e.Handled = true;
+                action();
+            }
+
+            if ((e.Key == Key.R && mods == ctrl) || (e.Key == Key.F5 && mods == KeyModifiers.None))
+                Run(() => { if (_runButton.IsEnabled) _ = RunCurrentSketchAsync(); });
+            else if (e.Key == Key.R && mods == ctrlShift)
+                Run(() => { if (_hotReloadButton.IsEnabled) _ = HotReloadCurrentSketchAsync(); });
+            else if (e.Key == Key.F5 && mods == ctrl)
+                Run(() => { if (_runFastButton.IsEnabled) _ = RunInSeparateWindowAsync(); });
+            else if (e.Key == Key.N && mods == ctrl)
+                Run(NewSketch);
+            else if (e.Key == Key.O && mods == ctrl)
+                Run(() => _ = _editorView.OpenFileAsync());
+            else if (e.Key == Key.S && mods == ctrl)
+                Run(() => _ = _editorView.SaveActiveTabAsync());
+            else if (e.Key == Key.S && mods == ctrlShift)
+                Run(() => _ = _editorView.SaveActiveTabAsAsync());
+            else if (e.Key == Key.E && mods == ctrl)
+                Run(() => _ = ExportActiveSketchAsync());
+            else if (e.Key == Key.I && mods == ctrl)
+                Run(OpenAgentWindow);
+            else if (e.Key == Key.OemComma && mods == ctrl)
+                Run(OpenSettings);
+        }
+
+        private Border BuildTitleBar(Control menuBar, Control runGroup, Button agentButton, Border paneTogglePill)
         {
             var logoDot = new Ellipse
             {
@@ -1113,7 +1228,7 @@ namespace DanaProcessing.Ide
                 VerticalAlignment = VerticalAlignment.Center,
             };
 
-            var wordmark = new TextBlock
+            _wordmark = new TextBlock
             {
                 Text = "DanaProcessing",
                 Foreground = ClayTheme.TextPrimary,
@@ -1127,8 +1242,16 @@ namespace DanaProcessing.Ide
             {
                 Orientation = Orientation.Horizontal,
                 Spacing = 12,
-                Margin = new Avalonia.Thickness(22, 0, 0, 0),
-                Children = { logoDot, wordmark }
+                Margin = new Avalonia.Thickness(22, 0, 14, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+                Children = { logoDot, _wordmark }
+            };
+
+            var left = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                Spacing = 4,
+                Children = { brand, menuBar }
             };
 
             var minButton = new Button { Content = "—", Classes = { "clay-chrome" } };
@@ -1140,18 +1263,26 @@ namespace DanaProcessing.Ide
             var closeButton = new Button { Content = "✕", Classes = { "clay-chrome-close" } };
             closeButton.Click += (_, _) => Close();
 
+            var windowControls = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                Spacing = 4,
+                Margin = new Avalonia.Thickness(12, 0, 0, 0),
+                Children = { minButton, maxButton, closeButton }
+            };
+
             var controls = new StackPanel
             {
                 Orientation = Orientation.Horizontal,
                 Spacing = 8,
                 Margin = new Avalonia.Thickness(0, 0, 16, 0),
-                Children = { paneTogglePill, fileMenuButton, settingsButton, agentButton, runFastButton, hotReloadButton, runButton, minButton, maxButton, closeButton }
+                Children = { paneTogglePill, agentButton, runGroup, windowControls }
             };
 
             var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
-            Grid.SetColumn(brand, 0);
+            Grid.SetColumn(left, 0);
             Grid.SetColumn(controls, 1);
-            grid.Children.Add(brand);
+            grid.Children.Add(left);
             grid.Children.Add(controls);
 
             var root = new Border
@@ -1162,7 +1293,7 @@ namespace DanaProcessing.Ide
             // Dragging: with SystemDecorations.None there's no OS-recognized
             // draggable title bar, so we start the move manually. Buttons
             // above mark PointerPressed handled themselves, so clicks on
-            // Run / minimize / maximize / close don't also start a drag.
+            // the menus / Run / minimize / maximize / close don't also start a drag.
             root.PointerPressed += (_, e) =>
             {
                 if (e.GetCurrentPoint(root).Properties.IsLeftButtonPressed)

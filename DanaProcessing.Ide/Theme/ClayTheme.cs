@@ -653,8 +653,8 @@ namespace DanaProcessing.Ide.Theme
             },
 
             // ============================================================
-            // === MENU ITEM (filas del menú colapsable ☰: Nuevo, Abrir,
-            // Guardar, Guardar como, Ejemplos) — fila ancha, alineada a la
+            // === MENU ITEM (filas de los menús del title bar: Archivo,
+            // Sketch, Herramientas, Ayuda y el desplegable ▾ de Ejecutar) — fila ancha, alineada a la
             // izquierda, mismo lenguaje visual que clay-secondary pero sin
             // el padding simétrico de un botón normal.
             // ============================================================
@@ -685,6 +685,13 @@ namespace DanaProcessing.Ide.Theme
             new Style(x => x.OfType<Button>().Class("clay-menu-item").Class(":pressed"))
             {
                 Setters = { new Setter(Button.BackgroundProperty, SurfacePressed) }
+            },
+            // Deshabilitado (ej. "Hot reload" antes del primer Ejecutar): los
+            // TextBlock de la fila tienen Foreground propio, así que el gris
+            // de FluentTheme no los alcanza -- se atenúa la fila entera.
+            new Style(x => x.OfType<Button>().Class("clay-menu-item").Class(":disabled"))
+            {
+                Setters = { new Setter(Visual.OpacityProperty, 0.4) }
             },
 
             // --- FIX ContentPresenter: Background (mismo motivo que en los demás clay-*) ---
