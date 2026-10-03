@@ -5,6 +5,7 @@ using Avalonia;
 using DanaProcessing.Ide.CrashReporting;
 using DanaProcessing.Ide.Export;
 using Microsoft.Win32;
+using Velopack;
 
 namespace DanaProcessing.Ide
 {
@@ -19,6 +20,15 @@ namespace DanaProcessing.Ide
         [STAThread]
         public static void Main(string[] args)
         {
+            // MUST be the literal first statement, before even the crash
+            // handler below -- this is how Velopack intercepts the special
+            // transient command-line arguments its own installer passes on
+            // first install/uninstall/update (e.g. to create a desktop
+            // shortcut), none of which should reach the rest of Main at all.
+            // A normal launch (not one of those hooks) just returns
+            // immediately and execution continues below as usual.
+            VelopackApp.Build().Run();
+
             // As early as physically possible, before anything else can
             // throw -- see CrashReportStore's own remark on why this only
             // does a best-effort local file write (gated on the opt-in

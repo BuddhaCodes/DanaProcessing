@@ -3,17 +3,35 @@ name: Build and Release
 on:
   push:
     branches: [ master ]
-  workflow_dispatch: # te deja disparar un build a mano desde la pestaña Actions
+  workflow_dispatch:
+    inputs:
+      cut_release:
+        description: >
+          Marca esta corrida como el release "oficial", usando la versión tal
+          cual está en el .csproj (bumpeala primero). Dejalo en false para un
+          build de iteración normal -- con Velopack, pisar la MISMA versión
+          dos veces puede directamente fallar (vpk pack rechaza empaquetar
+          una versión <= a la que ya encuentra localmente), así que todo push
+          normal arma su propia versión única en vez de repetir la del csproj.
+        type: boolean
+        default: false
 
 permissions:
-  contents: write # necesario para que el job pueda crear el Release
+  contents: write # necesario para que vpk pueda crear/actualizar el Release
+
+env:
+  # Pineado a una versión real y conocida -- sin esto, los 4 jobs podrían
+  # terminar resolviendo versiones de vpk distintas entre sí si "latest"
+  # cambiara a mitad de un run, lo que puede producir feeds/paquetes
+  # inconsistentes entre OSs. Mismo número que el paquete NuGet "Velopack"
+  # que referencia DanaProcessing.Ide.csproj -- mantenerlos sincronizados.
+  VPK_VERSION: "1.2.161"
 
 jobs:
   # Reads <Version> once (see DanaProcessing.Ide.csproj) instead of every
   # platform job doing its own copy of this step -- every other job depends
-  # on this one so the tag on the final Release always matches
-  # AppVersion.Current, and macOS's .app bundle needs the same value for its
-  # Info.plist.
+  # on this one so the tag on the final Release always matches what got
+  # packed, and macOS's bundle needs the same value too.
   read-version:
     runs-on: ubuntu-latest
     outputs:
@@ -32,7 +50,29 @@ jobs:
       - name: Read version
         id: version
         run: |
-          version=$(dotnet msbuild DanaProcessing.Ide/DanaProcessing.Ide.csproj -getProperty:Version)
+          base_version=$(dotnet msbuild DanaProcessing.Ide/DanaProcessing.Ide.csproj -getProperty:Version)
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ github.event.inputs.cut_release }}" = "true" ]; then
+            # Corte deliberado: la versión del csproj tal cual, sin sufijo --
+            # quien dispara esto a mano ya la bumpeó para este release real.
+            version="$base_version"
+          else
+            # Push normal a master (o un dispatch de prueba sin cut_release):
+            # Velopack necesita versiones siempre crecientes y nunca repetidas
+            # para que el delta y el feed de updates tengan sentido -- a
+            # diferencia del softprops/action-gh-release de antes, donde
+            # pushear dos veces con el MISMO <Version> pisaba el mismo
+            # Release/tag en el lugar. Con vpk eso puede directamente fallar
+            # el job, así que todo push "de iteración" recibe un sufijo de
+            # run number que lo hace único (run_number solo crece, nunca se
+            # repite en todo el historial de Actions del repo).
+            if [[ "$base_version" == *-* ]]; then
+              version="${base_version}.${{ github.run_number }}"
+            else
+              version="${base_version}-ci.${{ github.run_number }}"
+            fi
+          fi
+
           echo "version=$version" >> $GITHUB_OUTPUT
 
   build-windows:
@@ -56,7 +96,9 @@ jobs:
       # (SketchCompiler, RoslynCompletionEngine) carga tipos por reflection,
       # y el trimmer del linker recorta justamente lo que reflection no ve
       # usado estáticamente, así que trimear rompería la compilación de
-      # sketches en tiempo de ejecución.
+      # sketches en tiempo de ejecución. vpk pack consume esta misma carpeta
+      # de publish sin cambios -- Velopack no toca cómo se publica, solo
+      # cómo se empaqueta lo ya publicado.
       - name: Publish
         run: >
           dotnet publish DanaProcessing.Ide/DanaProcessing.Ide.csproj
@@ -67,22 +109,52 @@ jobs:
           -p:IncludeNativeLibrariesForSelfExtract=true
           -o publish/win-x64
 
-      # Code signing (Microsoft Artifact Signing) was scaffolded here and
-      # pulled back out for now — no budget for it yet, and as written it
-      # broke every run ("Unrecognized named-value: 'secrets'" on the
-      # `if: secrets.AZURE_TENANT_ID != ''` step condition). Revisit once
-      # there's an actual Artifact Signing account + certificate profile to
-      # point at; until then the build stays unsigned, same as today.
+      # Code signing (Microsoft Artifact Signing) fue scaffoldeado acá y
+      # retirado — sin presupuesto todavía. Velopack no cambia esto: el
+      # instalador sale sin firmar, igual que el .exe de antes.
 
-      - name: Zip build
-        shell: pwsh
-        run: Compress-Archive -Path publish/win-x64/* -DestinationPath DanaProcessingIde-win-x64.zip
+      - name: Install vpk
+        run: dotnet tool install --global vpk --version ${{ env.VPK_VERSION }}
+
+      # Trae el Release anterior (si existe) para que pack calcule un delta
+      # incremental en vez de forzar a todo el mundo a re-bajar el
+      # instalador completo en cada update. El PRIMER release armado con
+      # Velopack no tiene un feed previo que bajar (los releases viejos son
+      # zips de softprops, sin manifiesto de Velopack) -- confirmado vía
+      # velopack/velopack#91 que esto históricamente terminaba en un 404 /
+      # exit code distinto de cero, no un no-op silencioso. continue-on-error
+      # cubre exactamente ese primer run; sacarlo una vez que haya al menos
+      # un release real hecho con vpk.
+      - name: Download previous release (for delta patching)
+        continue-on-error: true
+        run: >
+          vpk download github
+          --repoUrl https://github.com/${{ github.repository }}
+          --channel win
+          --token ${{ secrets.GITHUB_TOKEN }}
+
+      # Reemplaza Compress-Archive: vpk arma el instalador real (Setup.exe +
+      # nupkg full/delta + releases.win.json) a partir de la misma carpeta
+      # de publish. --icon reutiliza dana.ico (mismo que <ApplicationIcon>
+      # del csproj, sin asset nuevo).
+      - name: vpk pack
+        run: >
+          vpk pack
+          -u DanaProcessingIde
+          -v ${{ needs.read-version.outputs.version }}
+          -p publish/win-x64
+          -e DanaProcessing.Ide.exe
+          --icon DanaProcessing.Ide/Theme/dana.ico
+          --packTitle "DanaProcessing IDE"
+          --packAuthors "BuddhaCodes"
+          --channel win
+          -o Releases
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: DanaProcessingIde-win-x64
-          path: DanaProcessingIde-win-x64.zip
+          name: velopack-win
+          path: Releases/**
 
   # Real Mac runner (not a Windows/Linux cross-compile) specifically so
   # `chmod +x` on the app's executable actually sticks -- confirmed via
@@ -90,7 +162,9 @@ jobs:
   # cross-compiles fine from any host OS, but the executable bit doesn't
   # survive being set from a non-Unix machine, which macos-latest sidesteps
   # entirely. Also the only realistic place to eventually add real signing/
-  # notarization later, since codesign/notarytool are macOS-only tools.
+  # notarization later, since codesign/notarytool are macOS-only tools --
+  # vpk pack itself supports --signAppIdentity/--notaryProfile for that day,
+  # left unused here (same no-budget-yet reasoning as Windows).
   build-macos:
     needs: read-version
     runs-on: macos-latest
@@ -109,8 +183,8 @@ jobs:
         run: dotnet restore DanaProcessing.Ide/DanaProcessing.Ide.csproj
 
       # UseAppHost=true is required here specifically -- without it there's
-      # no native executable stub for Contents/MacOS to point at, and the
-      # bundle just won't launch (confirmed via Avalonia's own macOS
+      # no native executable stub for vpk to point its .app bundle at, and
+      # the bundle just won't launch (confirmed via Avalonia's own macOS
       # deployment docs, which call this out explicitly).
       - name: Publish
         run: >
@@ -122,31 +196,53 @@ jobs:
           -p:UseAppHost=true
           -o publish/${{ matrix.rid }}
 
-      # .app bundle structure per Avalonia's own documented layout:
-      # Contents/MacOS (the publish output), Contents/Resources (icon),
-      # Contents/Info.plist. Unsigned -- no Apple Developer Program
-      # membership (same budget call already made for Windows code
-      # signing) -- so this asks for the same "System Settings > Privacy &
-      # Security > Open Anyway" step Windows' SmartScreen paragraph already
-      # documents in the README, not a silent block.
-      - name: Assemble .app bundle
-        run: |
-          APP="DanaProcessing IDE.app"
-          mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-          cp -r publish/${{ matrix.rid }}/* "$APP/Contents/MacOS/"
-          cp DanaProcessing.Ide/Theme/dana.icns "$APP/Contents/Resources/dana.icns"
-          sed "s/__VERSION__/${{ needs.read-version.outputs.version }}/g" DanaProcessing.Ide/Theme/Info.plist.template > "$APP/Contents/Info.plist"
-          chmod +x "$APP/Contents/MacOS/DanaProcessing.Ide"
-          # ditto (not zip) preserves the bundle's resource forks/extended
-          # attributes correctly -- the standard, Apple-documented way to
-          # zip a .app for distribution.
-          ditto -c -k --sequesterRsrc --keepParent "$APP" "DanaProcessingIde-${{ matrix.rid }}.zip"
+      - name: Install vpk
+        run: dotnet tool install --global vpk --version ${{ env.VPK_VERSION }}
+
+      # --channel distinto por arquitectura: el default de vpk en macOS es
+      # un solo canal "osx" para todo, que x64 y arm64 compartirían (y
+      # colisionarían) si no se lo overridea acá -- confirmado contra la
+      # referencia real de `vpk pack` para macOS. Una instalación de Mac
+      # nunca necesita "cambiarse" de arquitectura, así que tratarlas como
+      # dos canales separados no pierde nada real.
+      - name: Download previous release (for delta patching)
+        continue-on-error: true
+        run: >
+          vpk download github
+          --repoUrl https://github.com/${{ github.repository }}
+          --channel ${{ matrix.rid }}
+          --token ${{ secrets.GITHUB_TOKEN }}
+
+      # Reemplaza TODO el paso manual viejo de "Assemble .app bundle"
+      # (mkdir/cp/sed/chmod/ditto): vpk arma el .app él mismo a partir de
+      # publish/${{ matrix.rid }} -- Contents/MacOS, Contents/Resources,
+      # Info.plist con CFBundleVersion/CFBundleShortVersionString tomados de
+      # -v. --bundleId preserva el mismo identificador que
+      # Theme/Info.plist.template ya usaba a mano (com.buddhacodes.
+      # danaprocessing) -- confirmado como un flag real de vpk pack, no
+      # asumido. Theme/Info.plist.template queda sin uso real a partir de
+      # acá (su único consumidor, el sed de __VERSION__, desaparece) --
+      # candidato a borrar en un PR aparte, una vez confirmado que el bundle
+      # generado queda bien.
+      - name: vpk pack
+        run: >
+          vpk pack
+          -u DanaProcessingIde
+          -v ${{ needs.read-version.outputs.version }}
+          -p publish/${{ matrix.rid }}
+          -e DanaProcessing.Ide
+          --icon DanaProcessing.Ide/Theme/dana.icns
+          --bundleId com.buddhacodes.danaprocessing
+          --packTitle "DanaProcessing IDE"
+          --packAuthors "BuddhaCodes"
+          --channel ${{ matrix.rid }}
+          -o Releases
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: DanaProcessingIde-${{ matrix.rid }}
-          path: DanaProcessingIde-${{ matrix.rid }}.zip
+          name: velopack-${{ matrix.rid }}
+          path: Releases/**
 
   build-linux:
     needs: read-version
@@ -171,57 +267,87 @@ jobs:
           -p:PublishSingleFile=true
           -o publish/linux-x64
 
-      # Deliberately just a chmod+x-and-run tarball for this first cut, not
-      # a .deb/AppImage -- there's no Gatekeeper-equivalent on Linux
-      # blocking a downloaded unsigned executable, just the standard
-      # execute-bit friction every Linux user already expects. The .desktop
-      # file is optional/bonus (see its own comment) for whoever wants
-      # DanaProcessing IDE in their app launcher.
-      - name: Stage extras and package
-        run: |
-          cp DanaProcessing.Ide/Theme/dana-linux-icon.png publish/linux-x64/
-          cp DanaProcessing.Ide/Theme/DanaProcessing.desktop publish/linux-x64/
-          chmod +x publish/linux-x64/DanaProcessing.Ide
-          tar -C publish/linux-x64 -czf DanaProcessingIde-linux-x64.tar.gz .
+      - name: Install vpk
+        run: dotnet tool install --global vpk --version ${{ env.VPK_VERSION }}
+
+      - name: Download previous release (for delta patching)
+        continue-on-error: true
+        run: >
+          vpk download github
+          --repoUrl https://github.com/${{ github.repository }}
+          --channel linux
+          --token ${{ secrets.GITHUB_TOKEN }}
+
+      # Reemplaza el "Stage extras and package" viejo entero: vpk empaqueta
+      # Linux como un AppImage, que ya trae su propio .desktop y su propio
+      # ícono embebidos y sale con el bit +x puesto -- no hace falta copiar
+      # dana-linux-icon.png a mano, ni tarear nada. --categories preserva la
+      # misma categorización de menú que Theme/DanaProcessing.desktop ya
+      # tenía (confirmado como flag real de vpk pack para Linux). Ese
+      # archivo .desktop queda sin uso real a partir de acá -- candidato a
+      # borrar en un PR aparte, una vez confirmado que el AppImage generado
+      # aparece bien en el launcher.
+      - name: vpk pack
+        run: >
+          vpk pack
+          -u DanaProcessingIde
+          -v ${{ needs.read-version.outputs.version }}
+          -p publish/linux-x64
+          -e DanaProcessing.Ide
+          --icon DanaProcessing.Ide/Theme/dana-linux-icon.png
+          --packTitle "DanaProcessing IDE"
+          --packAuthors "BuddhaCodes"
+          --categories "Development;IDE;Graphics"
+          --channel linux
+          -o Releases
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: DanaProcessingIde-linux-x64
-          path: DanaProcessingIde-linux-x64.tar.gz
+          name: velopack-linux
+          path: Releases/**
 
-  # Centralized here instead of each platform job publishing its own
-  # Release -- four concurrent jobs all hitting the same release tag would
-  # be a real race (last writer could clobber another platform's files).
-  # One job, one softprops/action-gh-release call, every artifact attached
-  # in the same update.
+  # Centralizado acá en vez de que cada job suba el suyo -- mismo motivo que
+  # ya daba el comentario viejo de este job (varios jobs concurrentes
+  # pegándole al mismo tag/release es una carrera real). Con Velopack esto
+  # sigue siendo cierto para la CREACIÓN del release/tag la primera vez que
+  # se publica una versión (no hay garantía documentada de que
+  # `vpk upload github` resuelva ese get-or-create de forma segura en
+  # paralelo desde 4 runners distintos) -- un solo "writer" lo saca del
+  # medio en vez de confiar en un comportamiento no documentado.
   release:
     needs: [read-version, build-windows, build-macos, build-linux]
     runs-on: ubuntu-latest
     steps:
-      - name: Download all build artifacts
+      - name: Download all vpk artifacts
         uses: actions/download-artifact@v4
         with:
+          pattern: velopack-*
           path: artifacts
 
-      # A new Release on every push to master, tagged with the app's own
-      # version (e.g. "v0.1.0-beta") rather than an auto-incrementing build
-      # number — re-pushing with the SAME <Version> updates that same
-      # tag/release in place (softprops/action-gh-release does this
-      # automatically when tag_name already exists), which is what you want
-      # while iterating on a single beta. Bump <Version> in
-      # DanaProcessing.Ide.csproj when you're ready to cut the next one.
-      # GitHub always exposes the fixed URL:
-      #   https://github.com/<owner>/<repo>/releases/latest/download/DanaProcessingIde-win-x64.zip
-      # (same pattern for the other platforms' filenames) which redirects
-      # to whichever Release is marked "latest" — so download buttons on
-      # your README/site never have to change.
-      - name: Publish release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v${{ needs.read-version.outputs.version }}
-          name: "DanaProcessing IDE v${{ needs.read-version.outputs.version }}"
-          body: "Automated build from ${{ github.sha }}."
-          make_latest: true
-          prerelease: ${{ contains(needs.read-version.outputs.version, '-') }}
-          files: artifacts/**/*
+      # Cada artifact bajó a su propia subcarpeta (velopack-win/,
+      # velopack-osx-x64/, etc., por los nombres de channel) -- se mezclan
+      # en una sola ./Releases porque `vpk upload` lee de esa carpeta por
+      # default (mismo default que `-o` de `vpk pack`, confirmado contra la
+      # referencia real del CLI), no hay flag para apuntarlo a varias
+      # carpetas de origen a la vez.
+      - name: Merge per-OS Velopack outputs
+        run: |
+          mkdir -p Releases
+          cp -r artifacts/velopack-*/* Releases/
+
+      - name: Install vpk
+        run: dotnet tool install --global vpk --version ${{ env.VPK_VERSION }}
+
+      # Un solo llamado, una sola vez, subiendo los assets de las cuatro
+      # plataformas juntos -- mismo espíritu que el softprops/action-gh-release
+      # de antes (un solo "writer" del Release). --publish crea el Release
+      # si el tag todavía no existe.
+      - name: vpk upload
+        run: >
+          vpk upload github
+          --repoUrl https://github.com/${{ github.repository }}
+          --publish
+          --releaseName "DanaProcessing IDE v${{ needs.read-version.outputs.version }}"
+          --tag v${{ needs.read-version.outputs.version }}
+          --token ${{ secrets.GITHUB_TOKEN }}

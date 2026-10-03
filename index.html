@@ -487,6 +487,86 @@
   .btn-ghost:hover{ background:var(--bg-hover); border-color:var(--border-strong); }
   .btn .ph{ font-size:18px; }
 
+  /* ============================================================
+     DOWNLOAD SPLIT BUTTON — a primary "Download" action (auto-detected
+     platform, filled in from the GitHub Releases API) plus a caret that
+     opens a per-platform menu. Shared between the hero button and the
+     sidebar pill; .download-split-sidebar/.download-caret-sidebar below
+     are the accent-colored variant matching .sidebar-download's own look.
+     ============================================================ */
+  .download-split{
+    position:relative;
+    display:inline-flex;
+    align-items:stretch;
+  }
+  .download-split .btn.download-primary{
+    border-top-right-radius:0;
+    border-bottom-right-radius:0;
+    border-right:none;
+  }
+  .download-caret{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    padding:10px 12px;
+    border:1px solid var(--border-medium);
+    border-top-left-radius:0;
+    border-bottom-left-radius:0;
+    border-radius:0 var(--radius-sm) var(--radius-sm) 0;
+    background:var(--bg-primary);
+    color:var(--text-primary);
+    cursor:pointer;
+    font-family:var(--font-sans);
+    transition:background var(--transition-fast);
+  }
+  .download-caret:hover{ background:var(--bg-hover); border-color:var(--border-strong); }
+
+  .download-split-sidebar{
+    display:flex;
+    width:100%;
+    margin-top:10px;
+  }
+  .download-split-sidebar .sidebar-download{ flex:1; margin-top:0; border-radius:var(--radius-sm) 0 0 var(--radius-sm); }
+  .download-caret-sidebar{
+    background:var(--accent);
+    color:var(--text-inverse);
+    border:1px solid var(--accent);
+    border-left:1px solid rgba(255,255,255,0.35);
+  }
+  .download-caret-sidebar:hover{ background:var(--accent-hover); border-color:var(--accent-hover); }
+
+  .download-menu{
+    position:absolute;
+    top:calc(100% + 6px);
+    left:0;
+    min-width:230px;
+    background:var(--bg-primary);
+    border:1px solid var(--border-light);
+    border-radius:var(--radius-sm);
+    box-shadow:var(--shadow-md);
+    padding:6px;
+    display:none;
+    flex-direction:column;
+    gap:2px;
+    z-index:50;
+  }
+  .download-menu.open{ display:flex; }
+  .download-menu a{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:9px 10px;
+    border-radius:var(--radius-sm);
+    color:var(--text-primary);
+    text-decoration:none;
+    font-size:13.5px;
+    font-family:var(--font-sans);
+    white-space:nowrap;
+    transition:background var(--transition-fast);
+  }
+  .download-menu a:hover{ background:var(--bg-hover); text-decoration:none; }
+  .download-menu a .ph-bold{ font-size:16px; color:var(--text-muted); width:18px; text-align:center; }
+
   @media (max-width:860px){
     .hero{ grid-template-columns:1fr; }
     .hero-content h1{ font-size:30px; }
@@ -1211,9 +1291,20 @@
         <a href="#ide"><i class="ph ph-gear"></i> The IDE</a>
       </div>
 
-       <a class="sidebar-download" href="https://github.com/BuddhaCodes/DanaProcessing/releases/latest/download/DanaProcessingIde-win-x64.zip">
-        <i class="ph-bold ph-download-simple"></i> Download IDE
-      </a>
+       <div class="download-split download-split-sidebar">
+        <a class="sidebar-download download-primary" href="https://github.com/BuddhaCodes/DanaProcessing/releases/latest">
+          <i class="ph-bold ph-download-simple"></i> <span class="download-primary-label">Download IDE</span>
+        </a>
+        <button class="download-caret download-caret-sidebar" type="button" aria-label="Choose platform" aria-haspopup="true">
+          <i class="ph-bold ph-caret-down"></i>
+        </button>
+        <div class="download-menu">
+          <a href="https://github.com/BuddhaCodes/DanaProcessing/releases/latest" data-platform="win"><i class="ph-bold ph-windows-logo"></i> Windows</a>
+          <a href="https://github.com/BuddhaCodes/DanaProcessing/releases/latest" data-platform="osx-arm64"><i class="ph-bold ph-apple-logo"></i> macOS (Apple Silicon)</a>
+          <a href="https://github.com/BuddhaCodes/DanaProcessing/releases/latest" data-platform="osx-x64"><i class="ph-bold ph-apple-logo"></i> macOS (Intel)</a>
+          <a href="https://github.com/BuddhaCodes/DanaProcessing/releases/latest" data-platform="linux"><i class="ph-bold ph-linux-logo"></i> Linux</a>
+        </div>
+      </div>
     </nav>
 
     <div class="sidebar-footer">
@@ -1256,9 +1347,20 @@
           <h1>DanaProcessing</h1>
           <p class="lede">A Processing-style creative coding framework for C#. Write a <code class="inline">Sketch</code>, override <code class="inline">Setup()</code> and <code class="inline">Draw()</code>, and get the same drawing vocabulary Processing sketchers already know — in 2D on SkiaSharp, or in real 3D on OpenGL, both through the desktop IDE built just for this.</p>
           <div class="hero-actions">
-            <a class="btn btn-ghost" href="https://github.com/BuddhaCodes/DanaProcessing/releases/latest/download/DanaProcessingIde-win-x64.zip">
-              <i class="ph-bold ph-download-simple"></i> Download
-            </a>
+            <div class="download-split">
+              <a class="btn btn-ghost download-primary" href="https://github.com/BuddhaCodes/DanaProcessing/releases/latest">
+                <i class="ph-bold ph-download-simple"></i> <span class="download-primary-label">Download</span>
+              </a>
+              <button class="download-caret" type="button" aria-label="Choose platform" aria-haspopup="true">
+                <i class="ph-bold ph-caret-down"></i>
+              </button>
+              <div class="download-menu">
+                <a href="https://github.com/BuddhaCodes/DanaProcessing/releases/latest" data-platform="win"><i class="ph-bold ph-windows-logo"></i> Windows</a>
+                <a href="https://github.com/BuddhaCodes/DanaProcessing/releases/latest" data-platform="osx-arm64"><i class="ph-bold ph-apple-logo"></i> macOS (Apple Silicon)</a>
+                <a href="https://github.com/BuddhaCodes/DanaProcessing/releases/latest" data-platform="osx-x64"><i class="ph-bold ph-apple-logo"></i> macOS (Intel)</a>
+                <a href="https://github.com/BuddhaCodes/DanaProcessing/releases/latest" data-platform="linux"><i class="ph-bold ph-linux-logo"></i> Linux</a>
+              </div>
+            </div>
   <a class="btn btn-primary" href="#intro"><i class="ph ph-book-open"></i> Read the docs</a>
   <a class="btn btn-ghost" href="#index"><i class="ph ph-magnifying-glass"></i> Keyword index</a>
 </div>
@@ -3468,6 +3570,114 @@ document.querySelectorAll(".dana-test-btn").forEach((btn) => {
     testInDana(btn, pre.textContent);
   });
 });
+</script>
+
+<!-- ============================================================
+     DESCARGA POR PLATAFORMA — los nombres exactos de archivo que produce
+     `vpk pack` (ver .github/workflows/build-release.yml) dependen de una
+     corrida real de CI que todavía no pasó, así que en vez de hardcodear un
+     nombre adivinado (que se rompería apenas difiera), esto le pregunta a
+     la API de GitHub Releases cuáles son los assets REALES del último
+     release y arma los links por extensión/nombre -- se auto-corrige solo
+     apenas el pipeline produzca archivos de verdad, sea cual sea el nombre
+     exacto. Si la API falla (sin red, rate-limited) cada link cae a la
+     página de releases en sí, nunca queda un link muerto.
+     ============================================================ -->
+<script>
+(function () {
+  var REPO = "BuddhaCodes/DanaProcessing";
+  var RELEASES_PAGE = "https://github.com/" + REPO + "/releases/latest";
+
+  var PLATFORMS = [
+    { key: "win", label: "Windows", match: function (name) { return /\.exe$/i.test(name); } },
+    { key: "osx-arm64", label: "macOS (Apple Silicon)", match: function (name) { return /\.pkg$/i.test(name) && /arm64/i.test(name); } },
+    { key: "osx-x64", label: "macOS (Intel)", match: function (name) { return /\.pkg$/i.test(name) && !/arm64/i.test(name) && /(x64|x86_64|intel)/i.test(name); } },
+    { key: "linux", label: "Linux", match: function (name) { return /\.appimage$/i.test(name); } },
+  ];
+
+  function detectPlatformKey() {
+    var ua = navigator.userAgent || "";
+    var platform = navigator.platform || "";
+    if (/Win/i.test(ua) || /Win/i.test(platform)) return "win";
+    if (/Mac/i.test(ua) || /Mac/i.test(platform)) {
+      // No hay forma confiable de distinguir Apple Silicon de Intel desde
+      // JS sin pedir permisos extra (navigator.userAgentData.getHighEntropyValues
+      // no es soportado en todos los navegadores todavía) -- Apple Silicon es
+      // la opción por defecto razonable en 2026, el menú de abajo deja elegir
+      // la otra variante con un click igual.
+      return "osx-arm64";
+    }
+    if (/Linux/i.test(ua) || /Linux/i.test(platform)) return "linux";
+    return "win";
+  }
+
+  function findAsset(assets, platform) {
+    for (var i = 0; i < assets.length; i++) {
+      if (platform.match(assets[i].name)) return assets[i];
+    }
+    return null;
+  }
+
+  function platformByKey(key) {
+    for (var i = 0; i < PLATFORMS.length; i++) {
+      if (PLATFORMS[i].key === key) return PLATFORMS[i];
+    }
+    return null;
+  }
+
+  function applyAssets(assets) {
+    // Cada link data-platform="..." (en el menú desplegable, en ambos
+    // -- hero y sidebar) apunta al asset real si se encontró uno, o se
+    // deja apuntando a la página de releases si ese asset no está (p.ej.
+    // todavía no hay build de Linux en este release puntual).
+    document.querySelectorAll("[data-platform]").forEach(function (a) {
+      var platform = platformByKey(a.getAttribute("data-platform"));
+      var asset = platform ? findAsset(assets, platform) : null;
+      if (asset) a.href = asset.browser_download_url;
+    });
+
+    // El botón principal (no el menú) además cambia su propia etiqueta al
+    // nombre de la plataforma detectada, para que "Download" se sienta
+    // específico en vez de genérico.
+    var detectedKey = detectPlatformKey();
+    var detectedPlatform = platformByKey(detectedKey);
+    var detectedAsset = detectedPlatform ? findAsset(assets, detectedPlatform) : null;
+    document.querySelectorAll(".download-primary").forEach(function (a) {
+      if (detectedAsset) a.href = detectedAsset.browser_download_url;
+      var label = a.querySelector(".download-primary-label");
+      if (label && detectedPlatform) {
+        var base = label.textContent.replace(/ for .+$/, "").trim();
+        label.textContent = base + " for " + detectedPlatform.label;
+      }
+    });
+  }
+
+  fetch("https://api.github.com/repos/" + REPO + "/releases/latest")
+    .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+    .then(function (release) { applyAssets(release.assets || []); })
+    .catch(function () {
+      // Sin red, rate-limited, o la API cambió de forma -- todos los links
+      // (menú y botón principal) caen a la página de releases en sí, nunca
+      // quedan rotos ni apuntando a un asset viejo/inexistente.
+      document.querySelectorAll("[data-platform], .download-primary").forEach(function (a) {
+        a.href = RELEASES_PAGE;
+      });
+    });
+
+  // ---------- Abrir/cerrar el menú desplegable ----------
+  document.querySelectorAll(".download-caret").forEach(function (btn) {
+    btn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      var menu = btn.parentElement.querySelector(".download-menu");
+      var wasOpen = menu.classList.contains("open");
+      document.querySelectorAll(".download-menu.open").forEach(function (m) { m.classList.remove("open"); });
+      if (!wasOpen) menu.classList.add("open");
+    });
+  });
+  document.addEventListener("click", function () {
+    document.querySelectorAll(".download-menu.open").forEach(function (m) { m.classList.remove("open"); });
+  });
+})();
 </script>
 </body>
 </html>

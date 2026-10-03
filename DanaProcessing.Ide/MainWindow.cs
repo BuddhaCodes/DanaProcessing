@@ -63,7 +63,6 @@ namespace DanaProcessing.Ide
         private readonly TextBlock _updateBannerText;
         private readonly StackPanel _loadingSpinner;
         private readonly DispatcherTimer _loadingSpinnerTimer;
-        private string? _pendingUpdateReleaseUrl;
         private string? _pendingUpdateVersion;
         private readonly SketchEditorView _editorView;
         private readonly AvaloniaSketchCanvas _canvas;
@@ -579,10 +578,28 @@ namespace DanaProcessing.Ide
                 FontWeight = FontWeight.SemiBold,
                 Cursor = new Avalonia.Input.Cursor(Avalonia.Input.StandardCursorType.Hand),
             };
-            updateDownloadButton.Click += (_, _) =>
+            updateDownloadButton.Click += async (_, _) =>
             {
-                if (_pendingUpdateReleaseUrl is { } url)
-                    Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+                // Real download-and-apply now (Velopack), not just opening a
+                // browser tab -- ApplyUpdatesAndRestart exits the process
+                // itself on success, so normally nothing after that call runs
+                // at all; the catch only covers a failed download (offline
+                // mid-download, etc.), reverting the button so the user can
+                // try again later instead of it staying stuck on "Descargando...".
+                updateDownloadButton.IsEnabled = false;
+                updateDownloadButton.Content = Loc.Tr("Descargando...", "Downloading...");
+                try
+                {
+                    await UpdateChecker.DownloadAndApplyAsync();
+                }
+                catch
+                {
+                    updateDownloadButton.IsEnabled = true;
+                    updateDownloadButton.Content = Loc.Tr("Descargar", "Download");
+                    _statusDot.Fill = ClayTheme.Danger;
+                    _statusLabel.Text = Loc.Tr("No se pudo descargar la actualización", "Couldn't download the update");
+                    ((Border)_statusPill).Background = ClayTheme.DangerSurface;
+                }
             };
             var updateLaterButton = new Button
             {
@@ -1391,7 +1408,6 @@ namespace DanaProcessing.Ide
 
         private void ShowUpdateBanner(UpdateCheckResult result)
         {
-            _pendingUpdateReleaseUrl = result.ReleaseUrl;
             _pendingUpdateVersion = result.LatestVersion;
             _updateBannerText.Text = Loc.Tr(
                 $"Hay una versión nueva disponible: v{result.LatestVersion}",
