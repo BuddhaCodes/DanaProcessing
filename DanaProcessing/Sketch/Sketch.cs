@@ -191,6 +191,10 @@ namespace DanaProcessing
 
             FrameCount++;
 
+            // Notes/samples that just reached the speakers -> OnNote(), so
+            // this frame's Draw() already sees them (see Sketch.Audio.cs).
+            DispatchAudioEvents();
+
             if (Renderer != RendererKind.Renderer3D)
             {
                 Draw();

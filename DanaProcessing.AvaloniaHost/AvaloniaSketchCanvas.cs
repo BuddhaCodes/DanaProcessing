@@ -239,6 +239,10 @@ namespace DanaProcessing.AvaloniaHost
                 if (_offscreenSurface != null)
                     _sketch.SetCanvas(_offscreenSurface.Canvas, _offscreenSurface);
 
+                // Same hand-over as after Setup(): running loops switch to the
+                // new instance's code on their next pass, in time.
+                DanaProcessing.Audio.AudioEngine.ActivateSketch(_sketch);
+
                 return plan;
             }
         }
@@ -264,6 +268,12 @@ namespace DanaProcessing.AvaloniaHost
 
             RunSafely(_sketch.Setup, "Setup");
             _didSetup = true;
+
+            // Live loops start (or, if loops with the same names are already
+            // playing, pick up this sketch's code on their next pass) only
+            // once Setup() has had its say -- it may set Bpm or load samples.
+            if (!_crashed)
+                DanaProcessing.Audio.AudioEngine.ActivateSketch(_sketch);
 
             // Notify even if Setup() never called Size() itself (i.e. it kept
             // the 600x400 default) — listeners still need to learn the final

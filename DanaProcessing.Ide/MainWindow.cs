@@ -11,6 +11,7 @@ using Avalonia.Platform;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using DanaProcessing;
+using DanaProcessing.Audio;
 using DanaProcessing.AvaloniaHost;
 using DanaProcessing.Ide.Compilation;
 using DanaProcessing.Ide.CrashReporting;
@@ -264,6 +265,10 @@ namespace DanaProcessing.Ide
             // el editor ya maneja él mismo (Ctrl+S, Ctrl+Space, F12...) no se
             // ejecute dos veces: si el editor lo marcó Handled, acá no llega.
             AddHandler(KeyDownEvent, OnWindowKeyDown, RoutingStrategies.Bubble);
+
+            // The audio engine reports from its own threads (a live loop threw,
+            // forgot to Sleep, fell behind...): marshal onto the UI thread.
+            AudioEngine.DiagnosticReported += message => Dispatcher.UIThread.Post(() => ShowAudioDiagnostic(message));
 
             _outputText = new TextBlock
             {
@@ -1133,6 +1138,7 @@ namespace DanaProcessing.Ide
                 MirrorEnabled(BuildMenuItem("▶", Loc.Tr("Ejecutar", "Run"), "Ctrl+R", () => _ = RunCurrentSketchAsync()), _runButton),
                 MirrorEnabled(BuildMenuItem("⚡", "Hot reload", "Ctrl+Shift+R", () => _ = HotReloadCurrentSketchAsync()), _hotReloadButton),
                 MirrorEnabled(BuildMenuItem("⏩", Loc.Tr("Ejecutar en ventana aparte", "Run in a separate window"), "Ctrl+F5", () => _ = RunInSeparateWindowAsync()), _runFastButton),
+                BuildMenuItem("■", Loc.Tr("Detener sonido", "Stop sound"), "Ctrl+.", StopSound),
                 MenuSeparator(),
                 BuildMenuItem("🧩", Loc.Tr("Ejemplos...", "Examples..."), null, OpenSamples),
                 BuildMenuItem("📦", Loc.Tr("Paquetes NuGet...", "NuGet Packages..."), null, OpenNuGetPackages),
@@ -1149,6 +1155,8 @@ namespace DanaProcessing.Ide
             {
                 BuildMenuItem("⬆", Loc.Tr("Buscar actualizaciones...", "Check for updates..."), null, () => _ = CheckForUpdatesManuallyAsync()),
                 BuildMenuItem("🐛", Loc.Tr("Reportar un problema...", "Report a problem..."), null, ReportProblemManually),
+                MenuSeparator(),
+                BuildMenuItem("ⓘ", Loc.Tr("Acerca de DanaProcessing...", "About DanaProcessing..."), null, () => new AboutWindow().ShowDialog(this)),
             });
 
             return new StackPanel
@@ -1216,6 +1224,8 @@ namespace DanaProcessing.Ide
                 Run(OpenAgentWindow);
             else if (e.Key == Key.OemComma && mods == ctrl)
                 Run(OpenSettings);
+            else if (e.Key == Key.OemPeriod && mods == ctrl)
+                Run(StopSound);
         }
 
         private Border BuildTitleBar(Control menuBar, Control runGroup, Button agentButton, Border paneTogglePill)
@@ -2004,6 +2014,26 @@ namespace DanaProcessing.Ide
         /// already use, for SketchEditorView's navigation feedback ("no symbol here", "no
         /// source available for X") — a transient message rather than a permanent one, so
         /// it auto-reverts to "Listo" instead of sitting there looking stale forever.</summary>
+        /// <summary>Sketch > Stop sound (Ctrl+.): every live loop stops and every voice goes silent.</summary>
+        private void StopSound()
+        {
+            AudioEngine.StopEverything();
+            ShowTransientStatus(Loc.Tr("Sonido detenido", "Sound stopped"));
+        }
+
+        /// <summary>
+        /// Audio problems go to the Run tab of the bottom panel (where compile
+        /// errors already live) plus a status-bar flash -- a live loop that
+        /// died is as much a "your code has a problem" as a compile error.
+        /// </summary>
+        private void ShowAudioDiagnostic(string message)
+        {
+            var line = "♪ " + message;
+            _outputText.Text = string.IsNullOrEmpty(_outputText.Text) ? line : _outputText.Text + Environment.NewLine + line;
+            RefreshBottomPanelVisibility();
+            ShowTransientStatus(message);
+        }
+
         private void ShowTransientStatus(string message)
         {
             _statusLabel.Text = message;

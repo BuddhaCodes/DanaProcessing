@@ -784,6 +784,57 @@ namespace DanaProcessing.Ide.Theme
                     new Setter(TextBlock.ForegroundProperty, OnAccent),
                 }
             },
+
+            // ============================================================
+            // === CHIP (filtros por tag en la ventana de Ejemplos) ===
+            // Como clay-toggle (clase "active" = seleccionado), pero con
+            // fondo y borde visibles en reposo: un chip suelto sobre la
+            // ventana no tiene la píldora contenedora que le da contorno
+            // al toggle Código/Resultado.
+            // ============================================================
+            new Style(x => x.OfType<Button>().Class("clay-chip"))
+            {
+                Setters =
+                {
+                    new Setter(Button.ForegroundProperty, TextSecondary),
+                    new Setter(Button.BackgroundProperty, SurfaceHigher),
+                    new Setter(Button.BorderBrushProperty, new SolidColorBrush(Avalonia.Media.Color.Parse("#E8E2DA"))),
+                    new Setter(Button.BorderThicknessProperty, new Thickness(1)),
+                    new Setter(Button.CornerRadiusProperty, RadiusPill),
+                    new Setter(Button.FontFamilyProperty, FontBody),
+                    new Setter(Button.FontSizeProperty, 12.0),
+                    new Setter(Button.PaddingProperty, new Thickness(11, 4)),
+                    new Setter(Button.CursorProperty, new Avalonia.Input.Cursor(Avalonia.Input.StandardCursorType.Hand)),
+                }
+            },
+            new Style(x => x.OfType<Button>().Class("clay-chip")
+                .Template().OfType<ContentPresenter>())
+            {
+                Setters =
+                {
+                    new Setter(ContentPresenter.BackgroundProperty, SurfaceHigher),
+                    new Setter(TextBlock.ForegroundProperty, TextSecondary),
+                }
+            },
+            new Style(x => x.OfType<Button>().Class("clay-chip").Class(":pointerover")
+                .Template().OfType<ContentPresenter>())
+            {
+                Setters =
+                {
+                    new Setter(ContentPresenter.BackgroundProperty, SurfaceHover),
+                    new Setter(TextBlock.ForegroundProperty, TextPrimary),
+                }
+            },
+            new Style(x => x.OfType<Button>().Class("clay-chip").Class("active")
+                .Template().OfType<ContentPresenter>())
+            {
+                Setters =
+                {
+                    new Setter(ContentPresenter.BackgroundProperty, Accent),
+                    new Setter(ContentPresenter.BorderBrushProperty, AccentDim),
+                    new Setter(TextBlock.ForegroundProperty, OnAccent),
+                }
+            },
         };
 
         /// <summary>

@@ -6,8 +6,87 @@ using Silk.NET.Maths;
 
 namespace DanaProcessing.Ide.Editor
 {
-    /// <summary>One entry in the Samples window: a name, a one-line description, and the source to load into a new tab.</summary>
-    public sealed record SketchSample(string Name, string Description, string Source);
+    /// <summary>One entry in the Samples window: a name, a one-line description, the source to load into a new tab, and the tags that say what it's about.</summary>
+    public sealed record SketchSample(string Name, string Description, string Source, SampleTag[] Tags);
+
+    /// <summary>
+    /// What a sample is about -- shown as chips on each card and used as
+    /// filters in SamplesWindow. Kept deliberately coarse (topics, not API
+    /// names): the search box already matches API names in the code itself.
+    /// </summary>
+    public enum SampleTag
+    {
+        Basics,
+        TwoD,
+        ThreeD,
+        Interaction,
+        Animation,
+        Generative,
+        Shapes,
+        Particles,
+        Gpu,
+        Audio,
+        LiveCoding,
+        MidiOsc,
+        NuGet,
+        MachineLearning,
+        Data,
+        Files,
+        Window,
+        Threads,
+        Games,
+        HotReload,
+    }
+
+    public static class SampleTags
+    {
+        /// <summary>Display label in the current UI language.</summary>
+        public static string Label(SampleTag tag) => Loc.Tr(Spanish(tag), English(tag));
+
+        /// <summary>Both labels, so searching "juego" or "game" finds the same samples whatever the UI language.</summary>
+        public static string SearchText(SampleTag tag) => Spanish(tag) + " " + English(tag);
+
+        private static string Spanish(SampleTag tag) => tag switch
+        {
+            SampleTag.Basics => "Básico",
+            SampleTag.TwoD => "2D",
+            SampleTag.ThreeD => "3D",
+            SampleTag.Interaction => "Interacción",
+            SampleTag.Animation => "Animación",
+            SampleTag.Generative => "Generativo",
+            SampleTag.Shapes => "Formas",
+            SampleTag.Particles => "Partículas",
+            SampleTag.Gpu => "GPU / Shaders",
+            SampleTag.Audio => "Audio",
+            SampleTag.LiveCoding => "Live coding",
+            SampleTag.MidiOsc => "MIDI / OSC",
+            SampleTag.NuGet => "NuGet",
+            SampleTag.MachineLearning => "ML.NET",
+            SampleTag.Data => "Datos",
+            SampleTag.Files => "Archivos",
+            SampleTag.Window => "Ventana",
+            SampleTag.Threads => "Hilos",
+            SampleTag.Games => "Juegos",
+            SampleTag.HotReload => "Hot reload",
+            _ => tag.ToString(),
+        };
+
+        private static string English(SampleTag tag) => tag switch
+        {
+            SampleTag.Basics => "Basics",
+            SampleTag.Interaction => "Interaction",
+            SampleTag.Animation => "Animation",
+            SampleTag.Generative => "Generative",
+            SampleTag.Shapes => "Shapes",
+            SampleTag.Particles => "Particles",
+            SampleTag.Data => "Data",
+            SampleTag.Files => "Files",
+            SampleTag.Window => "Window",
+            SampleTag.Threads => "Threads",
+            SampleTag.Games => "Games",
+            _ => Spanish(tag),
+        };
+    }
 
     /// <summary>
     /// Fixed catalog of sample sketches shown in SamplesWindow. Plain
@@ -24,208 +103,251 @@ namespace DanaProcessing.Ide.Editor
                 Loc.Tr("Sketch mínimo", "Minimal sketch"),
                 Loc.Tr("Setup()/Draw() chico -- un círculo que sigue al mouse, crece mientras mantenés apretado el botón, y cambia de color con cada click.",
                        "A small Setup()/Draw() -- a circle that follows the mouse, grows while you hold the button down, and changes color on each click."),
-                MinimalSketch),
+                MinimalSketch,
+                new[] { SampleTag.Basics, SampleTag.TwoD, SampleTag.Interaction }),
              
             new SketchSample(
                 Loc.Tr("Sketch mínimo 3D", "Minimal 3D sketch"),
-                Loc.Tr("Setup()/Draw() ", "Setup()/Draw() "),
-                MinimalSketch3D),
+                Loc.Tr("Lo mínimo para entrar en 3D: Size(..., RendererKind.Renderer3D), Lights() y un Box() girando con RotateY().",
+                       "The bare minimum for 3D: Size(..., RendererKind.Renderer3D), Lights() and a Box() spinning with RotateY()."),
+                MinimalSketch3D,
+                new[] { SampleTag.Basics, SampleTag.ThreeD, SampleTag.Animation }),
 
             new SketchSample(
                 Loc.Tr("Árbol fractal", "Fractal tree"),
                 Loc.Tr("Árbol recursivo con ángulo controlado por el mouse, coloreado por profundidad.",
                        "A recursive tree with its angle controlled by the mouse, colored by depth."),
-                FractalTree),
+                FractalTree,
+                new[] { SampleTag.TwoD, SampleTag.Generative, SampleTag.Interaction }),
 
             new SketchSample(
                 Loc.Tr("Cubo 3D (Silk.NET)", "3D cube (Silk.NET)"),
                 Loc.Tr("Box() con inercia real: arrastrá para rotarlo, soltá y sigue girando por su propia velocidad. La rueda escala el cubo, el click cambia de color y la tecla L compara con/sin Lights().",
                        "Box() with real inertia: drag to rotate it, release and it keeps spinning under its own velocity. The wheel scales the cube, click changes its color, and the L key compares with/without Lights()."),
-                Box3D),
+                Box3D,
+                new[] { SampleTag.ThreeD, SampleTag.Interaction }),
 
             new SketchSample(
                 Loc.Tr("Esfera 3D (Silk.NET)", "3D sphere (Silk.NET)"),
                 Loc.Tr("Sphere()/SphereDetail() en vivo -- el mouse en X cambia la resolución de la malla, el mouse en Y cambia el color (FillHSB), arrastrá para rotar con inercia, la rueda escala el radio y el click prende/apaga las luces.",
                        "Sphere()/SphereDetail() live -- mouse X changes the mesh resolution, mouse Y changes the color (FillHSB), drag to rotate with inertia, the wheel scales the radius, and click toggles the lights on/off."),
-                Sphere3D),
+                Sphere3D,
+                new[] { SampleTag.ThreeD, SampleTag.Interaction }),
 
             new SketchSample(
                 Loc.Tr("Cámara 3D (Silk.NET)", "3D camera (Silk.NET)"),
                 Loc.Tr("Camera()/Perspective()/Ortho() en vivo -- el mouse orbita la cámara, la rueda hace zoom, la tecla P alterna perspectiva/ortográfica y el click recorre una paleta de colores sobre la grilla de cubos.",
                        "Camera()/Perspective()/Ortho() live -- the mouse orbits the camera, the wheel zooms, the P key toggles perspective/orthographic, and click cycles through a color palette on the grid of cubes."),
-                Camera3D),
+                Camera3D,
+                new[] { SampleTag.ThreeD, SampleTag.Interaction }),
 
             new SketchSample(
                 Loc.Tr("Luces 3D (Silk.NET)", "3D lights (Silk.NET)"),
                 Loc.Tr("PointLight()/SpotLight()/LightFalloff() sobre una grilla de esferas -- el mouse mueve la luz, la rueda ajusta el falloff en vivo, la tecla L alterna point/spot light y el click prende/apaga la luz ambiente.",
                        "PointLight()/SpotLight()/LightFalloff() over a grid of spheres -- the mouse moves the light, the wheel adjusts the falloff live, the L key toggles between point/spot light, and click turns the ambient light on/off."),
-                Lights3D),
+                Lights3D,
+                new[] { SampleTag.ThreeD, SampleTag.Interaction }),
 
             new SketchSample(
                 Loc.Tr("Material 3D (Silk.NET)", "3D material (Silk.NET)"),
                 Loc.Tr("Ambient()/Specular()/Emissive()/Shininess() sobre una fila de esferas -- el mouse en X barre la Shininess(), el mouse en Y cambia el color del Specular(), la rueda controla el brillo de la luz, el click cambia el Fill() y la tecla E alterna un Emissive() fijo.",
                        "Ambient()/Specular()/Emissive()/Shininess() over a row of spheres -- mouse X sweeps through Shininess(), mouse Y changes the Specular() color, the wheel controls the light's brightness, click changes the Fill(), and the E key toggles a fixed Emissive()."),
-                Material3D),
+                Material3D,
+                new[] { SampleTag.ThreeD }),
 
             new SketchSample(
                 Loc.Tr("Cámara avanzada: beginCamera/endCamera (Silk.NET)", "Advanced camera: beginCamera/endCamera (Silk.NET)"),
                 Loc.Tr("BeginCamera()/EndCamera() en vivo -- arma un rig de cámara con Translate()/RotateY()/RotateX() (las mismas llamadas que usarías para mover un objeto, pero apuntando a la cámara) en vez de calcular eye/center a mano como en el sample de Camera3D. El mouse orbita, la rueda hace zoom acercando la cámara sobre su propio eje.",
                        "BeginCamera()/EndCamera() live -- builds a camera rig with Translate()/RotateY()/RotateX() (the same calls you'd use to move an object, but aimed at the camera) instead of computing eye/center by hand like in the Camera3D sample. The mouse orbits, the wheel zooms by moving the camera along its own axis."),
-                PerspectiveDemo3D),
+                PerspectiveDemo3D,
+                new[] { SampleTag.ThreeD }),
 
             new SketchSample(
                 Loc.Tr("Coordenadas 3D→2D: modelX/Y/Z + screenX/Y/Z (Silk.NET)", "3D→2D coordinates: modelX/Y/Z + screenX/Y/Z (Silk.NET)"),
                 Loc.Tr("ModelX/Y/Z() para \"anclar\" un punto en espacio 3D después de una serie de transformaciones (igual que el ejemplo oficial de Processing), y ScreenX/Y/Z() para proyectar un punto 3D a coordenadas de pantalla y dibujar una etiqueta 2D justo encima de un cubo que gira.",
                        "ModelX/Y/Z() to \"anchor\" a point in 3D space after a series of transformations (just like Processing's official example), and ScreenX/Y/Z() to project a 3D point to screen coordinates and draw a 2D label right above a spinning cube."),
-                Coordinates3D),
+                Coordinates3D,
+                new[] { SampleTag.ThreeD }),
 
             new SketchSample(
                 Loc.Tr("Shader custom: PShader (Silk.NET)", "Custom shader: PShader (Silk.NET)"),
                 Loc.Tr("LoadShader()/Shader()/ResetShader() en vivo -- compila un fragment shader GLSL que colorea por normal (una esfera con cada cara pintada según hacia dónde mira, ignorando luces y Fill()) y lo compara contra el shading normal con solo un click.",
                        "LoadShader()/Shader()/ResetShader() live -- compiles a GLSL fragment shader that colors by normal (a sphere with each face painted according to the direction it faces, ignoring lights and Fill()) and compares it against normal shading with a single click."),
-                Shader3D),
+                Shader3D,
+                new[] { SampleTag.ThreeD, SampleTag.Gpu }),
 
             new SketchSample(
                 Loc.Tr("normal() (Silk.NET)", "normal() (Silk.NET)"),
                 Loc.Tr("Muestra la firma de normal(nx, ny, nz) -- por ahora solo guarda el valor (no tiene efecto visible todavía: hace falta una API de formas 3D por vértice, tipo beginShape()/vertex(), que este motor no tiene aún). Este sample lo deja documentado en código en vez de dejarlo sin ejemplo.",
                        "Shows the signature of normal(nx, ny, nz) -- for now it only stores the value (it has no visible effect yet: that needs a per-vertex 3D shape API, like beginShape()/vertex(), which this engine doesn't have yet). This sample documents it in code instead of leaving it without an example."),
-                Normal3D),
+                Normal3D,
+                new[] { SampleTag.ThreeD, SampleTag.Shapes }),
 
             new SketchSample(
                 Loc.Tr("Lluvia de círculos: circle()", "Circle rain: circle()"),
                 Loc.Tr("Circle(x, y, d) en vivo -- lluvia de círculos que caen y rebotan, el mouse en X controla cuántos caen por segundo, la rueda cambia el tamaño, y cada click cambia de paleta.",
                        "Circle(x, y, d) live -- a rain of circles that fall and bounce, mouse X controls how many fall per second, the wheel changes their size, and each click switches the palette."),
-                CircleRain),
+                CircleRain,
+                new[] { SampleTag.TwoD, SampleTag.Animation }),
 
             new SketchSample(
                 Loc.Tr("Flota reutilizable: createShape()", "Reusable fleet: createShape()"),
                 Loc.Tr("CreateShape(GROUP, ...) arma una navecita una sola vez en Setup() a partir de Rect()+Triangle()+Ellipse(), y Shape() la estampa muchas veces por frame -- cada click agrega una nave nueva en el mouse, todas giran a su propia velocidad sin volver a construir la geometría.",
                        "CreateShape(GROUP, ...) builds a little ship just once in Setup() out of Rect()+Triangle()+Ellipse(), and Shape() stamps it many times per frame -- each click adds a new ship at the mouse, and all of them spin at their own speed without ever rebuilding the geometry."),
-                ShapeFleet),
+                ShapeFleet,
+                new[] { SampleTag.TwoD, SampleTag.Shapes, SampleTag.Animation }),
 
             new SketchSample(
                 Loc.Tr("Ecualizador reordenable: FloatList", "Reorderable equalizer: FloatList"),
                 Loc.Tr("Un FloatList de alturas al estilo ecualizador -- click lo reordena con Shuffle(), la tecla S lo ordena con Sort(), la tecla R genera valores nuevos, y las líneas punteadas marcan Min()/Max()/Average() en vivo mientras cambian.",
                        "A FloatList of equalizer-style bar heights -- click shuffles it with Shuffle(), the S key sorts it with Sort(), the R key generates new values, and dotted lines mark Min()/Max()/Average() live as they change."),
-                ReorderableEqualizer),
+                ReorderableEqualizer,
+                new[] { SampleTag.TwoD, SampleTag.Data, SampleTag.Interaction }),
 
             new SketchSample(
                 Loc.Tr("Reloj de bajo consumo: delay()", "Low-power clock: delay()"),
                 Loc.Tr("Un reloj analógico real (Hour()/Minute()/Second()) que llama Delay(1000) al final de cada Draw() -- en vez de redibujar cientos de veces por segundo sin necesidad, se redibuja una sola vez por segundo, como recomienda la referencia de Processing para sketches que no necesitan animación fluida.",
                        "A real analog clock (Hour()/Minute()/Second()) that calls Delay(1000) at the end of every Draw() -- instead of redrawing hundreds of times per second for no reason, it redraws just once per second, as Processing's reference recommends for sketches that don't need smooth animation."),
-                LowPowerClock),
+                LowPowerClock,
+                new[] { SampleTag.TwoD, SampleTag.Animation }),
             new SketchSample(
                 Loc.Tr("Modo presentación: FullScreen()", "Presentation mode: FullScreen()"),
                 Loc.Tr("Un caleidoscopio en HSB que gira solo -- la tecla F llama FullScreen() y el HUD de abajo muestra Width/Height (lógicos) junto a PixelWidth/PixelHeight (reales) y DisplayDensity(), para ver los cuatro juntos en un caso con contenido de verdad.",
                        "A self-spinning HSB kaleidoscope -- the F key calls FullScreen() and the HUD at the bottom shows Width/Height (logical) next to PixelWidth/PixelHeight (real) and DisplayDensity(), so you can see all four together in a case with real content."),
-                PresentationMode),
+                PresentationMode,
+                new[] { SampleTag.Window }),
 
             new SketchSample(
                 Loc.Tr("Panel de ventana: windowMove/Resizable/Title/Ratio", "Window control panel: windowMove/Resizable/Title/Ratio"),
                 Loc.Tr("Un panel con log en pantalla para las funciones de ventana -- F: FullScreen(), M: WindowMove() a una posición al azar, R: WindowResizable(), T: WindowTitle() al azar, A: WindowRatio(16,9). Cada tecla imprime en el log qué se pidió y qué devolvió el estado (IsFullScreen, IsWindowResizable, WindowTitleText); si el host de la IDE todavía no escucha estos eventos, el log documenta igual el llamado -- queda listo para cuando se conecte.",
                        "An on-screen log panel for the window functions -- F: FullScreen(), M: WindowMove() to a random position, R: WindowResizable(), T: WindowTitle() to a random title, A: WindowRatio(16,9). Each key prints to the log what was requested and what the state returned (IsFullScreen, IsWindowResizable, WindowTitleText); if the IDE host doesn't listen for these events yet, the log still documents the call -- ready for whenever it gets wired up."),
-                WindowControlPanel),
+                WindowControlPanel,
+                new[] { SampleTag.Window, SampleTag.Interaction }),
 
             new SketchSample(
                 Loc.Tr("Tamaño dinámico: Settings()", "Dynamic size: Settings()"),
                 Loc.Tr("Settings() corre ANTES que Setup() -- acá decide una orientación (retrato o paisaje) al azar y llama Size() con esa decisión, así Setup() ya arranca con Width/Height correctos sin tener que adivinarlos de antemano. Click reelige la orientación en cualquier momento llamando Size() directo, para contrastar con la garantía de orden que da Settings().",
                        "Settings() runs BEFORE Setup() -- here it randomly picks an orientation (portrait or landscape) and calls Size() with that choice, so Setup() already starts with the correct Width/Height without having to guess them beforehand. Click re-picks the orientation at any time by calling Size() directly, to contrast with the ordering guarantee that Settings() gives."),
-                DynamicSizeSettings),
+                DynamicSizeSettings,
+                new[] { SampleTag.Window }),
                 // --- inside SketchSamples.All, add: ---
             new SketchSample(
                 Loc.Tr("Contador binario: Binary()/Unbinary()", "Binary counter: Binary()/Unbinary()"),
                 Loc.Tr("Un contador de 0 a 255 mostrado como 8 bits que se prenden y apagan -- Binary(byte) arma la fila, Unbinary() la vuelve a convertir en número para probar que van y vuelven. La rueda cambia la velocidad, y se puede forzar un bit a mano con click.",
                        "A counter from 0 to 255 shown as 8 bits turning on and off -- Binary(byte) builds the row, Unbinary() converts it back into a number to prove they round-trip. The wheel changes the speed, and you can force a bit by hand with a click."),
-                BinaryCounter),
+                BinaryCounter,
+                new[] { SampleTag.TwoD, SampleTag.Data }),
 
             new SketchSample(
                 Loc.Tr("Búsqueda en paralelo: thread()", "Parallel search: thread()"),
                 Loc.Tr("Thread(\"SearchPrimes\") lanza la búsqueda de primos en un hilo aparte apenas arranca el sketch -- el spinner de la izquierda sigue girando fluido en Draw() mientras tanto, sin trabarse, porque el trabajo pesado vive en su propio hilo. Click reinicia la búsqueda.",
                        "Thread(\"SearchPrimes\") launches the prime search on a separate thread as soon as the sketch starts -- the spinner on the left keeps spinning smoothly in Draw() the whole time, without stalling, because the heavy work lives on its own thread. Click restarts the search."),
-                PrimeSearchThread),
+                PrimeSearchThread,
+                new[] { SampleTag.Threads }),
 
             new SketchSample(
                 Loc.Tr("Exportar a PDF: beginRaw()/endRaw()", "Export to PDF: beginRaw()/endRaw()"),
                 Loc.Tr("Un póster generativo (círculos en espiral con color HSB) que se dibuja normal cada frame -- la tecla V llama al MISMO método de dibujo una vez más, esta vez encerrado entre BeginRaw()/EndRaw(), y ese segundo llamado no aparece en pantalla: se va directo a poster.pdf como vector real, no como imagen.",
                        "A generative poster (circles in a spiral with HSB color) that draws normally every frame -- the V key calls the SAME drawing method one more time, this time wrapped in BeginRaw()/EndRaw(), and that second call never appears on screen: it goes straight to poster.pdf as real vector output, not an image."),
-                PdfExport),
+                PdfExport,
+                new[] { SampleTag.Files }),
 
             new SketchSample(
                 Loc.Tr("Respaldo de trazos: saveStream()", "Stroke backup: saveStream()"),
                 Loc.Tr("Dibujá con el mouse -- la tecla S guarda el trazo en trazo.txt con SaveStrings() y después usa CreateInput() + SaveStream() para copiar ese archivo entero a un backup con nombre único, sin leerlo a mano línea por línea.",
                        "Draw with the mouse -- the S key saves the stroke to trazo.txt with SaveStrings() and then uses CreateInput() + SaveStream() to copy that whole file to a backup with a unique name, without reading it by hand line by line."),
-                StrokeBackup),
+                StrokeBackup,
+                new[] { SampleTag.Files, SampleTag.Interaction }),
 
             new SketchSample(
                 Loc.Tr("Tarjeta de datos: parseJSONObject()/parseXML() + launch()", "Data card: parseJSONObject()/parseXML() + launch()"),
                 Loc.Tr("Arma un JSONObject y un fragmento de XML con la API normal, los serializa a String, y los vuelve a leer con ParseJSONObject()/ParseXML() -- exactamente como llegarían datos desde una red o un campo de texto, no desde un archivo. La tecla L abre el sitio guardado en el JSON con Launch(), en el navegador del sistema.",
                        "Builds a JSONObject and an XML fragment with the normal API, serializes them to String, and reads them back with ParseJSONObject()/ParseXML() -- exactly as data would arrive from a network call or a text field, not from a file. The L key opens the site saved in the JSON with Launch(), in the system browser."),
-                DataCardParseLaunch),
+                DataCardParseLaunch,
+                new[] { SampleTag.Data, SampleTag.Files }),
             new SketchSample(
                 Loc.Tr("Gema facetada: BeginShape/Vertex(x,y,z)/Normal() en 3D", "Faceted gem: BeginShape/Vertex(x,y,z)/Normal() in 3D"),
                 Loc.Tr("Un octaedro armado a mano, cara por cara, con BeginShape(Triangles)+Vertex(x,y,z)+Normal() -- la tecla N alterna entre sombreado plano (una normal por cara, via PVector.Cross()) y suave (normales promediadas por vértice), para ver en vivo qué cambia normal() en la iluminación. Arrastrá para rotar.",
                        "An octahedron built by hand, face by face, with BeginShape(Triangles)+Vertex(x,y,z)+Normal() -- the N key toggles between flat shading (one normal per face, via PVector.Cross()) and smooth shading (normals averaged per vertex), to see live what normal() changes about the lighting. Drag to rotate."),
-                FacetedGem),
+                FacetedGem,
+                new[] { SampleTag.ThreeD, SampleTag.Shapes }),
 
             new SketchSample(
                 Loc.Tr("Partículas 3D: PVector con Z", "3D particles: PVector with Z"),
                 Loc.Tr("PVector ahora tiene X, Y, y Z -- este sistema de partículas usa Add()/Sub() de PVector para gravedad y rebote en las TRES dimensiones dentro de un cubo invisible, en vez de simular la profundidad a mano con floats sueltos. Click agrega más partículas.",
                        "PVector now has X, Y, and Z -- this particle system uses PVector's Add()/Sub() for gravity and bouncing in all THREE dimensions inside an invisible cube, instead of simulating depth by hand with loose floats. Click adds more particles."),
-                Particles3D),
+                Particles3D,
+                new[] { SampleTag.ThreeD, SampleTag.Particles }),
 
              new SketchSample(
                 Loc.Tr("Enjambre reutilizable: CreateShape3D()", "Reusable swarm: CreateShape3D()"),
                 Loc.Tr("La misma gema facetada del sample anterior, pero armada UNA sola vez con CreateShape3D() en vez de BeginShape()/EndShape() cada frame -- la malla se sube a la GPU una vez, y después 150 copias se dibujan solo con Shape(), cada una con su propia posición y rotación, sin volver a triangular ni volver a subir nada.",
                        "The same faceted gem from the previous sample, but built just ONCE with CreateShape3D() instead of BeginShape()/EndShape() every frame -- the mesh is uploaded to the GPU once, and then 150 copies are drawn just with Shape(), each with its own position and rotation, without ever re-triangulating or re-uploading anything."),
-                ReusableSwarm),
+                ReusableSwarm,
+                new[] { SampleTag.ThreeD, SampleTag.Particles, SampleTag.Shapes }),
 
             new SketchSample(
                 Loc.Tr("Cartel texturizado: Vertex(x,y,z,u,v)", "Textured billboard: Vertex(x,y,z,u,v)"),
                 Loc.Tr("Un panel 3D con una textura generada en código (un PGraphics 2D convertido a PImage con Get()) mapeada por Vertex(x,y,z,u,v) -- Texture(img) antes de BeginShape() le dice al shape qué imagen indexan esas coordenadas. Arrastrá para rotar y ver el mapeo desde otros ángulos.",
                        "A 3D panel with a texture generated in code (a 2D PGraphics converted to a PImage with Get()) mapped via Vertex(x,y,z,u,v) -- Texture(img) before BeginShape() tells the shape which image those coordinates index into. Drag to rotate and see the mapping from other angles."),
-                TexturedBillboard),
+                TexturedBillboard,
+                new[] { SampleTag.ThreeD, SampleTag.Shapes }),
+
+            new SketchSample(
+                Loc.Tr("Live coding de audio: primer beat", "Audio live coding: first beat"),
+                Loc.Tr("El motor de audio propio de DanaProcessing, al estilo Sonic Pi: cuatro [LiveLoop] (bombo/redoblante, hi-hat, bajo con filtro y acordes de cuerda pulsada) en sincronía. Editá y apretá Ejecutar: la música no se corta, cada loop toma el código nuevo en su próxima vuelta. Lo visual reacciona con Amplitude, Spectrum() y OnNote(). Ctrl+. detiene el sonido.",
+                       "DanaProcessing's own audio engine, Sonic Pi style: four [LiveLoop]s (kick/snare, hi-hat, filtered bass and plucked chords) in sync. Edit and press Run: the music doesn't stop, each loop picks up the new code on its next pass. The visuals react via Amplitude, Spectrum() and OnNote(). Ctrl+. stops the sound."),
+                LiveCodingBeat,
+                new[] { SampleTag.Audio, SampleTag.LiveCoding, SampleTag.Animation }),
 
             new SketchSample(
                 Loc.Tr("Audio reactivo: FFT en vivo (NAudio)", "Audio-reactive: live FFT (NAudio)"),
                 Loc.Tr("Un `// nuget: NAudio` capturando el audio del sistema (sin micrófono) y corriéndolo por una FFT para mover un anillo de 40 barras -- cualquier cosa que esté sonando en la máquina mueve el dibujo en vivo. La tecla S detiene/reinicia la captura.",
                        "A `// nuget: NAudio` sketch capturing system audio (no microphone) and running it through an FFT to drive a ring of 40 bars -- whatever's playing on the machine moves the drawing live. The S key stops/restarts the capture."),
-                AudioReactive),
+                AudioReactive,
+                new[] { SampleTag.Audio, SampleTag.NuGet }),
 
             new SketchSample(
                 Loc.Tr("Instalación reactiva: MIDI + OSC (NAudio.Midi, Rug.Osc)", "Reactive installation: MIDI + OSC (NAudio.Midi, Rug.Osc)"),
                 Loc.Tr("Dos paquetes NuGet a la vez alimentando la misma grilla de \"ripples\" estilo instalación/VJ: notas y CC de un controlador MIDI conectado, y cualquier mensaje OSC a /dana/pulse <float> por UDP -- ninguno de los dos es obligatorio (sin ambos igual podés hacer click para ver cómo reacciona).",
                        "Two NuGet packages at once feeding the same installation/VJ-style \"ripple\" grid: notes and CC from a connected MIDI controller, and any OSC message to /dana/pulse <float> over UDP -- neither is required (click anywhere without either to see it react)."),
-                ControllerInstallation),
+                ControllerInstallation,
+                new[] { SampleTag.Audio, SampleTag.MidiOsc, SampleTag.NuGet, SampleTag.Interaction }),
 
             new SketchSample(
                 Loc.Tr("Probador de Hot Reload: juego de vuelo", "Hot Reload testbed: flying game"),
                 Loc.Tr("Un juego chico estilo \"flappy bird\" hecho a propósito para el botón ⚡ Hot Reload -- toda la sensación del juego (gravedad, fuerza del aleteo, velocidad/separación de los tubos) está en constantes al principio del archivo. Jugá, cambiá un número, y apretá Hot Reload en vez de Run: la física nueva se siente al toque sin perder el puntaje ni reiniciar la partida.",
                        "A small \"flappy bird\"-style game built on purpose for the ⚡ Hot Reload button -- everything about how it feels (gravity, flap strength, pipe speed/spacing) sits in constants at the top of the file. Play it, change a number, and press Hot Reload instead of Run: the new physics apply instantly without losing your score or restarting the run."),
-                HotReloadFlapper),
+                HotReloadFlapper,
+                new[] { SampleTag.Games, SampleTag.HotReload, SampleTag.LiveCoding }),
 
             new SketchSample(
                 Loc.Tr("ML.NET paso a paso: regresión lineal en vivo", "ML.NET step by step: live linear regression"),
                 Loc.Tr("El ejemplo de ML.NET más simple posible, pensado para VER el aprendizaje, no solo el resultado: una línea recta se reentrena un poquito más cada frame (un paso de descenso de gradiente a la vez) sobre los puntos que clickeás, y el cartel de arriba muestra la iteración y el error (MSE) bajando en vivo. R reinicia con puntos al azar.",
                        "The simplest possible ML.NET example, built to SHOW the learning instead of just the result: a straight line retrains a little more every frame (one gradient-descent step at a time) against the points you click, with the iteration count and error (MSE) visibly dropping frame by frame. R restarts with random points."),
-                SimpleLinearRegression),
+                SimpleLinearRegression,
+                new[] { SampleTag.MachineLearning, SampleTag.NuGet, SampleTag.Data }),
 
             new SketchSample(
                 Loc.Tr("Campo de color con ML.NET: aprendizaje en vivo", "ML.NET color field: live learning"),
                 Loc.Tr("Un `// nuget: Microsoft.ML` de verdad -- cada click deja una semilla de color, y un modelo de regresión (entrenado ahí mismo, sin archivo ni descarga) aprende a pintar un campo generativo que se reacomoda alrededor de tus clicks. El entrenamiento corre en un hilo aparte con un aviso de \"Training...\" visible, nunca traba el dibujo.",
                        "A real `// nuget: Microsoft.ML` sketch -- every click drops a color seed, and a regression model (trained right there, no file or download involved) learns to paint a generative field that reshapes around your clicks. Training runs on a background thread with a visible \"Training...\" notice, never blocking the drawing."),
-                MLColorField),
+                MLColorField,
+                new[] { SampleTag.MachineLearning, SampleTag.NuGet, SampleTag.Generative }),
 
             new SketchSample(
                 Loc.Tr("Flappy autoaprendiz: ML.NET juega solo", "Self-learning flappy: ML.NET plays itself"),
                 Loc.Tr("ML.NET no trae reinforcement learning de fábrica, así que este ejemplo lo arma con lo que SÍ tiene: cada tanto, 60 intentos simulados (con algo de ruido) corren en un hilo aparte; los mejores le enseñan a un clasificador cuándo aletear, y ese modelo se vuelve el nuevo campeón SOLO si de verdad juega mejor que el anterior. El pájaro que ves jugando en pantalla siempre usa al campeón vigente -- mirá cómo el puntaje mejora generación tras generación, sin que vos toques nada.",
                        "ML.NET has no reinforcement learning built in, so this example builds one out of what it DOES have: every so often, 60 simulated attempts (with a bit of noise) run on a background thread; the best ones teach a classifier when to flap, and that model becomes the new champion ONLY if it genuinely plays better than the last one. The bird playing on screen always uses the current champion -- watch the score climb generation after generation, without you touching anything."),
-                SelfPlayingFlapper),
+                SelfPlayingFlapper,
+                new[] { SampleTag.MachineLearning, SampleTag.NuGet, SampleTag.Games }),
 
             new SketchSample(
                 Loc.Tr("200.000 partículas en la GPU: ruido curl", "200,000 GPU particles: curl noise"),
                 Loc.Tr("CreateGpuParticles() de verdad -- 200.000 partículas simuladas enteramente en la GPU, cada una moviéndose por un campo de ruido curl calculado en vivo. En esta máquina corre como un shader de cómputo real (GLSL 430, glDispatchCompute); en una Mac corre exactamente el MISMO código de sketch, pero sobre una simulación de textura ping-pong -- macOS topa OpenGL en 4.1, por debajo de lo que un compute shader necesita. La etiqueta abajo dice cuál de los dos está corriendo.",
                        "Real CreateGpuParticles() -- 200,000 particles simulated entirely on the GPU, each one moving through a live curl-noise field. On this machine it runs as a real compute shader (GLSL 430, glDispatchCompute); on a Mac the exact SAME sketch code runs instead on a ping-pong texture simulation -- macOS caps OpenGL at 4.1, below what a compute shader needs. The label at the bottom says which of the two is actually running."),
-                GpuParticles),
+                GpuParticles,
+                new[] { SampleTag.ThreeD, SampleTag.Gpu, SampleTag.Particles }),
         };
 
         private const string CircleRain =
@@ -2446,6 +2568,110 @@ public class MySketch : Sketch
         _qx = nx / norm;
         _qy = ny / norm;
         _qz = nz / norm;
+    }
+}
+";
+
+        private const string LiveCodingBeat =
+@"// Live coding de audio con el motor propio de DanaProcessing.
+//
+// Cada método marcado con [LiveLoop] se repite solo, en sincronía con los
+// demás. Cambiá notas, tiempos o sonidos y apretá Ejecutar (Ctrl+R): la
+// música NO se corta -- cada loop toma el código nuevo en su próxima vuelta.
+// Borrá un loop (o su [LiveLoop]) y deja de sonar al terminar su vuelta.
+// Sketch > Detener sonido (Ctrl+.) para todo.
+//
+// Lo visual escucha al motor directamente: Amplitude, Spectrum() y
+// OnNote(), que llega justo cuando cada nota sale por los parlantes.
+
+public class MySketch : Sketch
+{
+    static readonly string[] Riff = { ""E2"", ""E2"", ""G2"", ""A2"", ""E2"", ""D3"", ""B2"", ""A2"" };
+
+    readonly float[] bands = new float[48];
+    float kickFlash;
+    float snareFlash;
+    float bassHue;
+
+    public override void Setup()
+    {
+        Size(800, 500);
+        Bpm = 120;
+    }
+
+    [LiveLoop]
+    async Task Drums()
+    {
+        Sample(""kick"");
+        await Sleep(1);
+        Sample(""kick"");
+        Sample(""snare"");
+        await Sleep(1);
+    }
+
+    [LiveLoop]
+    async Task Hats()
+    {
+        Sample(""hat"", amp: 0.4, pan: -0.3);
+        await Sleep(0.5);
+    }
+
+    [LiveLoop]
+    async Task Bass()
+    {
+        UseSynth(Synth.Saw);
+        foreach (var note in Riff)
+        {
+            Play(note, amp: 0.5, release: 0.35, cutoff: 75, res: 0.3);
+            await Sleep(0.5);
+        }
+    }
+
+    [LiveLoop]
+    async Task Chords()
+    {
+        UseSynth(Synth.Pluck);
+        Play(Notes.Chord(""E4"", ""minor""), amp: 0.25, pan: 0.4, release: 1.5);
+        await Sleep(4);
+        Play(Notes.Chord(""C4"", ""major""), amp: 0.25, pan: 0.4, release: 1.5);
+        await Sleep(4);
+    }
+
+    public override void OnNote(NoteEvent e)
+    {
+        if (e.Sample == ""kick"") kickFlash = 1;
+        if (e.Sample == ""snare"") snareFlash = 1;
+        if (e.Loop == ""Bass"") bassHue = (float)(e.Note % 12) / 12f;
+    }
+
+    public override void Draw()
+    {
+        Background(18 + kickFlash * 50, 16 + kickFlash * 20, 28 + kickFlash * 30);
+        kickFlash *= 0.86f;
+        snareFlash *= 0.8f;
+        NoStroke();
+
+        // Espectro: 48 bandas de graves (izquierda) a agudos (derecha).
+        Spectrum(bands);
+        float w = Width / (float)bands.Length;
+        for (int i = 0; i < bands.Length; i++)
+        {
+            float h = bands[i] * Height * 0.6f;
+            Fill(255, 150 + i * 2, 90, 220);
+            Rect(i * w + 1, Height - h, w - 2, h);
+        }
+
+        // Círculo central: crece con el volumen, el color sigue la nota del bajo.
+        float r = 90 + Amplitude * 700;
+        Fill(120 + bassHue * 135, 200 - bassHue * 80, 230, 200);
+        Ellipse(Width / 2f, Height / 2f - 50, r, r);
+
+        // Anillo del redoblante.
+        if (snareFlash > 0.05f)
+        {
+            Fill(255, 255, 255, snareFlash * 120);
+            Ellipse(Width / 2f, Height / 2f - 50, r * 1.6f, r * 1.6f);
+        }
     }
 }
 ";
