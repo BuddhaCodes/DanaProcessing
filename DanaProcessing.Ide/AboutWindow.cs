@@ -4,13 +4,15 @@ using Avalonia.Controls.Shapes;
 using Avalonia.Layout;
 using Avalonia.Media;
 using DanaProcessing.Ide.Localization;
+using DanaProcessing.Ide.Support;
 using DanaProcessing.Ide.Theme;
 using System.Diagnostics;
 
 namespace DanaProcessing.Ide
 {
     /// <summary>
-    /// "Acerca de DanaProcessing": version, license and a link to the repo.
+    /// "Acerca de DanaProcessing": version, license, a link to the repo and
+    /// the donation button.
     /// Plain native window chrome, same as ConfirmDialog -- it's a small
     /// info box, not a workspace.
     /// </summary>
@@ -68,7 +70,20 @@ namespace DanaProcessing.Ide
                        "Creative coding in C#, the way Processing and p5.js do it, with an IDE built just for it."),
                 ClayTheme.TextSecondary, 13, 14);
 
+            var support = Line(
+                Loc.Tr("DanaProcessing es gratis y de código abierto. Si te sirve y querés que siga creciendo, podés apoyarlo con una donación por PayPal: cada aporte se traduce en más tiempo para nuevas funciones, ejemplos y correcciones.",
+                       "DanaProcessing is free and open source. If it's useful to you and you'd like it to keep growing, you can support it with a donation via PayPal: every contribution turns into more time for new features, examples and fixes."),
+                ClayTheme.TextSecondary, 12.5, 12);
+
             var license = Line(Loc.Tr("Licencia MIT · © 2026 Dana Processing", "MIT License · © 2026 Dana Processing"), ClayTheme.TextMuted, 11.5, 14);
+
+            var donateButton = new Button
+            {
+                Content = Loc.Tr("♥  Donar por PayPal", "♥  Donate via PayPal"),
+                Classes = { "clay-run" },
+                Padding = new Thickness(16, 8),
+            };
+            donateButton.Click += (_, _) => SupportLinks.Open(SupportLinks.DonateUrl);
 
             var repoButton = new Button
             {
@@ -91,15 +106,17 @@ namespace DanaProcessing.Ide
                 ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto,Auto"),
                 Margin = new Thickness(0, 22, 0, 0),
             };
+            Grid.SetColumn(donateButton, 0);
             Grid.SetColumn(repoButton, 2);
             Grid.SetColumn(closeButton, 3);
+            buttons.Children.Add(donateButton);
             buttons.Children.Add(repoButton);
             buttons.Children.Add(closeButton);
 
             Content = new StackPanel
             {
                 Margin = new Thickness(26, 24, 26, 20),
-                Children = { header, version, tagline, license, buttons },
+                Children = { header, version, tagline, support, license, buttons },
             };
         }
 

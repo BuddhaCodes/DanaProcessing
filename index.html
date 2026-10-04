@@ -995,6 +995,18 @@
   }
   .sidebar-nav a.sidebar-download .ph-bold{ font-size:15px; }
 
+  /* Discreet donation link under the download button */
+  .sidebar-nav a.sidebar-support{
+    display:flex; align-items:center; justify-content:center; gap:6px;
+    margin-top:10px; padding:7px 10px;
+    font-size:12.5px; color:var(--text-muted);
+    border:1px dashed var(--border-medium); border-radius:10px;
+    text-decoration:none;
+    transition:color var(--transition), border-color var(--transition), background var(--transition);
+  }
+  .sidebar-nav a.sidebar-support:hover{ color:var(--accent); border-color:var(--accent); background:var(--accent-glow); }
+  .sidebar-nav a.sidebar-support .ph{ font-size:14px; }
+
   @keyframes dana-spin{ to{ transform:rotate(360deg); } }
 
   /* ============================================================
@@ -1381,6 +1393,10 @@
           <a href="https://github.com/BuddhaCodes/DanaProcessing/releases/latest" data-platform="linux"><i class="ph-bold ph-linux-logo"></i> Linux</a>
         </div>
       </div>
+
+      <a class="sidebar-support" href="https://paypal.me/CarlosFernandez934" target="_blank" rel="noopener">
+        <i class="ph ph-heart"></i> Support the project
+      </a>
     </nav>
 
     <div class="sidebar-footer">
@@ -2769,6 +2785,8 @@ heights.Shuffle();               <span class="cm">// reorders in place</span>
           <!-- ================= FOOTER ================= -->
           <footer class="doc-footer">
             DanaProcessing reference documentation. Generated from the current source tree — GraphicsContext, Sketch, Renderer3D (Silk.NET/OpenGL), PShader, PVector, PImage, PGraphics, PShape, PFont, JSONObject/JSONArray, XML, Table, PerlinNoise, the audio engine (live loops, synths, samples, analysis), the Avalonia host, and the IDE (live diagnostics, code navigation, Hot Reload, Agent mode, NuGet packages, sample gallery, export, crash reporting, settings).
+          
+            <br><a href="https://paypal.me/CarlosFernandez934" target="_blank" rel="noopener">♥ Support DanaProcessing via PayPal</a> — it's free and open source, and every donation buys more time to work on it.
           </footer>
 
         </div><!-- /main-col -->
