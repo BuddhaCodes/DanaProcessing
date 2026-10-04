@@ -132,6 +132,16 @@ Full API reference lives in [`index.html`](index.html) — open it locally in a 
 
 See [`ROADMAP.md`](ROADMAP.md) for where this is headed — right now that's leaning into "any NuGet package is a sketch library" and true hot-reload.
 
+## Support the project
+
+DanaProcessing is free, open source, and built in spare time. If it's useful to you — for your art, your classes, or your installations — you can help it keep growing with a donation via **[PayPal](https://paypal.me/CarlosFernandez934)**. Every contribution turns into more time for new features, example sketches and fixes.
+
+> **A note on where donations go:** PayPal isn't available where I live, so donations are received on my behalf by a trusted collaborator, **Carlos Fernandez** — that's the name you'll see on the PayPal page.
+
+*¿Hablás español? DanaProcessing es gratis y de código abierto; si te sirve, podés apoyarlo con una donación por [PayPal](https://paypal.me/CarlosFernandez934). Como PayPal no está disponible donde vivo, las donaciones las recibe en mi nombre un colaborador de confianza, Carlos Fernandez.*
+
+You'll also find the link inside the IDE under **Help → Support the project**.
+
 ## Contributing
 
 Issues and pull requests are welcome — whether that's a bug, a new example sketch, or an idea for the API. If you build something with DanaProcessing, open an issue and show it off.
