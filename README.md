@@ -136,7 +136,9 @@ See [`ROADMAP.md`](ROADMAP.md) for where this is headed — right now that's lea
 
 DanaProcessing is free, open source, and built in spare time. If it's useful to you — for your art, your classes, or your installations — you can help it keep growing with a donation via **[PayPal](https://paypal.me/CarlosFernandez934)**. Every contribution turns into more time for new features, example sketches and fixes.
 
-*¿Hablás español? DanaProcessing es gratis y de código abierto; si te sirve, podés apoyarlo con una donación por [PayPal](https://paypal.me/CarlosFernandez934).*
+> **A note on where donations go:** PayPal isn't available where I live, so donations are received on my behalf by a trusted collaborator, **Carlos Fernandez** — that's the name you'll see on the PayPal page.
+
+*¿Hablás español? DanaProcessing es gratis y de código abierto; si te sirve, podés apoyarlo con una donación por [PayPal](https://paypal.me/CarlosFernandez934). Como PayPal no está disponible donde vivo, las donaciones las recibe en mi nombre un colaborador de confianza, Carlos Fernandez.*
 
 You'll also find the link inside the IDE under **Help → Support the project**.
 

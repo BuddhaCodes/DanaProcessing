@@ -71,8 +71,8 @@ namespace DanaProcessing.Ide
                 ClayTheme.TextSecondary, 13, 14);
 
             var support = Line(
-                Loc.Tr("DanaProcessing es gratis y de código abierto. Si te sirve y querés que siga creciendo, podés apoyarlo con una donación por PayPal: cada aporte se traduce en más tiempo para nuevas funciones, ejemplos y correcciones.",
-                       "DanaProcessing is free and open source. If it's useful to you and you'd like it to keep growing, you can support it with a donation via PayPal: every contribution turns into more time for new features, examples and fixes."),
+                Loc.Tr("DanaProcessing es gratis y de código abierto. Si te sirve y querés que siga creciendo, podés apoyarlo con una donación por PayPal: cada aporte se traduce en más tiempo para nuevas funciones, ejemplos y correcciones. Como PayPal no está disponible donde vivo, las donaciones las recibe en mi nombre un colaborador de confianza, Carlos Fernandez.",
+                       "DanaProcessing is free and open source. If it's useful to you and you'd like it to keep growing, you can support it with a donation via PayPal: every contribution turns into more time for new features, examples and fixes. PayPal isn't available where I live, so donations are received on my behalf by a trusted collaborator, Carlos Fernandez."),
                 ClayTheme.TextSecondary, 12.5, 12);
 
             var license = Line(Loc.Tr("Licencia MIT · © 2026 Dana Processing", "MIT License · © 2026 Dana Processing"), ClayTheme.TextMuted, 11.5, 14);
