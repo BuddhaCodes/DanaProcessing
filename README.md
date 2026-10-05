@@ -1,15 +1,42 @@
-# DanaProcessing
+<p align="center">
+  <img src="DanaProcessing.Ide/Theme/dana.png" alt="DanaProcessing logo" width="110">
+</p>
 
-**Creative coding in C#, the way Processing and p5.js sketchers already think — plus a real desktop IDE built just for it.**
+<h1 align="center">DanaProcessing</h1>
 
-[![Build and Release](https://github.com/BuddhaCodes/DanaProcessing/actions/workflows/build-release.yml/badge.svg)](https://github.com/BuddhaCodes/DanaProcessing/actions/workflows/build-release.yml)
-[![.NET 8](https://img.shields.io/badge/.NET-8.0-512BD4)](https://dotnet.microsoft.com/)
-[![Platform](https://img.shields.io/badge/platform-Windows-0078D6)](#getting-started)
-[![License: MIT](https://img.shields.io/badge/license-MIT-brightgreen)](LICENSE.txt)
+<p align="center">
+  <b>Creative coding in C#, the Processing way.</b><br>
+  2D, real 3D and a live-coding audio engine, with a desktop IDE built just for sketching.
+</p>
 
-Write a `Sketch`, override `Setup()` and `Draw()`, and you already know the vocabulary: `Fill`, `Stroke`, `Rect`, `Translate`, `Rotate`, `PVector`, `Random`, `Noise`. Nothing to configure, no project boilerplate — just a class and two methods. What's different is everything *around* the sketch: a purpose-built IDE with live diagnostics, one-click NuGet packages, real 3D, and a "Run" button that gets you from idea to pixels in well under a second.
+<p align="center">
+  <a href="https://github.com/BuddhaCodes/DanaProcessing/actions/workflows/build-release.yml"><img src="https://github.com/BuddhaCodes/DanaProcessing/actions/workflows/build-release.yml/badge.svg" alt="Build and Release"></a>
+  <a href="https://dotnet.microsoft.com/"><img src="https://img.shields.io/badge/.NET-8.0-512BD4" alt=".NET 8"></a>
+  <a href="#-getting-started"><img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-1B3C53" alt="Platforms"></a>
+  <a href="LICENSE.txt"><img src="https://img.shields.io/badge/license-MIT-brightgreen" alt="License: MIT"></a>
+  <a href="https://buddhacodes.github.io/DanaProcessing/"><img src="https://img.shields.io/badge/docs-online-B8863A" alt="Documentation"></a>
+</p>
 
-## A sketch is this small
+<p align="center">
+  <a href="https://buddhacodes.github.io/DanaProcessing/"><b>Documentation</b></a> ·
+  <a href="#-getting-started"><b>Download</b></a> ·
+  <a href="#-live-coded-sound"><b>Sound</b></a> ·
+  <a href="#-support-the-project"><b>Support</b></a>
+</p>
+
+<p align="center">
+  <a href="https://buddhacodes.github.io/DanaProcessing/"><img src="og-image.png" alt="DanaProcessing: a live loop and a Draw() that reacts to the sound" width="760"></a>
+</p>
+
+<!-- A short GIF of the IDE (edit a sketch, press Run, see it change) would go great right here. -->
+
+## ✨ Why it exists
+
+I started programming with Java and JavaScript following [The Coding Train](https://www.youtube.com/@TheCodingTrain), sketching in [Processing](https://processing.org) and [p5.js](https://p5js.org). When I moved to C#, I wanted that same experience and couldn't find it, so I built it.
+
+DanaProcessing borrows Processing's vocabulary on purpose: `Setup()`, `Draw()`, `Fill()`, `Rect()`, `Translate()`, `PVector`, `Noise()`. If you've written a Processing sketch, you can already read one of these. Then it adds what C# and .NET make possible: a real IDE, any NuGet package as a library, real 3D, and its own sound engine.
+
+## 🎨 A sketch is this small
 
 ```csharp
 public class MySketch : Sketch
@@ -30,7 +57,8 @@ public class MySketch : Sketch
 }
 ```
 
-Flip one word and the same mental model gets you into three dimensions — real geometry, real lighting, no separate engine to learn:
+<details>
+<summary><b>Same idea in 3D</b>: change one word</summary>
 
 ```csharp
 public class MySketch : Sketch
@@ -51,37 +79,79 @@ public class MySketch : Sketch
 }
 ```
 
-## Why people stick around
+Real geometry, real lighting, no separate engine to learn.
+</details>
 
-- **One API, two renderers.** 2D runs on SkiaSharp; 3D runs on real OpenGL via Silk.NET, with lights, cameras, materials, custom shaders, and antialiasing you control from a settings panel — not two libraries pretending to be one.
-- **An IDE that understands your sketch as you type it.** Live Roslyn diagnostics underline mistakes before you run anything; autocomplete knows the whole `Sketch` API; hitting **Run** compiles in memory and swaps the canvas in place — no project reload, no waiting.
-- **NuGet packages, right inside the sketch.** Drop a `// nuget: PackageName, 1.2.3` comment at the top of your file and the IDE resolves, downloads, and links it before running — no `.csproj` to touch.
-- **Ship it as a real app.** One export turns your sketch into a single, self-contained, double-clickable executable — no runtime install, nothing to explain to whoever you send it to.
-- **28 example sketches, ready to open and break.** Bouncing circles, a recursive fractal tree, orbit cameras, faceted gems with hand-built normals, a reusable GPU-uploaded 3D swarm, binary counters, parallel prime search — each one commented to explain not just *what* it does but *why* it's built that way.
-- **It speaks your language.** The whole interface — menus, dialogs, error messages, sample descriptions — is fully localized in English and Spanish, switchable from Settings.
-- **Make it yours.** Colors, corner roundness, and fonts are all editable from an in-app Settings window, live-previewed as you tweak them.
+## 🎵 Live-coded sound
 
-## Getting started
+A music engine inspired by [Sonic Pi](https://sonic-pi.net), written from scratch in C# and running inside the sketch, so what you hear and what you draw share one clock. Mark a method as a `[LiveLoop]` and it repeats in time with the others. Edit it and press **Run**: the music doesn't stop, and each loop picks up the new code on its next pass.
 
-**Just want to draw something?** Grab the latest build for your platform — self-contained, nothing to install:
+```csharp
+[LiveLoop]
+async Task Drums()
+{
+    Sample("kick");
+    await Sleep(1);
+    Sample("kick");
+    Sample("snare");
+    await Sleep(1);
+}
+
+[LiveLoop]
+async Task Bass()
+{
+    UseSynth(Synth.Saw);
+    Play("E2", release: 0.3, cutoff: 80);
+    await Sleep(0.5);
+}
+
+public override void OnNote(NoteEvent e)
+{
+    if (e.Sample == "kick") flash = 1;   // fires the moment the kick is heard
+}
+```
+
+Synths, drums, `.wav` samples, envelopes, filters, and `Amplitude` / `Spectrum()` to drive your visuals. Sound currently plays on Windows; on macOS and Linux the loops and visuals run on the same clock, silently for now.
+
+## 🧰 What you get
+
+| | |
+| --- | --- |
+| 🖥️ **An IDE that knows your sketch** | Live Roslyn diagnostics as you type, autocomplete for the whole API, go-to-definition, and a **Run** that compiles in memory in well under a second. |
+| 🔥 **Hot reload that keeps state** | Tweak a value in a particle system you've been tuning for ten minutes and it keeps running, instead of starting over from `Setup()`. |
+| 🧊 **One API, two renderers** | 2D on SkiaSharp, real 3D on OpenGL (Silk.NET) with lights, cameras, materials, custom shaders and 200,000 GPU particles. |
+| 📦 **Any NuGet package as a library** | Put `// nuget: PackageName, 1.2.3` at the top of a sketch and it's downloaded and linked. No `.csproj` to touch. |
+| 🔊 **Live-coded sound** | Live loops, synths, drums and samples, with visuals that react on the beat. |
+| 🗂️ **36 examples, searchable** | From a minimal sketch to orbit cameras, ML.NET models that learn while you click, MIDI/OSC and a live-coded beat. Search by name, topic or a function in the code. |
+| 🚀 **Ship it as an app** | Export any sketch as a single, self-contained, double-clickable executable. |
+| 🌎 **English and Spanish** | The whole interface is localized and switchable from Settings. |
+
+## 🚀 Getting started
+
+**Just want to draw something?** Grab the latest build. It's self-contained, nothing to install:
 
 **[Windows](https://github.com/BuddhaCodes/DanaProcessing/releases/latest/download/DanaProcessingIde-win-x64.zip)** · **[macOS (Apple Silicon)](https://github.com/BuddhaCodes/DanaProcessing/releases/latest/download/DanaProcessingIde-osx-arm64.zip)** · **[macOS (Intel)](https://github.com/BuddhaCodes/DanaProcessing/releases/latest/download/DanaProcessingIde-osx-x64.zip)** · **[Linux](https://github.com/BuddhaCodes/DanaProcessing/releases/latest/download/DanaProcessingIde-linux-x64.tar.gz)**
 
-None of these are code-signed yet (that costs real money on every platform, and there's no budget for it right now — see [`ROADMAP.md`](ROADMAP.md) if you're curious about the tradeoffs), so each OS will ask if you're sure before running something downloaded from the internet. That's expected, not a sign anything's wrong.
+The builds aren't code-signed yet (that costs real money on every platform), so your OS will ask if you're sure the first time. That's expected:
 
-**Windows** — Defender SmartScreen:
+<details>
+<summary><b>Windows</b>: SmartScreen</summary>
 
-1. Right-click the downloaded `.zip` → **Properties** → check **Unblock** → **OK** (or run `Unblock-File .\DanaProcessingIde-win-x64.zip` in PowerShell) — do this *before* extracting, so every extracted file inherits the unblocked state.
+1. Right-click the downloaded `.zip` → **Properties** → check **Unblock** → **OK** (or run `Unblock-File .\DanaProcessingIde-win-x64.zip` in PowerShell). Do this *before* extracting.
 2. Extract the zip and run `DanaProcessing.Ide.exe`, then press **Run** on the sketch that's already open.
 
-If you extracted first and still see the SmartScreen prompt, it's the same fix one level down: **More info → Run anyway**, or right-click `DanaProcessing.Ide.exe` itself → Properties → Unblock.
+If you extracted first and still see the prompt: **More info → Run anyway**.
+</details>
 
-**macOS** — Gatekeeper:
+<details>
+<summary><b>macOS</b>: Gatekeeper</summary>
 
-1. Unzip and try opening **DanaProcessing IDE.app** — macOS will say it can't check the app for malicious software (or that the developer can't be verified).
-2. Open **System Settings → Privacy & Security**, scroll to the Security section, and click **Open Anyway** next to DanaProcessing IDE, then confirm **Open** in the dialog that reappears. macOS remembers this afterward.
+1. Unzip and try opening **DanaProcessing IDE.app**. macOS will say it can't verify the developer.
+2. Go to **System Settings → Privacy & Security**, click **Open Anyway** next to DanaProcessing IDE, then confirm **Open**. macOS remembers this afterwards.
+</details>
 
-**Linux** — just the usual execute bit:
+<details>
+<summary><b>Linux</b>: execute bit</summary>
 
 ```bash
 tar -xzf DanaProcessingIde-linux-x64.tar.gz
@@ -89,9 +159,10 @@ chmod +x DanaProcessing.Ide
 ./DanaProcessing.Ide
 ```
 
-A `DanaProcessing.desktop` file is included if you want it in your app launcher — see the comment at the top of that file for how to wire it up.
+A `DanaProcessing.desktop` file is included if you want it in your app launcher; see the comment at the top of that file.
+</details>
 
-**Building from source instead?** You'll need the [.NET 8 SDK](https://dotnet.microsoft.com/download):
+**Building from source?** You'll need the [.NET 8 SDK](https://dotnet.microsoft.com/download):
 
 ```bash
 git clone https://github.com/BuddhaCodes/DanaProcessing.git
@@ -99,43 +170,60 @@ cd DanaProcessing
 dotnet run --project DanaProcessing.Ide
 ```
 
-## What's in the repository
+## 📚 Documentation
+
+The full reference, method by method, lives at **[buddhacodes.github.io/DanaProcessing](https://buddhacodes.github.io/DanaProcessing/)**, with separate views for 2D, 3D and Sound. It's also in [`index.html`](index.html) if you prefer to open it locally.
+
+## 🏗️ What's in the repository
 
 ```text
-DanaProcessing/                The core library — Sketch, Setup()/Draw(), 2D (SkiaSharp)
-                                and 3D (Silk.NET/OpenGL) rendering, PVector, PImage,
-                                PGraphics, PShader, collections, math, threading.
+DanaProcessing/                The core library: Sketch, Setup()/Draw(), 2D (SkiaSharp) and
+                               3D (Silk.NET/OpenGL) rendering, the audio engine, PVector,
+                               PImage, PGraphics, PShader, collections, math.
 
-DanaProcessing.AvaloniaHost/    A cross-platform Avalonia control that hosts a running
-                                Sketch — the embeddable canvas both the IDE and exported
-                                standalone apps are built on.
+DanaProcessing.AvaloniaHost/   A cross-platform Avalonia control that hosts a running Sketch,
+                               the canvas both the IDE and exported apps are built on.
 
-DanaProcessing.Ide/             The desktop IDE itself: editor, live diagnostics,
-                                NuGet management, sample gallery, exporter, settings,
-                                and localization.
+DanaProcessing.Ide/            The desktop IDE: editor, live diagnostics, hot reload, NuGet
+                               management, example gallery, exporter, settings, localization.
 ```
 
-Full API reference lives in [`index.html`](index.html) — open it locally in a browser for the complete method-by-method documentation.
-
-## Under the hood
+<details>
+<summary><b>Under the hood</b></summary>
 
 | | |
 | --- | --- |
 | Language / runtime | C# on .NET 8 |
 | UI framework | [Avalonia UI](https://avaloniaui.net/) |
 | 2D rendering | [SkiaSharp](https://github.com/mono/SkiaSharp) |
-| 3D rendering | [Silk.NET](https://github.com/dotnet/Silk.NET) over OpenGL 3.3 |
-| In-IDE compilation | Roslyn (`Microsoft.CodeAnalysis`) — sketches compile in memory, no disk round-trip |
-| Package resolution | `NuGet.Protocol`, resolved straight from `// nuget:` comments |
+| 3D rendering | [Silk.NET](https://github.com/dotnet/Silk.NET) over OpenGL |
+| Audio | Own engine in C#: logical-time scheduler, allocation-free audio thread, `winmm` output on Windows |
+| In-IDE compilation | Roslyn (`Microsoft.CodeAnalysis`), in memory, no disk round-trip |
+| Package resolution | `NuGet.Protocol`, straight from `// nuget:` comments |
+</details>
 
-## Roadmap
+## 🗺️ Roadmap
 
-See [`ROADMAP.md`](ROADMAP.md) for where this is headed — right now that's leaning into "any NuGet package is a sketch library" and true hot-reload.
+Where it's headed is in [`ROADMAP.md`](ROADMAP.md): hot reload on save, cross-platform builds, GPU particle systems and more.
 
-## Contributing
+## 💛 Support the project
 
-Issues and pull requests are welcome — whether that's a bug, a new example sketch, or an idea for the API. If you build something with DanaProcessing, open an issue and show it off.
+DanaProcessing is free, open source, and built in spare time. If it's useful to you, for your art, your classes or your installations, you can help it keep growing with a donation via **[PayPal](https://paypal.me/CarlosFernandez934)**. Every contribution turns into more time for new features, examples and fixes.
 
-## License
+> **A note on where donations go:** PayPal isn't available where I live, so donations are received on my behalf by a trusted collaborator, **Carlos Fernandez**. That's the name you'll see on the PayPal page.
 
-[MIT](LICENSE.txt) — do pretty much anything with it, just keep the notice.
+*¿Hablás español? DanaProcessing es gratis y de código abierto; si te sirve, podés apoyarlo con una donación por [PayPal](https://paypal.me/CarlosFernandez934). Como PayPal no está disponible donde vivo, las donaciones las recibe en mi nombre un colaborador de confianza, Carlos Fernandez.*
+
+You'll also find the link inside the IDE under **Help → Support the project**.
+
+## 🤝 Contributing
+
+Issues and pull requests are welcome: a bug, a new example sketch, or an idea for the API. If you build something with DanaProcessing, open an issue and show it off. I'd love to see it.
+
+## 🙏 Inspiration
+
+This project stands on the shoulders of [Processing](https://processing.org) and [p5.js](https://p5js.org), whose API it deliberately mirrors (some examples are adaptations of p5.js classics); [The Coding Train](https://www.youtube.com/@TheCodingTrain), where I learned to sketch; and [Sonic Pi](https://sonic-pi.net), whose way of live coding music shaped the audio engine.
+
+## 📄 License
+
+[MIT](LICENSE.txt). Do pretty much anything with it, just keep the notice.
