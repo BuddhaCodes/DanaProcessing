@@ -489,6 +489,55 @@
     text-wrap:pretty;
   }
   .hero-actions{ display:flex; gap:10px; flex-wrap:wrap; }
+
+  /* --- Support card in the hero's right column --- */
+  .hero-support{
+    justify-self:end;
+    align-self:center;
+    width:100%;
+    max-width:340px;
+    padding:22px 22px 18px;
+    background:var(--bg-secondary);
+    border:1px solid var(--border-light);
+    border-radius:var(--radius-lg);
+    box-shadow:var(--shadow-md);
+  }
+  .hero-support-icon{
+    width:38px; height:38px;
+    display:flex; align-items:center; justify-content:center;
+    border-radius:50%;
+    background:var(--accent-glow);
+    color:var(--accent);
+    font-size:18px;
+    margin-bottom:12px;
+  }
+  .hero-support h2{
+    font-size:17px;
+    font-weight:700;
+    margin:0 0 6px;
+    color:var(--text-primary);
+    letter-spacing:-0.01em;
+  }
+  .hero-support p{
+    font-size:14px;
+    line-height:1.6;
+    color:var(--text-secondary);
+    margin:0 0 14px;
+  }
+  .hero-support .btn-support{
+    width:100%;
+    justify-content:center;
+    color:#fff;
+    background:linear-gradient(135deg, #D9466F, #F08A24);
+    border:none;
+  }
+  .hero-support .btn-support:hover{ filter:brightness(1.06); }
+  .hero-support .hero-support-note{
+    font-size:12px;
+    line-height:1.5;
+    color:var(--text-muted);
+    margin:12px 0 0;
+  }
   .btn{
     display:inline-flex;
     align-items:center;
@@ -610,6 +659,7 @@
 
   @media (max-width:860px){
     .hero{ grid-template-columns:1fr; }
+    .hero-support{ justify-self:start; max-width:none; }
     .hero-content h1{ font-size:30px; }
   }
 
@@ -1460,7 +1510,15 @@
   <a class="btn btn-primary only-sound" href="#audio"><i class="ph ph-music-notes"></i> Start with sound</a>
 </div>
         </div>
-     
+
+        <!-- Support card: fills the hero's empty right column (stacks under the hero on narrow screens) -->
+        <aside class="hero-support" aria-label="Support the project">
+          <div class="hero-support-icon"><i class="ph-bold ph-heart"></i></div>
+          <h2>Support DanaProcessing</h2>
+          <p>Free and open source, built in spare time. A donation buys more time for new features, examples and fixes.</p>
+          <a class="btn btn-support" href="https://paypal.me/CarlosFernandez934" target="_blank" rel="noopener"><i class="ph-bold ph-heart"></i> Donate via PayPal</a>
+          <p class="hero-support-note">PayPal isn't available where I live, so donations are received on my behalf by a trusted collaborator, Carlos Fernandez.</p>
+        </aside>
       </section>
 
       <!-- ========== PAGE BODY ========== -->
