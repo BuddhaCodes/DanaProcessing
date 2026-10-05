@@ -20,6 +20,7 @@ using DanaProcessing.Ide.Editor;
 using DanaProcessing.Ide.Export;
 using DanaProcessing.Ide.Localization;
 using DanaProcessing.Ide.Theme;
+using DanaProcessing.Ide.Support;
 using DanaProcessing.Ide.Updates;
 using Microsoft.CodeAnalysis;
 using System;
@@ -63,6 +64,10 @@ namespace DanaProcessing.Ide
         private TextBlock? _wordmark;
         private AvaloniaSketchWindow? _fastRunWindow;
         private readonly Border _updateBanner;
+        // Occasional, dismissable "support the project" banner -- see
+        // SupportSettings for the (deliberately conservative) policy.
+        private readonly Border _supportBanner;
+        private bool _supportPromptShownThisSession;
         private readonly TextBlock _updateBannerText;
         private readonly StackPanel _loadingSpinner;
         private readonly DispatcherTimer _loadingSpinnerTimer;
@@ -634,6 +639,80 @@ namespace DanaProcessing.Ide
                 Child = updateBannerGrid,
             };
 
+            // --- Support banner: soft surface colors (not the accent) so it
+            // never competes with the update banner or reads as an error. ---
+            var supportText = new TextBlock
+            {
+                Text = Loc.Tr(
+                    "♥  ¿Te está sirviendo DanaProcessing? Es gratis y de código abierto -- si querés que siga creciendo, podés apoyarlo con una donación por PayPal.",
+                    "♥  Enjoying DanaProcessing? It's free and open source -- if you'd like it to keep growing, you can support it with a donation via PayPal."),
+                Foreground = ClayTheme.TextSecondary,
+                FontFamily = ClayTheme.FontBody,
+                FontSize = 12.5,
+                TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+                VerticalAlignment = VerticalAlignment.Center,
+            };
+            var supportYesButton = new Button
+            {
+                Content = Loc.Tr("Donar", "Donate"),
+                Classes = { "clay-run" },
+                Padding = new Avalonia.Thickness(14, 5),
+                FontSize = 12,
+            };
+            supportYesButton.Click += (_, _) =>
+            {
+                SupportLinks.Open(SupportLinks.DonateUrl);
+                _supportBanner!.IsVisible = false;
+            };
+            var supportLaterButton = new Button
+            {
+                Content = Loc.Tr("Ahora no", "Not now"),
+                Classes = { "clay-secondary" },
+                Padding = new Avalonia.Thickness(12, 5),
+                FontSize = 12,
+            };
+            supportLaterButton.Click += (_, _) => _supportBanner!.IsVisible = false;
+            var supportNeverButton = new Button
+            {
+                Content = Loc.Tr("No volver a mostrar", "Don't show again"),
+                Classes = { "clay-secondary" },
+                Padding = new Avalonia.Thickness(12, 5),
+                FontSize = 12,
+            };
+            supportNeverButton.Click += (_, _) =>
+            {
+                _supportBanner!.IsVisible = false;
+                var settings = SupportSettingsStore.Load();
+                settings.PromptDisabled = true;
+                SupportSettingsStore.Save(settings);
+            };
+            var supportButtons = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                Spacing = 6,
+                Margin = new Avalonia.Thickness(16, 0, 0, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+                Children = { supportYesButton, supportLaterButton, supportNeverButton },
+            };
+            var supportGrid = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
+            Grid.SetColumn(supportText, 0);
+            Grid.SetColumn(supportButtons, 1);
+            supportGrid.Children.Add(supportText);
+            supportGrid.Children.Add(supportButtons);
+
+            _supportBanner = new Border
+            {
+                Background = ClayTheme.SurfaceHigher,
+                BorderBrush = new SolidColorBrush(Avalonia.Media.Color.Parse("#E8E2DA")),
+                BorderThickness = new Avalonia.Thickness(0, 0, 0, 1),
+                Padding = new Avalonia.Thickness(20, 7),
+                IsVisible = false,
+                Child = supportGrid,
+            };
+
+            // Both banners share row 1; each collapses on its own.
+            var bannerStack = new StackPanel { Children = { _updateBanner, _supportBanner } };
+
             // Column definitions, margins, and per-card visibility are all
             // owned by UpdateResponsiveLayout — it runs once below to set the
             // initial state and again on every resize that crosses the
@@ -653,13 +732,13 @@ namespace DanaProcessing.Ide
             rootGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
             Grid.SetRow(titleBarRoot, 0);
-            Grid.SetRow(_updateBanner, 1);
+            Grid.SetRow(bannerStack, 1);
             Grid.SetRow(_contentGrid, 2);
             Grid.SetRow(_outputPanel, 3);
             Grid.SetRow(statusBar, 4);
 
             rootGrid.Children.Add(titleBarRoot);
-            rootGrid.Children.Add(_updateBanner);
+            rootGrid.Children.Add(bannerStack);
             rootGrid.Children.Add(_contentGrid);
             rootGrid.Children.Add(_outputPanel);
             rootGrid.Children.Add(statusBar);
@@ -1156,6 +1235,7 @@ namespace DanaProcessing.Ide
                 BuildMenuItem("⬆", Loc.Tr("Buscar actualizaciones...", "Check for updates..."), null, () => _ = CheckForUpdatesManuallyAsync()),
                 BuildMenuItem("🐛", Loc.Tr("Reportar un problema...", "Report a problem..."), null, ReportProblemManually),
                 MenuSeparator(),
+                BuildMenuItem("♥", Loc.Tr("Apoyar el proyecto...", "Support the project..."), null, () => SupportLinks.Open(SupportLinks.DonateUrl)),
                 BuildMenuItem("ⓘ", Loc.Tr("Acerca de DanaProcessing...", "About DanaProcessing..."), null, () => new AboutWindow().ShowDialog(this)),
             });
 
@@ -1547,6 +1627,28 @@ namespace DanaProcessing.Ide
             }
         }
 
+        /// <summary>
+        /// Counts a successful Run and, if SupportSettings' policy says so,
+        /// shows the support banner -- never while the update banner is up
+        /// (one request at a time), and at most once per session.
+        /// </summary>
+        private void RegisterSuccessfulRun()
+        {
+            var settings = SupportSettingsStore.Load();
+            settings.SuccessfulRuns++;
+
+            var now = DateTime.UtcNow;
+            if (!_supportPromptShownThisSession && !_updateBanner.IsVisible && settings.ShouldPrompt(now))
+            {
+                _supportPromptShownThisSession = true;
+                settings.LastPromptAtRun = settings.SuccessfulRuns;
+                settings.LastPromptUtc = now;
+                _supportBanner.IsVisible = true;
+            }
+
+            SupportSettingsStore.Save(settings);
+        }
+
         private void ShowUpdateBanner(UpdateCheckResult result)
         {
             _pendingUpdateVersion = result.LatestVersion;
@@ -1584,6 +1686,7 @@ namespace DanaProcessing.Ide
                     _canvas.LoadSketch(result.Sketch!);
                     _hasRunOnce = true;
                     _runningTab = _editorView.ActiveTab;
+                    RegisterSuccessfulRun();
                     _statusDot.Fill = ClayTheme.Success;
                     _statusLabel.Text = Loc.Tr("Listo", "Ready");
                     ((Border)_statusPill).Background = ClayTheme.SuccessSurface;

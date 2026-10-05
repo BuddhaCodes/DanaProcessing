@@ -489,6 +489,55 @@
     text-wrap:pretty;
   }
   .hero-actions{ display:flex; gap:10px; flex-wrap:wrap; }
+
+  /* --- Support card in the hero's right column --- */
+  .hero-support{
+    justify-self:end;
+    align-self:center;
+    width:100%;
+    max-width:340px;
+    padding:22px 22px 18px;
+    background:var(--bg-secondary);
+    border:1px solid var(--border-light);
+    border-radius:var(--radius-lg);
+    box-shadow:var(--shadow-md);
+  }
+  .hero-support-icon{
+    width:38px; height:38px;
+    display:flex; align-items:center; justify-content:center;
+    border-radius:50%;
+    background:var(--accent-glow);
+    color:var(--accent);
+    font-size:18px;
+    margin-bottom:12px;
+  }
+  .hero-support h2{
+    font-size:17px;
+    font-weight:700;
+    margin:0 0 6px;
+    color:var(--text-primary);
+    letter-spacing:-0.01em;
+  }
+  .hero-support p{
+    font-size:14px;
+    line-height:1.6;
+    color:var(--text-secondary);
+    margin:0 0 14px;
+  }
+  .hero-support .btn-support{
+    width:100%;
+    justify-content:center;
+    color:#fff;
+    background:linear-gradient(135deg, #D9466F, #F08A24);
+    border:none;
+  }
+  .hero-support .btn-support:hover{ filter:brightness(1.06); }
+  .hero-support .hero-support-note{
+    font-size:12px;
+    line-height:1.5;
+    color:var(--text-muted);
+    margin:12px 0 0;
+  }
   .btn{
     display:inline-flex;
     align-items:center;
@@ -610,6 +659,7 @@
 
   @media (max-width:860px){
     .hero{ grid-template-columns:1fr; }
+    .hero-support{ justify-self:start; max-width:none; }
     .hero-content h1{ font-size:30px; }
   }
 
@@ -994,6 +1044,18 @@
     box-shadow:var(--shadow-sm);
   }
   .sidebar-nav a.sidebar-download .ph-bold{ font-size:15px; }
+
+  /* Discreet donation link under the download button */
+  .sidebar-nav a.sidebar-support{
+    display:flex; align-items:center; justify-content:center; gap:6px;
+    margin-top:10px; padding:7px 10px;
+    font-size:12.5px; color:var(--text-muted);
+    border:1px dashed var(--border-medium); border-radius:10px;
+    text-decoration:none;
+    transition:color var(--transition), border-color var(--transition), background var(--transition);
+  }
+  .sidebar-nav a.sidebar-support:hover{ color:var(--accent); border-color:var(--accent); background:var(--accent-glow); }
+  .sidebar-nav a.sidebar-support .ph{ font-size:14px; }
 
   @keyframes dana-spin{ to{ transform:rotate(360deg); } }
 
@@ -1381,6 +1443,10 @@
           <a href="https://github.com/BuddhaCodes/DanaProcessing/releases/latest" data-platform="linux"><i class="ph-bold ph-linux-logo"></i> Linux</a>
         </div>
       </div>
+
+      <a class="sidebar-support" href="https://paypal.me/CarlosFernandez934" target="_blank" rel="noopener" title="Donations are received on my behalf by a trusted collaborator, Carlos Fernandez">
+        <i class="ph ph-heart"></i> Support the project
+      </a>
     </nav>
 
     <div class="sidebar-footer">
@@ -1444,7 +1510,15 @@
   <a class="btn btn-primary only-sound" href="#audio"><i class="ph ph-music-notes"></i> Start with sound</a>
 </div>
         </div>
-     
+
+        <!-- Support card: fills the hero's empty right column (stacks under the hero on narrow screens) -->
+        <aside class="hero-support" aria-label="Support the project">
+          <div class="hero-support-icon"><i class="ph-bold ph-heart"></i></div>
+          <h2>Support DanaProcessing</h2>
+          <p>Free and open source, built in spare time. A donation buys more time for new features, examples and fixes.</p>
+          <a class="btn btn-support" href="https://paypal.me/CarlosFernandez934" target="_blank" rel="noopener"><i class="ph-bold ph-heart"></i> Donate via PayPal</a>
+          <p class="hero-support-note">PayPal isn't available where I live, so donations are received on my behalf by a trusted collaborator, Carlos Fernandez.</p>
+        </aside>
       </section>
 
       <!-- ========== PAGE BODY ========== -->
@@ -2769,6 +2843,8 @@ heights.Shuffle();               <span class="cm">// reorders in place</span>
           <!-- ================= FOOTER ================= -->
           <footer class="doc-footer">
             DanaProcessing reference documentation. Generated from the current source tree — GraphicsContext, Sketch, Renderer3D (Silk.NET/OpenGL), PShader, PVector, PImage, PGraphics, PShape, PFont, JSONObject/JSONArray, XML, Table, PerlinNoise, the audio engine (live loops, synths, samples, analysis), the Avalonia host, and the IDE (live diagnostics, code navigation, Hot Reload, Agent mode, NuGet packages, sample gallery, export, crash reporting, settings).
+          
+            <br><a href="https://paypal.me/CarlosFernandez934" target="_blank" rel="noopener">♥ Support DanaProcessing via PayPal</a> — it's free and open source, and every donation buys more time to work on it. PayPal isn't available where I live, so donations are received on my behalf by a trusted collaborator, Carlos Fernandez.
           </footer>
 
         </div><!-- /main-col -->
