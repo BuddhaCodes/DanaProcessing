@@ -63,6 +63,7 @@ namespace DanaProcessing.Ide
         private readonly Button _agentButton;
         private TextBlock? _wordmark;
         private AvaloniaSketchWindow? _fastRunWindow;
+        private ReelWindow? _reelWindow;
         private readonly Border _updateBanner;
         // Occasional, dismissable "support the project" banner -- see
         // SupportSettings for the (deliberately conservative) policy.
@@ -1220,6 +1221,7 @@ namespace DanaProcessing.Ide
                 BuildMenuItem("■", Loc.Tr("Detener sonido", "Stop sound"), "Ctrl+.", StopSound),
                 MenuSeparator(),
                 BuildMenuItem("🧩", Loc.Tr("Ejemplos...", "Examples..."), null, OpenSamples),
+                BuildMenuItem("🎬", Loc.Tr("Crear reel...", "Create reel..."), null, OpenReelWindow),
                 BuildMenuItem("📦", Loc.Tr("Paquetes NuGet...", "NuGet Packages..."), null, OpenNuGetPackages),
             });
 
@@ -1252,6 +1254,43 @@ namespace DanaProcessing.Ide
 
         private void OpenSamples() =>
             new SamplesWindow(source => _ = ReplaceContextIfConfirmedAsync(() => _editorView.ReplaceAllTabs(null, source))).ShowDialog(this);
+
+        /// <summary>
+        /// Sketch > Create reel: one window per IDE (re-focused if already open).
+        /// It pulls the active tab's code and a compiled copy of it whenever it
+        /// (re)loads, so you can keep editing and press "Update from code".
+        /// </summary>
+        private void OpenReelWindow()
+        {
+            if (_reelWindow != null)
+            {
+                _reelWindow.Activate();
+                return;
+            }
+            _reelWindow = new ReelWindow(LoadReelSourceAsync, InsertAtTopOfActiveTab);
+            _reelWindow.Closed += (_, _) => _reelWindow = null;
+            _reelWindow.Show(this);
+        }
+
+        private async Task<ReelWindow.ReelSource> LoadReelSourceAsync()
+        {
+            var source = _editorView.ActiveSourceText ?? "";
+            if (string.IsNullOrWhiteSpace(source))
+                return new ReelWindow.ReelSource(source, null, Array.Empty<string>());
+
+            var result = await ResolveAndCompileActiveSketchAsync();
+            if (result is null)
+                return new ReelWindow.ReelSource(source, null, new[] { Loc.Tr("No se pudieron resolver los paquetes NuGet (ver la pestaña Run).", "NuGet packages could not be resolved (see the Run tab).") });
+            if (!result.Success)
+                return new ReelWindow.ReelSource(source, null, result.Errors);
+
+            // A fresh instance per use: the reel's result part restarts the
+            // sketch whenever it seeks backwards or exports.
+            var type = result.Sketch!.GetType();
+            return new ReelWindow.ReelSource(source, () => (Sketch)Activator.CreateInstance(type)!, Array.Empty<string>());
+        }
+
+        private void InsertAtTopOfActiveTab(string text) => _editorView.ActiveTab?.Document.Insert(0, text);
 
         private void OpenNuGetPackages()
         {

@@ -125,11 +125,19 @@ namespace DanaProcessing
 
         private readonly Stopwatch _clock = Stopwatch.StartNew();
 
+        /// <summary>
+        /// When set, Millis() returns this instead of the real clock. The reel
+        /// renderer (DanaProcessing.Reels) drives a sketch frame by frame in
+        /// video time, which can be much faster or slower than real time --
+        /// a Millis()-based animation still has to come out at the right speed.
+        /// </summary>
+        internal double? VirtualMillis { get; set; }
+
         /// <summary>Milliseconds since the sketch started, like Processing's millis().</summary>
-        public long Millis() => _clock.ElapsedMilliseconds;
+        public long Millis() => VirtualMillis is { } v ? (long)v : _clock.ElapsedMilliseconds;
 
         /// <summary>Nanoseconds since the sketch started, like Processing's nanoTime(). Stopwatch ticks are 100ns units on .NET, hence the *100 — precision is whatever the OS timer actually offers, same caveat Processing's own nanoTime() carries.</summary>
-        public long NanoTime() => _clock.ElapsedTicks * 100L;
+        public long NanoTime() => VirtualMillis is { } v ? (long)(v * 1_000_000) : _clock.ElapsedTicks * 100L;
 
         // --- Wall-clock date/time — https://processing.org/reference/day_.html
         // and siblings (month/year/hour/minute/second). All read the local

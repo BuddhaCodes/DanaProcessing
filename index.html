@@ -1439,6 +1439,11 @@
       </div>
 
       <div class="group">
+        <div class="group-title">Video</div>
+        <a href="#reels"><i class="ph ph-film-strip"></i> Reels</a>
+      </div>
+
+      <div class="group">
         <div class="group-title">Reference</div>
         <a href="#enums"><i class="ph ph-list-bullets"></i> Enumerations</a>
         <a href="#index"><i class="ph ph-magnifying-glass"></i> Keyword index</a>
@@ -2640,6 +2645,64 @@ heights.Shuffle();               <span class="cm">// reorders in place</span>
           </section>
 
           <!-- ================= ENUMS ================= -->
+          <section class="doc-section" id="reels">
+            <div class="section-kicker">18.5 · Video</div>
+            <h2>Reels: turn a sketch into a video</h2>
+            <p class="section-intro">Mark up your sketch with <code class="inline">// @reel</code> comments and the IDE turns it into a short video for Reels, Shorts or TikTok. You get a title card, the code typing itself scene by scene with captions and highlighted lines, then the sketch running live, even driven by a simulated user if it reacts to the mouse or keyboard. Open it from <strong>Sketch → Create reel...</strong></p>
+
+            <div class="code-block">
+<pre><span class="kw">using</span> DanaProcessing.Reels;   <span class="cm">// opt in: hidden from the video</span>
+
+<span class="cm">// @reel title: Particles that chase your mouse</span>
+<span class="cm">// @reel format: vertical</span>
+<span class="cm">// @reel result: 8 caption="Move to steer · click to burst"</span>
+
+<span class="cm">// @reel scene "Every frame, each one steers toward the mouse" effect=type</span>
+<span class="kw">public override void</span> Draw()
+{
+    <span class="cm">// @reel pause 0.4</span>
+    pull.SetMag(<span class="str">0.35f</span>);   <span class="cm">// @mark  (highlighted once typed)</span>
+    <span class="cm">// @reel hide</span>
+    ...bookkeeping you don't want on screen
+    <span class="cm">// @reel show</span>
+}
+
+<span class="cm">// @reel drag 100,100 -&gt; 500,400 at=2 dur=1.5</span></pre>
+            </div>
+
+            <h3 class="entry-title" id="reel-header">Reel settings <span class="sig-return">→ // @reel key: value</span></h3>
+            <p class="entry-desc">Put these anywhere, usually at the top. All are optional.</p>
+            <div class="table-wrap">
+              <table>
+                <tr><th>marker</th><th>what it does</th></tr>
+                <tr><td>title: … / subtitle: …</td><td>Opening title card, also shown as a header over the code cards</td></tr>
+                <tr><td>format: vertical | square | landscape</td><td>1080×1920 (default), 1080×1080 or 1920×1080</td></tr>
+                <tr><td>theme: clay | dark | light</td><td>Clay is the IDE's own look (default)</td></tr>
+                <tr><td>speed: 55 | slow | normal | fast | turbo</td><td>Typing speed in characters per second. If you don't set it, long scenes speed up to stay reel-sized</td></tr>
+                <tr><td>result: 8 caption="…" transition=zoom</td><td>Seconds of live sketch at the end; <code class="inline">result off</code> skips it</td></tr>
+                <tr><td>outro: … | off</td><td>Closing card text, or none</td></tr>
+                <tr><td>fps: 30 · lang: en | es · file: Sketch.cs</td><td>Frame rate, language of the reel's own labels, file name on the code card</td></tr>
+                <tr><td>progress: off · linenumbers: off · mouse: off</td><td>Hide the story-style progress bar, the line numbers, or the simulated mouse</td></tr>
+              </table>
+            </div>
+
+            <h3 class="entry-title" id="reel-scene">// @reel scene "caption" <span class="sig-return">→ a code card</span></h3>
+            <p class="entry-desc">The code from this marker to the next one is one card, with its caption underneath. Options: <code class="inline">effect=type|lines|fade|instant</code> (typed with a caret, line by line, all at once with a fade, or already there), <code class="inline">transition=slide|fade|zoom|wipe|none</code>, <code class="inline">speed=</code>, <code class="inline">hold=</code> (seconds the finished card stays), and the word <code class="inline">keep</code> to continue the previous card instead of starting a new one. A scene with a caption and no code becomes a full-screen statement card. Indentation is normalized per card.</p>
+
+            <h3 class="entry-title" id="reel-inside">Inside a scene <span class="sig-return">→ pause · caption · @mark · hide/show</span></h3>
+            <p class="entry-desc"><code class="inline">// @reel pause 0.5</code> stops typing for a moment before the next line. <code class="inline">// @reel caption: …</code> changes the caption when the next line starts appearing. Ending a code line with <code class="inline">// @mark</code> highlights it once the scene is shown and dims the rest. Lines between <code class="inline">// @reel hide</code> and <code class="inline">// @reel show</code> still compile and run, but never appear in the video.</p>
+
+            <h3 class="entry-title" id="reel-input">Simulated interaction <span class="sig-return">→ move · drag · click · key</span></h3>
+            <p class="entry-desc">During the result part the sketch receives real input events (<code class="inline">MousePressed()</code>, <code class="inline">MouseDragged()</code>, <code class="inline">KeyPressed()</code>…), and the video draws the cursor, click ripples and a keycap. Points are in sketch pixels and times in seconds since the result started: <code class="inline">// @reel move 10,10 -&gt; 200,200 -&gt; 300,50 at=1 dur=2</code>, <code class="inline">// @reel drag 100,100 -&gt; 400,300 at 3s over 1.5s</code>, <code class="inline">// @reel click 300,200 at=2</code>, <code class="inline">// @reel key space at=4</code> (also <code class="inline">enter</code>, arrow keys, or any single character). With no scripted mouse, a sketch that reads the mouse gets a natural-looking path automatically, plus clicks and a drag if it overrides those methods.</p>
+
+            <h3 class="entry-title" id="reel-export">Export <span class="sig-return">→ MP4 · GIF · PNG</span></h3>
+            <p class="entry-desc">The preview window plays the reel and lets you scrub and jump to any part. Export renders frame by frame in video time, not real time, so a heavy sketch still comes out smooth, and <code class="inline">Millis()</code> follows video time. <strong>MP4</strong> (H.264, full resolution) needs <a href="https://www.gyan.dev/ffmpeg/builds/" target="_blank" rel="noopener">ffmpeg</a>; the window finds it or lets you pick it. <strong>GIF</strong> uses DanaProcessing's own encoder and needs nothing else. <strong>PNG</strong> writes one image per frame for your own editor. Sound from live loops isn't in the video yet.</p>
+
+            <h3 class="entry-title" id="reel-api">Reel.IsActive <span class="sig-return">→ bool</span> · Reel.IsExporting <span class="sig-return">→ bool</span></h3>
+            <p class="entry-desc">True while your sketch's code is running inside a reel (preview or export), or while a reel is being written to a file. Use them to skip a slow intro or hide debug text in the video. <code class="inline">Reel.Parse(source)</code> returns the parsed <code class="inline">ReelScript</code> (scenes, inputs, warnings) if you want to build tooling on top.</p>
+            <div class="note"><strong>Try it:</strong> <strong>Sketch → Examples</strong>, tag <em>Reels / video</em>: "Reel: particles that chase your mouse" (vertical, auto-simulated mouse) and "Reel: a paint app in 25 lines" (square, dark theme, scripted drags and a key press).</div>
+          </section>
+
           <section class="doc-section" id="enums">
             <div class="section-kicker">19 · Reference</div>
             <h2>Enumerations</h2>
@@ -2820,7 +2883,7 @@ heights.Shuffle();               <span class="cm">// reorders in place</span>
             <p class="entry-desc"><strong>Sketch → NuGet Packages</strong> opens a Browse/Installed package manager (search NuGet.org, pick a version, install/update/remove) that writes these directives for you.</p>
 
             <h3 class="entry-title" id="sample-gallery">Example gallery</h3>
-            <p class="entry-desc">36 built-in sample sketches, open via <strong>Sketch → Examples</strong>. The window has a search box (accent- and case-insensitive; it also searches inside the code, so <code class="inline">PVector</code> or <code class="inline">Sphere</code> finds the samples that use them), topic tags with filter chips (2D, 3D, Audio, ML.NET, Particles, Games…), and a code preview; ↑/↓ and Enter work from the keyboard — 2D and 3D, from a minimal <code class="inline">Setup()</code>/<code class="inline">Draw()</code> to a live-coded beat with the <a href="#audio">audio engine</a>, an orbiting camera, a GPU-uploaded 3D swarm, parallel prime search, a live-training ML.NET color field, a reinforcement-learning self-play demo, and PDF export. Each one is commented to explain not just what it draws but why it's built that way — a working answer to "how would I actually do X" for most of the API on this page.</p>
+            <p class="entry-desc">38 built-in sample sketches, open via <strong>Sketch → Examples</strong>. The window has a search box (accent- and case-insensitive; it also searches inside the code, so <code class="inline">PVector</code> or <code class="inline">Sphere</code> finds the samples that use them), topic tags with filter chips (2D, 3D, Audio, ML.NET, Particles, Games…), and a code preview; ↑/↓ and Enter work from the keyboard — 2D and 3D, from a minimal <code class="inline">Setup()</code>/<code class="inline">Draw()</code> to a live-coded beat with the <a href="#audio">audio engine</a>, an orbiting camera, a GPU-uploaded 3D swarm, parallel prime search, a live-training ML.NET color field, a reinforcement-learning self-play demo, and PDF export. Each one is commented to explain not just what it draws but why it's built that way — a working answer to "how would I actually do X" for most of the API on this page.</p>
 
             <h3 class="entry-title" id="export">Standalone export</h3>
             <p class="entry-desc"><strong>File → Export sketch</strong> (<code class="inline">Ctrl+E</code>) packages the active sketch as a single, self-contained, double-clickable executable via <code class="inline">dotnet publish</code> — no .NET runtime install required on the machine that opens it, nothing to explain to whoever you send it to. An optional "modo gadget" (windowless) mode drops the OS title bar entirely — drag it with Alt+click, close it with Alt+F4 — for running the exported sketch as a desktop widget instead of a regular app window.</p>

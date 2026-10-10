@@ -36,6 +36,7 @@ namespace DanaProcessing.Ide.Editor
         Threads,
         Games,
         HotReload,
+        Reels,
     }
 
     public static class SampleTags
@@ -68,6 +69,7 @@ namespace DanaProcessing.Ide.Editor
             SampleTag.Threads => "Hilos",
             SampleTag.Games => "Juegos",
             SampleTag.HotReload => "Hot reload",
+            SampleTag.Reels => "Reels / video",
             _ => tag.ToString(),
         };
 
@@ -84,6 +86,7 @@ namespace DanaProcessing.Ide.Editor
             SampleTag.Window => "Window",
             SampleTag.Threads => "Threads",
             SampleTag.Games => "Games",
+            SampleTag.Reels => "Reels / video",
             _ => Spanish(tag),
         };
     }
@@ -299,6 +302,20 @@ namespace DanaProcessing.Ide.Editor
                        "DanaProcessing's own audio engine, Sonic Pi style: four [LiveLoop]s (kick/snare, hi-hat, filtered bass and plucked chords) in sync. Edit and press Run: the music doesn't stop, each loop picks up the new code on its next pass. The visuals react via Amplitude, Spectrum() and OnNote(). Ctrl+. stops the sound."),
                 LiveCodingBeat,
                 new[] { SampleTag.Audio, SampleTag.LiveCoding, SampleTag.Animation }),
+
+            new SketchSample(
+                Loc.Tr("Reel: partículas que persiguen el mouse", "Reel: particles that chase your mouse"),
+                Loc.Tr("Un sketch preparado para video con el módulo DanaProcessing.Reels: las marcas // @reel arman un reel vertical con título, el código escribiéndose escena por escena (efectos type y lines, líneas resaltadas con // @mark, partes ocultas con hide/show) y al final el sketch funcionando con un usuario simulado que mueve el mouse y hace click. Abrilo y andá a Sketch > Crear reel...",
+                       "A sketch set up for video with the DanaProcessing.Reels module: its // @reel markers build a vertical reel with a title, the code typing itself scene by scene (type and lines effects, lines highlighted with // @mark, parts left out with hide/show) and, at the end, the sketch running with a simulated user moving the mouse and clicking. Open it and go to Sketch > Create reel..."),
+                ReelDemo,
+                new[] { SampleTag.Reels, SampleTag.Particles, SampleTag.Interaction }),
+
+            new SketchSample(
+                Loc.Tr("Reel: app de dibujo en 25 líneas", "Reel: a paint app in 25 lines"),
+                Loc.Tr("Segundo ejemplo de reel, cuadrado y con tema oscuro: abre con una tarjeta de solo texto, sigue con transiciones wipe y slide, un subtítulo que cambia a mitad de escena y una escena con keep. En el resultado la interacción está guionada: tres trazos con // @reel drag y la barra espaciadora (// @reel key space) para borrar. Abrilo y andá a Sketch > Crear reel...",
+                       "A second reel example, square and with the dark theme: it opens with a text-only card, then wipe and slide transitions, a caption that changes mid-scene and a keep scene. In the result the interaction is scripted: three strokes with // @reel drag and the space bar (// @reel key space) to clear. Open it and go to Sketch > Create reel..."),
+                ReelPaint,
+                new[] { SampleTag.Reels, SampleTag.Interaction, SampleTag.TwoD }),
 
             new SketchSample(
                 Loc.Tr("Audio reactivo: FFT en vivo (NAudio)", "Audio-reactive: live FFT (NAudio)"),
@@ -2568,6 +2585,126 @@ public class MySketch : Sketch
         _qx = nx / norm;
         _qy = ny / norm;
         _qz = nz / norm;
+    }
+}
+";
+
+        private const string ReelPaint =
+@"using DanaProcessing.Reels;
+
+// @reel title: A paint app in 25 lines of C#
+// @reel subtitle: DanaProcessing · creative coding
+// @reel format: square
+// @reel theme: dark
+// @reel speed: fast
+// @reel result: 9 caption=""Drag to paint · Space clears""
+// @reel drag 120,150 -> 250,90 -> 400,180 -> 480,110 at=0.3 dur=2.2
+// @reel drag 90,400 -> 300,320 -> 510,420 at=3 dur=2
+// @reel key space at=5.6
+// @reel drag 300,110 -> 470,250 -> 300,390 -> 130,250 -> 300,110 at=6 dur=2.6
+
+// @reel scene ""No canvas setup. No event wiring. Just a sketch.""
+
+// @reel scene ""A dark canvas"" effect=lines transition=wipe
+public class Paint : Sketch
+{
+    float hue;
+
+    public override void Setup()
+    {
+        Size(600, 500);
+        Background(14, 16, 22);
+        StrokeCap(StrokeCapKind.Round);
+    }
+
+    // @reel scene ""While the mouse is down, connect the dots"" effect=type transition=slide
+    public override void Draw()
+    {
+        if (!IsMousePressed) return;
+        hue = (hue + 1.5f) % 360;
+        // @reel caption: Faster strokes are thicker
+        float speed = Dist(PMouseX, PMouseY, MouseX, MouseY);
+        StrokeWeight(Map(speed, 0, 40, 3, 16));   // @mark
+        StrokeHSB(hue, 75, 100);
+        Line(PMouseX, PMouseY, MouseX, MouseY);   // @mark
+    }
+
+    // @reel scene ""Space wipes the canvas"" effect=fade keep
+    public override void KeyPressed()
+    {
+        if (Key == ' ')
+            Background(14, 16, 22);
+    }
+}
+";
+
+        private const string ReelDemo =
+@"using DanaProcessing.Reels;
+
+// @reel title: Particles that chase your mouse
+// @reel subtitle: ~40 lines of C# with DanaProcessing
+// @reel format: vertical
+// @reel result: 8 caption=""Move to steer · click to burst""
+
+// @reel hide
+using System.Collections.Generic;
+// @reel show
+
+// @reel scene ""A particle: where it is, where it's going"" effect=type
+class Particle
+{
+    public PVector Pos, Vel;
+    public float Hue;
+}
+
+// @reel scene ""A canvas and a few hundred particles"" effect=lines
+public class ParticleChase : Sketch
+{
+    readonly List<Particle> particles = new();
+
+    public override void Setup()
+    {
+        Size(600, 600);
+        Background(18, 14, 12);
+        Burst(Width / 2, Height / 2, 200);
+    }
+
+    // @reel scene ""Every frame, each one steers toward the mouse"" effect=type
+    public override void Draw()
+    {
+        Fill(18, 14, 12, 40);   // translucent = trails
+        NoStroke();
+        Rect(0, 0, Width, Height);
+        // @reel pause 0.4
+        foreach (var p in particles)
+        {
+            var pull = new PVector(MouseX - p.Pos.X, MouseY - p.Pos.Y);
+            pull.SetMag(0.35f);   // @mark
+            p.Vel.Add(pull);
+            p.Vel.Limit(7);       // @mark
+            p.Pos.Add(p.Vel);
+            FillHSB(p.Hue, 70, 95);
+            Circle(p.Pos.X, p.Pos.Y, 6);
+        }
+        // @reel hide
+        if (particles.Count > 600)
+            particles.RemoveRange(0, particles.Count - 600);
+        // @reel show
+    }
+
+    // @reel scene ""A click adds a burst of new ones"" keep
+    public override void MousePressed() => Burst(MouseX, MouseY, 80);
+
+    void Burst(float x, float y, int n)
+    {
+        for (int i = 0; i < n; i++)
+            particles.Add(new Particle
+            {
+                Pos = new PVector(x, y),
+                Vel = PVector.FromAngle(Random(TWO_PI))
+                             .Mult(Random(2, 9)),
+                Hue = Random(10, 60),
+            });
     }
 }
 ";
