@@ -37,6 +37,7 @@ namespace DanaProcessing.Ide.Editor
         Games,
         HotReload,
         Reels,
+        YouTubeSeries,
     }
 
     public static class SampleTags
@@ -70,6 +71,7 @@ namespace DanaProcessing.Ide.Editor
             SampleTag.Games => "Juegos",
             SampleTag.HotReload => "Hot reload",
             SampleTag.Reels => "Reels / video",
+            SampleTag.YouTubeSeries => "YouTube series",
             _ => tag.ToString(),
         };
 
@@ -87,6 +89,7 @@ namespace DanaProcessing.Ide.Editor
             SampleTag.Threads => "Threads",
             SampleTag.Games => "Games",
             SampleTag.Reels => "Reels / video",
+            SampleTag.YouTubeSeries => "YouTube series",
             _ => Spanish(tag),
         };
     }
@@ -102,13 +105,74 @@ namespace DanaProcessing.Ide.Editor
     {
         public static readonly SketchSample[] All =
         {
+            // ----- YouTube intro series: numbered, in publishing order -----
+            new SketchSample(
+                "YT 01 · Hello, Canvas",
+                "YouTube intro series, episode 1. Setup() runs once, Draw() runs every frame: a circle orbits the canvas. The very first reel of the series. Open it and use Sketch > Create reel to export the episode.",
+                Yt01,
+                new[] { SampleTag.YouTubeSeries, SampleTag.Reels, SampleTag.Basics }),
+
+            new SketchSample(
+                "YT 02 · Shapes & Color",
+                "YouTube intro series, episode 2. A sunset built from stripes of shifting hue, one breathing sun and a sea drawn on top. Draw order and HSB color. Open it and use Sketch > Create reel to export the episode.",
+                Yt02,
+                new[] { SampleTag.YouTubeSeries, SampleTag.Reels, SampleTag.Basics }),
+
+            new SketchSample(
+                "YT 03 · Motion",
+                "YouTube intro series, episode 3. Position, velocity and gravity: a bouncing ball with a rainbow trail. Physics in three lines. Open it and use Sketch > Create reel to export the episode.",
+                Yt03,
+                new[] { SampleTag.YouTubeSeries, SampleTag.Reels, SampleTag.Basics }),
+
+            new SketchSample(
+                "YT 04 · The Mouse",
+                "YouTube intro series, episode 4. A lazy brush that chases the cursor with Lerp(), painting bigger the farther it lags behind. Open it and use Sketch > Create reel to export the episode.",
+                Yt04,
+                new[] { SampleTag.YouTubeSeries, SampleTag.Reels, SampleTag.Basics }),
+
+            new SketchSample(
+                "YT 05 · Loops & Patterns",
+                "YouTube intro series, episode 5. Two nested loops make a 12x12 grid; distance from the center plus time turns it into a ripple. Open it and use Sketch > Create reel to export the episode.",
+                Yt05,
+                new[] { SampleTag.YouTubeSeries, SampleTag.Reels, SampleTag.Basics }),
+
+            new SketchSample(
+                "YT 06 · Random vs Noise",
+                "YouTube intro series, episode 6. Random() versus Noise() side by side: chaotic jitter on top, smooth natural waves below. Open it and use Sketch > Create reel to export the episode.",
+                Yt06,
+                new[] { SampleTag.YouTubeSeries, SampleTag.Reels, SampleTag.Basics }),
+
+            new SketchSample(
+                "YT 07 · Sin & Cos",
+                "YouTube intro series, episode 7. Cos gives x, Sin gives y. Add a faster orbit on top of the orbit and the trail blooms into a flower. Open it and use Sketch > Create reel to export the episode.",
+                Yt07,
+                new[] { SampleTag.YouTubeSeries, SampleTag.Reels, SampleTag.Basics }),
+
+            new SketchSample(
+                "YT 08 · Fireworks",
+                "YouTube intro series, episode 8. Your first class: a Spark with position, velocity and life. Every click bursts 120 of them. Open it and use Sketch > Create reel to export the episode.",
+                Yt08,
+                new[] { SampleTag.YouTubeSeries, SampleTag.Reels, SampleTag.Basics }),
+
+            new SketchSample(
+                "YT 09 · Recursion",
+                "YouTube intro series, episode 9. A Branch() that calls itself twice grows a fractal tree; the mouse sets the angle. Open it and use Sketch > Create reel to export the episode.",
+                Yt09,
+                new[] { SampleTag.YouTubeSeries, SampleTag.Reels, SampleTag.Basics }),
+
+            new SketchSample(
+                "YT 10 · Flow Field",
+                "YouTube intro series, episode 10. The series finale: 800 dots drift through invisible wind made of Noise(), leaving trails of color. Open it and use Sketch > Create reel to export the episode.",
+                Yt10,
+                new[] { SampleTag.YouTubeSeries, SampleTag.Reels, SampleTag.Basics }),
+
             new SketchSample(
                 Loc.Tr("Sketch mínimo", "Minimal sketch"),
                 Loc.Tr("Setup()/Draw() chico -- un círculo que sigue al mouse, crece mientras mantenés apretado el botón, y cambia de color con cada click.",
                        "A small Setup()/Draw() -- a circle that follows the mouse, grows while you hold the button down, and changes color on each click."),
                 MinimalSketch,
                 new[] { SampleTag.Basics, SampleTag.TwoD, SampleTag.Interaction }),
-             
+
             new SketchSample(
                 Loc.Tr("Sketch mínimo 3D", "Minimal 3D sketch"),
                 Loc.Tr("Lo mínimo para entrar en 3D: Size(..., RendererKind.Renderer3D), Lights() y un Box() girando con RotateY().",
@@ -2585,6 +2649,442 @@ public class MySketch : Sketch
         _qx = nx / norm;
         _qy = ny / norm;
         _qz = nz / norm;
+    }
+}
+";
+
+        private const string Yt01 =
+@"using DanaProcessing.Reels;
+
+// @reel title: Ep 01 · Hello, Canvas
+// @reel subtitle: Creative coding in C#, from zero
+// @reel result: 6 caption=""Two methods. Infinite possibilities.""
+// @reel outro: Next · Ep 02: Shapes & Color
+
+// @reel scene ""What if code could paint?""
+
+// @reel scene ""Setup() runs once: it makes the canvas"" effect=type
+public class HelloCanvas : Sketch
+{
+    public override void Setup()
+    {
+        Size(600, 600);   // @mark
+        NoStroke();
+    }
+
+    // @reel scene ""Draw() runs 60 times every second"" effect=type transition=slide
+    public override void Draw()
+    {
+        Background(24, 20, 18);
+        // @reel caption: FrameCount goes up by one every frame...
+        float t = FrameCount * 0.03f;
+        float x = Width / 2 + Cos(t) * 180;
+        float y = Height / 2 + Sin(t) * 180;
+        // @reel caption: ...so the circle never stands still
+        Fill(255, 176, 140);
+        Circle(x, y, 80);   // @mark
+    }
+}
+";
+
+        private const string Yt02 =
+@"using DanaProcessing.Reels;
+
+// @reel title: Ep 02 · Shapes & Color
+// @reel subtitle: A sunset made of rectangles and one circle
+// @reel result: 6 caption=""A few shapes. One whole mood.""
+// @reel outro: Next · Ep 03: Motion
+
+// @reel scene ""Every picture is just shapes + color""
+
+// @reel scene ""The sky: thin stripes, each one a new hue"" effect=type
+public class Sunset : Sketch
+{
+    public override void Setup()
+    {
+        Size(600, 600);
+        NoStroke();
+    }
+
+    public override void Draw()
+    {
+        for (int y = 0; y < Height; y += 10)
+        {
+            float hue = Map(y, 0, Height, 260, 20);
+            FillHSB(hue, 60, 90);   // @mark
+            Rect(0, y, Width, 10);
+        }
+        // @reel scene ""The sun: a circle that slowly breathes"" effect=type keep
+        float sunY = 330 + Sin(FrameCount * 0.03f) * 20;
+        Fill(255, 200, 120);
+        Circle(Width / 2, sunY, 180);
+        // @reel caption: Drawn last, the sea covers the sun
+        Fill(30, 40, 80);
+        Rect(0, 400, Width, 200);   // @mark
+    }
+}
+";
+
+        private const string Yt03 =
+@"using DanaProcessing.Reels;
+
+// @reel title: Ep 03 · Motion
+// @reel subtitle: Position, velocity, gravity. That's physics.
+// @reel result: 7 caption=""Three numbers per axis. It feels alive.""
+// @reel outro: Next · Ep 04: The Mouse
+
+// @reel scene ""Motion is just numbers that change""
+
+// @reel scene ""Where the ball is, and where it's going"" effect=lines
+public class Bounce : Sketch
+{
+    float x = 300, y = 120;
+    float vx = 5, vy = 0;
+
+    public override void Setup()
+    {
+        Size(600, 600);
+        Background(20);
+        NoStroke();
+    }
+
+    // @reel scene ""Every frame: gravity pulls, velocity moves"" effect=type transition=slide
+    public override void Draw()
+    {
+        Fill(20, 20, 24, 40);        // see-through = trails
+        Rect(0, 0, Width, Height);
+        vy += 0.4f;                  // @mark
+        x += vx;
+        y += vy;
+        // @reel caption: Hit a wall? Flip the direction.
+        if (x < 30 || x > Width - 30) vx = -vx;
+        if (y > Height - 30)
+        {
+            y = Height - 30;
+            vy *= -0.9f;             // @mark
+        }
+        FillHSB(FrameCount % 360, 70, 100);
+        Circle(x, y, 60);
+    }
+}
+";
+
+        private const string Yt04 =
+@"using DanaProcessing.Reels;
+
+// @reel title: Ep 04 · The Mouse
+// @reel subtitle: A brush that chases your cursor
+// @reel result: 8 caption=""It follows you... but lazily.""
+// @reel outro: Next · Ep 05: Loops & Patterns
+
+// @reel scene ""Now the sketch listens to you""
+
+// @reel scene ""Two numbers: where the brush is"" effect=type
+public class LazyBrush : Sketch
+{
+    float x = 300, y = 300;
+
+    public override void Setup()
+    {
+        Size(600, 600);
+        Background(16, 14, 22);
+        NoStroke();
+    }
+
+    // @reel scene ""Lerp: move 8% of the way, every frame"" effect=type transition=slide
+    public override void Draw()
+    {
+        x = Lerp(x, MouseX, 0.08f);   // @mark
+        y = Lerp(y, MouseY, 0.08f);
+        // @reel caption: Far from the mouse? Paint a bigger dot.
+        float gap = Dist(x, y, MouseX, MouseY);
+        FillHSB((200 + gap) % 360, 60, 100, 150);
+        Circle(x, y, 10 + gap * 0.5f);   // @mark
+    }
+}
+";
+
+        private const string Yt05 =
+@"using DanaProcessing.Reels;
+
+// @reel title: Ep 05 · Loops & Patterns
+// @reel subtitle: 144 circles, one line of math
+// @reel result: 7 caption=""Distance + time = a ripple.""
+// @reel outro: Next · Ep 06: Random vs Noise
+
+// @reel scene ""Why draw one circle when a loop can draw 144?""
+
+// @reel scene ""Two loops make a grid"" effect=type
+public class Ripple : Sketch
+{
+    public override void Setup()
+    {
+        Size(600, 600);
+        NoStroke();
+    }
+
+    public override void Draw()
+    {
+        Background(14, 16, 24);
+        for (int i = 0; i < 12; i++)
+        for (int j = 0; j < 12; j++)
+        {
+            float x = 25 + i * 50;
+            float y = 25 + j * 50;
+            // @reel scene ""Distance from the center, shifted by time"" effect=type keep
+            float d = Dist(x, y, 300, 300);
+            float wave = d * 0.04f - FrameCount * 0.08f;
+            float s = Sin(wave);   // @mark
+            // @reel caption: The wave picks both the color and the size
+            FillHSB(180 + s * 60, 70, 100);
+            Circle(x, y, 20 + s * 18);   // @mark
+        }
+    }
+}
+";
+
+        private const string Yt06 =
+@"using DanaProcessing.Reels;
+
+// @reel title: Ep 06 · Random vs Noise
+// @reel subtitle: Two kinds of ""unpredictable""
+// @reel result: 7 caption=""Top: chaos. Bottom: nature.""
+// @reel outro: Next · Ep 07: Sin & Cos
+
+// @reel scene ""Not all randomness looks the same""
+
+// @reel scene ""Random(): each value forgets the last one"" effect=type
+public class RandomVsNoise : Sketch
+{
+    float t;
+
+    public override void Setup()
+    {
+        Size(600, 600);
+        StrokeWeight(3);
+        TextSize(24);
+    }
+
+    public override void Draw()
+    {
+        Background(18, 18, 22);
+        NoFill();
+        Stroke(255, 130, 130);
+        BeginShape();
+        for (int x = 0; x <= Width; x += 10)
+            Vertex(x, 170 + Random(-60, 60));   // @mark
+        EndShape();
+
+        // @reel scene ""Noise(): each value remembers its neighbor"" effect=type keep
+        Stroke(130, 220, 255);
+        BeginShape();
+        for (int x = 0; x <= Width; x += 10)
+        {
+            float n = Noise(x * 0.01f, t) - 0.5f;   // @mark
+            Vertex(x, 430 + n * 240);
+        }
+        EndShape();
+        t += 0.01f;
+
+        // @reel hide
+        NoStroke();
+        Fill(255, 130, 130);
+        Text(""Random()"", 20, 50);
+        Fill(130, 220, 255);
+        Text(""Noise()"", 20, 320);
+        // @reel show
+    }
+}
+";
+
+        private const string Yt07 =
+@"using DanaProcessing.Reels;
+
+// @reel title: Ep 07 · Sin & Cos
+// @reel subtitle: The two functions behind every circle
+// @reel result: 8 caption=""Orbit an orbit and it blooms.""
+// @reel outro: Next · Ep 08: Fireworks
+
+// @reel scene ""Trigonometry, but make it pretty""
+
+// @reel scene ""A dark canvas that slowly forgets"" effect=lines
+public class Bloom : Sketch
+{
+    public override void Setup()
+    {
+        Size(600, 600);
+        Background(12, 10, 20);
+        NoStroke();
+    }
+
+    // @reel scene ""Cos gives x, Sin gives y: a circle"" effect=type transition=zoom
+    public override void Draw()
+    {
+        Fill(12, 10, 20, 12);
+        Rect(0, 0, Width, Height);
+        float t = FrameCount * 0.02f;
+        float x = 300 + Cos(t) * 170;
+        float y = 300 + Sin(t) * 170;   // @mark
+        // @reel caption: Now add a faster, smaller circle on top...
+        x += Cos(t * 7) * 70;
+        y += Sin(t * 7) * 70;           // @mark
+        FillHSB((t * 40) % 360, 70, 100);
+        Circle(x, y, 9);
+    }
+}
+";
+
+        private const string Yt08 =
+@"using DanaProcessing.Reels;
+
+// @reel title: Ep 08 · Fireworks
+// @reel subtitle: Your first class: a spark
+// @reel result: 7 caption=""Click anywhere. Boom.""
+// @reel click 190,230 at=0.4
+// @reel click 420,170 at=1.6
+// @reel click 300,330 at=2.9
+// @reel click 160,410 at=4.1
+// @reel click 450,400 at=5.0
+
+// @reel scene ""One spark is easy. A thousand needs a class.""
+
+// @reel scene ""A spark knows where it is, and how long it lives"" effect=type
+class Spark
+{
+    public PVector Pos, Vel;
+    public float Hue, Life = 255;
+}
+
+// @reel scene ""Every frame: fall, move, fade"" effect=type transition=slide
+public class Fireworks : Sketch
+{
+    readonly List<Spark> sparks = new();
+
+    public override void Setup()
+    {
+        Size(600, 600);
+        NoStroke();
+    }
+
+    public override void Draw()
+    {
+        Background(10, 10, 20);
+        foreach (var s in sparks)
+        {
+            s.Vel.Y += 0.08f;
+            s.Pos.Add(s.Vel);
+            s.Life -= 3;   // @mark
+            FillHSB(s.Hue, 60, 100, (byte)Max(0, s.Life));
+            Circle(s.Pos.X, s.Pos.Y, 5);
+        }
+        sparks.RemoveAll(s => s.Life <= 0);
+    }
+
+    // @reel scene ""A click spawns 120 sparks"" effect=type keep
+    public override void MousePressed()
+    {
+        float hue = Random(360);
+        for (int i = 0; i < 120; i++)
+            sparks.Add(new Spark
+            {
+                Pos = new PVector(MouseX, MouseY),
+                Vel = PVector.FromAngle(Random(TWO_PI))
+                             .Mult(Random(1, 6)),
+                Hue = hue,
+            });
+    }
+}
+";
+
+        private const string Yt09 =
+@"using DanaProcessing.Reels;
+
+// @reel title: Ep 09 · Recursion
+// @reel subtitle: A function that calls itself grows a tree
+// @reel result: 8 caption=""Move the mouse: the tree bends.""
+// @reel move 80,300 -> 520,300 -> 300,300 at=0.3 dur=6
+
+// @reel scene ""A tree is a branch... made of smaller trees""
+
+// @reel scene ""Start at the bottom; the mouse sets the angle"" effect=type
+public class Tree : Sketch
+{
+    public override void Setup() => Size(600, 600);
+
+    public override void Draw()
+    {
+        Background(16, 18, 14);
+        Stroke(230, 220, 200);
+        float angle = Map(MouseX, 0, Width, 10, 50);
+        Translate(300, 580);
+        Branch(140, angle);
+    }
+
+    // @reel scene ""Draw a line, then call yourself twice"" effect=type transition=slide
+    void Branch(float len, float angle)
+    {
+        StrokeWeight(len * 0.08f);
+        Line(0, 0, 0, -len);
+        Translate(0, -len);
+        // @reel caption: Too small? Stop. Otherwise it never ends.
+        if (len < 8) return;   // @mark
+        PushMatrix();
+        Rotate(angle);
+        Branch(len * 0.7f, angle);   // @mark
+        PopMatrix();
+        PushMatrix();
+        Rotate(-angle);
+        Branch(len * 0.7f, angle);
+        PopMatrix();
+    }
+}
+";
+
+        private const string Yt10 =
+@"using DanaProcessing.Reels;
+
+// @reel title: Ep 10 · Flow Field
+// @reel subtitle: Everything from this series, in one piece of art
+// @reel result: 10 caption=""800 dots, following invisible wind.""
+// @reel outro: That's the intro series. Now go make something.
+
+// @reel scene ""Remember Noise()? Let's turn it into wind.""
+
+// @reel scene ""800 dots, scattered at random"" effect=lines
+public class FlowField : Sketch
+{
+    readonly List<PVector> dots = new();
+
+    public override void Setup()
+    {
+        Size(600, 600);
+        Background(12, 12, 16);
+        NoStroke();
+        for (int i = 0; i < 800; i++)
+            dots.Add(Spot());
+    }
+
+    PVector Spot() => new PVector(Random(Width), Random(Height));
+
+    // @reel scene ""Noise picks a direction for every spot"" effect=type transition=wipe
+    public override void Draw()
+    {
+        for (int i = 0; i < dots.Count; i++)
+        {
+            var p = dots[i];
+            float n = Noise(p.X * 0.005f, p.Y * 0.005f);
+            float a = n * TWO_PI * 2;   // @mark
+            p.X += Cos(a);
+            p.Y += Sin(a);   // @mark
+            // @reel caption: Each dot leaves a faint trail of color
+            FillHSB(Map(n, 0, 1, 180, 330), 60, 100, 18);
+            Circle(p.X, p.Y, 2);
+            bool gone = p.X < 0 || p.X > Width
+                     || p.Y < 0 || p.Y > Height;
+            if (gone)
+                p = Spot();
+            dots[i] = p;
+        }
     }
 }
 ";
