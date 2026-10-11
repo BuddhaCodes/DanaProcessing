@@ -126,6 +126,26 @@ namespace DanaProcessing
         /// <summary>The cross product of this vector and v, like Processing's instance cross(v) — does NOT mutate this vector (unlike most other instance methods here), matching Processing's own cross() semantics, which always returns a new PVector.</summary>
         public readonly PVector Cross(PVector v) => Cross(this, v);
 
+        // --- Operators: v1 + v2, v * 2, -v ... return new vectors, never modify either side. ---
+        public static PVector operator +(PVector a, PVector b) => new PVector(a.X + b.X, a.Y + b.Y, a.Z + b.Z);
+        public static PVector operator -(PVector a, PVector b) => new PVector(a.X - b.X, a.Y - b.Y, a.Z - b.Z);
+        public static PVector operator -(PVector v) => new PVector(-v.X, -v.Y, -v.Z);
+        public static PVector operator *(PVector v, float n) => new PVector(v.X * n, v.Y * n, v.Z * n);
+        public static PVector operator *(float n, PVector v) => new PVector(v.X * n, v.Y * n, v.Z * n);
+        public static PVector operator /(PVector v, float n) => new PVector(v.X / n, v.Y / n, v.Z / n);
+
+        /// <summary>A random 2D unit vector (length 1, random direction), like Processing's PVector.random2D().</summary>
+        public static PVector Random2D() => FromAngle((float)(System.Random.Shared.NextDouble() * Math.PI * 2));
+
+        /// <summary>A random 3D unit vector, uniformly spread over the sphere, like Processing's PVector.random3D().</summary>
+        public static PVector Random3D()
+        {
+            float z = (float)(System.Random.Shared.NextDouble() * 2 - 1);
+            float a = (float)(System.Random.Shared.NextDouble() * Math.PI * 2);
+            float r = MathF.Sqrt(1 - z * z);
+            return new PVector(r * MathF.Cos(a), r * MathF.Sin(a), z);
+        }
+
         public static PVector FromAngle(float angleRadians) =>
             new PVector(MathF.Cos(angleRadians), MathF.Sin(angleRadians));
 

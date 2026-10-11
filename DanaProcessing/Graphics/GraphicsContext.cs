@@ -194,10 +194,10 @@ namespace DanaProcessing
         public void ImageMode(ShapeAlignMode mode) => _imageMode = mode;
 
         /// <summary>Sets a color/alpha multiplier applied to images drawn via Image() from here on, like Processing's tint(). Interpreted per the current ColorMode, same as Fill/Stroke.</summary>
-        public void Tint(float a1, float a2, float a3, byte alpha = 255) => _tintColor = ResolveColor(a1, a2, a3, alpha);
+        public void Tint(float a1, float a2, float a3, float alpha = 255) => _tintColor = ResolveColor(a1, a2, a3, alpha);
 
         /// <summary>Sets just the opacity of subsequently drawn images, keeping their own colors (a white multiplier), like Processing's one-argument tint(alpha).</summary>
-        public void Tint(byte alpha) => _tintColor = new SKColor(255, 255, 255, alpha);
+        public void Tint(float alpha) => _tintColor = new SKColor(255, 255, 255, (byte)Math.Clamp(alpha, 0f, 255f));
 
         /// <summary>Clears any tint set by Tint() — images drawn after this show their original colors, like Processing's noTint().</summary>
         public void NoTint() => _tintColor = null;
@@ -308,8 +308,15 @@ namespace DanaProcessing
             _textPaint.Color = color;
         }
 
-        /// <summary>Fill using Hue (0-360), Saturation (0-100), Brightness (0-100) — regardless of the current ColorMode.</summary>
-        public void FillHSB(float h, float s, float br, byte a = 255) => FillColor(SKColor.FromHsv(h, s, br, a));
+        /// <summary>Fill using Hue (0-360, wraps around), Saturation (0-100), Brightness (0-100) and alpha (0-255) — regardless of the current ColorMode. A shortcut for the common case; ColorMode(HSB) + Fill() does the same with your own ranges.</summary>
+        public void FillHSB(float h, float s, float br, float alpha = 255) => FillColor(Hsb(h, s, br, alpha));
+
+        private static SKColor Hsb(float h, float s, float br, float alpha)
+        {
+            h %= 360f;
+            if (h < 0) h += 360f;
+            return SKColor.FromHsv(h, Math.Clamp(s, 0f, 100f), Math.Clamp(br, 0f, 100f), (byte)Math.Clamp(alpha, 0f, 255f));
+        }
 
         public void NoFill() => _fillEnabled = false;
 
@@ -328,8 +335,8 @@ namespace DanaProcessing
             _strokePaint.Color = color;
         }
 
-        /// <summary>Stroke using Hue (0-360), Saturation (0-100), Brightness (0-100) — regardless of the current ColorMode.</summary>
-        public void StrokeHSB(float h, float s, float br, byte a = 255) => StrokeColorSet(SKColor.FromHsv(h, s, br, a));
+        /// <summary>Stroke using Hue (0-360, wraps around), Saturation (0-100), Brightness (0-100) and alpha (0-255) — regardless of the current ColorMode. See FillHSB().</summary>
+        public void StrokeHSB(float h, float s, float br, float alpha = 255) => StrokeColorSet(Hsb(h, s, br, alpha));
 
         public void NoStroke() => _strokeEnabled = false;
         public void StrokeWeight(float w) => _strokePaint.StrokeWidth = w;
@@ -1413,8 +1420,11 @@ namespace DanaProcessing
         }
         public void Translate(float x, float y) { EnsureReady(); Canvas.Translate(x, y); }
 
-        /// <summary>Rotates in degrees — a deliberate deviation from Processing's radians-based rotate(), since degrees maps directly to SkiaSharp's RotateDegrees.</summary>
-        public void Rotate(float degrees) { EnsureReady(); Canvas.RotateDegrees(degrees); }
+        /// <summary>Rotates the coordinate system by <paramref name="angle"/> radians (clockwise on screen), like Processing's rotate(). Use Radians() to convert, or RotateDegrees().</summary>
+        public void Rotate(float angle) { EnsureReady(); Canvas.RotateRadians(angle); }
+
+        /// <summary>Same as Rotate(), in degrees: RotateDegrees(90) == Rotate(HALF_PI).</summary>
+        public void RotateDegrees(float degrees) { EnsureReady(); Canvas.RotateDegrees(degrees); }
 
         public void Scale(float sx, float? sy = null) { EnsureReady(); Canvas.Scale(sx, sy ?? sx); }
 

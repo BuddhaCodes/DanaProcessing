@@ -875,14 +875,14 @@ public class MySketch : Sketch
         if (length > 2)
         {
             PushMatrix();
-            Rotate(_angle);
+            Rotate(Radians(_angle));
             Line(0, 0, 0, -length);
             Translate(0, -length);
             Branch(length, level + 1);
             PopMatrix();
 
             PushMatrix();
-            Rotate(-_angle);
+            Rotate(Radians(-_angle));
             Line(0, 0, 0, -length);
             Translate(0, -length);
             Branch(length, level + 1);
@@ -3015,7 +3015,7 @@ public class Tree : Sketch
     {
         Background(16, 18, 14);
         Stroke(230, 220, 200);
-        float angle = Map(MouseX, 0, Width, 10, 50);
+        float angle = Radians(Map(MouseX, 0, Width, 10, 50));
         Translate(300, 580);
         Branch(140, angle);
     }

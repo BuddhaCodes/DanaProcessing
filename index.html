@@ -1660,7 +1660,7 @@
             <div class="note"><strong>Why both can coexist.</strong> <code class="inline">Color</code> the struct can't declare a same-named method on itself (C# error CS0542), so <code class="inline">new Color(r, g, b)</code> is the constructor form. <code class="inline">GraphicsContext.Color(...)</code> is a different type entirely, so it's free to use the name — and C# never confuses the two: <code class="inline">new Color(...)</code> always means the constructor, bare <code class="inline">Color(...)</code> always means this method.</div>
 
             <h3 class="entry-title" id="fill">Fill(a1, a2, a3, alpha = 255) · Fill(gray, alpha = 255) · Fill(<span class="tp">Color</span> c) · FillHSB(...) · NoFill()</h3>
-            <p class="entry-desc">Sets the fill color. <code class="inline">FillHSB</code> always reads as HSB regardless of <code class="inline">ColorMode</code>.</p>
+            <p class="entry-desc">Sets the fill color. <code class="inline">FillHSB(h, s, b, alpha = 255)</code> always reads as HSB (hue 0–360 and wrapping around, saturation and brightness 0–100) regardless of <code class="inline">ColorMode</code>: a shortcut for the most common case.</p>
 
             <h3 class="entry-title" id="stroke">Stroke(a1, a2, a3, alpha = 255) · Stroke(gray, alpha = 255) · Stroke(<span class="tp">Color</span> c) · StrokeHSB(...) · NoStroke()</h3>
             <p class="entry-desc">Sets the stroke (outline) color.</p>
@@ -1853,13 +1853,13 @@
             <p class="entry-desc">3D translate. The 2D <code class="inline">Translate(x, y)</code> overload still works under Renderer3D too — <code class="inline">z</code> is implicitly 0, matching Processing.</p>
 
             <h3 class="entry-title" id="rotatexyz">RotateX(radians) · RotateY(radians) · RotateZ(radians)</h3>
-            <p class="entry-desc">Rotates around each axis. Note these take <strong>radians</strong> — unlike the 2D <code class="inline">Rotate(degrees)</code>, which deliberately takes degrees. Under Renderer3D both exist and compose: <code class="inline">Rotate()</code> rotates the Skia 2D overlay, <code class="inline">RotateZ()</code> rotates 3D geometry — they're genuinely different operations.</p>
+            <p class="entry-desc">Rotates around each axis. Like every angle in DanaProcessing, these take <strong>radians</strong>. Under Renderer3D both exist and compose: <code class="inline">Rotate()</code> rotates the Skia 2D overlay, <code class="inline">RotateZ()</code> rotates 3D geometry — they're genuinely different operations.</p>
 
             <h3 class="entry-title" id="scale-3d">Scale(x, y, <span class="tp">float</span> z)</h3>
             <p class="entry-desc">3D scale.</p>
 
             <h3 class="entry-title" id="rotate-axis">Rotate(<span class="tp">float</span> angleRadians, x, y, z)</h3>
-            <p class="entry-desc">Rotates by <code class="inline">angleRadians</code> around the arbitrary axis <code class="inline">(x, y, z)</code> — the P3D-only overload of <code class="inline">rotate()</code>. Takes radians, like <code class="inline">RotateX/Y/Z()</code> (not the 2D <code class="inline">Rotate(degrees)</code>). The axis doesn't need to be pre-normalized; a zero-length axis is a no-op.</p>
+            <p class="entry-desc">Rotates by <code class="inline">angleRadians</code> around the arbitrary axis <code class="inline">(x, y, z)</code> — the P3D-only overload of <code class="inline">rotate()</code>. Takes radians, like <code class="inline">RotateX/Y/Z()</code> and the 2D <code class="inline">Rotate()</code>. The axis doesn't need to be pre-normalized; a zero-length axis is a no-op.</p>
             <div class="note"><strong>One combined rotation beats three stacked ones.</strong> <code class="inline">RotateX()</code>+<code class="inline">RotateY()</code>+<code class="inline">RotateZ()</code> compose differently depending on call order, and can twist in unexpected ways once an object is no longer near its rest orientation (the classic gimbal-lock feel). A single axis-angle <code class="inline">Rotate()</code> — typically derived from an accumulated quaternion for a trackball-style drag — sidesteps that entirely. See the "Gema facetada" sample's <code class="inline">ApplySpin()</code> helper for the pattern.</div>
           </section>
 
@@ -2065,8 +2065,8 @@ PopMatrix();</pre>
             <h3 class="entry-title" id="translate">Translate(x, y)</h3>
             <p class="entry-desc">Shifts the origin.</p>
 
-            <h3 class="entry-title" id="rotate">Rotate(<span class="tp">float</span> degrees)</h3>
-            <p class="entry-desc"><strong>Takes degrees</strong>, not radians — a deliberate deviation from Processing.</p>
+            <h3 class="entry-title" id="rotate">Rotate(<span class="tp">float</span> angle) · RotateDegrees(<span class="tp">float</span> degrees)</h3>
+            <p class="entry-desc"><code class="inline">Rotate()</code> takes <strong>radians</strong>, like Processing and p5.js: <code class="inline">Rotate(HALF_PI)</code> is a quarter turn. If you think in degrees, use <code class="inline">RotateDegrees(90)</code> or <code class="inline">Rotate(Radians(90))</code>. (Before 1.0, <code class="inline">Rotate()</code> took degrees; sketches written for 0.x need <code class="inline">Radians()</code> around the angle.)</p>
 
             <h3 class="entry-title" id="scale">Scale(<span class="tp">float</span> sx, <span class="tp">float?</span> sy = null)</h3>
             <p class="entry-desc">Uniform scale when <code class="inline">sy</code> is omitted.</p>
@@ -2339,7 +2339,7 @@ PopMatrix();</pre>
           <section class="doc-section" id="math">
             <div class="section-kicker">15 · Data &amp; Math</div>
             <h2>Math &amp; trig</h2>
-            <p class="section-intro">Free functions on <code class="inline">Sketch</code>, mirroring Processing's globals. All angles are radians, except <code class="inline">Rotate()</code>.</p>
+            <p class="section-intro">Free functions on <code class="inline">Sketch</code>, mirroring Processing's globals. All angles are radians (<code class="inline">RotateDegrees()</code> is the one degrees-based helper).</p>
 
             <div class="table-wrap">
               <table>
@@ -2384,6 +2384,10 @@ PopMatrix();</pre>
               </table>
             </div>
             <p class="entry-desc" style="margin-top:10px;font-size:13.5px;"><sup>†</sup><code class="inline">Rotate()</code>/<code class="inline">FromAngle()</code>/<code class="inline">Heading()</code> only make sense for a vector lying in the XY plane and ignore <code class="inline">Z</code>, matching Processing's own documented 2D-only behavior for these three. For a genuine 3D rotation, rotate the point with <a href="#transform-3d"><code class="inline">RotateX/Y/Z()</code></a> instead.</p>
+
+            <h3 class="entry-title" id="pvector-operators">Operators · Random2D() · Random3D()</h3>
+            <p class="entry-desc"><code class="inline">a + b</code>, <code class="inline">a - b</code>, <code class="inline">v * 2</code>, <code class="inline">v / 2</code> and <code class="inline">-v</code> return a <strong>new</strong> vector and never change either side, so <code class="inline">pos += vel;</code> just works. <code class="inline">PVector.Random2D()</code> and <code class="inline">PVector.Random3D()</code> give a random direction of length 1, like Processing's <code class="inline">random2D()</code>/<code class="inline">random3D()</code>.</p>
+            <div class="note"><strong>PVector is a struct.</strong> Copies are independent: <code class="inline">var p = list[i]; p.Add(v);</code> changes the copy, so write it back with <code class="inline">list[i] = p;</code>. Fields of a class (<code class="inline">particle.Pos.Add(v)</code>) are changed in place.</div>
 
             <h3 class="entry-title" id="pvector-cross">Cross(<span class="tp">PVector</span> v) <span class="sig-return">→ PVector</span></h3>
             <p class="entry-desc">The 3D cross product — perpendicular to both vectors, following the right-hand rule. Does <strong>not</strong> mutate <code class="inline">this</code> (unlike most other instance methods here), matching Processing's own <code class="inline">cross()</code>, which always returns a new <code class="inline">PVector</code>. For two vectors lying in the XY plane (<code class="inline">Z = 0</code>), the result points purely along <code class="inline">Z</code> — exactly what you want for a 2D face's "up" normal, as in the faceted-gem example under <a href="#shape-3d-custom">Custom 3D shapes</a>.</p>
@@ -3205,6 +3209,7 @@ var navLinks = Array.from(document.querySelectorAll('.sidebar-nav a[href^="#"]')
     "PopMatrix": "pushmatrix",
     "Translate": "translate",
     "Rotate": "rotate",
+    "RotateDegrees": "rotate",
     "Scale": "scale",
     "PImage": "image",
     "LoadImage": "loadimage",
@@ -3582,6 +3587,7 @@ var navLinks = Array.from(document.querySelectorAll('.sidebar-nav a[href^="#"]')
     ["PopMatrix","method"],
     ["Translate","method"],
     ["Rotate","method"],
+    ["RotateDegrees","method"],
     ["Scale","method"],
     ["PImage","class"],
     ["LoadImage","method"],

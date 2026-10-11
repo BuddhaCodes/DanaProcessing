@@ -445,17 +445,7 @@ namespace DanaProcessing
         public JSONArray ParseJSONArray(string json) => JSONArray.Parse(json);
 
         /// <summary>Parses an already-in-memory XML string, like Processing's parseXML(string) — https://processing.org/reference/parseXML_.html. Use this instead of LoadXML() when the XML didn't come from a file.</summary>
-        public XML ParseXML(string xml) => ParseXML(xml);
-
-
-        // ============================================================================
-        // PATCH 2/2 — PXML.cs
-        // Insertar inmediatamente después de:
-        //     public static XML Load(string path) => new XML(XElement.Load(path));
-        // ============================================================================
-
-        /// <summary>Parses an XML string directly (no file involved), like Processing's parseXML(string). Throws if the text isn't well-formed XML.</summary>
-        public static XML Parse(string xml) => new XML(XElement.Parse(xml));
+        public XML ParseXML(string xml) => XML.Parse(xml);
 
 
         /// <summary>Loads a CSV file as a Table, like Processing's loadTable(path, options). `options` supports "header" for a first line naming the columns.</summary>
