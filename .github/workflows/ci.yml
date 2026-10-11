@@ -1,0 +1,43 @@
+name: CI
+
+# Builds everything and runs the test suite on all three desktop OSes, on
+# every push to any branch and on pull requests. (build-release.yml is the
+# separate workflow that packages installers from master.)
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore
+        run: dotnet restore DanaProcessing.sln
+
+      - name: Build
+        run: dotnet build DanaProcessing.sln -c Release --no-restore
+
+      - name: Test
+        run: >
+          dotnet test DanaProcessing.Tests/DanaProcessing.Tests.csproj
+          -c Release --no-build
+          --logger "console;verbosity=normal"
+          --logger "trx;LogFileName=results.trx"
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.os }}
+          path: DanaProcessing.Tests/TestResults/*.trx

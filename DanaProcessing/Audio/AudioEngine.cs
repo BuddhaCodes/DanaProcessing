@@ -215,8 +215,12 @@ namespace DanaProcessing.Audio
 
             if (OperatingSystem.IsWindows())
                 return new WinMmOutput();
+            if (OperatingSystem.IsMacOS())
+                return new CoreAudioOutput();
+            if (OperatingSystem.IsLinux())
+                return new AlsaOutput(); // if libasound is missing, EnsureStarted() falls back to the clock-only output
 
-            Report("La salida de audio todavía no está disponible en este sistema operativo (por ahora solo Windows). Los live loops y OnNote() funcionan igual, sin sonido.");
+            Report("La salida de audio no está disponible en este sistema operativo. Los live loops y OnNote() funcionan igual, sin sonido.");
             return new ClockOnlyOutput();
         }
 
