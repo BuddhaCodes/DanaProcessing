@@ -25,13 +25,13 @@ namespace DanaProcessing.Ide.Compilation
     /// </summary>
     public static class SketchCompiler
     {
-        // C# 10+ is required for `global using` (used below to make
-        // `using DanaProcessing;` implicit in every sketch). Pinning this
-        // explicitly means both syntax trees we parse are guaranteed to
-        // agree on language version, regardless of whatever Roslyn version
-        // ends up referenced.
+        // C# 14 -- the language version of .NET 10, the runtime sketches run
+        // on -- so sketches can use everything a normal .NET 10 project can.
+        // (C# 10+ is the hard floor: `global using` below needs it.) Pinned
+        // rather than "Latest" so both syntax trees we parse always agree and
+        // a future Roslyn bump can't silently change what sketches accept.
         private static readonly CSharpParseOptions ParseOptions =
-            new CSharpParseOptions(LanguageVersion.CSharp10);
+            new CSharpParseOptions(LanguageVersion.CSharp14);
 
         /// <summary>
         /// A synthetic, invisible-to-the-user source file containing just the

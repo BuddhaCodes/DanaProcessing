@@ -1568,7 +1568,7 @@ namespace DanaProcessing
         /// <summary>Creates a new offscreen buffer, like Processing's createGraphics(). Pass RendererKind.Renderer3D once that backend exists — for now it throws NotImplementedException, same as Sketch's Size().</summary>
         public PGraphics CreateGraphics(int w, int h, RendererKind renderer = RendererKind.Renderer2D) => new PGraphics(w, h, renderer);
 
-        /// <summary>Loads a vector shape from an SVG file, like Processing's loadShape(). Requires the SkiaSharp.Extended.Svg NuGet package.</summary>
+        /// <summary>Loads a vector shape from an SVG file, like Processing's loadShape(). Uses the Svg.Skia package (bundled).</summary>
         public PShape LoadShape(string path) => PShape.LoadSvg(path);
 
         /// <summary>Current Fill() color as a Color, or null if NoFill() is active — used by CreateShape() to bake the *current* style into a standalone PShape at the moment it's built.</summary>

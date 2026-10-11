@@ -21,7 +21,7 @@ namespace DanaProcessing
         //
         // Only PDF is supported (via SkiaSharp's own SKDocument) — there's
         // no SVG *writer* available in this project's SkiaSharp packages
-        // (SkiaSharp.Extended.Svg, used elsewhere for LoadShape(), only
+        // (Svg.Skia, used elsewhere for LoadShape(), only
         // reads SVGs). BeginRecord()/EndRecord() are plain aliases: real
         // Processing distinguishes them (RAW is for a single 3D frame,
         // RECORD is more general 2D/3D recording), but here they're the same

@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <RootNamespace>DanaProcessing</RootNamespace>
@@ -20,8 +20,11 @@
   <ItemGroup>
     <PackageReference Include="Silk.NET.OpenGL" Version="2.23.0" />
     <PackageReference Include="Silk.NET.Windowing" Version="2.23.0" />
-    <PackageReference Include="SkiaSharp" Version="2.88.8" />
-    <PackageReference Include="SkiaSharp.Svg" Version="1.60.0" />
+    <!-- Same SkiaSharp as Avalonia 12 loads at runtime (it requires >= 3.119.3-preview.1.1).
+         One version everywhere: compiling against 2.88 while 3.x runs caused MissingMethodExceptions. -->
+    <PackageReference Include="SkiaSharp" Version="3.119.3-preview.1.1" />
+    <!-- SVG loading for LoadShape(). Svg.Skia replaces the unmaintained SkiaSharp.Svg 1.60 (built for SkiaSharp 1.x). -->
+    <PackageReference Include="Svg.Skia" Version="3.7.0" />
   </ItemGroup>
 
 </Project>

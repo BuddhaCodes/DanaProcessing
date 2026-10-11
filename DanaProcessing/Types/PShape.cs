@@ -1,7 +1,6 @@
 ﻿using System;
 using SkiaSharp;
-using SkiaSharp.Extended.Svg;
-using SKSvg = SkiaSharp.Extended.Svg.SKSvg;
+using SKSvg = Svg.Skia.SKSvg;
 
 namespace DanaProcessing
 {
@@ -92,7 +91,7 @@ namespace DanaProcessing
             if (picture == null)
                 throw new InvalidOperationException($"No se pudo cargar el SVG: '{path}'. Verifica la ruta y el formato.");
 
-            var size = svg.CanvasSize;
+            var size = picture.CullRect;
             return new PShape(picture, size.Width, size.Height);
         }
 

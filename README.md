@@ -11,7 +11,7 @@
 
 <p align="center">
   <a href="https://github.com/BuddhaCodes/DanaProcessing/actions/workflows/build-release.yml"><img src="https://github.com/BuddhaCodes/DanaProcessing/actions/workflows/build-release.yml/badge.svg" alt="Build and Release"></a>
-  <a href="https://dotnet.microsoft.com/"><img src="https://img.shields.io/badge/.NET-8.0-512BD4" alt=".NET 8"></a>
+  <a href="https://dotnet.microsoft.com/"><img src="https://img.shields.io/badge/.NET-10-512BD4" alt=".NET 10"></a>
   <a href="#-getting-started"><img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-1B3C53" alt="Platforms"></a>
   <a href="LICENSE.txt"><img src="https://img.shields.io/badge/license-MIT-brightgreen" alt="License: MIT"></a>
   <a href="https://buddhacodes.github.io/DanaProcessing/"><img src="https://img.shields.io/badge/docs-online-B8863A" alt="Documentation"></a>
@@ -162,7 +162,7 @@ chmod +x DanaProcessing.Ide
 A `DanaProcessing.desktop` file is included if you want it in your app launcher; see the comment at the top of that file.
 </details>
 
-**Building from source?** You'll need the [.NET 8 SDK](https://dotnet.microsoft.com/download):
+**Building from source?** You'll need the [.NET 10 SDK](https://dotnet.microsoft.com/download):
 
 ```bash
 git clone https://github.com/BuddhaCodes/DanaProcessing.git
@@ -193,7 +193,7 @@ DanaProcessing.Ide/            The desktop IDE: editor, live diagnostics, hot re
 
 | | |
 | --- | --- |
-| Language / runtime | C# on .NET 8 |
+| Language / runtime | C# 14 on .NET 10 |
 | UI framework | [Avalonia UI](https://avaloniaui.net/) |
 | 2D rendering | [SkiaSharp](https://github.com/mono/SkiaSharp) |
 | 3D rendering | [Silk.NET](https://github.com/dotnet/Silk.NET) over OpenGL |
