@@ -78,6 +78,7 @@ namespace DanaProcessing.Ide
         private readonly ComboBox _formatPicker;
         private readonly Button _exportButton;
         private readonly Button _cancelButton;
+        private readonly Button _thumbButton;
         private readonly ProgressBar _progress;
         private readonly TextBlock _exportStatus;
         private readonly Button _revealButton;
@@ -211,6 +212,9 @@ namespace DanaProcessing.Ide
             _exportButton.Click += async (_, _) => await ExportAsync();
             _cancelButton = new Button { Content = Loc.Tr("Cancelar", "Cancel"), Classes = { "clay-secondary" }, IsVisible = false, Margin = new Thickness(8, 0, 0, 0) };
             _cancelButton.Click += (_, _) => _exportCts?.Cancel();
+            _thumbButton = new Button { Content = Loc.Tr("Miniatura de YouTube…", "YouTube thumbnail…"), Classes = { "clay-secondary" }, Margin = new Thickness(0, 8, 0, 0) };
+            _thumbButton.Click += async (_, _) => await ExportThumbnailAsync();
+            ToolTip.SetTip(_thumbButton, Loc.Tr("PNG de 1280×720 con el título y el sketch, en el tema del reel", "1280×720 PNG with the title and the sketch, in the reel's theme"));
 
             _progress = new ProgressBar { Minimum = 0, Maximum = 1, Height = 6, IsVisible = false, Margin = new Thickness(0, 10, 0, 0) };
             _exportStatus = new TextBlock { FontFamily = ClayTheme.FontBody, FontSize = 12, Foreground = ClayTheme.TextSecondary, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 6, 0, 0) };
@@ -241,6 +245,7 @@ namespace DanaProcessing.Ide
                     Heading(Loc.Tr("Exportar", "Export")),
                     _formatPicker,
                     exportRow,
+                    _thumbButton,
                     _progress,
                     _exportStatus,
                     _revealButton,
@@ -596,6 +601,44 @@ namespace DanaProcessing.Ide
                 _cancelButton.IsVisible = false;
                 _progress.IsVisible = false;
                 RefreshFfmpegStatus();
+            }
+        }
+
+        private async Task ExportThumbnailAsync()
+        {
+            if (_script == null)
+                return;
+            var top = TopLevel.GetTopLevel(this);
+            if (top?.StorageProvider is null)
+                return;
+            var file = await top.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+            {
+                Title = Loc.Tr("Guardar miniatura", "Save thumbnail"),
+                SuggestedFileName = Slug(_script.Title ?? "reel") + "-thumbnail.png",
+                DefaultExtension = "png",
+                FileTypeChoices = new[] { new FilePickerFileType("PNG") { Patterns = new[] { "*.png" } } },
+            });
+            if (file is null)
+                return;
+            var path = file.Path.LocalPath;
+            _thumbButton.IsEnabled = false;
+            _exportStatus.Foreground = ClayTheme.TextSecondary;
+            _exportStatus.Text = Loc.Tr("Dibujando la miniatura…", "Drawing the thumbnail…");
+            try
+            {
+                await ReelThumbnail.ExportAsync(_script, _factory, path);
+                _lastExport = path;
+                _exportStatus.Text = Loc.Tr("Miniatura lista: ", "Thumbnail ready: ") + path;
+                _revealButton.IsVisible = true;
+            }
+            catch (Exception ex)
+            {
+                _exportStatus.Foreground = ClayTheme.DangerHover;
+                _exportStatus.Text = ex.Message;
+            }
+            finally
+            {
+                _thumbButton.IsEnabled = true;
             }
         }
 

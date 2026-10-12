@@ -3,6 +3,10 @@ name: CI
 # Builds everything and runs the test suite on all three desktop OSes, on
 # every push to any branch and on pull requests. (build-release.yml is the
 # separate workflow that packages installers from master.)
+#
+# Every run also uploads "exports-<os>": a GIF, an MP4 (with and without
+# sound) and a YouTube thumbnail rendered on that OS, so reel export can be
+# checked by eye on macOS and Linux without owning either.
 on:
   push:
   pull_request:
@@ -14,6 +18,8 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
+    env:
+      DANA_EXPORT_DIR: ${{ github.workspace }}/exports
     steps:
       - uses: actions/checkout@v4
 
@@ -21,6 +27,16 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
+
+      - name: Install ffmpeg (for the MP4 export tests)
+        shell: bash
+        run: |
+          case "$RUNNER_OS" in
+            Linux)   sudo apt-get update -q && sudo apt-get install -y -q ffmpeg ;;
+            macOS)   brew install ffmpeg ;;
+            Windows) choco install ffmpeg -y --no-progress ;;
+          esac
+          ffmpeg -version | head -1
 
       - name: Restore
         run: dotnet restore DanaProcessing.sln
@@ -41,3 +57,11 @@ jobs:
         with:
           name: test-results-${{ matrix.os }}
           path: DanaProcessing.Tests/TestResults/*.trx
+
+      - name: Upload exported reels
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: exports-${{ matrix.os }}
+          path: exports/
+          if-no-files-found: warn

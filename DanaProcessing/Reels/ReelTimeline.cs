@@ -35,7 +35,7 @@ namespace DanaProcessing.Reels
         private readonly List<Segment> _segments = new();
         private readonly SketchStage? _stage;
 
-        private ReelTimeline(ReelScript script, Func<Sketch>? sketchFactory)
+        private ReelTimeline(ReelScript script, Func<Sketch>? sketchFactory, bool startAudio)
         {
             Script = script;
             Width = script.Width;
@@ -87,7 +87,7 @@ namespace DanaProcessing.Reels
 
             if (script.ResultSeconds > 0 && sketchFactory != null)
             {
-                _stage = new SketchStage(sketchFactory, script, script.ResultSeconds);
+                _stage = new SketchStage(sketchFactory, script, script.ResultSeconds) { StartsAudio = startAudio };
                 _segments.Add(new ResultSegment(this, _stage) { Transition = script.ResultTransition });
             }
 
@@ -113,7 +113,10 @@ namespace DanaProcessing.Reels
         }
 
         /// <summary>Builds the timeline for a script. <paramref name="sketchFactory"/> makes a fresh instance of the sketch for the result part (null = no result part).</summary>
-        public static ReelTimeline Build(ReelScript script, Func<Sketch>? sketchFactory) => new(script, sketchFactory);
+        public static ReelTimeline Build(ReelScript script, Func<Sketch>? sketchFactory) => new(script, sketchFactory, false);
+
+        /// <summary>Like Build(), but the result part also starts the sketch's sound (live loops) -- used by the exporter, which records it offline.</summary>
+        internal static ReelTimeline BuildWithAudio(ReelScript script, Func<Sketch>? sketchFactory) => new(script, sketchFactory, true);
 
         /// <summary>Problem the result part ran into (an exception in the sketch), if any.</summary>
         public Exception? SketchError => _stage?.Error;
