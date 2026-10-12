@@ -60,6 +60,30 @@ Status labels: **Idea** (scoped, not started) · **In progress** · **Shipped**.
 
 ---
 
+## 5. Version 1.0 — Release candidate (1.0.0-rc.1)
+
+**The pitch.** Everything above made DanaProcessing interesting; 1.0 is about making it dependable: a frozen API, tests that run on every OS, installers that update themselves, and docs a newcomer can finish in half an hour.
+
+**What landed** (branch `release/1.0`):
+
+- **.NET 10 and a single SkiaSharp 3** across core, host and IDE (C# 14 in sketches). Svg.Skia replaces the old SkiaSharp.Svg.
+- **API freeze.** `Rotate()` takes radians like Processing, with `RotateDegrees()` beside it; `FillHSB`/`StrokeHSB` take an alpha and wrap the hue; `PVector` has `+ - * /` operators; setters that sketches shouldn't touch are `internal`.
+- **A real test suite + CI on Windows, macOS and Linux** (`ci.yml`): reels (parsing, rendering, GIF/PNG/MP4 export, typos, zoom, thumbnail), audio (engine, live loops, offline rendering), the compiler, hot reload, crash info, performance budgets, every sample and every runnable example in the docs compiling. Each CI run uploads a GIF, MP4s and a thumbnail rendered on each OS for checking by eye.
+- **Sound on macOS and Linux** through CoreAudio (AudioQueue) and ALSA, no extra dependencies. Marked *experimental* until someone runs it on real hardware.
+- **Installer and updates end to end** with Velopack (`build-release.yml`, unsigned for 1.0; see `docs/RELEASING.md`).
+- **Friendly runtime errors**: a crash in `Draw()` marks the line in the editor and says what happened in plain words.
+- **No memory leak on Run**: each compiled sketch lives in a collectible load context; `docs/PERFORMANCE.md` has the baselines CI enforces.
+- **Reels, polished**: sound in the MP4 (live loops rendered in video time), typos with backspace, zoom on marked lines, a YouTube thumbnail.
+- **Docs**: a 30-minute tutorial, a Processing/p5.js guide with an equivalence table, and a runnable example ending every API section.
+- **Samples**: kinetic type, images and pixels, frame-by-frame animation (new topics and tags), plus the 10-episode YouTube intro series.
+- **Editor**: Edit menu, find/replace, go to line (Ctrl+G), format document (Shift+Alt+F), open tabs remembered between sessions.
+
+**What's still unverified** (needs the first CI run after pushing, then people): the three CI jobs themselves, macOS/Linux sound on real hardware, the macOS `.app` and Linux AppImage installed and updated end to end, and the update path from the previous version.
+
+**Still to decide before 1.0 final**: which older samples to retire. Candidates, each mostly covered by another sample: "normal() (Silk.NET)" (the faceted gem shows Normal() better), "3D sphere" (lights and material already draw spheres), "Minimal 3D sketch" next to "3D cube", "Binary counter" and "Low-power clock: delay()" (single-function demos that could become runnable examples in the docs instead), and whether to sign the installers (SignPath is free for open source).
+
+---
+
 ## Other directions worth a line, not yet scoped
 
 Came up while thinking through the initiatives above but aren't fleshed out — flagging so they don't get lost, not committing to them:
