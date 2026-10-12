@@ -118,13 +118,16 @@ namespace DanaProcessing.Reels
                 bool withAudio = o.Kind != ReelExportKind.Gif && script.RecordsAudio && sketchFactory != null && script.ResultSeconds > 0;
                 using var audio = withAudio ? new DanaProcessing.Audio.OfflineAudio() : null;
                 using var timeline = withAudio ? ReelTimeline.BuildWithAudio(script, sketchFactory) : ReelTimeline.Build(script, sketchFactory);
+                // The soundtrack: the sketch's sound and/or the keyboard while code is typed.
+                bool keys = o.Kind != ReelExportKind.Gif && script.KeySounds > 0 && timeline.KeyStrokes.Count > 0;
+                var soundtrack = audio != null || keys ? new ReelSoundtrack(audio, keys ? timeline.KeyStrokes : null, script.KeySounds) : null;
                 if (o.Kind == ReelExportKind.Gif)
                     timeline.AnimateBackground = false;
                 switch (o.Kind)
                 {
-                    case ReelExportKind.Mp4: ExportMp4(timeline, o, progress, cancel, audio); break;
+                    case ReelExportKind.Mp4: ExportMp4(timeline, o, progress, cancel, soundtrack); break;
                     case ReelExportKind.Gif: ExportGif(timeline, o, progress, cancel); break;
-                    default: ExportPng(timeline, o, progress, cancel, audio); break;
+                    default: ExportPng(timeline, o, progress, cancel, soundtrack); break;
                 }
                 progress?.Report(1);
             }
@@ -165,7 +168,7 @@ namespace DanaProcessing.Reels
         }
 
         private static void ExportMp4(ReelTimeline timeline, ReelExportOptions o, IProgress<double>? progress, CancellationToken cancel,
-                                      DanaProcessing.Audio.OfflineAudio? audio)
+                                      ReelSoundtrack? audio)
         {
             // With sound: encode the picture to a temporary file first, then
             // join it with the recorded audio in a second, quick ffmpeg pass.
@@ -335,18 +338,16 @@ namespace DanaProcessing.Reels
         }
 
         /// <summary>Joins the silent video with the recorded sound (AAC). If nothing was heard, just keeps the video.</summary>
-        private static void MuxAudio(string ffmpeg, string videoPath, ReelTimeline timeline, DanaProcessing.Audio.OfflineAudio audio, string outputPath)
+        private static void MuxAudio(string ffmpeg, string videoPath, ReelTimeline timeline, ReelSoundtrack audio, string outputPath)
         {
-            audio.RenderUntil(timeline.Duration);
-            if (!audio.HeardAnything)
+            string wav = outputPath + ".audio.wav";
+            if (!audio.WriteWav(wav, timeline.Duration))
             {
                 File.Move(videoPath, outputPath, overwrite: true);
                 return;
             }
-            string wav = outputPath + ".audio.wav";
             try
             {
-                audio.WriteWav(wav);
                 var psi = new ProcessStartInfo(ffmpeg) { UseShellExecute = false, RedirectStandardError = true, RedirectStandardOutput = true, CreateNoWindow = true };
                 foreach (var a in new[] { "-y", "-hide_banner", "-loglevel", "error", "-i", videoPath, "-i", wav,
                                           "-map", "0:v", "-map", "1:a", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k",
@@ -368,7 +369,7 @@ namespace DanaProcessing.Reels
         }
 
         private static void ExportPng(ReelTimeline timeline, ReelExportOptions o, IProgress<double>? progress, CancellationToken cancel,
-                                      DanaProcessing.Audio.OfflineAudio? audio)
+                                      ReelSoundtrack? audio)
         {
             Directory.CreateDirectory(o.OutputPath);
             int fps = timeline.Fps;
@@ -387,15 +388,54 @@ namespace DanaProcessing.Reels
             }
             if (audio != null)
             {
-                audio.RenderUntil(timeline.Duration);
-                if (audio.HeardAnything)
-                    audio.WriteWav(Path.Combine(o.OutputPath, "audio.wav")); // drop it on the timeline under the frames
+                audio.WriteWav(Path.Combine(o.OutputPath, "audio.wav"), timeline.Duration); // drop it on the timeline under the frames
             }
         }
 
         private static void TryDelete(string path)
         {
             try { if (File.Exists(path)) File.Delete(path); } catch { }
+        }
+    }
+
+    /// <summary>What an export hears: the sketch's own sound (recorded offline, in step with the frames) plus the keyboard while code is typed.</summary>
+    internal sealed class ReelSoundtrack
+    {
+        private readonly DanaProcessing.Audio.OfflineAudio? _sketch;
+        private readonly IReadOnlyList<(double Time, KeyStroke Kind)>? _keys;
+        private readonly double _keyVolume;
+
+        public ReelSoundtrack(DanaProcessing.Audio.OfflineAudio? sketch, IReadOnlyList<(double Time, KeyStroke Kind)>? keys, double keyVolume)
+        {
+            _sketch = sketch;
+            _keys = keys;
+            _keyVolume = keyVolume;
+        }
+
+        /// <summary>Lets the sketch's sound catch up with the picture (live loops run in video time).</summary>
+        public void RenderUntil(double seconds) => _sketch?.RenderUntil(seconds);
+
+        /// <summary>Mixes and writes the whole soundtrack; false (and no file) if it would be silent.</summary>
+        public bool WriteWav(string path, double duration)
+        {
+            int rate = KeySounds.SampleRate;
+            var mix = new float[(long)Math.Ceiling(duration * rate) * 2];
+            if (_sketch != null)
+            {
+                _sketch.RenderUntil(duration);
+                if (_sketch.HeardAnything)
+                {
+                    var s = _sketch.ToStereo();
+                    for (int i = 0; i < mix.Length && i < s.Length; i++)
+                        mix[i] += s[i];
+                }
+            }
+            if (_keys != null)
+                KeySounds.Mix(mix, _keys, _keyVolume);
+            if (Array.TrueForAll(mix, v => v == 0))
+                return false;
+            DanaProcessing.Audio.OfflineAudio.WriteWav(path, mix, rate);
+            return true;
         }
     }
 }

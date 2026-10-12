@@ -134,18 +134,32 @@ namespace DanaProcessing.Audio
             }
         }
 
+        /// <summary>Everything rendered so far as interleaved stereo floats.</summary>
+        public float[] ToStereo()
+        {
+            var bytes = _pcm.GetBuffer();
+            var result = new float[_pcm.Length / 2];
+            for (int i = 0; i < result.Length; i++)
+                result[i] = (short)(bytes[2 * i] | (bytes[2 * i + 1] << 8)) / 32767f;
+            return result;
+        }
+
         /// <summary>16-bit stereo WAV of everything rendered so far.</summary>
-        public void WriteWav(string path)
+        public void WriteWav(string path) => WriteWav(path, ToStereo(), SampleRate);
+
+        /// <summary>Writes interleaved stereo floats as a 16-bit WAV.</summary>
+        internal static void WriteWav(string path, float[] stereo, int sampleRate)
         {
             using var w = new BinaryWriter(File.Create(path));
-            int bytes = (int)_pcm.Length;
+            int bytes = stereo.Length * 2;
             w.Write("RIFF"u8); w.Write(36 + bytes); w.Write("WAVE"u8);
             w.Write("fmt "u8); w.Write(16); w.Write((short)1); w.Write((short)2);
-            w.Write(SampleRate); w.Write(SampleRate * 4); w.Write((short)4); w.Write((short)16);
+            w.Write(sampleRate); w.Write(sampleRate * 4); w.Write((short)4); w.Write((short)16);
             w.Write("data"u8); w.Write(bytes);
-            _pcm.Position = 0;
-            _pcm.CopyTo(w.BaseStream);
+            foreach (var f in stereo)
+                w.Write((short)(Math.Clamp(f, -1f, 1f) * 32767));
         }
+
 
         public void Dispose()
         {

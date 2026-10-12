@@ -68,6 +68,12 @@ namespace DanaProcessing.Reels
             }
 
             int codeIndex = 0;
+            for (int c = 0; c < chains.Count; c++)
+            {
+                // Lines too long for the card even at the smallest font wrap onto extra rows.
+                int cols = CardLayout.MaxColumns(this, chains[c].Sum(s => s.Lines.Count));
+                chains[c] = chains[c].Select(s => CodeWrap.Wrap(s, cols)).ToList();
+            }
             foreach (var chain in chains)
             {
                 var layout = new CardLayout(this, chain.SelectMany(s => s.Lines).ToList());
@@ -110,6 +116,40 @@ namespace DanaProcessing.Reels
             }
             Duration = t;
             Parts = parts;
+            KeyStrokes = _segments.OfType<CodeSegment>()
+                .SelectMany(s => s.KeyStrokes.Select(k => (s.Start + k.Time, k.Kind)))
+                .OrderBy(k => k.Item1)
+                .ToList();
+        }
+
+        /// <summary>Every key the typing presses, in reel time -- for the keyboard sounds.</summary>
+        public IReadOnlyList<(double Time, KeyStroke Kind)> KeyStrokes { get; }
+
+        /// <summary>
+        /// Plays the keyboard sounds of the keys pressed in (<paramref name="from"/>, <paramref name="to"/>]
+        /// right now, through the shared audio engine -- for a live preview,
+        /// called once per frame with the previous and current time.
+        /// </summary>
+        public void PlayKeySounds(double from, double to)
+        {
+            if (Script.KeySounds <= 0 || to <= from || to - from > 0.5)
+                return; // off, paused, or a jump (seek): stay quiet
+            int lo = 0, hi = KeyStrokes.Count;
+            while (lo < hi) { int mid = (lo + hi) / 2; if (KeyStrokes[mid].Time <= from) lo = mid + 1; else hi = mid; }
+            DanaProcessing.Audio.AudioEngine? engine = null;
+            for (int i = lo; i < KeyStrokes.Count && KeyStrokes[i].Time <= to; i++)
+            {
+                engine ??= DanaProcessing.Audio.AudioEngine.Shared;
+                engine.EnsureStarted();
+                var (time, kind) = KeyStrokes[i];
+                engine.Schedule(new DanaProcessing.Audio.VoiceEvent
+                {
+                    StartFrame = engine.FrameAt(engine.Now + 0.03 + (time - from)),
+                    Sample = KeySounds.Sample(kind, time),
+                    Amp = Script.KeySounds * 0.9,
+                    Rate = 1,
+                }, new DanaProcessing.NoteEvent(engine.Now, 0, 0, DanaProcessing.Synth.Sine, "key", null));
+            }
         }
 
         /// <summary>Builds the timeline for a script. <paramref name="sketchFactory"/> makes a fresh instance of the sketch for the result part (null = no result part).</summary>

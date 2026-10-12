@@ -22,11 +22,8 @@ namespace DanaProcessing.Reels
             int maxCols = Math.Max(24, allLines.Count == 0 ? 0 : allLines.Max(l => l.Text.Length));
             Digits = Math.Max(2, allLines.Count.ToString().Length);
 
-            using var probe = new SKPaint { Typeface = t.Theme.Mono, TextSize = 100 };
-            float ratio = probe.MeasureText("M") / 100f;
-            if (ratio <= 0.1f) ratio = 0.6f;
-
-            float minFs = 21 * S, maxFs = (t.Script.Format == ReelFormat.Landscape ? 38 : 40) * S;
+            float ratio = MonoRatio(t);
+            float minFs = MinFontSize(t), maxFs = (t.Script.Format == ReelFormat.Landscape ? 38 : 40) * S;
             float fs = maxFs;
             for (int pass = 0; pass < 3; pass++)
             {
@@ -49,6 +46,26 @@ namespace DanaProcessing.Reels
             BodyTop = top + HeaderH + PadY;
             ViewH = bodyH;
         }
+
+        /// <summary>Smallest code font a card uses: below this, a phone can't read it, so long lines wrap instead.</summary>
+        internal static float MinFontSize(ReelTimeline t) => 19 * t.S;
+
+        private static float MonoRatio(ReelTimeline t)
+        {
+            using var probe = new SKPaint { Typeface = t.Theme.Mono, TextSize = 100 };
+            float ratio = probe.MeasureText("M") / 100f;
+            return ratio <= 0.1f ? 0.6f : ratio;
+        }
+
+        /// <summary>How many characters fit across a card at the smallest font; longer lines get wrapped (see <see cref="CodeWrap"/>).</summary>
+        internal static int MaxColumns(ReelTimeline t, int lineCount)
+        {
+            float S = t.S, fs = MinFontSize(t), ratio = MonoRatio(t);
+            int digits = Math.Max(2, Math.Max(1, lineCount).ToString().Length);
+            float gutter = t.Script.ShowLineNumbers ? digits * ratio * fs + 34 * S : 0;
+            float avail = t.ContentRect.Width - 2 * 30 * S - gutter;
+            return Math.Max(16, (int)Math.Floor(avail / (ratio * fs)));
+        }
     }
 
     /// <summary>One scene: a code card whose new lines appear with the scene's effect, a caption, and highlighted @mark lines.</summary>
@@ -62,6 +79,11 @@ namespace DanaProcessing.Reels
         private readonly double[] _lineStart;      // when each new line starts appearing (scene time)
         private readonly double[][] _charTimes;    // Type: when each char of each new line appears
         private readonly List<Typo>[] _typos;      // Type: wrong characters typed and erased again, per new line
+        private readonly List<(double Time, KeyStroke Kind)> _keys = new(); // Type: every key press, scene time
+        private readonly int[] _numbers;           // line number shown for each row (0 = a wrapped continuation)
+
+        /// <summary>Every key the typing presses (scene time), for the keyboard sounds.</summary>
+        public IReadOnlyList<(double Time, KeyStroke Kind)> KeyStrokes => _keys;
 
         /// <summary>A slip of the finger: <see cref="Wrong"/> gets typed where character <see cref="Index"/> should go, then backspaced.</summary>
         private sealed record Typo(int Index, string Wrong, double[] TypeTimes, double[] EraseTimes);
@@ -98,6 +120,10 @@ namespace DanaProcessing.Reels
             _lines = prefix.Concat(scene.Lines).ToList();
             _first = prefix.Count;
             _captionOnly = _lines.Count == 0;
+
+            _numbers = new int[_lines.Count];
+            for (int i = 0, number = 0; i < _lines.Count; i++)
+                _numbers[i] = _lines[i].Continuation ? 0 : ++number;
 
             var state = CSharpHighlighter.State.Normal;
             _tokens = _lines.Select(l => CSharpHighlighter.Tokenize(l.Text, ref state)).ToArray();
@@ -157,32 +183,46 @@ namespace DanaProcessing.Reels
                                             && (j < 2 || !char.IsLetter(text[j - 2]));
                         if (typoRate > 0 && wordInterior && Hash(i * 977 + j * 13 + index * 31 + 5) < typoRate)
                         {
-                            int count = Hash(i * 7 + j * 3 + 11) < 0.35 ? 2 : 1;
+                            double h = Hash(i * 7 + j * 3 + 11);
+                            int count = h < 0.2 ? 3 : h < 0.55 ? 2 : 1;
                             var wrong = new char[count];
                             var typed = new double[count];
                             var erased = new double[count];
                             for (int k = 0; k < count; k++)
                             {
                                 wrong[k] = k == 0 ? Neighbour(c, Hash(j * 17 + k)) : Neighbour(j + 1 < text.Length ? text[j + 1] : c, Hash(j * 19 + k));
-                                time += dt * (0.7 + 0.5 * Hash(j * 23 + k));
+                                time += Math.Max(dt, 0.07) * (0.7 + 0.5 * Hash(j * 23 + k));
                                 typed[k] = time;
+                                _keys.Add((time, KeyStroke.Key));
                             }
-                            time += dt * 5; // the "wait, that's wrong" beat
+                            // The "wait, that's wrong" beat, then deliberate backspaces.
+                            // In seconds, not in characters: at reel speed (30+ chars/s)
+                            // a beat of a few characters would be gone before it's seen.
+                            time += Math.Max(dt * 5, 0.55);
                             for (int k = count - 1; k >= 0; k--)
                             {
-                                time += dt * 1.2;
+                                time += Math.Max(dt * 1.2, 0.13);
                                 erased[k] = time;
+                                _keys.Add((time, KeyStroke.Backspace));
                             }
                             _typos[i].Add(new Typo(j, new string(wrong), typed, erased));
-                            time += dt * 1.5;
+                            time += Math.Max(dt * 1.5, 0.12);
                         }
 
                         time += step;
                         times[j] = time;
+                        _keys.Add((time, c == ' ' ? KeyStroke.Space : KeyStroke.Key));
                         if (c is ';' or '{' or '}' or ',') time += dt * 1.6;
                     }
                     _charTimes[i] = times;
-                    time += text.Length == 0 ? dt * 2 : dt * 3.5; // Enter
+                    // Enter -- unless the next row is just the rest of this line, wrapped.
+                    if (i + 1 < n && scene.Lines[i + 1].Continuation)
+                        time += dt;
+                    else
+                    {
+                        time += text.Length == 0 ? dt * 2 : dt * 3.5;
+                        _keys.Add((time - dt * 1.5, KeyStroke.Enter));
+                    }
                 }
                 _revealEnd = time;
             }
@@ -445,7 +485,10 @@ namespace DanaProcessing.Reels
                 if (T.Script.ShowLineNumbers)
                 {
                     num.Color = (i == focus && (typing || marked)) || (marked && markP > 0.5f) ? th.Accent.WithAlpha((byte)(255 * alpha)) : th.LineNumber.WithAlpha((byte)(255 * alpha));
-                    canvas.DrawText((i + 1).ToString(), codeX - 22 * S, baseline, num);
+                    if (_numbers[i] > 0)
+                        canvas.DrawText(_numbers[i].ToString(), codeX - 22 * S, baseline, num);
+                    else
+                        canvas.DrawText("·", codeX - 22 * S, baseline, num); // the rest of the line above, wrapped
                 }
 
                 var line = _lines[i].Text;

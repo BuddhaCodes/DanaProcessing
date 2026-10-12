@@ -318,6 +318,20 @@ namespace DanaProcessing.AvaloniaHost
             return new Size(_sketch.Width, _sketch.Height);
         }
 
+        /// <summary>
+        /// Input events arrive on the UI thread while Draw() runs on the
+        /// render thread. Processing runs them on one thread, between
+        /// frames, and sketches rely on that (adding to a list in
+        /// MousePressed() while Draw() loops over it). Taking the same lock
+        /// as the frame gives the same guarantee: an event waits for the
+        /// current Draw() to finish and never runs in the middle of one.
+        /// </summary>
+        private void RunInput(Action userCode, string context)
+        {
+            lock (_sketchLock)
+                RunSafely(userCode, context);
+        }
+
         private void RunSafely(Action userCode, string context)
         {
             if (_crashed)
@@ -342,7 +356,7 @@ namespace DanaProcessing.AvaloniaHost
             _sketch.MouseX = (float)pos.X;
             _sketch.MouseY = (float)pos.Y;
 
-            RunSafely(_sketch.RaiseMouseMoved, "MouseMoved/MouseDragged");
+            RunInput(_sketch.RaiseMouseMoved, "MouseMoved/MouseDragged");
         }
 
         private void OnPointerPressed(object? sender, PointerPressedEventArgs e)
@@ -350,19 +364,19 @@ namespace DanaProcessing.AvaloniaHost
             Focus(); // click-to-focus, like a canvas in a web page
 
             var button = MapButton(e.GetCurrentPoint(this).Properties);
-            RunSafely(() => _sketch.RaiseMousePressed(button), "MousePressed");
+            RunInput(() => _sketch.RaiseMousePressed(button), "MousePressed");
         }
 
         private void OnPointerReleased(object? sender, PointerReleasedEventArgs e)
         {
             var button = MapButton(e.InitialPressMouseButton);
-            RunSafely(() => _sketch.RaiseMouseReleased(button), "MouseReleased");
+            RunInput(() => _sketch.RaiseMouseReleased(button), "MouseReleased");
 
             // Processing fires mouseClicked() right after mouseReleased() for
             // any ordinary press-then-release over the sketch -- the real API
             // has no drag-distance threshold that would suppress it, so
             // neither does this.
-            RunSafely(() => _sketch.RaiseMouseClicked(button), "MouseClicked");
+            RunInput(() => _sketch.RaiseMouseClicked(button), "MouseClicked");
         }
 
         private void OnPointerWheelChanged(object? sender, PointerWheelEventArgs e)
@@ -372,7 +386,7 @@ namespace DanaProcessing.AvaloniaHost
             // convention -- passed straight through, since Sketch.MouseWheel's
             // own doc comment says to treat the sign/magnitude as whatever the
             // host's raw input gives, not an absolute count.
-            RunSafely(() => _sketch.RaiseMouseWheel((float)e.Delta.Y), "MouseWheel");
+            RunInput(() => _sketch.RaiseMouseWheel((float)e.Delta.Y), "MouseWheel");
         }
 
         private static MouseButtonKind MapButton(PointerPointProperties props)
@@ -398,14 +412,14 @@ namespace DanaProcessing.AvaloniaHost
         {
             _sketch.IsKeyPressed = true;
             SetSketchKeyFrom(e.Key);
-            RunSafely(_sketch.KeyPressed, "KeyPressed");
+            RunInput(_sketch.KeyPressed, "KeyPressed");
         }
 
         private void OnKeyUp(object? sender, KeyEventArgs e)
         {
             _sketch.IsKeyPressed = false;
             SetSketchKeyFrom(e.Key);
-            RunSafely(_sketch.KeyReleased, "KeyReleased");
+            RunInput(_sketch.KeyReleased, "KeyReleased");
         }
 
         private void SetSketchKeyFrom(Key key)

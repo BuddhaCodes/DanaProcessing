@@ -37,6 +37,9 @@ namespace DanaProcessing.Reels
         /// <summary>Start over at the end instead of stopping there.</summary>
         public bool LoopPlayback { get; set; } = true;
 
+        /// <summary>Play the keyboard sounds while code is being typed (if the reel has them on).</summary>
+        public bool KeySounds { get; set; } = true;
+
         /// <summary>Jump to <paramref name="seconds"/>. Safe to call from any thread; takes effect on the next frame.</summary>
         public void Seek(double seconds) => Interlocked.Exchange(ref _seekBits, BitConverter.DoubleToInt64Bits(Math.Max(0, seconds)));
 
@@ -66,7 +69,10 @@ namespace DanaProcessing.Reels
                     IsPlaying = false;
                 }
             }
+            double previous = _time;
             Volatile.Write(ref _time, t);
+            if (KeySounds && seek < 0 && IsPlaying)
+                _timeline.PlayKeySounds(previous, t);
 
             Canvas.Save();
             Canvas.Scale(_scale);

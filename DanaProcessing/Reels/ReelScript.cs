@@ -42,6 +42,8 @@ namespace DanaProcessing.Reels
         public bool Marked { get; init; }
         /// <summary>1-based line in the original source, for messages.</summary>
         public int SourceLine { get; init; }
+        /// <summary>The rest of a line too long for the card, wrapped onto its own row: no line number, no Enter pause.</summary>
+        public bool Continuation { get; init; }
     }
 
     /// <summary>A card of code: from one <c>// @reel scene</c> marker to the next.</summary>
@@ -134,6 +136,8 @@ namespace DanaProcessing.Reels
         public double Typos { get; set; }
         /// <summary>Zoom in a little on @mark lines when they light up. On by default.</summary>
         public bool ZoomMarks { get; set; } = true;
+        /// <summary>Volume of the keyboard sounds while code is typed (0 = off). Exported MP4 and the preview; 1 by default.</summary>
+        public double KeySounds { get; set; } = 1;
         /// <summary>The source plays sound ([LiveLoop], Play(), Sample()).</summary>
         public bool SourceUsesAudio { get; private set; }
         /// <summary>Whether an export should record sound: the marker if given, otherwise whether the code makes sound.</summary>
@@ -231,6 +235,17 @@ namespace DanaProcessing.Reels
                         case "zoom":
                             script.ZoomMarks = !IsOff(text);
                             break;
+                        case "keys":
+                        case "keysound":
+                        case "keysounds":
+                        case "typingsound":
+                        {
+                            var t = (text ?? "").Trim().ToLowerInvariant();
+                            script.KeySounds = IsOff(t) ? 0
+                                : t is "" or "on" or "yes" or "true" ? 1
+                                : Math.Clamp(ParseNumber(t.TrimEnd('%'), 100, lineNo, script) / (t.EndsWith('%') ? 100 : 1), 0, 2);
+                            break;
+                        }
                         case "audio":
                         case "sound":
                             script.Audio = !IsOff(text);
@@ -462,7 +477,7 @@ namespace DanaProcessing.Reels
                 text = string.Join(" ", args);
                 args.Clear();
             }
-            else if (text == null && args.Count == 1 && command is "format" or "theme" or "lang" or "language" or "speed" or "fps" or "mouse" or "audio" or "sound" or "typos" or "mistakes" or "zoom" or "progress" or "linenumbers" or "numbers")
+            else if (text == null && args.Count == 1 && command is "format" or "theme" or "lang" or "language" or "speed" or "fps" or "mouse" or "audio" or "sound" or "typos" or "mistakes" or "zoom" or "keys" or "keysound" or "keysounds" or "typingsound" or "progress" or "linenumbers" or "numbers")
             {
                 text = args[0];
                 args.Clear();

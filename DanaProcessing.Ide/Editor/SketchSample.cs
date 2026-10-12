@@ -3576,6 +3576,7 @@ using DanaProcessing.Reels;
 //
 //   // @reel typos: 12%        about one word in eight gets a typo (on = 8%)
 //   ... typos=off / typos=35%  per scene, overrides the reel's rate
+//   // @reel keys: on         keyboard sounds while typing (on by default; 50% = quieter)
 //
 // Open it and go to Sketch > Create reel... to watch it.
 
@@ -3584,6 +3585,7 @@ using DanaProcessing.Reels;
 // @reel format: vertical
 // @reel theme: clay
 // @reel typos: 12%
+// @reel keys: on
 // @reel result: 7 caption=""Click to pop · they come back""
 
 // @reel show
