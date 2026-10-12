@@ -1368,6 +1368,8 @@
       <div class="group">
         <div class="group-title">Introduction</div>
         <a href="#intro" class="active"><i class="ph ph-book-open"></i> Overview</a>
+        <a href="#tutorial"><i class="ph ph-graduation-cap"></i> 30-minute tutorial</a>
+        <a href="#from-processing"><i class="ph ph-arrows-left-right"></i> From Processing / p5.js</a>
         <a href="#structure"><i class="ph ph-stack"></i> Sketch structure</a>
       </div>
 
@@ -1568,6 +1570,495 @@
             <p>Save this in the IDE and press <strong>Run</strong> — <code class="inline">SketchCompiler</code> compiles it in memory with Roslyn and swaps it straight into the canvas.</p>
           </section>
 
+          <!-- ================= TUTORIAL ================= -->
+          <section class="doc-section" id="tutorial">
+            <div class="section-kicker">Start here · 30 minutes</div>
+            <h2>Your first 30 minutes</h2>
+            <p class="section-intro">From an empty tab to a night full of fireflies that react to the mouse, make sound and turn into a video. Six steps, each a complete sketch you can run: open the IDE, press <strong>Test in Dana</strong> (or paste the code into a new tab and press <strong>Run</strong>), then try the small change suggested under it. No C# knowledge needed; it comes along the way.</p>
+            <h3 class="entry-title" id="tutorial-1">1. A canvas and a circle <span class="sig-return">3 min</span></h3>
+            <p class="entry-desc">Every sketch is a class that inherits from <code class="inline">Sketch</code>. <code class="inline">Setup()</code> runs once: give the canvas a size. <code class="inline">Draw()</code> runs about 60 times a second: clear the background and draw. <code class="inline">MouseX</code> and <code class="inline">MouseY</code> are always where the mouse is, so the circle follows it.</p>
+<div class="code-block">
+  <pre id="tutorial-1-code"><span class="kw">public</span> <span class="kw">class</span> Fireflies : <span class="tp">Sketch</span>
+{
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup()
+    {
+        Size(<span class="str">800</span>, <span class="str">500</span>);
+    }
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        Background(<span class="str">15</span>, <span class="str">20</span>, <span class="str">40</span>);
+        Fill(<span class="str">255</span>, <span class="str">230</span>, <span class="str">120</span>);
+        NoStroke();
+        Circle(MouseX, MouseY, <span class="str">20</span>);
+    }
+}</pre>
+  <button class="dana-test-btn" data-target="tutorial-1-code" title="Run in DanaProcessing IDE">
+    <i class="ph-bold ph-play"></i>
+    <span class="dana-test-label">Test in Dana</span>
+  </button>
+</div>
+            <div class="note"><strong>Try:</strong> Change the background to <code class="inline">Background(40, 10, 30)</code>, or make the circle bigger when it's further right: <code class="inline">Circle(MouseX, MouseY, MouseX / 10)</code>.</div>
+            <h3 class="entry-title" id="tutorial-2">2. Shapes and color: a night scene <span class="sig-return">5 min</span></h3>
+            <p class="entry-desc">Drawing is done in order, like painting: what you draw later covers what came before. <code class="inline">Fill()</code> and <code class="inline">Stroke()</code> set the colors for everything drawn after them, and a fourth number is transparency (0 to 255). Moving the scene into its own method keeps <code class="inline">Draw()</code> readable. <code class="inline">RandomSeed(7)</code> makes <code class="inline">Random()</code> return the same numbers every frame, so the grass doesn't flicker.</p>
+<div class="code-block">
+  <pre id="tutorial-2-code"><span class="kw">public</span> <span class="kw">class</span> Fireflies : <span class="tp">Sketch</span>
+{
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup()
+    {
+        Size(<span class="str">800</span>, <span class="str">500</span>);
+    }
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        Background(<span class="str">15</span>, <span class="str">20</span>, <span class="str">40</span>);
+        DrawScene();
+
+        Fill(<span class="str">255</span>, <span class="str">230</span>, <span class="str">120</span>);
+        NoStroke();
+        Circle(MouseX, MouseY, <span class="str">20</span>);
+    }
+
+    <span class="kw">void</span> DrawScene()
+    {
+        <span class="cm">// The moon: a big pale circle with a soft halo behind it.</span>
+        NoStroke();
+        Fill(<span class="str">255</span>, <span class="str">255</span>, <span class="str">220</span>, <span class="str">30</span>);
+        Circle(<span class="str">650</span>, <span class="str">100</span>, <span class="str">160</span>);
+        Fill(<span class="str">250</span>, <span class="str">245</span>, <span class="str">220</span>);
+        Circle(<span class="str">650</span>, <span class="str">100</span>, <span class="str">90</span>);
+
+        <span class="cm">// Grass: hundreds of thin lines, a little different each.</span>
+        RandomSeed(<span class="str">7</span>);                       <span class="cm">// same "random" grass every frame</span>
+        StrokeWeight(<span class="str">2</span>);
+        <span class="kw">for</span> (<span class="kw">int</span> x = <span class="str">0</span>; x &lt; Width; x += <span class="str">4</span>)
+        {
+            Stroke(<span class="str">30</span>, Random(<span class="str">70</span>, <span class="str">110</span>), <span class="str">60</span>);
+            <span class="kw">float</span> h = Random(<span class="str">30</span>, <span class="str">90</span>);
+            Line(x, Height, x + Random(-<span class="str">8</span>, <span class="str">8</span>), Height - h);
+        }
+    }
+}</pre>
+  <button class="dana-test-btn" data-target="tutorial-2-code" title="Run in DanaProcessing IDE">
+    <i class="ph-bold ph-play"></i>
+    <span class="dana-test-label">Test in Dana</span>
+  </button>
+</div>
+            <div class="note"><strong>Try:</strong> Add stars: a loop of 80 tiny <code class="inline">Circle(Random(Width), Random(300), 2)</code> calls, before the moon.</div>
+            <h3 class="entry-title" id="tutorial-3">3. Animation: one firefly <span class="sig-return">5 min</span></h3>
+            <p class="entry-desc"><code class="inline">Noise()</code> is random that changes smoothly: neighbouring inputs give neighbouring outputs, so increasing <code class="inline">t</code> a little each frame makes the firefly wander instead of jump. <code class="inline">Sin()</code> swings between -1 and 1; scaled to 0..1 it makes the glow breathe. Two circles, a big faint one and a small bright one, look like light.</p>
+<div class="code-block">
+  <pre id="tutorial-3-code"><span class="kw">public</span> <span class="kw">class</span> Fireflies : <span class="tp">Sketch</span>
+{
+    <span class="kw">float</span> t;
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup()
+    {
+        Size(<span class="str">800</span>, <span class="str">500</span>);
+    }
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        Background(<span class="str">15</span>, <span class="str">20</span>, <span class="str">40</span>);
+        DrawScene();
+
+        <span class="cm">// Noise() gives smooth random values: perfect for wandering.</span>
+        t += <span class="str">0.005f</span>;
+        <span class="kw">float</span> x = Noise(t) * Width;
+        <span class="kw">float</span> y = Noise(t + <span class="str">100</span>) * (Height - <span class="str">120</span>);
+
+        <span class="cm">// Sin() pulses between -1 and 1: the glow breathes.</span>
+        <span class="kw">float</span> glow = (Sin(FrameCount * <span class="str">0.1f</span>) + <span class="str">1</span>) / <span class="str">2</span>;   <span class="cm">// 0..1</span>
+        NoStroke();
+        Fill(<span class="str">255</span>, <span class="str">230</span>, <span class="str">120</span>, <span class="str">40</span> * glow);
+        Circle(x, y, <span class="str">60</span>);
+        Fill(<span class="str">255</span>, <span class="str">240</span>, <span class="str">150</span>, <span class="str">120</span> + <span class="str">135</span> * glow);
+        Circle(x, y, <span class="str">10</span>);
+    }
+
+    <span class="kw">void</span> DrawScene()
+    {
+        NoStroke();
+        Fill(<span class="str">255</span>, <span class="str">255</span>, <span class="str">220</span>, <span class="str">30</span>);
+        Circle(<span class="str">650</span>, <span class="str">100</span>, <span class="str">160</span>);
+        Fill(<span class="str">250</span>, <span class="str">245</span>, <span class="str">220</span>);
+        Circle(<span class="str">650</span>, <span class="str">100</span>, <span class="str">90</span>);
+
+        RandomSeed(<span class="str">7</span>);
+        StrokeWeight(<span class="str">2</span>);
+        <span class="kw">for</span> (<span class="kw">int</span> x = <span class="str">0</span>; x &lt; Width; x += <span class="str">4</span>)
+        {
+            Stroke(<span class="str">30</span>, Random(<span class="str">70</span>, <span class="str">110</span>), <span class="str">60</span>);
+            Line(x, Height, x + Random(-<span class="str">8</span>, <span class="str">8</span>), Height - Random(<span class="str">30</span>, <span class="str">90</span>));
+        }
+    }
+}</pre>
+  <button class="dana-test-btn" data-target="tutorial-3-code" title="Run in DanaProcessing IDE">
+    <i class="ph-bold ph-play"></i>
+    <span class="dana-test-label">Test in Dana</span>
+  </button>
+</div>
+            <div class="note"><strong>Try:</strong> Make it faster by changing <code class="inline">0.005f</code>, or slow the breathing by changing <code class="inline">0.1f</code>.</div>
+            <h3 class="entry-title" id="tutorial-4">4. Many fireflies: classes, lists and vectors <span class="sig-return">7 min</span></h3>
+            <p class="entry-desc">Forty fireflies need forty positions, so each one becomes an object of a small class, kept in a <code class="inline">List</code>. A <code class="inline">PVector</code> holds an x and a y and supports <code class="inline">+</code>, <code class="inline">-</code> and <code class="inline">*</code>, so moving is <code class="inline">f.Pos += step</code>. <code class="inline">PVector.FromAngle()</code> turns a noise value into a direction, and every firefly has its own noise <code class="inline">Seed</code> and glow <code class="inline">Phase</code>, so they don't move or blink together.</p>
+<div class="code-block">
+  <pre id="tutorial-4-code"><span class="kw">public</span> <span class="kw">class</span> Fireflies : <span class="tp">Sketch</span>
+{
+    <span class="cm">// One class per "thing": each firefly keeps its own position and rhythm.</span>
+    <span class="kw">class</span> <span class="tp">Firefly</span>
+    {
+        <span class="kw">public</span> <span class="tp">PVector</span> Pos;
+        <span class="kw">public</span> <span class="kw">float</span> Seed, Phase;
+    }
+
+    <span class="kw">readonly</span> <span class="tp">List</span>&lt;<span class="tp">Firefly</span>&gt; flies = <span class="kw">new</span>();
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup()
+    {
+        Size(<span class="str">800</span>, <span class="str">500</span>);
+        <span class="kw">for</span> (<span class="kw">int</span> i = <span class="str">0</span>; i &lt; <span class="str">40</span>; i++)
+            flies.Add(NewFly(Random(Width), Random(Height - <span class="str">120</span>)));
+    }
+
+    <span class="tp">Firefly</span> NewFly(<span class="kw">float</span> x, <span class="kw">float</span> y) =&gt; <span class="kw">new</span> <span class="tp">Firefly</span>
+    {
+        Pos = <span class="kw">new</span> <span class="tp">PVector</span>(x, y),
+        Seed = Random(<span class="str">1000</span>),
+        Phase = Random(TWO_PI),
+    };
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        Background(<span class="str">15</span>, <span class="str">20</span>, <span class="str">40</span>);
+        DrawScene();
+        <span class="kw">float</span> t = FrameCount * <span class="str">0.01f</span>;
+        NoStroke();
+        <span class="kw">foreach</span> (<span class="kw">var</span> f <span class="kw">in</span> flies)
+        {
+            <span class="cm">// Each one wanders by its own noise, and wraps around the edges.</span>
+            <span class="kw">var</span> step = <span class="tp">PVector</span>.FromAngle(Noise(f.Seed, t) * TWO_PI * <span class="str">2</span>) * <span class="str">1.2f</span>;
+            f.Pos += step;
+            f.Pos.X = (f.Pos.X + Width) % Width;
+            f.Pos.Y = Constrain(f.Pos.Y, <span class="str">10</span>, Height - <span class="str">100</span>);
+
+            <span class="kw">float</span> glow = (Sin(FrameCount * <span class="str">0.08f</span> + f.Phase) + <span class="str">1</span>) / <span class="str">2</span>;
+            Fill(<span class="str">255</span>, <span class="str">230</span>, <span class="str">120</span>, <span class="str">40</span> * glow);
+            Circle(f.Pos.X, f.Pos.Y, <span class="str">50</span>);
+            Fill(<span class="str">255</span>, <span class="str">240</span>, <span class="str">150</span>, <span class="str">100</span> + <span class="str">155</span> * glow);
+            Circle(f.Pos.X, f.Pos.Y, <span class="str">8</span>);
+        }
+    }
+
+    <span class="kw">void</span> DrawScene()
+    {
+        NoStroke();
+        Fill(<span class="str">255</span>, <span class="str">255</span>, <span class="str">220</span>, <span class="str">30</span>);
+        Circle(<span class="str">650</span>, <span class="str">100</span>, <span class="str">160</span>);
+        Fill(<span class="str">250</span>, <span class="str">245</span>, <span class="str">220</span>);
+        Circle(<span class="str">650</span>, <span class="str">100</span>, <span class="str">90</span>);
+
+        RandomSeed(<span class="str">7</span>);
+        StrokeWeight(<span class="str">2</span>);
+        <span class="kw">for</span> (<span class="kw">int</span> x = <span class="str">0</span>; x &lt; Width; x += <span class="str">4</span>)
+        {
+            Stroke(<span class="str">30</span>, Random(<span class="str">70</span>, <span class="str">110</span>), <span class="str">60</span>);
+            Line(x, Height, x + Random(-<span class="str">8</span>, <span class="str">8</span>), Height - Random(<span class="str">30</span>, <span class="str">90</span>));
+        }
+        RandomSeed((<span class="kw">int</span>)Millis());                <span class="cm">// back to real randomness</span>
+    }
+}</pre>
+  <button class="dana-test-btn" data-target="tutorial-4-code" title="Run in DanaProcessing IDE">
+    <i class="ph-bold ph-play"></i>
+    <span class="dana-test-label">Test in Dana</span>
+  </button>
+</div>
+            <div class="note"><strong>Try:</strong> Give each firefly its own size or color by adding a field to the class.</div>
+            <h3 class="entry-title" id="tutorial-5">5. Interaction: mouse and keyboard <span class="sig-return">5 min</span></h3>
+            <p class="entry-desc">Methods like <code class="inline">MousePressed()</code> and <code class="inline">KeyPressed()</code> are called once per event: a click adds five fireflies, Space switches their mood. Inside <code class="inline">Draw()</code>, the vector from the mouse to each firefly decides how it reacts: <code class="inline">SetMag()</code> keeps the direction and sets the strength, which <code class="inline">Map()</code> makes stronger the closer the mouse is.</p>
+<div class="code-block">
+  <pre id="tutorial-5-code"><span class="kw">public</span> <span class="kw">class</span> Fireflies : <span class="tp">Sketch</span>
+{
+    <span class="kw">class</span> <span class="tp">Firefly</span>
+    {
+        <span class="kw">public</span> <span class="tp">PVector</span> Pos;
+        <span class="kw">public</span> <span class="kw">float</span> Seed, Phase;
+    }
+
+    <span class="kw">readonly</span> <span class="tp">List</span>&lt;<span class="tp">Firefly</span>&gt; flies = <span class="kw">new</span>();
+    <span class="kw">bool</span> scared = <span class="kw">true</span>;
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup()
+    {
+        Size(<span class="str">800</span>, <span class="str">500</span>);
+        <span class="kw">for</span> (<span class="kw">int</span> i = <span class="str">0</span>; i &lt; <span class="str">40</span>; i++)
+            flies.Add(NewFly(Random(Width), Random(Height - <span class="str">120</span>)));
+    }
+
+    <span class="tp">Firefly</span> NewFly(<span class="kw">float</span> x, <span class="kw">float</span> y) =&gt; <span class="kw">new</span> <span class="tp">Firefly</span>
+    {
+        Pos = <span class="kw">new</span> <span class="tp">PVector</span>(x, y),
+        Seed = Random(<span class="str">1000</span>),
+        Phase = Random(TWO_PI),
+    };
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        Background(<span class="str">15</span>, <span class="str">20</span>, <span class="str">40</span>);
+        DrawScene();
+        <span class="kw">float</span> t = FrameCount * <span class="str">0.01f</span>;
+        <span class="kw">var</span> mouse = <span class="kw">new</span> <span class="tp">PVector</span>(MouseX, MouseY);
+        NoStroke();
+        <span class="kw">foreach</span> (<span class="kw">var</span> f <span class="kw">in</span> flies)
+        {
+            <span class="kw">var</span> step = <span class="tp">PVector</span>.FromAngle(Noise(f.Seed, t) * TWO_PI * <span class="str">2</span>) * <span class="str">1.2f</span>;
+
+            <span class="cm">// Near the mouse: flee from it, or come closer -- Space switches.</span>
+            <span class="kw">var</span> away = f.Pos - mouse;
+            <span class="kw">float</span> d = away.Mag();
+            <span class="kw">if</span> (d &lt; <span class="str">150</span>)
+                step += away.SetMag(Map(d, <span class="str">0</span>, <span class="str">150</span>, <span class="str">3</span>, <span class="str">0</span>)) * (scared ? <span class="str">1</span> : -<span class="str">1</span>);
+
+            f.Pos += step;
+            f.Pos.X = (f.Pos.X + Width) % Width;
+            f.Pos.Y = Constrain(f.Pos.Y, <span class="str">10</span>, Height - <span class="str">100</span>);
+
+            <span class="kw">float</span> glow = (Sin(FrameCount * <span class="str">0.08f</span> + f.Phase) + <span class="str">1</span>) / <span class="str">2</span>;
+            Fill(<span class="str">255</span>, <span class="str">230</span>, <span class="str">120</span>, <span class="str">40</span> * glow);
+            Circle(f.Pos.X, f.Pos.Y, <span class="str">50</span>);
+            Fill(<span class="str">255</span>, <span class="str">240</span>, <span class="str">150</span>, <span class="str">100</span> + <span class="str">155</span> * glow);
+            Circle(f.Pos.X, f.Pos.Y, <span class="str">8</span>);
+        }
+
+        Fill(<span class="str">255</span>, <span class="str">150</span>);
+        Text(<span class="str">$"{flies.Count} fireflies · click: add five · space: {(scared ? "</span>shy<span class="str">" : "</span>curious<span class="str">")}"</span>, <span class="str">12</span>, <span class="str">20</span>);
+    }
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> MousePressed()
+    {
+        <span class="kw">for</span> (<span class="kw">int</span> i = <span class="str">0</span>; i &lt; <span class="str">5</span>; i++)
+            flies.Add(NewFly(MouseX + Random(-<span class="str">20</span>, <span class="str">20</span>), MouseY + Random(-<span class="str">20</span>, <span class="str">20</span>)));
+    }
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> KeyPressed()
+    {
+        <span class="kw">if</span> (Key == <span class="str">' '</span>) scared = !scared;
+    }
+
+    <span class="kw">void</span> DrawScene()
+    {
+        NoStroke();
+        Fill(<span class="str">255</span>, <span class="str">255</span>, <span class="str">220</span>, <span class="str">30</span>);
+        Circle(<span class="str">650</span>, <span class="str">100</span>, <span class="str">160</span>);
+        Fill(<span class="str">250</span>, <span class="str">245</span>, <span class="str">220</span>);
+        Circle(<span class="str">650</span>, <span class="str">100</span>, <span class="str">90</span>);
+
+        RandomSeed(<span class="str">7</span>);
+        StrokeWeight(<span class="str">2</span>);
+        <span class="kw">for</span> (<span class="kw">int</span> x = <span class="str">0</span>; x &lt; Width; x += <span class="str">4</span>)
+        {
+            Stroke(<span class="str">30</span>, Random(<span class="str">70</span>, <span class="str">110</span>), <span class="str">60</span>);
+            Line(x, Height, x + Random(-<span class="str">8</span>, <span class="str">8</span>), Height - Random(<span class="str">30</span>, <span class="str">90</span>));
+        }
+        RandomSeed((<span class="kw">int</span>)Millis());
+    }
+}</pre>
+  <button class="dana-test-btn" data-target="tutorial-5-code" title="Run in DanaProcessing IDE">
+    <i class="ph-bold ph-play"></i>
+    <span class="dana-test-label">Test in Dana</span>
+  </button>
+</div>
+            <div class="note"><strong>Try:</strong> Press a key to clear them all with <code class="inline">flies.Clear()</code>, or make the moon follow the mouse.</div>
+            <h3 class="entry-title" id="tutorial-6">6. Sound, saving and sharing <span class="sig-return">5 min</span></h3>
+            <p class="entry-desc">One line of <code class="inline">Play()</code> gives each click a note, higher to the right. <code class="inline">Save()</code> writes a PNG of the canvas when you press S. The <code class="inline">// @reel</code> comments don't change how the sketch runs: they tell <strong>Sketch → Create reel...</strong> how to turn it into a short video, with the code typing itself scene by scene, then the sketch running with a simulated mouse. Export it as MP4 with sound, a GIF, or a YouTube thumbnail.</p>
+<div class="code-block">
+  <pre id="tutorial-6-code"><span class="cm">// @reel title: Fireflies in 60 lines of C#</span>
+<span class="cm">// @reel format: vertical</span>
+<span class="cm">// @reel result: 8 caption="Move the mouse · click to add more"</span>
+<span class="cm">// @reel scene "A firefly is a position, a seed and a rhythm" effect=type</span>
+<span class="kw">public</span> <span class="kw">class</span> Fireflies : <span class="tp">Sketch</span>
+{
+    <span class="kw">class</span> <span class="tp">Firefly</span>
+    {
+        <span class="kw">public</span> <span class="tp">PVector</span> Pos;
+        <span class="kw">public</span> <span class="kw">float</span> Seed, Phase;
+    }
+
+    <span class="kw">readonly</span> <span class="tp">List</span>&lt;<span class="tp">Firefly</span>&gt; flies = <span class="kw">new</span>();
+    <span class="kw">bool</span> scared = <span class="kw">true</span>;
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup()
+    {
+        Size(<span class="str">800</span>, <span class="str">500</span>);
+        <span class="kw">for</span> (<span class="kw">int</span> i = <span class="str">0</span>; i &lt; <span class="str">40</span>; i++)
+            flies.Add(NewFly(Random(Width), Random(Height - <span class="str">120</span>)));
+    }
+
+    <span class="tp">Firefly</span> NewFly(<span class="kw">float</span> x, <span class="kw">float</span> y) =&gt; <span class="kw">new</span> <span class="tp">Firefly</span>
+    {
+        Pos = <span class="kw">new</span> <span class="tp">PVector</span>(x, y),
+        Seed = Random(<span class="str">1000</span>),
+        Phase = Random(TWO_PI),
+    };
+<span class="cm">// @reel scene "Every frame: wander, avoid the mouse, glow" effect=lines</span>
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        Background(<span class="str">15</span>, <span class="str">20</span>, <span class="str">40</span>);
+        DrawScene();
+        <span class="kw">float</span> t = FrameCount * <span class="str">0.01f</span>;
+        <span class="kw">var</span> mouse = <span class="kw">new</span> <span class="tp">PVector</span>(MouseX, MouseY);
+        NoStroke();
+        <span class="kw">foreach</span> (<span class="kw">var</span> f <span class="kw">in</span> flies)
+        {
+            <span class="kw">var</span> step = <span class="tp">PVector</span>.FromAngle(Noise(f.Seed, t) * TWO_PI * <span class="str">2</span>) * <span class="str">1.2f</span>;   <span class="cm">// @mark</span>
+            <span class="kw">var</span> away = f.Pos - mouse;
+            <span class="kw">float</span> d = away.Mag();
+            <span class="kw">if</span> (d &lt; <span class="str">150</span>)
+                step += away.SetMag(Map(d, <span class="str">0</span>, <span class="str">150</span>, <span class="str">3</span>, <span class="str">0</span>)) * (scared ? <span class="str">1</span> : -<span class="str">1</span>);   <span class="cm">// @mark</span>
+            f.Pos += step;
+            f.Pos.X = (f.Pos.X + Width) % Width;
+            f.Pos.Y = Constrain(f.Pos.Y, <span class="str">10</span>, Height - <span class="str">100</span>);
+
+            <span class="kw">float</span> glow = (Sin(FrameCount * <span class="str">0.08f</span> + f.Phase) + <span class="str">1</span>) / <span class="str">2</span>;
+            Fill(<span class="str">255</span>, <span class="str">230</span>, <span class="str">120</span>, <span class="str">40</span> * glow);
+            Circle(f.Pos.X, f.Pos.Y, <span class="str">50</span>);
+            Fill(<span class="str">255</span>, <span class="str">240</span>, <span class="str">150</span>, <span class="str">100</span> + <span class="str">155</span> * glow);
+            Circle(f.Pos.X, f.Pos.Y, <span class="str">8</span>);
+        }
+    }
+<span class="cm">// @reel hide</span>
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> MousePressed()
+    {
+        <span class="cm">// A soft note for every new group, higher the further right you click.</span>
+        Play(Map(MouseX, <span class="str">0</span>, Width, <span class="str">60</span>, <span class="str">84</span>), synth: <span class="tp">Synth</span>.Pluck, amp: <span class="str">0.5</span>, release: <span class="str">0.6</span>);
+        <span class="kw">for</span> (<span class="kw">int</span> i = <span class="str">0</span>; i &lt; <span class="str">5</span>; i++)
+            flies.Add(NewFly(MouseX + Random(-<span class="str">20</span>, <span class="str">20</span>), MouseY + Random(-<span class="str">20</span>, <span class="str">20</span>)));
+    }
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> KeyPressed()
+    {
+        <span class="kw">if</span> (Key == <span class="str">' '</span>) scared = !scared;
+        <span class="kw">if</span> (Key == <span class="str">'s'</span>) Save(<span class="str">"fireflies.png"</span>);
+    }
+
+    <span class="kw">void</span> DrawScene()
+    {
+        NoStroke();
+        Fill(<span class="str">255</span>, <span class="str">255</span>, <span class="str">220</span>, <span class="str">30</span>);
+        Circle(<span class="str">650</span>, <span class="str">100</span>, <span class="str">160</span>);
+        Fill(<span class="str">250</span>, <span class="str">245</span>, <span class="str">220</span>);
+        Circle(<span class="str">650</span>, <span class="str">100</span>, <span class="str">90</span>);
+
+        RandomSeed(<span class="str">7</span>);
+        StrokeWeight(<span class="str">2</span>);
+        <span class="kw">for</span> (<span class="kw">int</span> x = <span class="str">0</span>; x &lt; Width; x += <span class="str">4</span>)
+        {
+            Stroke(<span class="str">30</span>, Random(<span class="str">70</span>, <span class="str">110</span>), <span class="str">60</span>);
+            Line(x, Height, x + Random(-<span class="str">8</span>, <span class="str">8</span>), Height - Random(<span class="str">30</span>, <span class="str">90</span>));
+        }
+        RandomSeed((<span class="kw">int</span>)Millis());
+    }
+}
+<span class="cm">// @reel show</span></pre>
+  <button class="dana-test-btn" data-target="tutorial-6-code" title="Run in DanaProcessing IDE">
+    <i class="ph-bold ph-play"></i>
+    <span class="dana-test-label">Test in Dana</span>
+  </button>
+</div>
+            <div class="note"><strong>Try:</strong> Open <strong>Sketch → Examples</strong> for 50+ more sketches, starting with the numbered "YT" series.</div>
+            <p>Where next: <a href="#from-processing">coming from Processing or p5.js</a>, then every section of this reference ends with a runnable example.</p>
+          </section>
+
+          <!-- ================= FROM PROCESSING ================= -->
+          <section class="doc-section" id="from-processing">
+            <div class="section-kicker">Guide</div>
+            <h2>Coming from Processing or p5.js</h2>
+            <p class="section-intro">Most of what you know carries over: same functions, same order of thinking, <code class="inline">Setup()</code> once and <code class="inline">Draw()</code> every frame. The differences are mostly C# itself. These are the ones that trip people up in the first hour.</p>
+            <h3 class="entry-title" id="from-processing-differences">The differences that matter</h3>
+            <div class="table-wrap"><table>
+              <tr><th>In DanaProcessing</th><th>Why it matters</th></tr>
+              <tr><td>Names are PascalCase: <code class="inline">Fill</code>, <code class="inline">MouseX</code>, <code class="inline">FrameCount</code></td><td>C# convention. Lowercase <code class="inline">fill()</code> is a compile error with a clear message.</td></tr>
+              <tr><td>Your sketch is a class: <code class="inline">public class MySketch : Sketch</code></td><td>Processing hides that class from you; here you write it. Variables you keep between frames are fields of that class.</td></tr>
+              <tr><td><code class="inline">public override void Draw()</code></td><td>Setup, Draw and every event (MousePressed, KeyPressed…) are overrides. The editor completes them for you.</td></tr>
+              <tr><td>Decimal literals need <code class="inline">f</code>: <code class="inline">0.5f</code></td><td>Most of the API uses <code class="inline">float</code>, and C# reads <code class="inline">0.5</code> as <code class="inline">double</code>.</td></tr>
+              <tr><td><code class="inline">5 / 2</code> is <code class="inline">2</code></td><td>Integer division, like Java, unlike JavaScript. Write <code class="inline">5 / 2f</code> for 2.5.</td></tr>
+              <tr><td><code class="inline">Color</code> is a type, not an <code class="inline">int</code></td><td><code class="inline">Color c = Color(255, 0, 0)</code>; read channels with <code class="inline">c.R</code> or <code class="inline">Red(c)</code>.</td></tr>
+              <tr><td><code class="inline">PVector</code> is a value (a struct)</td><td>Copying it copies the numbers, so <code class="inline">var a = b; a.X = 5;</code> doesn't change <code class="inline">b</code>. It has <code class="inline">+ - * /</code> operators.</td></tr>
+              <tr><td><code class="inline">Rotate()</code> takes radians</td><td>As in Processing. <code class="inline">RotateDegrees()</code> is there when degrees read better.</td></tr>
+              <tr><td>Mouse state vs mouse events</td><td>Processing's <code class="inline">mousePressed</code> is both a variable and a function; here the variable is <code class="inline">IsMousePressed</code> and the event is <code class="inline">MousePressed()</code>. Same for keys.</td></tr>
+              <tr><td><code class="inline">List&lt;T&gt;</code>, LINQ, <code class="inline">$"..."</code>, NuGet</td><td>All of .NET is available: generic lists, string interpolation, async, and any NuGet package with a <code class="inline">// nuget:</code> line.</td></tr>
+            </table></div>
+            <h3 class="entry-title" id="from-processing-table">Equivalence table</h3>
+            <div class="table-wrap"><table>
+              <tr><th>What</th><th>Processing (Java)</th><th>p5.js</th><th>DanaProcessing (C#)</th></tr>
+              <tr><td>Sketch structure</td><td><code class="inline">void setup() { } void draw() { }</code></td><td><code class="inline">function setup() { } function draw() { }</code></td><td><code class="inline">public class MySketch : Sketch { public override void Setup() { } public override void Draw() { } }</code></td></tr>
+              <tr><td>Canvas</td><td><code class="inline">size(600, 400);</code></td><td><code class="inline">createCanvas(600, 400);</code></td><td><code class="inline">Size(600, 400);</code></td></tr>
+              <tr><td>3D canvas</td><td><code class="inline">size(600, 400, P3D);</code></td><td><code class="inline">createCanvas(600, 400, WEBGL);</code></td><td><code class="inline">Size(600, 400, RendererKind.Renderer3D);</code></td></tr>
+              <tr><td>Colors</td><td><code class="inline">color c = color(255, 0, 0); fill(c);</code></td><td><code class="inline">let c = color(255, 0, 0); fill(c);</code></td><td><code class="inline">Color c = Color(255, 0, 0); Fill(c);</code></td></tr>
+              <tr><td>HSB</td><td><code class="inline">colorMode(HSB, 360, 100, 100); fill(h, s, b);</code></td><td><code class="inline">colorMode(HSB); fill(h, s, b);</code></td><td><code class="inline">FillHSB(h, s, b);  or  ColorMode(ColorSpaceMode.HSB, 360, 100, 100);</code></td></tr>
+              <tr><td>Shapes</td><td><code class="inline">ellipse(x, y, w, h); circle(x, y, d); rect(x, y, w, h);</code></td><td><code class="inline">ellipse(x, y, w, h); circle(x, y, d); rect(x, y, w, h);</code></td><td><code class="inline">Ellipse(x, y, w, h); Circle(x, y, d); Rect(x, y, w, h);</code></td></tr>
+              <tr><td>Rotation</td><td><code class="inline">rotate(radians(45));</code></td><td><code class="inline">rotate(radians(45));  (or angleMode(DEGREES))</code></td><td><code class="inline">Rotate(Radians(45));  or  RotateDegrees(45);</code></td></tr>
+              <tr><td>Transform stack</td><td><code class="inline">pushMatrix(); popMatrix(); push(); pop();</code></td><td><code class="inline">push(); pop();</code></td><td><code class="inline">PushMatrix(); PopMatrix(); PushStyle(); PopStyle();</code></td></tr>
+              <tr><td>Mouse position</td><td><code class="inline">mouseX, mouseY, pmouseX</code></td><td><code class="inline">mouseX, mouseY, pmouseX</code></td><td><code class="inline">MouseX, MouseY, PMouseX</code></td></tr>
+              <tr><td>Is the mouse down?</td><td><code class="inline">mousePressed  (boolean variable)</code></td><td><code class="inline">mouseIsPressed</code></td><td><code class="inline">IsMousePressed</code></td></tr>
+              <tr><td>Mouse event</td><td><code class="inline">void mousePressed() { }</code></td><td><code class="inline">function mousePressed() { }</code></td><td><code class="inline">public override void MousePressed() { }</code></td></tr>
+              <tr><td>Keys</td><td><code class="inline">key, keyCode, keyPressed, UP</code></td><td><code class="inline">key, keyCode, keyIsPressed, UP_ARROW</code></td><td><code class="inline">Key, KeyCode, IsKeyPressed, UP</code></td></tr>
+              <tr><td>Time</td><td><code class="inline">frameCount, millis(), frameRate(30)</code></td><td><code class="inline">frameCount, millis(), frameRate(30)</code></td><td><code class="inline">FrameCount, Millis(), FrameRate(30)</code></td></tr>
+              <tr><td>Math</td><td><code class="inline">map(), lerp(), constrain(), dist()</code></td><td><code class="inline">map(), lerp(), constrain(), dist()</code></td><td><code class="inline">Map(), Lerp(), Constrain(), Dist()</code></td></tr>
+              <tr><td>Random &amp; noise</td><td><code class="inline">random(10), random(5, 10), noise(t)</code></td><td><code class="inline">random(10), random(5, 10), noise(t)</code></td><td><code class="inline">Random(10), Random(5, 10), Noise(t)</code></td></tr>
+              <tr><td>Vectors</td><td><code class="inline">PVector v = new PVector(1, 2); v.add(w);</code></td><td><code class="inline">let v = createVector(1, 2); v.add(w);</code></td><td><code class="inline">var v = new PVector(1, 2); v += w;  (a value type)</code></td></tr>
+              <tr><td>Growable list</td><td><code class="inline">ArrayList&lt;Ball&gt; balls = new ArrayList&lt;Ball&gt;(); balls.add(b); balls.size()</code></td><td><code class="inline">let balls = []; balls.push(b); balls.length</code></td><td><code class="inline">var balls = new List&lt;Ball&gt;(); balls.Add(b); balls.Count</code></td></tr>
+              <tr><td>Arrays</td><td><code class="inline">int[] a = new int[10]; a.length</code></td><td><code class="inline">let a = new Array(10); a.length</code></td><td><code class="inline">int[] a = new int[10]; a.Length</code></td></tr>
+              <tr><td>Text</td><td><code class="inline">text("hi", x, y); textSize(20);</code></td><td><code class="inline">text("hi", x, y); textSize(20);</code></td><td><code class="inline">Text("hi", x, y); TextSize(20);</code></td></tr>
+              <tr><td>String formatting</td><td><code class="inline">nf(x, 2, 1), "x = " + x</code></td><td><code class="inline">nf(x, 2, 1), `x = ${x}`</code></td><td><code class="inline">Nf(x, 2, 1), $"x = {x:0.0}"</code></td></tr>
+              <tr><td>Images</td><td><code class="inline">PImage img = loadImage("a.png"); image(img, 0, 0);</code></td><td><code class="inline">let img = loadImage("a.png"); image(img, 0, 0);</code></td><td><code class="inline">PImage img = LoadImage("a.png"); Image(img, 0, 0);</code></td></tr>
+              <tr><td>Offscreen canvas</td><td><code class="inline">PGraphics pg = createGraphics(200, 200);</code></td><td><code class="inline">let pg = createGraphics(200, 200);</code></td><td><code class="inline">var pg = CreateGraphics(200, 200);</code></td></tr>
+              <tr><td>Pixels</td><td><code class="inline">loadPixels(); pixels[i] = color(0); updatePixels();</code></td><td><code class="inline">loadPixels(); pixels[i*4] = 0; updatePixels();</code></td><td><code class="inline">LoadPixels(); Pixels[i] = Color(0); UpdatePixels();</code></td></tr>
+              <tr><td>Saving</td><td><code class="inline">save("a.png"); saveFrame("f-####.png");</code></td><td><code class="inline">saveCanvas("a", "png");</code></td><td><code class="inline">Save("a.png"); SaveFrame("f-####.png");</code></td></tr>
+              <tr><td>Console</td><td><code class="inline">println(x);</code></td><td><code class="inline">console.log(x);</code></td><td><code class="inline">Println(x);</code></td></tr>
+              <tr><td>Data files</td><td><code class="inline">loadJSONObject("d.json"), loadTable("t.csv", "header")</code></td><td><code class="inline">loadJSON("d.json"), loadTable("t.csv", "csv", "header")</code></td><td><code class="inline">LoadJSONObject("d.json"), LoadTable("t.csv", "header")</code></td></tr>
+              <tr><td>Sound</td><td><code class="inline">Sound library: new SinOsc(this).play();</code></td><td><code class="inline">p5.sound: new p5.Oscillator().start();</code></td><td><code class="inline">Play(60);  and  [LiveLoop] async Task Beat() { ... await Sleep(1); }  (built in)</code></td></tr>
+            </table></div>
+            <h3 class="entry-title" id="from-processing-port">A sketch, ported</h3>
+            <p class="entry-desc">Processing's classic bouncing ball, line for line. Left out: nothing.</p>
+<pre>// Processing                          // DanaProcessing
+float x = 100, vx = 3;                 // float x = 100, vx = 3;      (fields)
+void setup() {                         // public override void Setup() {
+  size(400, 200);                      //     Size(400, 200);
+}                                      // }
+void draw() {                          // public override void Draw() {
+  background(30);                      //     Background(30);
+  x += vx;                             //     x += vx;
+  if (x &lt; 20 || x &gt; width - 20)        //     if (x &lt; 20 || x &gt; Width - 20)
+    vx = -vx;                          //         vx = -vx;
+  ellipse(x, height / 2, 40, 40);      //     Ellipse(x, Height / 2, 40, 40);
+}                                      // }</pre>
+            <div class="note"><strong>Run it:</strong> the same sketch, complete:</div>
+<div class="code-block">
+  <pre id="from-processing-code"><span class="kw">public</span> <span class="kw">class</span> Bounce : <span class="tp">Sketch</span>
+{
+    <span class="kw">float</span> x = <span class="str">100</span>, vx = <span class="str">3</span>;
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup()
+    {
+        Size(<span class="str">400</span>, <span class="str">200</span>);
+    }
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        Background(<span class="str">30</span>);
+        x += vx;
+        <span class="kw">if</span> (x &lt; <span class="str">20</span> || x &gt; Width - <span class="str">20</span>)
+            vx = -vx;
+        Ellipse(x, Height / <span class="str">2</span>, <span class="str">40</span>, <span class="str">40</span>);
+    }
+}</pre>
+  <button class="dana-test-btn" data-target="from-processing-code" title="Run in DanaProcessing IDE">
+    <i class="ph-bold ph-play"></i>
+    <span class="dana-test-label">Test in Dana</span>
+  </button>
+</div>
+          </section>
+
           <!-- ================= STRUCTURE ================= -->
           <section class="doc-section" id="structure">
             <div class="section-kicker">02 · Structure</div>
@@ -1644,6 +2135,43 @@
                 <tr><td>DisplayWidth / DisplayHeight</td><td class="ptype">int</td><td>Size of the screen the sketch runs on. 0 until the host sets it.</td></tr>
               </table>
             </div>
+          
+            <h3 class="entry-title" id="structure-example">Runnable example</h3>
+            <p class="entry-desc">A complete sketch using this section. <strong>Test in Dana</strong> opens it in the IDE, or paste it into a new tab and press Run.</p>
+<div class="code-block">
+  <pre id="structure-example-code"><span class="cm">// Setup() runs once, Draw() every frame. NoLoop()/Loop() pause and resume.</span>
+<span class="kw">public</span> <span class="kw">class</span> Structure : <span class="tp">Sketch</span>
+{
+    <span class="kw">float</span> angle;
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup()
+    {
+        Size(<span class="str">500</span>, <span class="str">300</span>);
+        FrameRate(<span class="str">60</span>);
+    }
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        Background(<span class="str">30</span>, <span class="str">32</span>, <span class="str">40</span>);
+        angle += <span class="str">0.05f</span>;
+        Fill(<span class="str">255</span>, <span class="str">180</span>, <span class="str">120</span>);
+        NoStroke();
+        Circle(Width / <span class="str">2</span> + Cos(angle) * <span class="str">150</span>, Height / <span class="str">2</span>, <span class="str">40</span>);
+
+        Fill(<span class="str">255</span>);
+        Text(<span class="str">$"frame {FrameCount} · click to {(IsLooping ? "</span>pause<span class="str">" : "</span>resume<span class="str">")}"</span>, <span class="str">12</span>, <span class="str">20</span>);
+    }
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> MousePressed()
+    {
+        <span class="kw">if</span> (IsLooping) NoLoop(); <span class="kw">else</span> Loop();
+    }
+}</pre>
+  <button class="dana-test-btn" data-target="structure-example-code" title="Run in DanaProcessing IDE">
+    <i class="ph-bold ph-play"></i>
+    <span class="dana-test-label">Test in Dana</span>
+  </button>
+</div>
           </section>
 
           <!-- ================= COLOR ================= -->
@@ -1694,6 +2222,46 @@
 
             <h3 class="entry-title" id="blendmode">BlendMode(<span class="tp">BlendModeKind</span> mode)</h3>
             <p class="entry-desc">Sets the compositing mode for every drawing operation from here on — shapes, images, and text. See <a href="#enums">BlendModeKind</a> for the full list, and <a href="#pixels">Pixels</a> for <code class="inline">Blend()</code>, which takes a mode per call instead of setting it globally.</p>
+          
+            <h3 class="entry-title" id="color-example">Runnable example</h3>
+            <p class="entry-desc">A complete sketch using this section. <strong>Test in Dana</strong> opens it in the IDE, or paste it into a new tab and press Run.</p>
+<div class="code-block">
+  <pre id="color-example-code"><span class="cm">// RGB, gray, alpha and HSB side by side. Move the mouse to change the hue.</span>
+<span class="kw">public</span> <span class="kw">class</span> Colors : <span class="tp">Sketch</span>
+{
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup() =&gt; Size(<span class="str">600</span>, <span class="str">300</span>);
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        Background(<span class="str">240</span>);
+        NoStroke();
+
+        Fill(<span class="str">230</span>, <span class="str">80</span>, <span class="str">60</span>);            Rect(<span class="str">20</span>, <span class="str">20</span>, <span class="str">120</span>, <span class="str">120</span>);   <span class="cm">// RGB</span>
+        Fill(<span class="str">90</span>);                     Rect(<span class="str">160</span>, <span class="str">20</span>, <span class="str">120</span>, <span class="str">120</span>);  <span class="cm">// gray</span>
+        Fill(<span class="str">40</span>, <span class="str">120</span>, <span class="str">220</span>, <span class="str">120</span>);      Rect(<span class="str">100</span>, <span class="str">80</span>, <span class="str">120</span>, <span class="str">120</span>);  <span class="cm">// RGB + alpha, overlapping</span>
+
+        <span class="cm">// FillHSB: hue 0..360, saturation and brightness 0..100.</span>
+        <span class="kw">float</span> hue = Map(MouseX, <span class="str">0</span>, Width, <span class="str">0</span>, <span class="str">360</span>);
+        <span class="kw">for</span> (<span class="kw">int</span> i = <span class="str">0</span>; i &lt; <span class="str">10</span>; i++)
+        {
+            FillHSB(hue + i * <span class="str">12</span>, <span class="str">70</span>, <span class="str">95</span>);
+            Rect(<span class="str">320</span> + i * <span class="str">26</span>, <span class="str">20</span>, <span class="str">24</span>, <span class="str">180</span>);
+        }
+
+        <span class="cm">// Colors are values: build them once, mix them with LerpColor.</span>
+        <span class="tp">Color</span> a = <span class="tp">Color</span>(<span class="str">255</span>, <span class="str">200</span>, <span class="str">0</span>), b = <span class="tp">Color</span>(<span class="str">120</span>, <span class="str">0</span>, <span class="str">200</span>);
+        <span class="kw">for</span> (<span class="kw">int</span> i = <span class="str">0</span>; i &lt; <span class="str">20</span>; i++)
+        {
+            Fill(LerpColor(a, b, i / <span class="str">19f</span>));
+            Rect(<span class="str">20</span> + i * <span class="str">28</span>, <span class="str">230</span>, <span class="str">26</span>, <span class="str">50</span>);
+        }
+    }
+}</pre>
+  <button class="dana-test-btn" data-target="color-example-code" title="Run in DanaProcessing IDE">
+    <i class="ph-bold ph-play"></i>
+    <span class="dana-test-label">Test in Dana</span>
+  </button>
+</div>
           </section>
 
           <!-- ================= PRIMITIVES ================= -->
@@ -1754,6 +2322,41 @@
 
             <h3 class="entry-title" id="bezierdetail">BezierDetail(<span class="tp">int</span> detail) · CurveDetail(<span class="tp">int</span> detail)</h3>
             <p class="entry-desc">Stored for API parity with sketches ported from Processing. Skia already draws exact, analytically-flattened Bézier/Catmull-Rom curves regardless of segment count, so neither has any visible effect here.</p>
+          
+            <h3 class="entry-title" id="shape-primitives-example">Runnable example</h3>
+            <p class="entry-desc">A complete sketch using this section. <strong>Test in Dana</strong> opens it in the IDE, or paste it into a new tab and press Run.</p>
+<div class="code-block">
+  <pre id="shape-primitives-example-code"><span class="cm">// The basic shapes, with stroke and fill.</span>
+<span class="kw">public</span> <span class="kw">class</span> Primitives : <span class="tp">Sketch</span>
+{
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup() =&gt; Size(<span class="str">640</span>, <span class="str">260</span>);
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        Background(<span class="str">250</span>, <span class="str">246</span>, <span class="str">240</span>);
+        Stroke(<span class="str">40</span>);
+        StrokeWeight(<span class="str">3</span>);
+        Fill(<span class="str">255</span>, <span class="str">170</span>, <span class="str">120</span>);
+
+        Point(<span class="str">30</span>, <span class="str">130</span>);
+        Line(<span class="str">60</span>, <span class="str">60</span>, <span class="str">120</span>, <span class="str">200</span>);
+        Rect(<span class="str">140</span>, <span class="str">60</span>, <span class="str">90</span>, <span class="str">140</span>);
+        Square(<span class="str">250</span>, <span class="str">90</span>, <span class="str">80</span>);
+        Ellipse(<span class="str">400</span>, <span class="str">130</span>, <span class="str">110</span>, <span class="str">70</span>);
+        Circle(<span class="str">520</span>, <span class="str">130</span>, <span class="str">90</span>);
+        Triangle(<span class="str">560</span>, <span class="str">220</span>, <span class="str">600</span>, <span class="str">150</span>, <span class="str">630</span>, <span class="str">220</span>);
+        Arc(<span class="str">400</span>, <span class="str">220</span>, <span class="str">80</span>, <span class="str">80</span>, <span class="str">0</span>, PI, <span class="tp">ArcMode</span>.Pie);
+
+        NoFill();
+        StrokeWeight(<span class="str">1</span>);
+        Quad(<span class="str">20</span>, <span class="str">20</span>, <span class="str">600</span>, <span class="str">30</span>, <span class="str">610</span>, <span class="str">40</span>, <span class="str">30</span>, <span class="str">40</span>);
+    }
+}</pre>
+  <button class="dana-test-btn" data-target="shape-primitives-example-code" title="Run in DanaProcessing IDE">
+    <i class="ph-bold ph-play"></i>
+    <span class="dana-test-label">Test in Dana</span>
+  </button>
+</div>
           </section>
 
           <!-- ================= CUSTOM SHAPES ================= -->
@@ -1787,6 +2390,47 @@
 
             <h3 class="entry-title" id="endshape">EndShape(<span class="tp">bool</span> close = false)</h3>
             <p class="entry-desc">Finishes and draws the recorded shape.</p>
+          
+            <h3 class="entry-title" id="shape-custom-example">Runnable example</h3>
+            <p class="entry-desc">A complete sketch using this section. <strong>Test in Dana</strong> opens it in the IDE, or paste it into a new tab and press Run.</p>
+<div class="code-block">
+  <pre id="shape-custom-example-code"><span class="cm">// BeginShape/Vertex/EndShape: a star whose points follow the mouse.</span>
+<span class="kw">public</span> <span class="kw">class</span> Star : <span class="tp">Sketch</span>
+{
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup() =&gt; Size(<span class="str">500</span>, <span class="str">500</span>);
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        Background(<span class="str">20</span>, <span class="str">24</span>, <span class="str">40</span>);
+        <span class="kw">float</span> inner = Map(MouseX, <span class="str">0</span>, Width, <span class="str">30</span>, <span class="str">180</span>);
+        <span class="kw">int</span> points = (<span class="kw">int</span>)Map(MouseY, <span class="str">0</span>, Height, <span class="str">3</span>, <span class="str">12</span>);
+
+        Fill(<span class="str">255</span>, <span class="str">210</span>, <span class="str">90</span>);
+        Stroke(<span class="str">255</span>);
+        StrokeWeight(<span class="str">2</span>);
+        BeginShape();
+        <span class="kw">for</span> (<span class="kw">int</span> i = <span class="str">0</span>; i &lt; points * <span class="str">2</span>; i++)
+        {
+            <span class="kw">float</span> r = i % <span class="str">2</span> == <span class="str">0</span> ? <span class="str">200</span> : inner;
+            <span class="kw">float</span> a = i * PI / points - HALF_PI;
+            Vertex(Width / <span class="str">2</span> + Cos(a) * r, Height / <span class="str">2</span> + Sin(a) * r);
+        }
+        EndShape(close: <span class="kw">true</span>);
+
+        <span class="cm">// A smooth curve through points.</span>
+        NoFill();
+        Stroke(<span class="str">120</span>, <span class="str">200</span>, <span class="str">255</span>);
+        BeginShape();
+        <span class="kw">for</span> (<span class="kw">int</span> x = -<span class="str">50</span>; x &lt;= Width + <span class="str">50</span>; x += <span class="str">50</span>)
+            CurveVertex(x, <span class="str">460</span> + Sin(x * <span class="str">0.02f</span> + FrameCount * <span class="str">0.05f</span>) * <span class="str">20</span>);
+        EndShape();
+    }
+}</pre>
+  <button class="dana-test-btn" data-target="shape-custom-example-code" title="Run in DanaProcessing IDE">
+    <i class="ph-bold ph-play"></i>
+    <span class="dana-test-label">Test in Dana</span>
+  </button>
+</div>
           </section>
 
           <!-- ================================================================
@@ -1825,6 +2469,38 @@
     }
 }</pre>
             </div>
+          
+            <h3 class="entry-title" id="getting-started-3d-example">Runnable example</h3>
+            <p class="entry-desc">A complete sketch using this section. <strong>Test in Dana</strong> opens it in the IDE, or paste it into a new tab and press Run.</p>
+<div class="code-block">
+  <pre id="getting-started-3d-example-code"><span class="cm">// Size(w, h, RendererKind.Renderer3D) turns on 3D: lights, boxes, spheres.</span>
+<span class="kw">public</span> <span class="kw">class</span> Hello3D : <span class="tp">Sketch</span>
+{
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup() =&gt; Size(<span class="str">600</span>, <span class="str">400</span>, <span class="tp">RendererKind</span>.Renderer3D);
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        Background(<span class="str">25</span>, <span class="str">28</span>, <span class="str">40</span>);
+        Lights();
+        NoStroke();
+
+        Translate(Width / <span class="str">2</span>, Height / <span class="str">2</span>, <span class="str">0</span>);
+        RotateY(FrameCount * <span class="str">0.01f</span>);
+        RotateX(Map(MouseY, <span class="str">0</span>, Height, -<span class="str">1</span>, <span class="str">1</span>));
+
+        Fill(<span class="str">255</span>, <span class="str">150</span>, <span class="str">100</span>);
+        Box(<span class="str">140</span>);
+
+        Translate(<span class="str">200</span>, <span class="str">0</span>, <span class="str">0</span>);
+        Fill(<span class="str">120</span>, <span class="str">190</span>, <span class="str">255</span>);
+        Sphere(<span class="str">50</span>);
+    }
+}</pre>
+  <button class="dana-test-btn" data-target="getting-started-3d-example-code" title="Run in DanaProcessing IDE">
+    <i class="ph-bold ph-play"></i>
+    <span class="dana-test-label">Test in Dana</span>
+  </button>
+</div>
           </section>
 
           <!-- ================= 3D PRIMITIVES ================= -->
@@ -2052,6 +2728,46 @@ PopMatrix();</pre>
 
             <h3 class="entry-title" id="text">Text(<span class="tp">string</span> text, x, y)</h3>
             <p class="entry-desc">Draws text at (x, y) per the current alignment.</p>
+          
+            <h3 class="entry-title" id="typography-example">Runnable example</h3>
+            <p class="entry-desc">A complete sketch using this section. <strong>Test in Dana</strong> opens it in the IDE, or paste it into a new tab and press Run.</p>
+<div class="code-block">
+  <pre id="typography-example-code"><span class="cm">// Text, TextSize, TextAlign, TextWidth and a font from the system.</span>
+<span class="kw">public</span> <span class="kw">class</span> Typo : <span class="tp">Sketch</span>
+{
+    <span class="tp">PFont</span> serif;
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup()
+    {
+        Size(<span class="str">600</span>, <span class="str">300</span>);
+        serif = CreateFont(<span class="str">"Georgia"</span>, <span class="str">48</span>);
+    }
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        Background(<span class="str">250</span>, <span class="str">245</span>, <span class="str">235</span>);
+        Fill(<span class="str">30</span>);
+
+        TextFont(serif);
+        TextAlign(<span class="tp">TextAlignH</span>.Center, <span class="tp">TextAlignV</span>.Center);
+        Text(<span class="str">"Hello, type"</span>, Width / <span class="str">2</span>, <span class="str">80</span>);
+
+        TextFont((<span class="kw">string</span>?)<span class="kw">null</span>);  <span class="cm">// back to the default font</span>
+        TextSize(<span class="str">16</span>);
+        <span class="kw">string</span> line = <span class="str">$"x = {MouseX:0}, y = {MouseY:0}"</span>;
+        <span class="kw">float</span> w = TextWidth(line);
+        TextAlign(<span class="tp">TextAlignH</span>.Left, <span class="tp">TextAlignV</span>.Baseline);
+        NoFill(); Stroke(<span class="str">200</span>, <span class="str">80</span>, <span class="str">60</span>);
+        Rect(MouseX - <span class="str">4</span>, MouseY - TextAscent() - <span class="str">4</span>, w + <span class="str">8</span>, TextAscent() + TextDescent() + <span class="str">8</span>);
+        NoStroke(); Fill(<span class="str">30</span>);
+        Text(line, MouseX, MouseY);
+    }
+}</pre>
+  <button class="dana-test-btn" data-target="typography-example-code" title="Run in DanaProcessing IDE">
+    <i class="ph-bold ph-play"></i>
+    <span class="dana-test-label">Test in Dana</span>
+  </button>
+</div>
           </section>
 
           <!-- ================= TRANSFORM ================= -->
@@ -2089,6 +2805,50 @@ PopMatrix();</pre>
 
             <h3 class="entry-title" id="hint">Hint(<span class="tp">string</span> hintName)</h3>
             <p class="entry-desc">A logged no-op. Every hint constant Processing defines is either meaningless for a single always-antialiased 2D software renderer, or already covered by a dedicated method (<code class="inline">Smooth()</code>/<code class="inline">NoSmooth()</code>). Exists so ported sketches that defensively call <code class="inline">hint(SOME_CONSTANT)</code> still compile and run.</p>
+          
+            <h3 class="entry-title" id="transform-example">Runnable example</h3>
+            <p class="entry-desc">A complete sketch using this section. <strong>Test in Dana</strong> opens it in the IDE, or paste it into a new tab and press Run.</p>
+<div class="code-block">
+  <pre id="transform-example-code"><span class="cm">// Translate, Rotate (radians) and Scale, with PushMatrix/PopMatrix to undo them.</span>
+<span class="kw">public</span> <span class="kw">class</span> Clock : <span class="tp">Sketch</span>
+{
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup() =&gt; Size(<span class="str">400</span>, <span class="str">400</span>);
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        Background(<span class="str">245</span>);
+        Translate(Width / <span class="str">2</span>, Height / <span class="str">2</span>);           <span class="cm">// origin to the centre</span>
+
+        <span class="kw">for</span> (<span class="kw">int</span> i = <span class="str">0</span>; i &lt; <span class="str">12</span>; i++)
+        {
+            PushMatrix();
+            Rotate(TWO_PI * i / <span class="str">12</span>);                 <span class="cm">// radians; RotateDegrees(30 * i) also works</span>
+            Fill(i % <span class="str">3</span> == <span class="str">0</span> ? <span class="str">40</span> : <span class="str">160</span>);
+            NoStroke();
+            Rect(-<span class="str">4</span>, -<span class="str">170</span>, <span class="str">8</span>, i % <span class="str">3</span> == <span class="str">0</span> ? <span class="str">30</span> : <span class="str">15</span>);
+            PopMatrix();
+        }
+
+        <span class="kw">float</span> s = Second() + Millis() % <span class="str">1000</span> / <span class="str">1000f</span>;
+        PushMatrix();
+        Rotate(TWO_PI * s / <span class="str">60</span>);
+        Stroke(<span class="str">220</span>, <span class="str">60</span>, <span class="str">60</span>);
+        StrokeWeight(<span class="str">3</span>);
+        Line(<span class="str">0</span>, <span class="str">20</span>, <span class="str">0</span>, -<span class="str">150</span>);
+        PopMatrix();
+
+        PushMatrix();
+        Scale(<span class="str">1</span> + Sin(FrameCount * <span class="str">0.05f</span>) * <span class="str">0.2f</span>);   <span class="cm">// a breathing dot</span>
+        Fill(<span class="str">220</span>, <span class="str">60</span>, <span class="str">60</span>);
+        Circle(<span class="str">0</span>, <span class="str">0</span>, <span class="str">16</span>);
+        PopMatrix();
+    }
+}</pre>
+  <button class="dana-test-btn" data-target="transform-example-code" title="Run in DanaProcessing IDE">
+    <i class="ph-bold ph-play"></i>
+    <span class="dana-test-label">Test in Dana</span>
+  </button>
+</div>
           </section>
 
           <!-- ================= IMAGE ================= -->
@@ -2111,6 +2871,50 @@ PopMatrix();</pre>
 
             <h3 class="entry-title" id="mask">img.Mask(<span class="tp">PImage</span> maskImage)</h3>
             <p class="entry-desc">Applies another image as an alpha mask, in place.</p>
+          
+            <h3 class="entry-title" id="image-example">Runnable example</h3>
+            <p class="entry-desc">A complete sketch using this section. <strong>Test in Dana</strong> opens it in the IDE, or paste it into a new tab and press Run.</p>
+<div class="code-block">
+  <pre id="image-example-code"><span class="cm">// PImage: Image() draws it, Tint() colors it. LoadImage("photo.png") loads a file</span>
+<span class="cm">// next to your sketch; this example makes its image in code so it runs anywhere.</span>
+<span class="kw">public</span> <span class="kw">class</span> Images : <span class="tp">Sketch</span>
+{
+    <span class="tp">PImage</span> tile;
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup()
+    {
+        Size(<span class="str">600</span>, <span class="str">300</span>);
+        <span class="kw">var</span> pg = CreateGraphics(<span class="str">100</span>, <span class="str">100</span>);
+        pg.BeginDraw();
+        pg.Background(<span class="str">255</span>);
+        pg.NoStroke();
+        pg.Fill(<span class="str">255</span>, <span class="str">120</span>, <span class="str">80</span>); pg.Circle(<span class="str">50</span>, <span class="str">50</span>, <span class="str">70</span>);
+        pg.Fill(<span class="str">40</span>);           pg.Circle(<span class="str">50</span>, <span class="str">50</span>, <span class="str">20</span>);
+        pg.EndDraw();
+        tile = pg.Get();
+        pg.Dispose();
+    }
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        Background(<span class="str">30</span>);
+        <span class="kw">for</span> (<span class="kw">int</span> i = <span class="str">0</span>; i &lt; <span class="str">5</span>; i++)
+        {
+            Tint(<span class="str">255</span>, <span class="str">255</span> - i * <span class="str">40</span>, <span class="str">120</span> + i * <span class="str">30</span>);
+            Image(tile, <span class="str">20</span> + i * <span class="str">115</span>, <span class="str">40</span>, <span class="str">100</span>, <span class="str">100</span>);
+        }
+        NoTint();
+        <span class="kw">float</span> size = Map(MouseX, <span class="str">0</span>, Width, <span class="str">40</span>, <span class="str">200</span>);
+        ImageMode(<span class="tp">ShapeAlignMode</span>.Center);
+        Image(tile, MouseX, <span class="str">220</span>, size, size * <span class="str">0.6f</span>);
+        ImageMode(<span class="tp">ShapeAlignMode</span>.Corner);
+    }
+}</pre>
+  <button class="dana-test-btn" data-target="image-example-code" title="Run in DanaProcessing IDE">
+    <i class="ph-bold ph-play"></i>
+    <span class="dana-test-label">Test in Dana</span>
+  </button>
+</div>
           </section>
 
           <!-- ================= PGRAPHICS ================= -->
@@ -2127,6 +2931,43 @@ PopMatrix();</pre>
 
             <h3 class="entry-title" id="pgraphics-get">Get() <span class="sig-return">→ PImage</span></h3>
             <p class="entry-desc">Snapshots the current pixels as a standalone <code class="inline">PImage</code>.</p>
+          
+            <h3 class="entry-title" id="pgraphics-example">Runnable example</h3>
+            <p class="entry-desc">A complete sketch using this section. <strong>Test in Dana</strong> opens it in the IDE, or paste it into a new tab and press Run.</p>
+<div class="code-block">
+  <pre id="pgraphics-example-code"><span class="cm">// PGraphics: an offscreen canvas. Paint trails into it, then show it like an image.</span>
+<span class="kw">public</span> <span class="kw">class</span> Offscreen : <span class="tp">Sketch</span>
+{
+    <span class="tp">PGraphics</span> layer;
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup()
+    {
+        Size(<span class="str">600</span>, <span class="str">400</span>);
+        layer = CreateGraphics(Width, Height);
+    }
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        layer.BeginDraw();
+        layer.Fill(<span class="str">0</span>, <span class="str">12</span>);                 <span class="cm">// slowly fade what's there</span>
+        layer.NoStroke();
+        layer.Rect(<span class="str">0</span>, <span class="str">0</span>, Width, Height);
+        layer.FillHSB(FrameCount % <span class="str">360</span>, <span class="str">80</span>, <span class="str">100</span>);
+        layer.Circle(MouseX, MouseY, <span class="str">30</span>);
+        layer.EndDraw();
+
+        Background(<span class="str">0</span>);
+        Image(layer, <span class="str">0</span>, <span class="str">0</span>);                         <span class="cm">// full size</span>
+        Image(layer, Width - <span class="str">160</span>, <span class="str">10</span>, <span class="str">150</span>, <span class="str">100</span>);    <span class="cm">// and a thumbnail</span>
+        NoFill(); Stroke(<span class="str">255</span>);
+        Rect(Width - <span class="str">160</span>, <span class="str">10</span>, <span class="str">150</span>, <span class="str">100</span>);
+    }
+}</pre>
+  <button class="dana-test-btn" data-target="pgraphics-example-code" title="Run in DanaProcessing IDE">
+    <i class="ph-bold ph-play"></i>
+    <span class="dana-test-label">Test in Dana</span>
+  </button>
+</div>
           </section>
 
           <!-- ================= PSHAPE ================= -->
@@ -2157,6 +2998,48 @@ PopMatrix();</pre>
             <h3 class="entry-title" id="shape">Shape(<span class="tp">PShape</span> shape, x, y) · Shape(shape, x, y, w, h)</h3>
             <p class="entry-desc">Draws the shape, positioned/sized per the current <code class="inline">ShapeMode</code>. Dispatches automatically to the 3D draw path when <code class="inline">shape</code> wraps a mesh from <code class="inline">CreateShape3D()</code> — see <a href="#shape-3d-custom">Custom 3D shapes</a>.</p>
             <div class="note"><strong>Tint doesn't apply here.</strong> To tint a vector shape, render it into a <code class="inline">PGraphics</code> first.</div>
+          
+            <h3 class="entry-title" id="pshape-example">Runnable example</h3>
+            <p class="entry-desc">A complete sketch using this section. <strong>Test in Dana</strong> opens it in the IDE, or paste it into a new tab and press Run.</p>
+<div class="code-block">
+  <pre id="pshape-example-code"><span class="cm">// PShape: build a shape once, draw it many times. LoadShape("icon.svg") loads SVGs.</span>
+<span class="kw">public</span> <span class="kw">class</span> Shapes : <span class="tp">Sketch</span>
+{
+    <span class="tp">PShape</span> flower;
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup()
+    {
+        Size(<span class="str">600</span>, <span class="str">400</span>);
+        Fill(<span class="str">255</span>, <span class="str">140</span>, <span class="str">160</span>);
+        Stroke(<span class="str">120</span>, <span class="str">40</span>, <span class="str">60</span>);
+        <span class="kw">var</span> petals = <span class="kw">new</span> <span class="tp">List</span>&lt;<span class="tp">PShape</span>&gt;();
+        <span class="kw">for</span> (<span class="kw">int</span> i = <span class="str">0</span>; i &lt; <span class="str">6</span>; i++)
+        {
+            <span class="kw">float</span> a = i * TWO_PI / <span class="str">6</span>;
+            petals.Add(CreateShape(<span class="tp">PShapeType</span>.Ellipse, <span class="str">30</span> + Cos(a) * <span class="str">18</span> - <span class="str">12</span>, <span class="str">30</span> + Sin(a) * <span class="str">18</span> - <span class="str">12</span>, <span class="str">24</span>, <span class="str">24</span>));
+        }
+        Fill(<span class="str">255</span>, <span class="str">220</span>, <span class="str">90</span>);
+        petals.Add(CreateShape(<span class="tp">PShapeType</span>.Ellipse, <span class="str">22</span>, <span class="str">22</span>, <span class="str">16</span>, <span class="str">16</span>));
+        flower = CreateShape(petals.ToArray());
+    }
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        Background(<span class="str">235</span>, <span class="str">245</span>, <span class="str">230</span>);
+        RandomSeed(<span class="str">1</span>);
+        <span class="kw">for</span> (<span class="kw">int</span> i = <span class="str">0</span>; i &lt; <span class="str">40</span>; i++)
+        {
+            <span class="kw">float</span> s = Random(<span class="str">30</span>, <span class="str">90</span>);
+            Shape(flower, Random(Width), Random(Height), s, s);
+        }
+        Shape(flower, MouseX - <span class="str">50</span>, MouseY - <span class="str">50</span>, <span class="str">100</span>, <span class="str">100</span>);
+    }
+}</pre>
+  <button class="dana-test-btn" data-target="pshape-example-code" title="Run in DanaProcessing IDE">
+    <i class="ph-bold ph-play"></i>
+    <span class="dana-test-label">Test in Dana</span>
+  </button>
+</div>
           </section>
 
           <!-- ================= OUTPUT ================= -->
@@ -2186,6 +3069,45 @@ PopMatrix();</pre>
     }
 }</pre>
             </div>
+          
+            <h3 class="entry-title" id="output-example">Runnable example</h3>
+            <p class="entry-desc">A complete sketch using this section. <strong>Test in Dana</strong> opens it in the IDE, or paste it into a new tab and press Run.</p>
+<div class="code-block">
+  <pre id="output-example-code"><span class="cm">// Saving output: press S for a PNG of the canvas, R to record frames.</span>
+<span class="kw">public</span> <span class="kw">class</span> Saver : <span class="tp">Sketch</span>
+{
+    <span class="kw">bool</span> recording;
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup() =&gt; Size(<span class="str">400</span>, <span class="str">400</span>);
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        Background(<span class="str">20</span>);
+        NoStroke();
+        <span class="kw">for</span> (<span class="kw">int</span> i = <span class="str">0</span>; i &lt; <span class="str">8</span>; i++)
+        {
+            FillHSB(i * <span class="str">45</span> + FrameCount, <span class="str">70</span>, <span class="str">100</span>);
+            <span class="kw">float</span> a = FrameCount * <span class="str">0.02f</span> + i * TWO_PI / <span class="str">8</span>;
+            Circle(<span class="str">200</span> + Cos(a) * <span class="str">120</span>, <span class="str">200</span> + Sin(a) * <span class="str">120</span>, <span class="str">50</span>);
+        }
+        <span class="kw">if</span> (recording)
+            SaveFrame(<span class="str">"frames/frame-####.png"</span>);     <span class="cm">// #### becomes the frame number</span>
+
+        Fill(<span class="str">255</span>);
+        Text(recording ? <span class="str">"recording... (R to stop)"</span> : <span class="str">"S: save PNG · R: record frames"</span>, <span class="str">10</span>, <span class="str">390</span>);
+    }
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> KeyPressed()
+    {
+        <span class="kw">if</span> (Key == <span class="str">'s'</span>) { Save(<span class="str">"snapshot.png"</span>); Println(<span class="str">"saved snapshot.png"</span>); }
+        <span class="kw">if</span> (Key == <span class="str">'r'</span>) recording = !recording;
+    }
+}</pre>
+  <button class="dana-test-btn" data-target="output-example-code" title="Run in DanaProcessing IDE">
+    <i class="ph-bold ph-play"></i>
+    <span class="dana-test-label">Test in Dana</span>
+  </button>
+</div>
           </section>
 
           <!-- ================= PIXELS ================= -->
@@ -2212,6 +3134,39 @@ PopMatrix();</pre>
             <h3 class="entry-title" id="filter">Filter(<span class="tp">FilterKind</span> kind, <span class="tp">float</span> param = 0.5f)</h3>
             <p class="entry-desc">Applies a per-pixel filter to the whole canvas in place. <code class="inline">param</code> means different things per kind: the cutoff for <code class="inline">Threshold</code> (0–1), the levels per channel for <code class="inline">Posterize</code>, the pixel radius for <code class="inline">Blur</code>; ignored otherwise. See <a href="#enums">FilterKind</a>.</p>
             <div class="note"><strong>Not implemented.</strong> <code class="inline">Erode</code>/<code class="inline">Dilate</code> need neighbor-pixel sampling rather than a per-pixel transform and throw <code class="inline">NotSupportedException</code> for now.</div>
+          
+            <h3 class="entry-title" id="pixels-example">Runnable example</h3>
+            <p class="entry-desc">A complete sketch using this section. <strong>Test in Dana</strong> opens it in the IDE, or paste it into a new tab and press Run.</p>
+<div class="code-block">
+  <pre id="pixels-example-code"><span class="cm">// LoadPixels / Pixels[] / UpdatePixels: read and rewrite every pixel.</span>
+<span class="kw">public</span> <span class="kw">class</span> PixelWave : <span class="tp">Sketch</span>
+{
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup() =&gt; Size(<span class="str">320</span>, <span class="str">240</span>);
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        LoadPixels();
+        <span class="kw">float</span> t = FrameCount * <span class="str">0.05f</span>;
+        <span class="kw">for</span> (<span class="kw">int</span> y = <span class="str">0</span>; y &lt; Height; y++)
+            <span class="kw">for</span> (<span class="kw">int</span> x = <span class="str">0</span>; x &lt; Width; x++)
+            {
+                <span class="kw">float</span> d = Dist(x, y, MouseX, MouseY);
+                <span class="kw">byte</span> v = (<span class="kw">byte</span>)(<span class="str">128</span> + <span class="str">127</span> * Sin(d * <span class="str">0.08f</span> - t));
+                Pixels[y * Width + x] = <span class="kw">new</span> <span class="tp">Color</span>(v, (<span class="kw">byte</span>)(x * <span class="str">255</span> / Width), (<span class="kw">byte</span>)(<span class="str">255</span> - v), <span class="str">255</span>);
+            }
+        UpdatePixels();
+
+        <span class="cm">// Get(x, y) reads one pixel straight from the canvas.</span>
+        <span class="kw">var</span> c = Get((<span class="kw">int</span>)MouseX, (<span class="kw">int</span>)MouseY);
+        Fill(c); Stroke(<span class="str">255</span>);
+        Rect(<span class="str">10</span>, <span class="str">10</span>, <span class="str">40</span>, <span class="str">40</span>);
+    }
+}</pre>
+  <button class="dana-test-btn" data-target="pixels-example-code" title="Run in DanaProcessing IDE">
+    <i class="ph-bold ph-play"></i>
+    <span class="dana-test-label">Test in Dana</span>
+  </button>
+</div>
           </section>
 
           <!-- ================= FILES & DATA ================= -->
@@ -2253,6 +3208,50 @@ PopMatrix();</pre>
 
             <h3 class="entry-title" id="printarray">PrintArray(<span class="tp">Array</span> array)</h3>
             <p class="entry-desc">Prints every element on its own line, prefixed with its index in square brackets. Works with any array type, matching Processing's own <code class="inline">printArray()</code> (which needs a separate overload per type).</p>
+          
+            <h3 class="entry-title" id="files-data-example">Runnable example</h3>
+            <p class="entry-desc">A complete sketch using this section. <strong>Test in Dana</strong> opens it in the IDE, or paste it into a new tab and press Run.</p>
+<div class="code-block">
+  <pre id="files-data-example-code"><span class="cm">// Files &amp; data: JSON in memory, then saved and loaded back from disk.</span>
+<span class="kw">public</span> <span class="kw">class</span> Data : <span class="tp">Sketch</span>
+{
+    <span class="tp">JSONArray</span> scores;
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup()
+    {
+        Size(<span class="str">500</span>, <span class="str">300</span>);
+        scores = ParseJSONArray(<span class="str">"[{\"name\":\"Ana\",\"score\":42},{\"name\":\"Leo\",\"score\":77},{\"name\":\"Mia\",\"score\":63}]"</span>);
+
+        <span class="kw">var</span> best = <span class="kw">new</span> <span class="tp">JSONObject</span>();
+        best.SetString(<span class="str">"name"</span>, <span class="str">"Leo"</span>);
+        best.SetInt(<span class="str">"score"</span>, <span class="str">77</span>);
+        SaveJSONObject(best, <span class="str">"best.json"</span>);                       <span class="cm">// next to the sketch</span>
+        Println(<span class="str">"Saved: "</span> + LoadJSONObject(<span class="str">"best.json"</span>).ToString());
+
+        SaveStrings(<span class="str">"names.txt"</span>, <span class="kw">new</span>[] { <span class="str">"Ana"</span>, <span class="str">"Leo"</span>, <span class="str">"Mia"</span> });
+        Println(<span class="kw">string</span>.Join(<span class="str">", "</span>, LoadStrings(<span class="str">"names.txt"</span>)));
+    }
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        Background(<span class="str">250</span>);
+        <span class="kw">for</span> (<span class="kw">int</span> i = <span class="str">0</span>; i &lt; scores.Size(); i++)
+        {
+            <span class="kw">var</span> row = scores.GetJSONObject(i);
+            <span class="kw">float</span> w = row.GetInt(<span class="str">"score"</span>) * <span class="str">4</span>;
+            Fill(<span class="str">90</span>, <span class="str">140</span>, <span class="str">220</span>); NoStroke();
+            Rect(<span class="str">100</span>, <span class="str">40</span> + i * <span class="str">70</span>, w, <span class="str">40</span>);
+            Fill(<span class="str">30</span>);
+            Text(row.GetString(<span class="str">"name"</span>), <span class="str">20</span>, <span class="str">66</span> + i * <span class="str">70</span>);
+            Text(Str(row.GetInt(<span class="str">"score"</span>)), <span class="str">110</span> + w, <span class="str">66</span> + i * <span class="str">70</span>);
+        }
+    }
+}</pre>
+  <button class="dana-test-btn" data-target="files-data-example-code" title="Run in DanaProcessing IDE">
+    <i class="ph-bold ph-play"></i>
+    <span class="dana-test-label">Test in Dana</span>
+  </button>
+</div>
           </section>
 
           <!-- ================= UTILITIES ================= -->
@@ -2333,6 +3332,42 @@ PopMatrix();</pre>
 
             <h3 class="entry-title" id="nfs">Nfs(num, digits) · Nfs(num, left, right) <span class="sig-return">→ string</span></h3>
             <p class="entry-desc">Same as <code class="inline">Nf</code>, but pads with spaces instead of zeros.</p>
+          
+            <h3 class="entry-title" id="utilities-example">Runnable example</h3>
+            <p class="entry-desc">A complete sketch using this section. <strong>Test in Dana</strong> opens it in the IDE, or paste it into a new tab and press Run.</p>
+<div class="code-block">
+  <pre id="utilities-example-code"><span class="cm">// Conversion and formatting helpers: Nf, Hex, Binary, Int, Float, Split, Join.</span>
+<span class="kw">public</span> <span class="kw">class</span> Utils : <span class="tp">Sketch</span>
+{
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup() =&gt; Size(<span class="str">520</span>, <span class="str">260</span>);
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        Background(<span class="str">250</span>);
+        Fill(<span class="str">30</span>);
+        <span class="kw">int</span> n = (<span class="kw">int</span>)MouseX;
+        <span class="kw">string</span>[] parts = Split(<span class="str">"red,green,blue"</span>, <span class="str">','</span>);
+        <span class="kw">string</span>[] lines =
+        {
+            <span class="str">$"MouseX = {n}"</span>,
+            <span class="str">$"Nf(n, 4)       = {Nf(n, 4)}"</span>,
+            <span class="str">$"Hex(n)         = {Hex(n)}"</span>,
+            <span class="str">$"Binary(n, 10)  = {Binary(n, 10)}"</span>,
+            <span class="str">$"Int(\"42\") + 1  = {Int("</span><span class="str">42</span><span class="str">") + 1}"</span>,
+            <span class="str">$"Float(\"2.5\")*2 = {Float("</span><span class="str">2.5</span><span class="str">") * 2}"</span>,
+            <span class="str">$"Split + Join   = {Join(parts, "</span> | <span class="str">")}"</span>,
+            <span class="str">$"Time           = {Nf(Hour(), 2)}:{Nf(Minute(), 2)}:{Nf(Second(), 2)}"</span>,
+        };
+        TextSize(<span class="str">15</span>);
+        <span class="kw">for</span> (<span class="kw">int</span> i = <span class="str">0</span>; i &lt; lines.Length; i++)
+            Text(lines[i], <span class="str">20</span>, <span class="str">30</span> + i * <span class="str">28</span>);
+    }
+}</pre>
+  <button class="dana-test-btn" data-target="utilities-example-code" title="Run in DanaProcessing IDE">
+    <i class="ph-bold ph-play"></i>
+    <span class="dana-test-label">Test in Dana</span>
+  </button>
+</div>
           </section>
 
           <!-- ================= MATH ================= -->
@@ -2364,6 +3399,42 @@ PopMatrix();</pre>
                 <tr><td>Max(...) / Min(...)</td><td>Two-argument or params-array</td></tr>
               </table>
             </div>
+          
+            <h3 class="entry-title" id="math-example">Runnable example</h3>
+            <p class="entry-desc">A complete sketch using this section. <strong>Test in Dana</strong> opens it in the IDE, or paste it into a new tab and press Run.</p>
+<div class="code-block">
+  <pre id="math-example-code"><span class="cm">// Map, Constrain, Lerp, Dist and trig: a ball that eases toward the mouse.</span>
+<span class="kw">public</span> <span class="kw">class</span> Easing : <span class="tp">Sketch</span>
+{
+    <span class="kw">float</span> x = <span class="str">300</span>, y = <span class="str">200</span>;
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup() =&gt; Size(<span class="str">600</span>, <span class="str">400</span>);
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        Background(<span class="str">240</span>);
+        x = Lerp(x, MouseX, <span class="str">0.08f</span>);
+        y = Lerp(y, MouseY, <span class="str">0.08f</span>);
+
+        <span class="kw">float</span> d = Dist(x, y, MouseX, MouseY);
+        <span class="kw">float</span> size = Constrain(Map(d, <span class="str">0</span>, <span class="str">200</span>, <span class="str">20</span>, <span class="str">80</span>), <span class="str">20</span>, <span class="str">80</span>);
+        Fill(<span class="str">60</span>, <span class="str">120</span>, <span class="str">200</span>); NoStroke();
+        Circle(x, y, size);
+
+        <span class="cm">// Atan2 gives the angle toward the mouse.</span>
+        <span class="kw">float</span> a = Atan2(MouseY - y, MouseX - x);
+        Stroke(<span class="str">200</span>, <span class="str">60</span>, <span class="str">60</span>); StrokeWeight(<span class="str">3</span>);
+        Line(x, y, x + Cos(a) * <span class="str">60</span>, y + Sin(a) * <span class="str">60</span>);
+
+        Fill(<span class="str">30</span>);
+        Text(<span class="str">$"distance {d:0} · angle {Degrees(a):0}°"</span>, <span class="str">10</span>, <span class="str">20</span>);
+    }
+}</pre>
+  <button class="dana-test-btn" data-target="math-example-code" title="Run in DanaProcessing IDE">
+    <i class="ph-bold ph-play"></i>
+    <span class="dana-test-label">Test in Dana</span>
+  </button>
+</div>
           </section>
 
           <!-- ================= PVECTOR ================= -->
@@ -2391,6 +3462,41 @@ PopMatrix();</pre>
 
             <h3 class="entry-title" id="pvector-cross">Cross(<span class="tp">PVector</span> v) <span class="sig-return">→ PVector</span></h3>
             <p class="entry-desc">The 3D cross product — perpendicular to both vectors, following the right-hand rule. Does <strong>not</strong> mutate <code class="inline">this</code> (unlike most other instance methods here), matching Processing's own <code class="inline">cross()</code>, which always returns a new <code class="inline">PVector</code>. For two vectors lying in the XY plane (<code class="inline">Z = 0</code>), the result points purely along <code class="inline">Z</code> — exactly what you want for a 2D face's "up" normal, as in the faceted-gem example under <a href="#shape-3d-custom">Custom 3D shapes</a>.</p>
+          
+            <h3 class="entry-title" id="pvector-example">Runnable example</h3>
+            <p class="entry-desc">A complete sketch using this section. <strong>Test in Dana</strong> opens it in the IDE, or paste it into a new tab and press Run.</p>
+<div class="code-block">
+  <pre id="pvector-example-code"><span class="cm">// PVector: position, velocity and acceleration with operators.</span>
+<span class="kw">public</span> <span class="kw">class</span> Mover : <span class="tp">Sketch</span>
+{
+    <span class="tp">PVector</span> pos, vel;
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup()
+    {
+        Size(<span class="str">600</span>, <span class="str">400</span>);
+        pos = <span class="kw">new</span> <span class="tp">PVector</span>(<span class="str">300</span>, <span class="str">200</span>);
+        vel = <span class="kw">new</span> <span class="tp">PVector</span>(<span class="str">0</span>, <span class="str">0</span>);
+    }
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        Background(<span class="str">25</span>, <span class="str">30</span>, <span class="str">40</span>, <span class="str">40</span>);
+        <span class="kw">var</span> mouse = <span class="kw">new</span> <span class="tp">PVector</span>(MouseX, MouseY);
+        <span class="kw">var</span> acc = (mouse - pos).SetMag(<span class="str">0.4f</span>);   <span class="cm">// steer toward the mouse</span>
+        vel = (vel + acc).Limit(<span class="str">8</span>);
+        pos += vel;
+
+        NoStroke(); Fill(<span class="str">255</span>, <span class="str">190</span>, <span class="str">90</span>);
+        Circle(pos.X, pos.Y, <span class="str">24</span>);
+        Stroke(<span class="str">255</span>, <span class="str">120</span>);
+        Line(pos.X, pos.Y, pos.X + vel.X * <span class="str">6</span>, pos.Y + vel.Y * <span class="str">6</span>);
+    }
+}</pre>
+  <button class="dana-test-btn" data-target="pvector-example-code" title="Run in DanaProcessing IDE">
+    <i class="ph-bold ph-play"></i>
+    <span class="dana-test-label">Test in Dana</span>
+  </button>
+</div>
           </section>
 
           <!-- ================= RANDOM & NOISE ================= -->
@@ -2412,6 +3518,45 @@ PopMatrix();</pre>
 
             <h3 class="entry-title" id="noiseseed">NoiseSeed(<span class="tp">int</span> seed) · NoiseDetail(<span class="tp">int</span> octaves, <span class="tp">float</span> falloff = 0.5f)</h3>
             <p class="entry-desc">Reshuffles the noise permutation table, or changes octaves and falloff.</p>
+          
+            <h3 class="entry-title" id="random-noise-example">Runnable example</h3>
+            <p class="entry-desc">A complete sketch using this section. <strong>Test in Dana</strong> opens it in the IDE, or paste it into a new tab and press Run.</p>
+<div class="code-block">
+  <pre id="random-noise-example-code"><span class="cm">// Random scatters, Noise flows: the same landscape, two ways.</span>
+<span class="kw">public</span> <span class="kw">class</span> Terrain : <span class="tp">Sketch</span>
+{
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup() =&gt; Size(<span class="str">600</span>, <span class="str">300</span>);
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        Background(<span class="str">250</span>);
+        <span class="kw">float</span> t = FrameCount * <span class="str">0.01f</span>;
+
+        <span class="cm">// Top: Random() -- jumpy.</span>
+        Stroke(<span class="str">200</span>, <span class="str">80</span>, <span class="str">60</span>); NoFill();
+        BeginShape();
+        RandomSeed(FrameCount / <span class="str">10</span>);
+        <span class="kw">for</span> (<span class="kw">int</span> x = <span class="str">0</span>; x &lt;= Width; x += <span class="str">10</span>)
+            Vertex(x, <span class="str">80</span> + Random(-<span class="str">40</span>, <span class="str">40</span>));
+        EndShape();
+
+        <span class="cm">// Bottom: Noise() -- smooth, and it moves when t changes.</span>
+        Stroke(<span class="str">60</span>, <span class="str">120</span>, <span class="str">200</span>);
+        BeginShape();
+        <span class="kw">for</span> (<span class="kw">int</span> x = <span class="str">0</span>; x &lt;= Width; x += <span class="str">5</span>)
+            Vertex(x, <span class="str">220</span> + (Noise(x * <span class="str">0.01f</span>, t) - <span class="str">0.5f</span>) * <span class="str">160</span>);
+        EndShape();
+
+        Fill(<span class="str">30</span>); NoStroke();
+        Text(<span class="str">"Random()"</span>, <span class="str">10</span>, <span class="str">20</span>);
+        Text(<span class="str">"Noise()"</span>, <span class="str">10</span>, <span class="str">160</span>);
+    }
+}</pre>
+  <button class="dana-test-btn" data-target="random-noise-example-code" title="Run in DanaProcessing IDE">
+    <i class="ph-bold ph-play"></i>
+    <span class="dana-test-label">Test in Dana</span>
+  </button>
+</div>
           </section>
 
           <!-- ================= COLLECTIONS ================= -->
@@ -2449,6 +3594,47 @@ PopMatrix();</pre>
 heights.Shuffle();               <span class="cm">// reorders in place</span>
 <span class="kw">float</span> avg = heights.Average();  <span class="cm">// numeric summary</span></pre>
             </div>
+          
+            <h3 class="entry-title" id="collections-example">Runnable example</h3>
+            <p class="entry-desc">A complete sketch using this section. <strong>Test in Dana</strong> opens it in the IDE, or paste it into a new tab and press Run.</p>
+<div class="code-block">
+  <pre id="collections-example-code"><span class="cm">// IntList, FloatList and StringList: Processing's handy lists.</span>
+<span class="kw">public</span> <span class="kw">class</span> Lists : <span class="tp">Sketch</span>
+{
+    <span class="tp">IntList</span> rolls = <span class="kw">new</span> <span class="tp">IntList</span>();
+    <span class="tp">StringList</span> words = <span class="kw">new</span> <span class="tp">StringList</span>(<span class="kw">new</span>[] { <span class="str">"pear"</span>, <span class="str">"apple"</span>, <span class="str">"fig"</span>, <span class="str">"kiwi"</span> });
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup()
+    {
+        Size(<span class="str">520</span>, <span class="str">300</span>);
+        words.Sort();
+    }
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        Background(<span class="str">250</span>);
+        <span class="kw">if</span> (FrameCount % <span class="str">10</span> == <span class="str">0</span> &amp;&amp; rolls.Size &lt; <span class="str">40</span>)
+            rolls.Append((<span class="kw">int</span>)Random(<span class="str">1</span>, <span class="str">7</span>));
+
+        NoStroke();
+        <span class="kw">for</span> (<span class="kw">int</span> i = <span class="str">0</span>; i &lt; rolls.Size; i++)
+        {
+            Fill(<span class="str">90</span>, <span class="str">140</span>, <span class="str">220</span>);
+            Rect(<span class="str">20</span> + i * <span class="str">12</span>, <span class="str">200</span> - rolls.Get(i) * <span class="str">25</span>, <span class="str">10</span>, rolls.Get(i) * <span class="str">25</span>);
+        }
+        Fill(<span class="str">30</span>);
+        <span class="kw">if</span> (rolls.Size &gt; <span class="str">0</span>)
+            Text(<span class="str">$"rolls {rolls.Size} · sum {rolls.Sum()} · max {rolls.Max()} · min {rolls.Min()}"</span>, <span class="str">20</span>, <span class="str">230</span>);
+        Text(<span class="str">"sorted: "</span> + words.Join(<span class="str">", "</span>) + <span class="str">" -- click to shuffle"</span>, <span class="str">20</span>, <span class="str">260</span>);
+    }
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> MousePressed() =&gt; words.Shuffle();
+}</pre>
+  <button class="dana-test-btn" data-target="collections-example-code" title="Run in DanaProcessing IDE">
+    <i class="ph-bold ph-play"></i>
+    <span class="dana-test-label">Test in Dana</span>
+  </button>
+</div>
           </section>
 
           <!-- ================= INPUT ================= -->
@@ -2488,6 +3674,49 @@ heights.Shuffle();               <span class="cm">// reorders in place</span>
 
             <h3 class="entry-title" id="launch">Launch(<span class="tp">string</span> path)</h3>
             <p class="entry-desc">Opens a file, folder, URL, or application with the OS's default handler, like Processing's <code class="inline">launch()</code>. Fire-and-forget — returns as soon as the OS has been asked to open it. Unlike <code class="inline">SelectInput</code>/<code class="inline">Cursor</code>, this doesn't need a host at all: it goes straight to <code class="inline">Process.Start</code>.</p>
+          
+            <h3 class="entry-title" id="input-example">Runnable example</h3>
+            <p class="entry-desc">A complete sketch using this section. <strong>Test in Dana</strong> opens it in the IDE, or paste it into a new tab and press Run.</p>
+<div class="code-block">
+  <pre id="input-example-code"><span class="cm">// Mouse and keyboard: events and the state you can read any time.</span>
+<span class="kw">public</span> <span class="kw">class</span> Input : <span class="tp">Sketch</span>
+{
+    <span class="kw">readonly</span> <span class="tp">List</span>&lt;<span class="tp">PVector</span>&gt; dots = <span class="kw">new</span>();
+    <span class="kw">string</span> lastKey = <span class="str">"none"</span>;
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup() =&gt; Size(<span class="str">600</span>, <span class="str">400</span>);
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        Background(IsMousePressed ? <span class="str">60</span> : <span class="str">30</span>);
+        Fill(<span class="str">255</span>, <span class="str">200</span>, <span class="str">80</span>); NoStroke();
+        <span class="kw">foreach</span> (<span class="kw">var</span> d <span class="kw">in</span> dots) Circle(d.X, d.Y, <span class="str">12</span>);
+
+        Stroke(<span class="str">255</span>); StrokeWeight(<span class="str">2</span>);
+        Line(PMouseX, PMouseY, MouseX, MouseY);   <span class="cm">// last frame's mouse to this one's</span>
+
+        NoStroke(); Fill(<span class="str">255</span>);
+        Text(<span class="str">$"mouse {MouseX:0},{MouseY:0} · button {MouseButton} · last key {lastKey} · time {Millis() / 1000}s"</span>, <span class="str">10</span>, <span class="str">20</span>);
+        Text(<span class="str">"click: dot · drag: many dots · C: clear · arrows: move all"</span>, <span class="str">10</span>, <span class="str">390</span>);
+    }
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> MousePressed() =&gt; dots.Add(<span class="kw">new</span> <span class="tp">PVector</span>(MouseX, MouseY));
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> MouseDragged() =&gt; dots.Add(<span class="kw">new</span> <span class="tp">PVector</span>(MouseX, MouseY));
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> KeyPressed()
+    {
+        lastKey = Key == CODED ? <span class="str">$"code {KeyCode}"</span> : Key.ToString();
+        <span class="kw">if</span> (Key == <span class="str">'c'</span>) dots.Clear();
+        <span class="kw">var</span> step = KeyCode == LEFT ? <span class="kw">new</span> <span class="tp">PVector</span>(-<span class="str">10</span>, <span class="str">0</span>) : KeyCode == RIGHT ? <span class="kw">new</span> <span class="tp">PVector</span>(<span class="str">10</span>, <span class="str">0</span>)
+                 : KeyCode == UP ? <span class="kw">new</span> <span class="tp">PVector</span>(<span class="str">0</span>, -<span class="str">10</span>) : KeyCode == DOWN ? <span class="kw">new</span> <span class="tp">PVector</span>(<span class="str">0</span>, <span class="str">10</span>) : <span class="kw">new</span> <span class="tp">PVector</span>(<span class="str">0</span>, <span class="str">0</span>);
+        <span class="kw">for</span> (<span class="kw">int</span> i = <span class="str">0</span>; i &lt; dots.Count; i++) dots[i] += step;
+    }
+}</pre>
+  <button class="dana-test-btn" data-target="input-example-code" title="Run in DanaProcessing IDE">
+    <i class="ph-bold ph-play"></i>
+    <span class="dana-test-label">Test in Dana</span>
+  </button>
+</div>
           </section>
 
           <!-- ================= SOUND ================= -->
@@ -2625,6 +3854,50 @@ heights.Shuffle();               <span class="cm">// reorders in place</span>
               <tr><td>Noise</td><td>White noise — with a low <code class="inline">cutoff</code>, wind or waves.</td></tr>
               <tr><td>Kick · Snare · Hat</td><td>Synthesized drums, also reachable as <code class="inline">Sample("kick")</code>, <code class="inline">"snare"</code>, <code class="inline">"hat"</code>. They ignore the note and the envelope.</td></tr>
             </table>
+          
+            <h3 class="entry-title" id="audio-example">Runnable example</h3>
+            <p class="entry-desc">A complete sketch using this section. <strong>Test in Dana</strong> opens it in the IDE, or paste it into a new tab and press Run.</p>
+<div class="code-block">
+  <pre id="audio-example-code"><span class="cm">// Sound: live loops keep the beat, Play() makes notes, Amplitude drives visuals.</span>
+<span class="kw">public</span> <span class="kw">class</span> Beat : <span class="tp">Sketch</span>
+{
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup()
+    {
+        Size(<span class="str">500</span>, <span class="str">300</span>);
+        Bpm = <span class="str">110</span>;
+    }
+
+    [<span class="tp">LiveLoop</span>]
+    <span class="kw">async</span> <span class="tp">Task</span> Drums()
+    {
+        Play(<span class="str">36</span>, synth: <span class="tp">Synth</span>.Kick);
+        <span class="kw">await</span> Sleep(<span class="str">1</span>);
+        Play(<span class="str">60</span>, synth: <span class="tp">Synth</span>.Hat, amp: <span class="str">0.4</span>);
+        <span class="kw">await</span> Sleep(<span class="str">1</span>);
+    }
+
+    [<span class="tp">LiveLoop</span>]
+    <span class="kw">async</span> <span class="tp">Task</span> Melody()
+    {
+        Play(<span class="kw">new</span>[] { <span class="str">60</span>, <span class="str">63</span>, <span class="str">67</span>, <span class="str">70</span> }[(<span class="kw">int</span>)Random(<span class="str">4</span>)], synth: <span class="tp">Synth</span>.Pluck, release: <span class="str">0.4</span>);
+        <span class="kw">await</span> Sleep(<span class="str">0.5</span>);
+    }
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        Background(<span class="str">20</span>, <span class="str">20</span>, <span class="str">30</span>);
+        <span class="kw">float</span> level = Amplitude;
+        Fill(<span class="str">255</span>, <span class="str">120</span>, <span class="str">160</span>); NoStroke();
+        Circle(Width / <span class="str">2</span>, Height / <span class="str">2</span>, <span class="str">40</span> + level * <span class="str">400</span>);
+    }
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> MousePressed() =&gt; Play(<span class="str">72</span>, synth: <span class="tp">Synth</span>.Saw, release: <span class="str">0.3</span>);
+}</pre>
+  <button class="dana-test-btn" data-target="audio-example-code" title="Run in DanaProcessing IDE">
+    <i class="ph-bold ph-play"></i>
+    <span class="dana-test-label">Test in Dana</span>
+  </button>
+</div>
           </section>
 
           <!-- ================= ENUMS ================= -->
@@ -2687,6 +3960,35 @@ heights.Shuffle();               <span class="cm">// reorders in place</span>
             <h3 class="entry-title" id="reel-api">Reel.IsActive <span class="sig-return">→ bool</span> · Reel.IsExporting <span class="sig-return">→ bool</span></h3>
             <p class="entry-desc">True while your sketch's code is running inside a reel (preview or export), or while a reel is being written to a file. Use them to skip a slow intro or hide debug text in the video. <code class="inline">Reel.Parse(source)</code> returns the parsed <code class="inline">ReelScript</code> (scenes, inputs, warnings) if you want to build tooling on top.</p>
             <div class="note"><strong>Try it:</strong> <strong>Sketch → Examples</strong>, tag <em>Reels / video</em>: "Reel: particles that chase your mouse" (vertical, auto-simulated mouse) and "Reel: a paint app in 25 lines" (square, dark theme, scripted drags and a key press).</div>
+          
+            <h3 class="entry-title" id="reels-example">Runnable example</h3>
+            <p class="entry-desc">A complete sketch using this section. <strong>Test in Dana</strong> opens it in the IDE, or paste it into a new tab and press Run.</p>
+<div class="code-block">
+  <pre id="reels-example-code"><span class="cm">// @reel title: A circle that follows you</span>
+<span class="cm">// @reel format: vertical</span>
+<span class="cm">// @reel result: 6 caption="Move the mouse"</span>
+<span class="cm">// @reel scene "Every frame, ease toward the mouse" effect=type</span>
+<span class="kw">public</span> <span class="kw">class</span> FollowReel : <span class="tp">Sketch</span>
+{
+    <span class="kw">float</span> x = <span class="str">200</span>, y = <span class="str">200</span>;
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup() =&gt; Size(<span class="str">400</span>, <span class="str">400</span>);
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        Background(<span class="str">25</span>, <span class="str">28</span>, <span class="str">40</span>);
+        x = Lerp(x, MouseX, <span class="str">0.1f</span>);   <span class="cm">// @mark</span>
+        y = Lerp(y, MouseY, <span class="str">0.1f</span>);   <span class="cm">// @mark</span>
+        Fill(<span class="str">255</span>, <span class="str">180</span>, <span class="str">120</span>); NoStroke();
+        Circle(x, y, <span class="str">60</span>);
+    }
+}
+<span class="cm">// Open it, then Sketch &gt; Create reel... to preview and export the video.</span></pre>
+  <button class="dana-test-btn" data-target="reels-example-code" title="Run in DanaProcessing IDE">
+    <i class="ph-bold ph-play"></i>
+    <span class="dana-test-label">Test in Dana</span>
+  </button>
+</div>
           </section>
 
           <section class="doc-section" id="enums">
