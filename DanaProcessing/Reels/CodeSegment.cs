@@ -82,7 +82,7 @@ namespace DanaProcessing.Reels
         private readonly List<(double Time, KeyStroke Kind)> _keys = new(); // Type: every key press, scene time
         private readonly int[] _numbers;           // line number shown for each row (0 = a wrapped continuation)
 
-        /// <summary>Every key the typing presses (scene time), for the keyboard sounds.</summary>
+        /// <summary>Every key the typing presses (scene time).</summary>
         public IReadOnlyList<(double Time, KeyStroke Kind)> KeyStrokes => _keys;
 
         /// <summary>A slip of the finger: <see cref="Wrong"/> gets typed where character <see cref="Index"/> should go, then backspaced.</summary>

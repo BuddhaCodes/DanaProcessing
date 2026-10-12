@@ -122,35 +122,8 @@ namespace DanaProcessing.Reels
                 .ToList();
         }
 
-        /// <summary>Every key the typing presses, in reel time -- for the keyboard sounds.</summary>
+        /// <summary>Every key the typing presses (including typos and their backspaces), in reel time.</summary>
         public IReadOnlyList<(double Time, KeyStroke Kind)> KeyStrokes { get; }
-
-        /// <summary>
-        /// Plays the keyboard sounds of the keys pressed in (<paramref name="from"/>, <paramref name="to"/>]
-        /// right now, through the shared audio engine -- for a live preview,
-        /// called once per frame with the previous and current time.
-        /// </summary>
-        public void PlayKeySounds(double from, double to)
-        {
-            if (Script.KeySounds <= 0 || to <= from || to - from > 0.5)
-                return; // off, paused, or a jump (seek): stay quiet
-            int lo = 0, hi = KeyStrokes.Count;
-            while (lo < hi) { int mid = (lo + hi) / 2; if (KeyStrokes[mid].Time <= from) lo = mid + 1; else hi = mid; }
-            DanaProcessing.Audio.AudioEngine? engine = null;
-            for (int i = lo; i < KeyStrokes.Count && KeyStrokes[i].Time <= to; i++)
-            {
-                engine ??= DanaProcessing.Audio.AudioEngine.Shared;
-                engine.EnsureStarted();
-                var (time, kind) = KeyStrokes[i];
-                engine.Schedule(new DanaProcessing.Audio.VoiceEvent
-                {
-                    StartFrame = engine.FrameAt(engine.Now + 0.03 + (time - from)),
-                    Sample = KeySounds.Sample(kind, time),
-                    Amp = Script.KeySounds * 0.9,
-                    Rate = 1,
-                }, new DanaProcessing.NoteEvent(engine.Now, 0, 0, DanaProcessing.Synth.Sine, "key", null));
-            }
-        }
 
         /// <summary>Builds the timeline for a script. <paramref name="sketchFactory"/> makes a fresh instance of the sketch for the result part (null = no result part).</summary>
         public static ReelTimeline Build(ReelScript script, Func<Sketch>? sketchFactory) => new(script, sketchFactory, false);

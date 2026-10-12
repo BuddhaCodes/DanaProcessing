@@ -3,8 +3,8 @@ using Xunit;
 
 namespace DanaProcessing.Tests.Reels;
 
-/// <summary>Long lines wrap instead of being cut off; typing makes keyboard sounds; typos stay on screen long enough to read.</summary>
-public class ReelWrapAndSoundTests
+/// <summary>Long lines wrap instead of being cut off; typos stay on screen long enough to read.</summary>
+public class ReelWrapTests
 {
     // ---------------- Wrapping (pure logic) ----------------
 
@@ -67,47 +67,12 @@ public class ReelWrapAndSoundTests
 
     private static string Squash(string s) => string.Join(" ", s.Split(' ', StringSplitOptions.RemoveEmptyEntries));
 
-    // ---------------- Keyboard sounds ----------------
-
-    [Theory]
-    [InlineData("int a;", 1.0)]
-    [InlineData("// @reel keys: off", 0.0)]
-    [InlineData("// @reel keys: 50%", 0.5)]
-    [InlineData("// @reel keysound: on", 1.0)]
-    public void Key_sounds_are_on_by_default_and_take_a_volume(string src, double expected)
-    {
-        var s = ReelScript.Parse(src);
-        Assert.Empty(s.Warnings);
-        Assert.Equal(expected, s.KeySounds, 6);
-    }
-
     [Fact]
-    public void Key_clicks_are_short_audible_and_never_clip()
-    {
-        var mix = new float[KeySounds.SampleRate * 2 * 2]; // 2 s stereo
-        var strokes = Enumerable.Range(0, 30).Select(i => (i * 0.06, i % 6 == 5 ? KeyStroke.Space : KeyStroke.Key)).ToList();
-        strokes.Add((1.9, KeyStroke.Enter));
-        KeySounds.Mix(mix, strokes, 1);
-        float peak = mix.Max(Math.Abs);
-        Assert.InRange(peak, 0.05f, 1f);
-        // Silence before the first key and between the last click and the Enter.
-        Assert.All(mix.Skip(2 * (int)(1.85 * KeySounds.SampleRate)).Take(2 * (int)(0.04 * KeySounds.SampleRate)), v => Assert.Equal(0f, v));
-    }
-
-    [Fact]
-    public void A_soundtrack_with_only_keys_writes_a_wav_and_a_silent_one_writes_nothing()
+    public void A_silent_soundtrack_writes_no_file()
     {
         var path = Path.Combine(Path.GetTempPath(), $"dana_{Guid.NewGuid():N}.wav");
-        try
-        {
-            Assert.False(new ReelSoundtrack(null, Array.Empty<(double, KeyStroke)>(), 1).WriteWav(path, 1));
-            Assert.False(File.Exists(path));
-            Assert.True(new ReelSoundtrack(null, new[] { (0.5, KeyStroke.Key) }, 1).WriteWav(path, 1));
-            var wav = DanaProcessing.SampleBuffer.LoadWav(path);
-            Assert.Equal(KeySounds.SampleRate, wav.Frames);
-            Assert.True(wav.Left.Skip(KeySounds.SampleRate / 2).Take(2000).Any(v => v != 0));
-        }
-        finally { File.Delete(path); }
+        Assert.False(new ReelSoundtrack(null).WriteWav(path, 1));
+        Assert.False(File.Exists(path));
     }
 
     // ---------------- On a real timeline (native Skia, CI) ----------------
@@ -141,24 +106,5 @@ public class ReelWrapAndSoundTests
         int typed = script.Scenes[0].Lines.Sum(l => l.Text.TrimStart().Length);
         Assert.True(t.KeyStrokes.Count(k => k.Kind is KeyStroke.Key or KeyStroke.Space) >= typed - 2);
         Assert.Contains(t.KeyStrokes, k => k.Kind == KeyStroke.Enter);
-    }
-
-    [Fact]
-    public void Renders_an_mp4_with_key_sounds_even_when_the_sketch_is_silent()
-    {
-        var ffmpeg = ReelExporter.FindFfmpeg();
-        if (ffmpeg == null)
-            return;
-        var path = Path.Combine(Path.GetTempPath(), $"dana_{Guid.NewGuid():N}.mp4");
-        try
-        {
-            ReelExporter.ExportAsync(ReelScript.Parse("// @reel fps: 15\n" + Code), null,
-                new ReelExportOptions { Kind = ReelExportKind.Mp4, OutputPath = path, FfmpegPath = ffmpeg }).GetAwaiter().GetResult();
-            var probe = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(ffmpeg, $"-hide_banner -i \"{path}\"") { RedirectStandardError = true, UseShellExecute = false })!;
-            var info = probe.StandardError.ReadToEnd();
-            probe.WaitForExit();
-            Assert.Contains("Audio:", info);
-        }
-        finally { File.Delete(path); }
     }
 }

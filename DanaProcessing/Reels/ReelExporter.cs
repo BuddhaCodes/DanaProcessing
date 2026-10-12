@@ -118,9 +118,7 @@ namespace DanaProcessing.Reels
                 bool withAudio = o.Kind != ReelExportKind.Gif && script.RecordsAudio && sketchFactory != null && script.ResultSeconds > 0;
                 using var audio = withAudio ? new DanaProcessing.Audio.OfflineAudio() : null;
                 using var timeline = withAudio ? ReelTimeline.BuildWithAudio(script, sketchFactory) : ReelTimeline.Build(script, sketchFactory);
-                // The soundtrack: the sketch's sound and/or the keyboard while code is typed.
-                bool keys = o.Kind != ReelExportKind.Gif && script.KeySounds > 0 && timeline.KeyStrokes.Count > 0;
-                var soundtrack = audio != null || keys ? new ReelSoundtrack(audio, keys ? timeline.KeyStrokes : null, script.KeySounds) : null;
+                var soundtrack = audio != null ? new ReelSoundtrack(audio) : null;
                 if (o.Kind == ReelExportKind.Gif)
                     timeline.AnimateBackground = false;
                 switch (o.Kind)
@@ -398,19 +396,12 @@ namespace DanaProcessing.Reels
         }
     }
 
-    /// <summary>What an export hears: the sketch's own sound (recorded offline, in step with the frames) plus the keyboard while code is typed.</summary>
+    /// <summary>What an export hears: the sketch's own sound, recorded offline in step with the frames.</summary>
     internal sealed class ReelSoundtrack
     {
         private readonly DanaProcessing.Audio.OfflineAudio? _sketch;
-        private readonly IReadOnlyList<(double Time, KeyStroke Kind)>? _keys;
-        private readonly double _keyVolume;
 
-        public ReelSoundtrack(DanaProcessing.Audio.OfflineAudio? sketch, IReadOnlyList<(double Time, KeyStroke Kind)>? keys, double keyVolume)
-        {
-            _sketch = sketch;
-            _keys = keys;
-            _keyVolume = keyVolume;
-        }
+        public ReelSoundtrack(DanaProcessing.Audio.OfflineAudio? sketch) => _sketch = sketch;
 
         /// <summary>Lets the sketch's sound catch up with the picture (live loops run in video time).</summary>
         public void RenderUntil(double seconds) => _sketch?.RenderUntil(seconds);
@@ -418,7 +409,7 @@ namespace DanaProcessing.Reels
         /// <summary>Mixes and writes the whole soundtrack; false (and no file) if it would be silent.</summary>
         public bool WriteWav(string path, double duration)
         {
-            int rate = KeySounds.SampleRate;
+            int rate = _sketch?.SampleRate ?? 48000;
             var mix = new float[(long)Math.Ceiling(duration * rate) * 2];
             if (_sketch != null)
             {
@@ -430,8 +421,6 @@ namespace DanaProcessing.Reels
                         mix[i] += s[i];
                 }
             }
-            if (_keys != null)
-                KeySounds.Mix(mix, _keys, _keyVolume);
             if (Array.TrueForAll(mix, v => v == 0))
                 return false;
             DanaProcessing.Audio.OfflineAudio.WriteWav(path, mix, rate);
