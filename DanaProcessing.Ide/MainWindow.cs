@@ -759,6 +759,9 @@ namespace DanaProcessing.Ide
             {
                 new Avalonia.Animation.DoubleTransition { Property = OpacityProperty, Duration = TimeSpan.FromMilliseconds(220) }
             };
+            // Whatever was open (unsaved edits included) comes back next time.
+            Closed += (_, _) => _editorView.SaveSession();
+
             Opened += (_, _) =>
             {
                 Opacity = 1;
@@ -1214,6 +1217,18 @@ namespace DanaProcessing.Ide
                 BuildMenuItem("📤", Loc.Tr("Exportar sketch...", "Export sketch..."), "Ctrl+E", () => _ = ExportActiveSketchAsync()),
             });
 
+            var editMenu = BuildTextMenu(Loc.Tr("Editar", "Edit"), new Control[]
+            {
+                BuildMenuItem("↶", Loc.Tr("Deshacer", "Undo"), "Ctrl+Z", () => _editorView.Undo()),
+                BuildMenuItem("↷", Loc.Tr("Rehacer", "Redo"), "Ctrl+Y", () => _editorView.Redo()),
+                MenuSeparator(),
+                BuildMenuItem("🔍", Loc.Tr("Buscar...", "Find..."), "Ctrl+F", () => _editorView.OpenFind()),
+                BuildMenuItem("⇄", Loc.Tr("Reemplazar...", "Replace..."), "Ctrl+H", () => _editorView.OpenReplace()),
+                BuildMenuItem("↧", Loc.Tr("Ir a la línea...", "Go to line..."), "Ctrl+G", () => _editorView.ShowGoToLine()),
+                MenuSeparator(),
+                BuildMenuItem("✨", Loc.Tr("Formatear código", "Format code"), "Shift+Alt+F", () => _editorView.FormatDocument()),
+            });
+
             var sketchMenu = BuildTextMenu("Sketch", new Control[]
             {
                 MirrorEnabled(BuildMenuItem("▶", Loc.Tr("Ejecutar", "Run"), "Ctrl+R", () => _ = RunCurrentSketchAsync()), _runButton),
@@ -1247,7 +1262,7 @@ namespace DanaProcessing.Ide
                 Orientation = Orientation.Horizontal,
                 Spacing = 2,
                 VerticalAlignment = VerticalAlignment.Center,
-                Children = { fileMenu, sketchMenu, toolsMenu, helpMenu },
+                Children = { fileMenu, editMenu, sketchMenu, toolsMenu, helpMenu },
             };
         }
 
@@ -1346,6 +1361,12 @@ namespace DanaProcessing.Ide
                 Run(OpenSettings);
             else if (e.Key == Key.OemPeriod && mods == ctrl)
                 Run(StopSound);
+            else if (e.Key == Key.G && mods == ctrl)
+                Run(() => _editorView.ShowGoToLine());
+            else if (e.Key == Key.H && mods == ctrl)
+                Run(() => _editorView.OpenReplace());
+            else if (e.Key == Key.F && mods == (KeyModifiers.Shift | KeyModifiers.Alt))
+                Run(() => _editorView.FormatDocument());
         }
 
         private Border BuildTitleBar(Control menuBar, Control runGroup, Button agentButton, Border paneTogglePill)

@@ -254,7 +254,7 @@ namespace DanaProcessing.Ide.Editor
                 Padding = new Thickness(20, 16),
             };
 
-            editorContainer.Child = _editor;
+            editorContainer.Child = new Panel { Children = { _editor, BuildGoToLineBox() } };
 
             _textMate = _editor.InstallTextMate(_registryOptions);
             ApplyCSharpGrammar();
@@ -491,7 +491,8 @@ namespace DanaProcessing.Ide.Editor
                 }
             };
 
-            AddNewTab();
+            if (!RestoreSession())
+                AddNewTab();
         }
 
         private void ApplyCSharpGrammar()
@@ -866,6 +867,197 @@ namespace DanaProcessing.Ide.Editor
                 return;
             _runtimeError.Line = 0;
             _editor.TextArea.TextView.InvalidateLayer(AvaloniaEdit.Rendering.KnownLayer.Background);
+        }
+
+        // ================================================================
+        // EDIT MENU: find / replace / go to line / format
+        // ================================================================
+
+        public void OpenFind()
+        {
+            _searchPanel.IsReplaceMode = false;
+            _searchPanel.Open();
+            _searchPanel.Reactivate();
+        }
+
+        public void OpenReplace()
+        {
+            _searchPanel.IsReplaceMode = true;
+            _searchPanel.Open();
+            _searchPanel.Reactivate();
+        }
+
+        public void Undo() { if (_editor.CanUndo) _editor.Undo(); }
+        public void Redo() { if (_editor.CanRedo) _editor.Redo(); }
+
+        private TextBox? _goToLineInput;
+        private Border? _goToLineBox;
+
+        private Control BuildGoToLineBox()
+        {
+            _goToLineInput = new TextBox
+            {
+                Width = 150,
+                FontFamily = ClayTheme.FontMono,
+                FontSize = 13,
+                PlaceholderText = Loc.Tr("Ir a la línea…", "Go to line…"),
+            };
+            _goToLineInput.KeyDown += (_, e) =>
+            {
+                if (e.Key == Key.Enter)
+                {
+                    if (int.TryParse(_goToLineInput.Text?.Trim(), out var line))
+                        GoToLine(line);
+                    HideGoToLine();
+                    e.Handled = true;
+                }
+                else if (e.Key == Key.Escape)
+                {
+                    HideGoToLine();
+                    e.Handled = true;
+                }
+            };
+            _goToLineInput.LostFocus += (_, _) => HideGoToLine();
+            _goToLineBox = new Border
+            {
+                Child = _goToLineInput,
+                Background = ClayTheme.Surface,
+                BorderBrush = ClayTheme.Accent,
+                BorderThickness = new Thickness(1),
+                CornerRadius = ClayTheme.RadiusSmall,
+                Padding = new Thickness(6),
+                Margin = new Thickness(0, 10, 18, 0),
+                HorizontalAlignment = HorizontalAlignment.Right,
+                VerticalAlignment = VerticalAlignment.Top,
+                IsVisible = false,
+            };
+            return _goToLineBox;
+        }
+
+        /// <summary>Ctrl+G: a small box over the editor; type a line number, Enter.</summary>
+        public void ShowGoToLine()
+        {
+            if (_goToLineBox == null || _goToLineInput == null)
+                return;
+            _goToLineInput.Text = _editor.TextArea.Caret.Line.ToString();
+            _goToLineInput.PlaceholderText = Loc.Tr($"Ir a la línea (1-{_editor.Document.LineCount})", $"Go to line (1-{_editor.Document.LineCount})");
+            _goToLineBox.IsVisible = true;
+            _goToLineInput.Focus();
+            _goToLineInput.SelectAll();
+        }
+
+        private void HideGoToLine()
+        {
+            if (_goToLineBox is { IsVisible: true })
+            {
+                _goToLineBox.IsVisible = false;
+                _editor.TextArea.Focus();
+            }
+        }
+
+        public void GoToLine(int line)
+        {
+            line = Math.Clamp(line, 1, Math.Max(1, _editor.Document.LineCount));
+            var docLine = _editor.Document.GetLineByNumber(line);
+            var text = _editor.Document.GetText(docLine);
+            GoToOffset(docLine.Offset + (text.Length - text.TrimStart().Length));
+            _editor.ScrollToLine(line);
+        }
+
+        /// <summary>
+        /// Shift+Alt+F: reformats the whole sketch with Roslyn's C# formatter
+        /// (indentation, spacing, braces) -- comments, `// nuget:` and
+        /// `// @reel` markers included, untouched. One undo step.
+        /// </summary>
+        public void FormatDocument()
+        {
+            var doc = _editor.Document;
+            var original = doc.Text;
+            try
+            {
+                var tree = Microsoft.CodeAnalysis.CSharp.CSharpSyntaxTree.ParseText(original, SketchCompiler.SharedParseOptions);
+                using var workspace = new Microsoft.CodeAnalysis.AdhocWorkspace();
+                var formatted = Microsoft.CodeAnalysis.Formatting.Formatter.Format(tree.GetRoot(), workspace).ToFullString();
+                // Keep the file's own line endings.
+                bool crlf = original.Contains("\r\n");
+                formatted = formatted.Replace("\r\n", "\n");
+                if (crlf) formatted = formatted.Replace("\n", "\r\n");
+                if (formatted == original)
+                {
+                    StatusMessageRequested?.Invoke(Loc.Tr("Ya estaba con formato", "Already formatted"));
+                    return;
+                }
+                int line = _editor.TextArea.Caret.Line;
+                doc.Replace(0, doc.TextLength, formatted);
+                GoToLine(line);
+                StatusMessageRequested?.Invoke(Loc.Tr("Código formateado", "Code formatted"));
+            }
+            catch (Exception ex)
+            {
+                StatusMessageRequested?.Invoke(Loc.Tr("No se pudo formatear: ", "Could not format: ") + ex.Message);
+            }
+        }
+
+        // ================================================================
+        // SESSION: the tabs that were open last time
+        // ================================================================
+
+        /// <summary>Remembers the open tabs (and unsaved edits) for the next start.</summary>
+        public void SaveSession()
+        {
+            var session = new EditorSession { Active = _activeTab is null ? 0 : Math.Max(0, OpenTabs.IndexOf(_activeTab)) };
+            foreach (var tab in OpenTabs)
+            {
+                session.Tabs.Add(new EditorSessionTab
+                {
+                    FilePath = tab.FilePath,
+                    Dirty = tab.IsDirty,
+                    Text = tab.FilePath is null || tab.IsDirty ? tab.Document.Text : null,
+                    Caret = tab == _activeTab ? _editor.CaretOffset : 0,
+                });
+            }
+            EditorSessionStore.Save(session);
+        }
+
+        private bool RestoreSession()
+        {
+            var session = EditorSessionStore.Load();
+            if (session is null || session.Tabs.Count == 0)
+                return false;
+
+            EditorTab? active = null;
+            int caret = 0;
+            for (int i = 0; i < session.Tabs.Count; i++)
+            {
+                var saved = session.Tabs[i];
+                string? text = saved.Text;
+                try
+                {
+                    if (text is null && saved.FilePath is not null && File.Exists(saved.FilePath))
+                        text = File.ReadAllText(saved.FilePath);
+                }
+                catch { text = null; }
+                if (text is null)
+                    continue; // the file is gone: nothing to restore
+
+                var tab = new EditorTab(saved.FilePath, text);
+                if (saved.Dirty)
+                    tab.IsDirty = true;
+                OpenTabs.Add(tab);
+                if (i == session.Active || active is null)
+                {
+                    active = tab;
+                    caret = saved.Caret;
+                }
+            }
+            if (active is null)
+                return false;
+
+            _tabStrip.SelectedItem = active;
+            ActivateTab(active);
+            _editor.CaretOffset = Math.Clamp(caret, 0, active.Document.TextLength);
+            Dispatcher.UIThread.Post(() => _editor.TextArea.Caret.BringCaretToView());
+            return true;
         }
 
         public void GoToOffset(int offset)
