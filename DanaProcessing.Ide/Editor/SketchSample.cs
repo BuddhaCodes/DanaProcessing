@@ -409,6 +409,20 @@ namespace DanaProcessing.Ide.Editor
                 new[] { SampleTag.Reels, SampleTag.Interaction, SampleTag.TwoD }),
 
             new SketchSample(
+                Loc.Tr("Reel: tecleo con errores y retroceso", "Reel: typing with mistakes and backspace"),
+                Loc.Tr("El código se escribe como lo haría una persona: de vez en cuando toca una tecla vecina, se da cuenta, borra y corrige. // @reel typos: 12% en todo el reel, una escena con typos=off (limpia) y otra con typos=35% (muchos errores). Abrilo y andá a Sketch > Crear reel...",
+                       "The code is typed the way a person would: now and then it hits a neighbouring key, notices, backspaces and fixes it. // @reel typos: 12% for the whole reel, one scene with typos=off (clean) and one with typos=35% (lots of mistakes). Open it and go to Sketch > Create reel..."),
+                ReelTypos,
+                new[] { SampleTag.Reels, SampleTag.Interaction, SampleTag.TwoD }),
+
+            new SketchSample(
+                Loc.Tr("Reel: zoom sobre las líneas marcadas", "Reel: zoom on marked lines"),
+                Loc.Tr("Las líneas que terminan en // @mark se resaltan y la tarjeta hace un zoom suave hacia ellas, para que se lean en el teléfono. Viene activado; cambiá a // @reel zoom: off para comparar. Abrilo y andá a Sketch > Crear reel...",
+                       "Lines ending in // @mark are highlighted and the card zooms gently towards them, so they're readable on a phone. It's on by default; change it to // @reel zoom: off to compare. Open it and go to Sketch > Create reel..."),
+                ReelZoom,
+                new[] { SampleTag.Reels, SampleTag.Animation, SampleTag.TwoD }),
+
+            new SketchSample(
                 Loc.Tr("Audio reactivo: FFT en vivo (NAudio)", "Audio-reactive: live FFT (NAudio)"),
                 Loc.Tr("Un `// nuget: NAudio` capturando el audio del sistema (sin micrófono) y corriéndolo por una FFT para mover un anillo de 40 barras -- cualquier cosa que esté sonando en la máquina mueve el dibujo en vivo. La tecla S detiene/reinicia la captura.",
                        "A `// nuget: NAudio` sketch capturing system audio (no microphone) and running it through an FFT to drive a ring of 40 bars -- whatever's playing on the machine moves the drawing live. The S key stops/restarts the capture."),
@@ -3549,6 +3563,123 @@ public class FlowField : Sketch
                 p = Spot();
             dots[i] = p;
         }
+    }
+}
+";
+
+        private const string ReelTypos =
+@"// @reel hide
+using DanaProcessing.Reels;
+
+// Typing with mistakes: the reel types the code like a person would --
+// now and then it hits a neighbouring key, notices, backspaces and fixes it.
+//
+//   // @reel typos: 12%        about one word in eight gets a typo (on = 8%)
+//   ... typos=off / typos=35%  per scene, overrides the reel's rate
+//
+// Open it and go to Sketch > Create reel... to watch it.
+
+// @reel title: Bubbles, typed by hand
+// @reel subtitle: typos and backspace, like a real person
+// @reel format: vertical
+// @reel theme: clay
+// @reel typos: 12%
+// @reel result: 7 caption=""Click to pop · they come back""
+
+// @reel show
+// @reel scene ""A bubble is a position, a speed and a size"" effect=type
+public class Bubbles : Sketch
+{
+    class Bubble
+    {
+        public float X, Y, Speed, Size;
+    }
+
+    readonly List<Bubble> bubbles = new();
+
+    // @reel scene ""Fill the screen with them -- clean typing here"" effect=type typos=off
+    public override void Setup()
+    {
+        Size(600, 600);
+        for (int i = 0; i < 60; i++)
+            bubbles.Add(NewBubble(Random(Height)));
+    }
+
+    Bubble NewBubble(float y) => new Bubble
+    {
+        X = Random(Width), Y = y, Speed = Random(0.5f, 2.5f), Size = Random(10, 60),
+    };
+
+    // @reel scene ""Every frame they rise and wobble -- lots of typos here"" effect=type typos=35%
+    public override void Draw()
+    {
+        Background(20, 40, 70);
+        NoFill();
+        StrokeWeight(2);
+        foreach (var b in bubbles)
+        {
+            b.Y -= b.Speed;
+            if (b.Y < -b.Size) { b.Y = Height + b.Size; b.X = Random(Width); }
+            float wobble = Sin(FrameCount * 0.05f + b.X) * 3;
+            Stroke(180, 220, 255, 200);
+            Circle(b.X + wobble, b.Y, b.Size);
+        }
+    }
+
+    // @reel scene ""Click one and it pops"" effect=type
+    public override void MousePressed()
+    {
+        bubbles.RemoveAll(b => Dist(MouseX, MouseY, b.X, b.Y) < b.Size / 2);
+        while (bubbles.Count < 60)
+            bubbles.Add(NewBubble(Height + 40));
+    }
+}
+";
+
+        private const string ReelZoom =
+@"// @reel hide
+using DanaProcessing.Reels;
+
+// Zoom on marked lines: end a line with // @mark and, once its scene is
+// typed, the reel highlights it, dims the rest and zooms in gently so the
+// line that matters is readable on a phone. It's on by default;
+// // @reel zoom: off keeps the card still (try it and compare).
+//
+// Open it and go to Sketch > Create reel... to watch it.
+
+// @reel title: Three lines that make it spin
+// @reel subtitle: zoom on the lines that matter
+// @reel format: vertical
+// @reel theme: dark
+// @reel zoom: on
+// @reel result: 7 caption=""Move the mouse to change the spiral""
+
+// @reel show
+// @reel scene ""Start from the centre of the canvas"" effect=type
+public class Spiral : Sketch
+{
+    public override void Setup()
+    {
+        Size(600, 600);
+    }
+
+    public override void Draw()
+    {
+        Background(12, 12, 20, 40);
+        Translate(Width / 2, Height / 2);   // @mark
+        NoStroke();
+// @reel scene ""Each dot turns a little more than the last"" effect=lines transition=slide
+        float turn = Map(MouseX, 0, Width, 0.05f, 0.5f);
+        for (int i = 0; i < 300; i++)
+        {
+            float angle = i * turn + FrameCount * 0.02f;   // @mark
+            float radius = i * 0.9f;                       // @mark
+            FillHSB(i * 1.2f + FrameCount, 70, 100);
+            Circle(Cos(angle) * radius, Sin(angle) * radius, 6);
+        }
+// @reel scene ""Mouse Y sets how fast the trail fades"" effect=fade transition=zoom keep
+        Fill(12, 12, 20, Map(MouseY, 0, Height, 5, 60));   // @mark
+        Rect(-Width / 2, -Height / 2, Width, Height);
     }
 }
 ";
