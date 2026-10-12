@@ -38,6 +38,8 @@ namespace DanaProcessing.Ide.Editor
         HotReload,
         Reels,
         YouTubeSeries,
+        Text,
+        Images,
     }
 
     public static class SampleTags
@@ -72,6 +74,8 @@ namespace DanaProcessing.Ide.Editor
             SampleTag.HotReload => "Hot reload",
             SampleTag.Reels => "Reels / video",
             SampleTag.YouTubeSeries => "YouTube series",
+            SampleTag.Text => "Texto / tipografía",
+            SampleTag.Images => "Imágenes / píxeles",
             _ => tag.ToString(),
         };
 
@@ -90,6 +94,8 @@ namespace DanaProcessing.Ide.Editor
             SampleTag.Games => "Games",
             SampleTag.Reels => "Reels / video",
             SampleTag.YouTubeSeries => "YouTube series",
+            SampleTag.Text => "Text / typography",
+            SampleTag.Images => "Images / pixels",
             _ => Spanish(tag),
         };
     }
@@ -186,6 +192,27 @@ namespace DanaProcessing.Ide.Editor
                        "A recursive tree with its angle controlled by the mouse, colored by depth."),
                 FractalTree,
                 new[] { SampleTag.TwoD, SampleTag.Generative, SampleTag.Interaction }),
+
+            new SketchSample(
+                Loc.Tr("Tipografía en movimiento: Text, TextWidth, TextAlign", "Kinetic type: Text, TextWidth, TextAlign"),
+                Loc.Tr("Cada letra medida con TextWidth() y colocada sola, las métricas de la línea (ascent, baseline, descent), las alineaciones de TextAlign() y un párrafo que se ajusta solo. Escribí para cambiar la palabra, la rueda cambia el tamaño, Tab la fuente y el click la alineación.",
+                       "Every letter measured with TextWidth() and placed on its own, the line's metrics (ascent, baseline, descent), TextAlign()'s alignments and a paragraph that wraps itself. Type to change the word, the wheel changes the size, Tab the font and a click the alignment."),
+                Typography,
+                new[] { SampleTag.Text, SampleTag.TwoD, SampleTag.Basics, SampleTag.Interaction }),
+
+            new SketchSample(
+                Loc.Tr("Imágenes y píxeles: Tint, Filter, Pixels[], Get()", "Images and pixels: Tint, Filter, Pixels[], Get()"),
+                Loc.Tr("Una imagen pintada en código, y cinco formas de tocarla: Image(), Tint(), Filter(), un mosaico leído de Pixels[] y filas desplazadas reescritas con UpdatePixels(). Teclas 1-5; junto al cursor, Get(x, y, w, h) como lupa.",
+                       "An image painted in code and five ways to work with it: Image(), Tint(), Filter(), a mosaic read from Pixels[] and rows shifted and written back with UpdatePixels(). Keys 1-5; next to the cursor, Get(x, y, w, h) as a magnifier."),
+                PixelPlay,
+                new[] { SampleTag.Images, SampleTag.TwoD, SampleTag.Interaction }),
+
+            new SketchSample(
+                Loc.Tr("Animación cuadro a cuadro: sprite sheet", "Frame-by-frame animation: sprite sheet"),
+                Loc.Tr("Un ciclo de caminata de 8 poses dibujado en una sprite sheet, cortado en cuadros y reproducido a su propia velocidad, con papel cebolla y tira de película. Flechas para la velocidad y para avanzar de a un cuadro, espacio pausa, S muestra la hoja.",
+                       "An 8-pose walk cycle drawn into a sprite sheet, cut into frames and played at its own speed, with onion skinning and a film strip. Arrows change the speed and step one frame, space pauses, S shows the sheet."),
+                FrameAnimation,
+                new[] { SampleTag.Animation, SampleTag.Images, SampleTag.TwoD }),
 
             new SketchSample(
                 Loc.Tr("Cubo 3D (Silk.NET)", "3D cube (Silk.NET)"),
@@ -430,6 +457,443 @@ namespace DanaProcessing.Ide.Editor
                 GpuParticles,
                 new[] { SampleTag.ThreeD, SampleTag.Gpu, SampleTag.Particles }),
         };
+
+        private const string Typography =
+@"// Kinetic type -- text is more than Text(x, y). TextWidth() measures
+// each letter so it can be placed (and moved) on its own, TextAlign()
+// decides which point of the text sits on (x, y), and TextAscent() /
+// TextDescent() tell you how tall a line really is.
+//
+// Type to change the word, Backspace deletes, the mouse wheel changes
+// the size, Tab switches the font, click to cycle the alignment.
+public class MySketch : Sketch
+{
+    private string _word = ""Dana"";
+    private float _size = 96;
+    private int _align;
+    private PFont _serif, _mono;
+    private bool _useMono;
+
+    private readonly (TextAlignH H, TextAlignV V, string Name)[] _aligns =
+    {
+        (TextAlignH.Left,   TextAlignV.Baseline, ""Left, Baseline""),
+        (TextAlignH.Center, TextAlignV.Center,   ""Center, Center""),
+        (TextAlignH.Right,  TextAlignV.Top,      ""Right, Top""),
+        (TextAlignH.Center, TextAlignV.Bottom,   ""Center, Bottom""),
+    };
+
+    public override void Setup()
+    {
+        Size(800, 500);
+        _serif = CreateFont(""Georgia"", 96);
+        _mono = CreateFont(""Consolas"", 96);
+    }
+
+    public override void Draw()
+    {
+        Background(24, 22, 30);
+        TextFont(_useMono ? _mono : _serif);
+
+        // 1. A wave: every letter measured and placed on its own.
+        TextSize(_size);
+        TextAlign(TextAlignH.Left, TextAlignV.Baseline);
+        float total = TextWidth(_word);
+        float x = (Width - total) / 2;
+        float baseY = 190;
+        for (int i = 0; i < _word.Length; i++)
+        {
+            string letter = _word[i].ToString();
+            float lift = Sin(FrameCount * 0.06f + i * 0.6f) * _size * 0.18f;
+            FillHSB((FrameCount * 1.5f + i * 30) % 360, 60, 100);
+            Text(letter, x, baseY + lift);
+            x += TextWidth(letter);
+        }
+
+        // The metrics of that line: ascent above the baseline, descent below.
+        float left = (Width - total) / 2;
+        StrokeWeight(1);
+        Stroke(255, 80);  Line(left - 20, baseY, left + total + 20, baseY);
+        Stroke(120, 200, 255, 120); Line(left - 20, baseY - TextAscent(), left + total + 20, baseY - TextAscent());
+        Stroke(255, 140, 120, 120); Line(left - 20, baseY + TextDescent(), left + total + 20, baseY + TextDescent());
+        NoStroke();
+        Fill(255, 140);
+        TextFont(_serif);
+        TextSize(12);
+        Text(""ascent"", left + total + 26, baseY - TextAscent() + 4);
+        Text(""baseline"", left + total + 26, baseY + 4);
+        Text(""descent"", left + total + 26, baseY + 4 + 14);
+
+        // 2. Alignment: the red dot is (x, y); the text is placed around it.
+        var a = _aligns[_align];
+        float ax = Width / 2f, ay = 350;
+        Stroke(255, 40);
+        Line(0, ay, Width, ay);
+        Line(ax, ay - 60, ax, ay + 60);
+        NoStroke();
+        TextFont(_useMono ? _mono : _serif);
+        TextSize(48);
+        TextAlign(a.H, a.V);
+        Fill(240);
+        Text(""Aligned text"", ax, ay);
+        Fill(255, 90, 90);
+        Circle(ax, ay, 10);
+
+        // 3. A paragraph that wraps itself, word by word, using TextWidth().
+        TextFont(_serif);
+        TextSize(14);
+        TextAlign(TextAlignH.Left, TextAlignV.Top);
+        Fill(255, 170);
+        WrapText($""TextAlign({a.Name}) · size {_size:0} · {(_useMono ? ""Consolas"" : ""Georgia"")} -- type to change the word, wheel: size, Tab: font, click: alignment."", 20, Height - 60, Width - 40);
+    }
+
+    private void WrapText(string text, float x, float y, float maxWidth)
+    {
+        string line = """";
+        foreach (var word in text.Split(' '))
+        {
+            string attempt = line.Length == 0 ? word : line + "" "" + word;
+            if (TextWidth(attempt) > maxWidth && line.Length > 0)
+            {
+                Text(line, x, y);
+                y += 20;
+                line = word;
+            }
+            else
+                line = attempt;
+        }
+        Text(line, x, y);
+    }
+
+    public override void KeyTyped()
+    {
+        if (Key == BACKSPACE)
+        {
+            if (_word.Length > 0) _word = _word.Substring(0, _word.Length - 1);
+        }
+        else if (Key == TAB)
+            _useMono = !_useMono;
+        else if (!char.IsControl(Key) && _word.Length < 14)
+            _word += Key;
+    }
+
+    public override void MouseWheel(float delta) => _size = Constrain(_size - delta * 6, 24, 160);
+    public override void MouseClicked() => _align = (_align + 1) % _aligns.Length;
+}
+";
+
+        private const string PixelPlay =
+@"// Images and pixels -- an image is just a grid of colors you can draw,
+// tint, filter, sample and rewrite. The ""photo"" here is painted in code
+// on an offscreen PGraphics (so the sample needs no files); with your
+// own picture you'd use LoadImage(""photo.jpg"") instead.
+//
+// Keys 1-5 switch the effect, the mouse drives it, and the box next to
+// the cursor is Get(x, y, w, h): a piece of the canvas, magnified.
+public class MySketch : Sketch
+{
+    private PImage _photo;
+    private int _mode = 1;
+    private readonly FilterKind[] _filters = { FilterKind.Gray, FilterKind.Posterize, FilterKind.Threshold, FilterKind.Invert, FilterKind.Blur };
+
+    private readonly string[] _names =
+    {
+        """",
+        ""1 · Image(): the picture as it is"",
+        ""2 · Tint(): the mouse picks the color"",
+        ""3 · Filter(): mouse X picks the filter, mouse Y its amount"",
+        ""4 · Pixels[]: a mosaic, one sampled pixel per tile"",
+        ""5 · Pixels[]: rows shifted by a wave, rewritten with UpdatePixels()"",
+    };
+
+    public override void Setup()
+    {
+        Size(640, 400);
+        _photo = PaintPhoto(Width, Height);
+    }
+
+    public override void Draw()
+    {
+        Background(0);
+        switch (_mode)
+        {
+            case 1:
+                Image(_photo, 0, 0);
+                break;
+
+            case 2:
+                ColorMode(ColorSpaceMode.HSB, 360, 100, 100);
+                Tint(Map(MouseX, 0, Width, 0, 360), Map(MouseY, 0, Height, 0, 100), 100);
+                Image(_photo, 0, 0);
+                NoTint();
+                ColorMode(ColorSpaceMode.RGB, 255);
+                break;
+
+            case 3:
+            {
+                Image(_photo, 0, 0);
+                var kind = _filters[(int)Constrain(MouseX / Width * _filters.Length, 0, _filters.Length - 1)];
+                float amount = kind switch
+                {
+                    FilterKind.Posterize => Map(MouseY, 0, Height, 2, 8),
+                    FilterKind.Blur => Map(MouseY, 0, Height, 0, 6),
+                    _ => Map(MouseY, 0, Height, 0, 1),
+                };
+                Filter(kind, amount);
+                _names[3] = $""3 · Filter({kind}, {amount:0.0}): mouse X picks the filter, mouse Y its amount"";
+                break;
+            }
+
+            case 4:
+            {
+                Image(_photo, 0, 0);
+                LoadPixels();
+                int tile = (int)Constrain(Map(MouseX, 0, Width, 4, 40), 4, 40);
+                NoStroke();
+                for (int y = 0; y < Height; y += tile)
+                    for (int x = 0; x < Width; x += tile)
+                    {
+                        // Pixels is one long row-major array: index = y * Width + x.
+                        var c = Pixels[Min(y + tile / 2, Height - 1) * Width + Min(x + tile / 2, Width - 1)];
+                        Fill(c);
+                        Rect(x, y, tile, tile);
+                    }
+                break;
+            }
+
+            case 5:
+            {
+                Image(_photo, 0, 0);
+                LoadPixels();
+                var source = (Color[])Pixels.Clone();
+                float strength = Map(MouseX, 0, Width, 0, 60);
+                for (int y = 0; y < Height; y++)
+                {
+                    int shift = (int)(Sin(y * 0.04f + FrameCount * 0.08f) * strength);
+                    for (int x = 0; x < Width; x++)
+                    {
+                        int sx = (x + shift + Width) % Width;
+                        Pixels[y * Width + x] = source[y * Width + sx];
+                    }
+                }
+                UpdatePixels();
+                break;
+            }
+        }
+
+        // Get(x, y, w, h) copies a piece of whatever is on the canvas right now.
+        int mx = (int)MouseX, my = (int)MouseY;
+        var piece = Get(mx - 12, my - 12, 24, 24);
+        float bx = Min(mx + 18, Width - 130), by = Min(my + 18, Height - 130);
+        Image(piece, bx, by, 120, 120);
+        NoFill();
+        Stroke(255);
+        StrokeWeight(2);
+        Rect(bx, by, 120, 120);
+        var under = Get(mx, my);
+        NoStroke();
+        Fill(under);
+        Rect(bx, by + 122, 120, 14);
+
+        Fill(0, 160);
+        Rect(0, 0, Width, 26);
+        Fill(255);
+        TextSize(13);
+        Text(_names[_mode] + ""   (keys 1-5)"", 10, 18);
+    }
+
+    public override void KeyPressed()
+    {
+        if (Key >= '1' && Key <= '5')
+            _mode = Key - '0';
+    }
+
+    // A small landscape painted with ordinary drawing calls on an
+    // offscreen canvas, then frozen into a PImage with Get().
+    private PImage PaintPhoto(int w, int h)
+    {
+        var pg = CreateGraphics(w, h);
+        pg.BeginDraw();
+        pg.NoStroke();
+        for (int y = 0; y < h; y++)
+        {
+            float t = y / (float)h;
+            pg.Fill(LerpColor(Color(40, 60, 140), Color(255, 170, 120), t));
+            pg.Rect(0, y, w, 1);
+        }
+        pg.Fill(255, 230, 170);
+        pg.Circle(w * 0.7f, h * 0.48f, 110);
+        for (int layer = 0; layer < 3; layer++)
+        {
+            pg.Fill(30 + layer * 25, 40 + layer * 20, 70 + layer * 15);
+            for (int x = 0; x <= w; x += 4)
+            {
+                float top = h * (0.5f + layer * 0.14f) + Noise(x * 0.01f, layer * 10) * 80 - 40;
+                pg.Rect(x, top, 4, h - top);
+            }
+        }
+        pg.Fill(255, 250, 220, 200);
+        for (int i = 0; i < 60; i++)
+            pg.Circle(Random(w), Random(h * 0.4f), Random(1, 3));
+        pg.EndDraw();
+        var img = pg.Get();
+        pg.Dispose();
+        return img;
+    }
+}
+";
+
+        private const string FrameAnimation =
+@"// Frame-by-frame animation -- the way cartoons and game sprites move:
+// draw every pose once into a ""sprite sheet"", then show one frame
+// after another. Here the frames are drawn in code (a walking
+// character), cut into one PImage per frame, and played
+// at their own speed, independent of the sketch's frame rate.
+//
+// Up/Down: animation speed (frames per second of the walk cycle)
+// Left/Right: step one frame (pauses), Space: play / pause
+// S: show the sprite sheet.
+public class MySketch : Sketch
+{
+    private const int Frames = 8;
+    private const int Cell = 120;
+    private PImage[] _frames;
+    private PImage _sheet;
+    private float _fps = 10;
+    private bool _playing = true;
+    private bool _showSheet;
+    private float _frame;      // fractional, so slow speeds still advance smoothly
+    private float _x = -Cell;
+
+    public override void Setup()
+    {
+        Size(720, 420);
+        FrameRate(60);
+        _sheet = PaintSheet();
+        // Cut the sheet into one PImage per frame.
+        _frames = new PImage[Frames];
+        for (int i = 0; i < Frames; i++)
+        {
+            var pg = CreateGraphics(Cell, Cell);
+            pg.BeginDraw();
+            pg.Image(_sheet, -i * Cell, 0);
+            pg.EndDraw();
+            _frames[i] = pg.Get();
+            pg.Dispose();
+        }
+    }
+
+    public override void Draw()
+    {
+        Background(236, 230, 218);
+
+        // Advance by real time, not by Draw() calls: 60 fps sketch, _fps walk cycle.
+        if (_playing)
+        {
+            float dt = 1f / 60f;
+            _frame = (_frame + _fps * dt) % Frames;
+            _x += _fps * 3.2f * dt * 10;
+            if (_x > Width + Cell) _x = -Cell;
+        }
+        int current = (int)_frame;
+
+        // Ground and a parallax hint of motion.
+        NoStroke();
+        Fill(205, 196, 180);
+        Rect(0, 300, Width, Height - 300);
+        Fill(185, 175, 158);
+        for (int i = 0; i < 12; i++)
+        {
+            float gx = ((i * 90 - _x * 0.5f) % (Width + 90) + Width + 90) % (Width + 90) - 45;
+            Rect(gx, 318, 40, 4);
+        }
+
+        // Onion skin: the previous two frames, faded, behind the current one.
+        for (int back = 2; back >= 1; back--)
+        {
+            Tint(255 * (0.18f / back));
+            Image(_frames[(current - back + Frames) % Frames], _x - back * 8, 300 - Cell);
+        }
+        NoTint();
+        Image(_frames[current], _x, 300 - Cell);
+
+        // The film strip: every frame, the current one highlighted.
+        float stripW = 64, stripY = 340;
+        float startX = (Width - stripW * Frames) / 2;
+        for (int i = 0; i < Frames; i++)
+        {
+            Fill(i == current ? Color(255, 120, 80) : Color(60));
+            Rect(startX + i * stripW, stripY, stripW - 4, stripW - 4);
+            Image(_frames[i], startX + i * stripW + 2, stripY + 2, stripW - 8, stripW - 8);
+        }
+
+        if (_showSheet)
+        {
+            Fill(0, 170);
+            Rect(0, 0, Width, Height);
+            float s = Width / (float)_sheet.Width * 0.95f;
+            Image(_sheet, Width * 0.025f, 80, _sheet.Width * s, _sheet.Height * s);
+            Fill(255);
+            Text(""The sprite sheet: 8 poses side by side, cut into frames in Setup()"", Width * 0.025f, 60);
+        }
+
+        Fill(40);
+        TextSize(14);
+        Text($""frame {current + 1}/{Frames} · {_fps:0} fps walk cycle · {(_playing ? ""playing"" : ""paused"")}   ↑↓ speed · ←→ step · space · S sheet"", 14, 24);
+    }
+
+    public override void KeyPressed()
+    {
+        if (KeyCode == UP) _fps = Min(_fps + 1, 30);
+        else if (KeyCode == DOWN) _fps = Max(_fps - 1, 1);
+        else if (KeyCode == RIGHT) { _playing = false; _frame = ((int)_frame + 1) % Frames; }
+        else if (KeyCode == LEFT) { _playing = false; _frame = ((int)_frame - 1 + Frames) % Frames; }
+        else if (Key == ' ') _playing = !_playing;
+        else if (Key == 's' || Key == 'S') _showSheet = !_showSheet;
+    }
+
+    // Eight poses of a walk cycle, drawn side by side on one offscreen canvas.
+    private PImage PaintSheet()
+    {
+        var pg = CreateGraphics(Cell * Frames, Cell);
+        pg.BeginDraw();
+        for (int i = 0; i < Frames; i++)
+        {
+            float phase = i / (float)Frames * TWO_PI;
+            float cx = i * Cell + Cell / 2f;
+            float bob = Abs(Sin(phase)) * -5;
+            float hipY = 72 + bob;
+
+            pg.StrokeWeight(9);
+            // Back leg and arm darker, front ones lighter: depth in two colors.
+            DrawLimb(pg, cx, hipY, phase + PI, 26, Color(70, 80, 120));
+            DrawLimb(pg, cx, hipY - 34, phase, 20, Color(200, 110, 80));
+            pg.Stroke(80, 90, 140);
+            pg.Line(cx, hipY, cx, hipY - 36);                        // body
+            pg.NoStroke();
+            pg.Fill(240, 200, 170);
+            pg.Circle(cx + 2, hipY - 50, 24);                        // head
+            DrawLimb(pg, cx, hipY, phase, 26, Color(90, 105, 160));
+            DrawLimb(pg, cx, hipY - 34, phase + PI, 20, Color(230, 135, 100));
+        }
+        pg.EndDraw();
+        var img = pg.Get();
+        pg.Dispose();
+        return img;
+    }
+
+    // A two-segment limb swinging around (x, y): upper part, then a bent lower part.
+    private void DrawLimb(PGraphics pg, float x, float y, float phase, float len, Color c)
+    {
+        float a1 = Sin(phase) * 0.6f;
+        float a2 = a1 - Max(0, Cos(phase)) * 0.8f;
+        float kx = x + Sin(a1) * len, ky = y + Cos(a1) * len;
+        float fx = kx + Sin(a2) * len, fy = ky + Cos(a2) * len;
+        pg.Stroke(c);
+        pg.Line(x, y, kx, ky);
+        pg.Line(kx, ky, fx, fy);
+    }
+}
+";
 
         private const string CircleRain =
 @"// Circle rain -- demo of Circle(x, y, d), the new shortcut for
