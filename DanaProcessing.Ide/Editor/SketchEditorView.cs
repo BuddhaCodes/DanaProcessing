@@ -99,6 +99,7 @@ namespace DanaProcessing.Ide.Editor
         // un debounce corto en cada cambio de texto, no en cada tecla, para
         // no relanzar Roslyn en cada letra.
         private readonly EditorDiagnosticsColorizer _diagnosticsColorizer = new();
+        private readonly RuntimeErrorLineRenderer _runtimeError = new();
         private readonly DispatcherTimer _diagnosticsTimer;
         private readonly Border _diagnosticBanner;
         private readonly TextBlock _diagnosticBannerText;
@@ -275,6 +276,7 @@ namespace DanaProcessing.Ide.Editor
             // ================================================================
 
             _editor.TextArea.TextView.LineTransformers.Add(_diagnosticsColorizer);
+            _editor.TextArea.TextView.BackgroundRenderers.Add(_runtimeError);
 
             _diagnosticBannerText = new TextBlock
             {
@@ -304,6 +306,7 @@ namespace DanaProcessing.Ide.Editor
 
             _editor.TextChanged += (_, _) =>
             {
+                ClearRuntimeError();
                 // El mensaje bajo el cursor queda desactualizado hasta que el
                 // debounce de abajo recalcule contra el texto nuevo.
                 _diagnosticBanner.IsVisible = false;
@@ -841,6 +844,30 @@ namespace DanaProcessing.Ide.Editor
 
         /// <summary>Moves the caret to <paramref name="offset"/> and scrolls it into view —
         /// used by MainWindow's "Errores en vivo" tab to jump to a diagnostic on click.</summary>
+        /// <summary>Marks the line a running sketch crashed on (red band behind it) and moves the caret there.</summary>
+        public void MarkRuntimeError(int line, string message)
+        {
+            if (line < 1 || line > _editor.Document.LineCount)
+                return;
+            _runtimeError.Line = line;
+            _runtimeError.Message = message;
+            _editor.TextArea.TextView.InvalidateLayer(AvaloniaEdit.Rendering.KnownLayer.Background);
+            var docLine = _editor.Document.GetLineByNumber(line);
+            var text = _editor.Document.GetText(docLine);
+            int indent = text.Length - text.TrimStart().Length;
+            GoToOffset(docLine.Offset + indent);
+            _editor.ScrollToLine(line);
+        }
+
+        /// <summary>Removes the runtime-error band (also happens on the next edit).</summary>
+        public void ClearRuntimeError()
+        {
+            if (_runtimeError.Line == 0)
+                return;
+            _runtimeError.Line = 0;
+            _editor.TextArea.TextView.InvalidateLayer(AvaloniaEdit.Rendering.KnownLayer.Background);
+        }
+
         public void GoToOffset(int offset)
         {
             var clamped = Math.Clamp(offset, 0, _editor.Document.TextLength);

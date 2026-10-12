@@ -69,6 +69,13 @@ namespace DanaProcessing.AvaloniaHost
         /// <summary>Which lifecycle method threw ("Setup"/"Draw"/etc.), if HasCrashed is true.</summary>
         public string LastCrashContext => _crashContext;
 
+        /// <summary>
+        /// Raised once when the sketch's code throws (Setup, Draw, an input
+        /// handler...) with the exception and which method it was in. May be
+        /// raised on the render thread -- marshal to the UI thread yourself.
+        /// </summary>
+        public event Action<Exception, string>? Crashed;
+
         // --- Our own offscreen surface, sized in DIPs (matching what we pass
         // to _sketch.Size(...)) times SupersampleScale — recreated whenever
         // that size (or the scale) changes. This is what gives Sketch.Surface
@@ -325,6 +332,7 @@ namespace DanaProcessing.AvaloniaHost
                 _crashException = ex;
                 _crashContext = context;
                 DanaLogger.ErrorFromException(ex, $"Error en {context}()");
+                try { Crashed?.Invoke(ex, context); } catch { /* a listener's bug must not mask the sketch's */ }
             }
         }
 

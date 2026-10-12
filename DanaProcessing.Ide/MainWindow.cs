@@ -179,6 +179,7 @@ namespace DanaProcessing.Ide
             _editorView = new SketchEditorView();
             _canvas = new AvaloniaSketchCanvas(new PlaceholderSketch());
             _canvas.SketchSizeChanged += (_, _) => RecomputeCanvasOversized();
+            _canvas.Crashed += (ex, context) => Dispatcher.UIThread.Post(() => ShowRuntimeError(ex, context));
             _editorView.CaretPositionChanged += (line, col) => _caretLabel.Text = $"Ln {line}, Col {col}";
             _editorView.LiveDiagnosticsChanged += UpdateLiveDiagnostics;
             _editorView.ReferencesFound += UpdateReferencesFound;
@@ -1720,6 +1721,7 @@ namespace DanaProcessing.Ide
                     _outputText.Text = "";
                     _runTabDot.Fill = ClayTheme.TextMuted;
                     RefreshBottomPanelVisibility();
+                    _editorView.ClearRuntimeError();
 
                     ApplyRenderingSettings();
                     _canvas.LoadSketch(result.Sketch!);
@@ -2168,6 +2170,33 @@ namespace DanaProcessing.Ide
         /// errors already live) plus a status-bar flash -- a live loop that
         /// died is as much a "your code has a problem" as a compile error.
         /// </summary>
+        /// <summary>
+        /// The running sketch threw. Besides the overlay the canvas already
+        /// draws, say it where errors live (Run tab + status pill) and, when
+        /// the failure is in the sketch's own code, mark that line in the
+        /// editor and put the caret on it.
+        /// </summary>
+        private void ShowRuntimeError(Exception ex, string context)
+        {
+            var info = SketchCrashInfo.From(ex, context);
+            var where = info.Line > 0
+                ? Loc.Tr($"línea {info.Line}", $"line {info.Line}")
+                : Loc.Tr("dentro de DanaProcessing (revisá los argumentos que le pasás)", "inside DanaProcessing (check the arguments you pass it)");
+            _outputText.Text = $"✕ {info.ExceptionName} {Loc.Tr("en", "in")} {context}(), {where}:{Environment.NewLine}   {info.Message}";
+            _runTabDot.Fill = ClayTheme.Danger;
+            SetBottomTab(BottomTab.Run);
+            RefreshBottomPanelVisibility();
+
+            _statusDot.Fill = ClayTheme.Danger;
+            _statusLabel.Text = info.Line > 0
+                ? Loc.Tr($"Error al ejecutar (línea {info.Line})", $"Runtime error (line {info.Line})")
+                : Loc.Tr("Error al ejecutar", "Runtime error");
+            ((Border)_statusPill).Background = ClayTheme.DangerSurface;
+
+            if (info.Line > 0 && _runningTab != null && _runningTab == _editorView.ActiveTab)
+                _editorView.MarkRuntimeError(info.Line, info.Message);
+        }
+
         private void ShowAudioDiagnostic(string message)
         {
             var line = "♪ " + message;

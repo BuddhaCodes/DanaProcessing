@@ -33,7 +33,7 @@ public class SketchCompilerTests
             }
             """);
         Assert.False(result.Success);
-        Assert.Contains(result.Errors, e => e.Contains("(5,"));
+        Assert.True(result.Errors.Any(e => e.Contains("Sketch.cs(5,")), string.Join("\n", result.Errors));
     }
 
     [Fact]
@@ -87,5 +87,38 @@ public class SketchCompilerTests
                 failures.Add(sample.Name + ": " + string.Join(" | ", r.Errors.Take(2)));
         }
         Assert.True(failures.Count == 0, string.Join("\n", failures));
+    }
+}
+
+public class SketchCrashInfoTests
+{
+    [Fact]
+    public void Runtime_errors_point_at_the_sketch_line()
+    {
+        var result = SketchCompiler.Compile("""
+            public class Crashy : Sketch
+            {
+                public override void Draw()
+                {
+                    int[] values = new int[3];
+                    values[5] = 1;
+                }
+            }
+            """);
+        Assert.True(result.Success, string.Join("\n", result.Errors));
+        Exception? caught = null;
+        try { result.Sketch!.Draw(); } catch (Exception ex) { caught = ex; }
+        Assert.NotNull(caught);
+        var info = SketchCrashInfo.From(caught!, "Draw");
+        Assert.Equal(6, info.Line);
+        Assert.Equal("IndexOutOfRangeException", info.ExceptionName);
+    }
+
+    [Fact]
+    public void Failures_outside_the_sketch_have_no_line()
+    {
+        var info = SketchCrashInfo.From(new InvalidOperationException("library"), "Setup");
+        Assert.Equal(0, info.Line);
+        Assert.Equal("Setup", info.Context);
     }
 }

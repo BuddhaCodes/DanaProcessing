@@ -128,39 +128,32 @@ Synths, drums, `.wav` samples, envelopes, filters, and `Amplitude` / `Spectrum()
 
 ## 🚀 Getting started
 
-**Just want to draw something?** Grab the latest build. It's self-contained, nothing to install:
+**Just want to draw something?** Grab the installer for your system from the **[latest release](https://github.com/BuddhaCodes/DanaProcessing/releases/latest)**: `Setup.exe` for Windows, the `.pkg` for macOS (Apple Silicon or Intel) or the `.AppImage` for Linux. It includes everything it needs and updates itself when a new version is out.
 
-**[Windows](https://github.com/BuddhaCodes/DanaProcessing/releases/latest/download/DanaProcessingIde-win-x64.zip)** · **[macOS (Apple Silicon)](https://github.com/BuddhaCodes/DanaProcessing/releases/latest/download/DanaProcessingIde-osx-arm64.zip)** · **[macOS (Intel)](https://github.com/BuddhaCodes/DanaProcessing/releases/latest/download/DanaProcessingIde-osx-x64.zip)** · **[Linux](https://github.com/BuddhaCodes/DanaProcessing/releases/latest/download/DanaProcessingIde-linux-x64.tar.gz)**
-
-The builds aren't code-signed yet (that costs real money on every platform), so your OS will ask if you're sure the first time. That's expected:
+The installers aren't code-signed yet (that costs real money on every platform), so your OS will ask if you're sure the first time. That's expected:
 
 <details>
 <summary><b>Windows</b>: SmartScreen</summary>
 
-1. Right-click the downloaded `.zip` → **Properties** → check **Unblock** → **OK** (or run `Unblock-File .\DanaProcessingIde-win-x64.zip` in PowerShell). Do this *before* extracting.
-2. Extract the zip and run `DanaProcessing.Ide.exe`, then press **Run** on the sketch that's already open.
-
-If you extracted first and still see the prompt: **More info → Run anyway**.
+When Windows says "Windows protected your PC", click **More info → Run anyway**.
 </details>
 
 <details>
 <summary><b>macOS</b>: Gatekeeper</summary>
 
-1. Unzip and try opening **DanaProcessing IDE.app**. macOS will say it can't verify the developer.
-2. Go to **System Settings → Privacy & Security**, click **Open Anyway** next to DanaProcessing IDE, then confirm **Open**. macOS remembers this afterwards.
+Open the installer or the app once; macOS will say it can't verify the developer. Go to **System Settings → Privacy & Security**, click **Open Anyway**, then confirm **Open**. macOS remembers this afterwards.
 </details>
 
 <details>
 <summary><b>Linux</b>: execute bit</summary>
 
 ```bash
-tar -xzf DanaProcessingIde-linux-x64.tar.gz
-chmod +x DanaProcessing.Ide
-./DanaProcessing.Ide
+chmod +x DanaProcessingIde-*.AppImage
+./DanaProcessingIde-*.AppImage
 ```
-
-A `DanaProcessing.desktop` file is included if you want it in your app launcher; see the comment at the top of that file.
 </details>
+
+Sound on macOS and Linux is new in 1.0 and still experimental: if you hear nothing, please [open an issue](https://github.com/BuddhaCodes/DanaProcessing/issues).
 
 **Building from source?** You'll need the [.NET 10 SDK](https://dotnet.microsoft.com/download):
 

@@ -5,7 +5,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <Version>0.1.0-beta</Version>
+    <Version>1.0.0-rc.1</Version>
     <Product>DanaProcessing IDE</Product>
     <!-- The .exe's own Win32 icon resource: what Explorer, the taskbar,
          and alt-tab show. Needs a real multi-resolution .ico file (not

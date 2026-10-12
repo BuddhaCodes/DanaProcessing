@@ -10,7 +10,7 @@
   <!-- NuGet package metadata. -->
   <PropertyGroup>
     <PackageId>DanaProcessing</PackageId>
-    <Version>0.1.0-beta</Version>
+    <Version>1.0.0-rc.1</Version>
     <Authors>BuddhaCodes</Authors>
     <Description>Cross-platform creative-coding core for C#, inspired by Processing — 2D (SkiaSharp) and 3D (Silk.NET/OpenGL) rendering behind one Sketch API. No UI dependency of its own: use DanaProcessing.AvaloniaHost to run a sketch in a window or embeddable control.</Description>
     <PackageTags>creative-coding;graphics;processing;skiasharp;opengl</PackageTags>
