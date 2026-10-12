@@ -25,13 +25,13 @@ namespace DanaProcessing.Ide.Compilation
     /// </summary>
     public static class SketchCompiler
     {
-        // C# 10+ is required for `global using` (used below to make
-        // `using DanaProcessing;` implicit in every sketch). Pinning this
-        // explicitly means both syntax trees we parse are guaranteed to
-        // agree on language version, regardless of whatever Roslyn version
-        // ends up referenced.
+        // C# 14 -- the language version of .NET 10, the runtime sketches run
+        // on -- so sketches can use everything a normal .NET 10 project can.
+        // (C# 10+ is the hard floor: `global using` below needs it.) Pinned
+        // rather than "Latest" so both syntax trees we parse always agree and
+        // a future Roslyn bump can't silently change what sketches accept.
         private static readonly CSharpParseOptions ParseOptions =
-            new CSharpParseOptions(LanguageVersion.CSharp10);
+            new CSharpParseOptions(LanguageVersion.CSharp14);
 
         /// <summary>
         /// A synthetic, invisible-to-the-user source file containing just the
@@ -73,6 +73,9 @@ namespace DanaProcessing.Ide.Compilation
         /// <summary>Language version pinned here too, so a completion-time syntax tree
         /// and a Run-time syntax tree never disagree about what's valid C#.</summary>
         internal static readonly CSharpParseOptions SharedParseOptions = ParseOptions;
+
+        /// <summary>File name the sketch's code is compiled under: what runtime stack traces refer to.</summary>
+        public const string SketchFileName = "Sketch.cs";
 
         // simple assembly name -> file path, populated by SetNuGetAssemblies right
         // before each Compile() call that has `// nuget:` directives to satisfy.
@@ -118,10 +121,58 @@ namespace DanaProcessing.Ide.Compilation
                     NuGetAssemblyPaths[Path.GetFileNameWithoutExtension(path)] = path;
         }
 
+        /// <summary>
+        /// A sketch's own, unloadable home. Everything it references (the
+        /// DanaProcessing library, the BCL, NuGet packages) still comes from
+        /// the IDE's default context -- Load() returning null says "ask the
+        /// default context" -- so types are shared and nothing is loaded twice.
+        /// </summary>
+        private sealed class SketchLoadContext : AssemblyLoadContext
+        {
+            public SketchLoadContext() : base("DanaProcessing sketch", isCollectible: true) { }
+            protected override Assembly? Load(AssemblyName assemblyName) => null;
+        }
+
+        // The last few compiles stay loaded no matter what (the running sketch,
+        // a hot-reload candidate, the reel window's copy...); older ones are
+        // asked to unload, which happens for real once nothing references them.
+        private const int ContextsKept = 4;
+        private static readonly Queue<SketchLoadContext> RecentContexts = new();
+        private static readonly List<WeakReference> AllContexts = new();
+
+        private static Assembly LoadCollectible(Stream assembly, Stream pdb)
+        {
+            var context = new SketchLoadContext();
+            var loaded = context.LoadFromStream(assembly, pdb);
+            lock (RecentContexts)
+            {
+                RecentContexts.Enqueue(context);
+                AllContexts.Add(new WeakReference(context));
+                AllContexts.RemoveAll(w => !w.IsAlive);
+                while (RecentContexts.Count > ContextsKept)
+                    RecentContexts.Dequeue().Unload();
+            }
+            return loaded;
+        }
+
+        /// <summary>How many compiled sketch assemblies are still in memory (diagnostics and tests; call after a GC).</summary>
+        public static int LoadedSketchAssemblies
+        {
+            get
+            {
+                lock (RecentContexts)
+                {
+                    AllContexts.RemoveAll(w => !w.IsAlive);
+                    return AllContexts.Count;
+                }
+            }
+        }
+
         public static CompileResult Compile(string sourceCode, IReadOnlyList<MetadataReference>? extraReferences = null)
         {
-            var userTree = CSharpSyntaxTree.ParseText(sourceCode, ParseOptions);
-            var implicitUsingsTree = CSharpSyntaxTree.ParseText(ImplicitUsingsSource, ParseOptions, path: "ImplicitUsings.cs");
+            // Both trees need an encoding: emitting a PDB requires it.
+            var userTree = CSharpSyntaxTree.ParseText(sourceCode, ParseOptions, path: SketchFileName, encoding: System.Text.Encoding.UTF8);
+            var implicitUsingsTree = CSharpSyntaxTree.ParseText(ImplicitUsingsSource, ParseOptions, path: "ImplicitUsings.cs", encoding: System.Text.Encoding.UTF8);
 
             var references = GetSharedReferences();
             if (extraReferences != null)
@@ -134,7 +185,9 @@ namespace DanaProcessing.Ide.Compilation
                 options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 
             using var ms = new MemoryStream();
-            var emitResult = compilation.Emit(ms);
+            using var pdb = new MemoryStream();
+            var emitResult = compilation.Emit(ms, pdb,
+                options: new Microsoft.CodeAnalysis.Emit.EmitOptions(debugInformationFormat: Microsoft.CodeAnalysis.Emit.DebugInformationFormat.PortablePdb));
 
             if (!emitResult.Success)
             {
@@ -146,7 +199,11 @@ namespace DanaProcessing.Ide.Compilation
             }
 
             ms.Seek(0, SeekOrigin.Begin);
-            var assembly = Assembly.Load(ms.ToArray());
+            // Loading the PDB alongside is what puts "Sketch.cs:line N" in the
+            // stack trace of an exception thrown by sketch code -- see
+            // SketchCrashInfo, which turns that into a highlighted editor line.
+            pdb.Seek(0, SeekOrigin.Begin);
+            var assembly = LoadCollectible(ms, pdb);
 
             var sketchType = assembly.GetTypes()
                 .FirstOrDefault(t => typeof(Sketch).IsAssignableFrom(t) && !t.IsAbstract);

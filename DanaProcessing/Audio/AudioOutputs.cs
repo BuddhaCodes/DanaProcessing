@@ -12,8 +12,9 @@ namespace DanaProcessing.Audio
     /// The only part of the audio module that talks to the operating system:
     /// "here's a callback, keep the sound card fed". Everything musical
     /// (synths, scheduling, effects, analysis) lives above this, in our own
-    /// code. Adding macOS/Linux later means adding one more implementation
-    /// of this interface, nothing else.
+    /// code. One implementation per OS: WinMmOutput (Windows),
+    /// CoreAudioOutput (macOS) and AlsaOutput (Linux, see AudioOutputs.Unix.cs),
+    /// plus ClockOnlyOutput when there's no usable device.
     /// </summary>
     internal interface IAudioOutput : IDisposable
     {

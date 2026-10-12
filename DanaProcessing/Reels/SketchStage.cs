@@ -34,6 +34,9 @@ namespace DanaProcessing.Reels
         /// <summary>Video time (seconds since the result started) the stage was last advanced to.</summary>
         public double Time { get; private set; }
 
+        /// <summary>Start the sketch's live loops when its first frame is drawn (exports with sound).</summary>
+        public bool StartsAudio { get; init; }
+
         /// <summary>Most frames AdvanceTo() will draw in one call -- a long seek in the preview must not freeze the UI.</summary>
         public int MaxFramesPerAdvance { get; set; } = 400;
 
@@ -127,6 +130,9 @@ namespace DanaProcessing.Reels
                     Run(() => _input.Apply(_sketch, _lastInputTime, tau), "input");
                     _lastInputTime = tau;
                 }
+
+                if (_frames == 0 && StartsAudio)
+                    Run(() => DanaProcessing.Audio.AudioEngine.ActivateSketch(_sketch), "live loops");
 
                 // noLoop(): draw the first frame only (Processing semantics).
                 if (_sketch.IsLooping || _frames == 0)

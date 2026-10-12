@@ -36,7 +36,6 @@ namespace DanaProcessing.Reels
 
         /// <summary>Start over at the end instead of stopping there.</summary>
         public bool LoopPlayback { get; set; } = true;
-
         /// <summary>Jump to <paramref name="seconds"/>. Safe to call from any thread; takes effect on the next frame.</summary>
         public void Seek(double seconds) => Interlocked.Exchange(ref _seekBits, BitConverter.DoubleToInt64Bits(Math.Max(0, seconds)));
 

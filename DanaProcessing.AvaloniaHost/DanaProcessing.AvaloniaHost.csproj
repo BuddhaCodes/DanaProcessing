@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <RootNamespace>DanaProcessing.AvaloniaHost</RootNamespace>
@@ -9,7 +9,7 @@
 
   <PropertyGroup>
     <PackageId>DanaProcessing.AvaloniaHost</PackageId>
-    <Version>0.1.0-beta</Version>
+    <Version>1.0.0-rc.1</Version>
     <Description>Avalonia host for DanaProcessing: AvaloniaSketchCanvas (an embeddable control) and AvaloniaSketchWindow (a standalone window), cross-platform.</Description>
   </PropertyGroup>
 
@@ -22,9 +22,8 @@
     -->
     <!--
       Avalonia.Desktop 12 -> Avalonia.Skia 12 requires SkiaSharp >= 3.119.3-preview.1.1.
-      Pinning it explicitly here (only in this project) satisfies that floor
-      without dragging the core library's own SkiaSharp reference (2.88.8,
-      chosen for its own stability reasons) up to a preview version too.
+      The core library pins the very same version, so everything compiles
+      against the SkiaSharp that actually runs.
     -->
     <PackageReference Include="SkiaSharp" Version="3.119.3-preview.1.1" />
     <PackageReference Include="Avalonia" Version="12.0.0" />

@@ -42,6 +42,8 @@ namespace DanaProcessing.Reels
         public bool Marked { get; init; }
         /// <summary>1-based line in the original source, for messages.</summary>
         public int SourceLine { get; init; }
+        /// <summary>The rest of a line too long for the card, wrapped onto its own row: no line number, no Enter pause.</summary>
+        public bool Continuation { get; init; }
     }
 
     /// <summary>A card of code: from one <c>// @reel scene</c> marker to the next.</summary>
@@ -53,6 +55,8 @@ namespace DanaProcessing.Reels
         public ReelTransition? Transition { get; set; }
         /// <summary>Characters per second for Type. Null = the reel's Speed.</summary>
         public double? Speed { get; set; }
+        /// <summary>Chance of a typo (typed, noticed, backspaced) per word, 0..1. Null = the reel's Typos.</summary>
+        public double? Typos { get; set; }
         /// <summary>Seconds the finished card stays on screen.</summary>
         public double Hold { get; set; } = 1.4;
         /// <summary>Continue the previous card (its code stays, this scene's code is added below) instead of starting a new one.</summary>
@@ -126,6 +130,16 @@ namespace DanaProcessing.Reels
         public bool ShowProgress { get; set; } = true;
         public bool ShowLineNumbers { get; set; } = true;
         public ReelMouseMode Mouse { get; set; } = ReelMouseMode.Auto;
+        /// <summary>Record the sketch's sound into the MP4 (and a WAV next to PNG frames). Null = only if the code makes sound.</summary>
+        public bool? Audio { get; set; }
+        /// <summary>Chance of a typo per word while typing, 0..1 (0 = never, the default). "on" = 0.08.</summary>
+        public double Typos { get; set; }
+        /// <summary>Zoom in a little on @mark lines when they light up. On by default.</summary>
+        public bool ZoomMarks { get; set; } = true;
+        /// <summary>The source plays sound ([LiveLoop], Play(), Sample()).</summary>
+        public bool SourceUsesAudio { get; private set; }
+        /// <summary>Whether an export should record sound: the marker if given, otherwise whether the code makes sound.</summary>
+        public bool RecordsAudio => Audio ?? SourceUsesAudio;
 
         public List<ReelScene> Scenes { get; } = new();
         public List<ReelInputAction> Input { get; } = new();
@@ -145,6 +159,7 @@ namespace DanaProcessing.Reels
         private static readonly Regex MarkerLine = new(@"^\s*//\s*@reel\b(?<rest>.*)$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private static readonly Regex TrailingMark = new(@"\s*//\s*@mark\b.*$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private static readonly Regex Token = new("(?<k>[A-Za-z_]+)=\"(?<kv>[^\"]*)\"|\"(?<q>[^\"]*)\"|(?<w>\\S+)", RegexOptions.Compiled);
+        private static readonly Regex AudioUse = new(@"\[LiveLoop\]|\b(Play|Sample)\s*\(", RegexOptions.Compiled);
         private static readonly Regex MouseUse = new(@"\b(MouseX|MouseY|PMouseX|PMouseY|IsMousePressed|MouseButton)\b", RegexOptions.Compiled);
 
         public static ReelScript Parse(string source)
@@ -211,6 +226,17 @@ namespace DanaProcessing.Reels
                         case "mouse":
                             script.Mouse = IsOff(text) ? ReelMouseMode.None : ReelMouseMode.Auto;
                             break;
+                        case "typos":
+                        case "mistakes":
+                            script.Typos = ParseTypos(text, lineNo, script);
+                            break;
+                        case "zoom":
+                            script.ZoomMarks = !IsOff(text);
+                            break;
+                        case "audio":
+                        case "sound":
+                            script.Audio = !IsOff(text);
+                            break;
                         case "result":
                         {
                             var first = args.Count > 0 ? args[0] : text;
@@ -240,6 +266,7 @@ namespace DanaProcessing.Reels
                                     case "speed": current.Speed = ParseSpeed(v, script.Speed, lineNo, script); break;
                                     case "hold": current.Hold = Math.Clamp(ParseNumber(v.TrimEnd('s'), 1.4, lineNo, script), 0, 30); break;
                                     case "caption": current.Caption = v; break;
+                                    case "typos": case "mistakes": current.Typos = ParseTypos(v, lineNo, script); break;
                                     default: script.Warnings.Add(W(lineNo, $"unknown scene option '{k}'")); break;
                                 }
                             }
@@ -308,6 +335,8 @@ namespace DanaProcessing.Reels
 
                 if (MouseUse.IsMatch(code))
                     script.SourceUsesMouse = true;
+                if (AudioUse.IsMatch(code))
+                    script.SourceUsesAudio = true;
 
                 // Blank lines before a scene's first real line are dropped
                 // (they are just spacing between markers in the source).
@@ -435,7 +464,7 @@ namespace DanaProcessing.Reels
                 text = string.Join(" ", args);
                 args.Clear();
             }
-            else if (text == null && args.Count == 1 && command is "format" or "theme" or "lang" or "language" or "speed" or "fps" or "mouse" or "progress" or "linenumbers" or "numbers")
+            else if (text == null && args.Count == 1 && command is "format" or "theme" or "lang" or "language" or "speed" or "fps" or "mouse" or "audio" or "sound" or "typos" or "mistakes" or "zoom" or "progress" or "linenumbers" or "numbers")
             {
                 text = args[0];
                 args.Clear();
@@ -535,6 +564,14 @@ namespace DanaProcessing.Reels
                     s.Warnings.Add(W(line, $"unknown format '{v}' (vertical, square, landscape)"));
                     return ReelFormat.Vertical;
             }
+        }
+
+        private static double ParseTypos(string? v, int line, ReelScript s)
+        {
+            var t = (v ?? "").Trim().ToLowerInvariant();
+            if (IsOff(t)) return 0;
+            if (t is "on" or "yes" or "true" or "") return 0.08;
+            return Math.Clamp(ParseNumber(t.TrimEnd('%'), 0.08, line, s) / (t.EndsWith('%') ? 100 : 1), 0, 1);
         }
 
         private static double ParseSpeed(string? v, double fallback, int line, ReelScript s)

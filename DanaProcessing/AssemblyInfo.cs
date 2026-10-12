@@ -7,3 +7,7 @@ using System.Runtime.CompilerServices;
 // `internal` used to give for free back when everything lived in one
 // project.
 [assembly: InternalsVisibleTo("DanaProcessing.AvaloniaHost")]
+
+// The test project exercises engine internals directly (offscreen rendering,
+// the audio engine with a recording output, the reel parser's helpers).
+[assembly: InternalsVisibleTo("DanaProcessing.Tests")]

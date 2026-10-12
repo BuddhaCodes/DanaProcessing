@@ -39,7 +39,7 @@ namespace DanaProcessing.Ide.Compilation.PackageManagement
 
     /// <summary>
     /// Resolves `// nuget:` directives against nuget.org and extracts the
-    /// matching net8.0 (or nearest compatible TFM — same resolution rule the
+    /// matching net10.0 (or nearest compatible TFM — same resolution rule the
     /// SDK itself uses) assemblies into a local on-disk cache, so a sketch can
     /// reference third-party packages with neither a project file nor the .NET
     /// SDK installed. That second part matters: the published IDE is a
@@ -51,7 +51,7 @@ namespace DanaProcessing.Ide.Compilation.PackageManagement
     /// Deliberately simpler than a full `dotnet restore`: nuget.org only (no
     /// nuget.config / private feeds), "first-resolved version wins" instead of
     /// a real SAT-based dependency resolver, and a small denylist of
-    /// netstandard2.0 compatibility-shim packages net8.0 already provides
+    /// netstandard2.0 compatibility-shim packages net10.0 already provides
     /// (downloading a differently-versioned copy of one of those would only
     /// risk shadowing the runtime's own). Good enough for the kind of single
     /// small utility package a sketch typically wants; not a general-purpose
@@ -60,7 +60,7 @@ namespace DanaProcessing.Ide.Compilation.PackageManagement
     public static class NuGetPackageResolver
     {
         private const string SourceUrl = "https://api.nuget.org/v3/index.json";
-        private static readonly NuGetFramework TargetFramework = NuGetFramework.ParseFolder("net8.0");
+        private static readonly NuGetFramework TargetFramework = NuGetFramework.ParseFolder("net10.0");
         private static readonly FrameworkReducer Reducer = new();
         private static readonly SourceRepository SourceRepo = Repository.Factory.GetCoreV3(SourceUrl);
 
@@ -228,8 +228,8 @@ namespace DanaProcessing.Ide.Compilation.PackageManagement
 
         /// <summary>Serves an already-extracted package straight from
         /// <see cref="CacheRoot"/> when present (no network at all), otherwise
-        /// downloads the .nupkg, extracts its net8.0-nearest lib assemblies and
-        /// records its net8.0-nearest dependency group for the caller to enqueue.</summary>
+        /// downloads the .nupkg, extracts its net10.0-nearest lib assemblies and
+        /// records its net10.0-nearest dependency group for the caller to enqueue.</summary>
         private static async Task<(IReadOnlyList<string> AssemblyPaths, IReadOnlyList<PackageDependency> Dependencies)> GetOrDownloadAsync(
             FindPackageByIdResource findResource, SourceCacheContext cache, ILogger logger,
             string id, NuGetVersion version, IProgress<string>? progress, CancellationToken ct)

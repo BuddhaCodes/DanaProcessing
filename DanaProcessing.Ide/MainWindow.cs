@@ -179,6 +179,7 @@ namespace DanaProcessing.Ide
             _editorView = new SketchEditorView();
             _canvas = new AvaloniaSketchCanvas(new PlaceholderSketch());
             _canvas.SketchSizeChanged += (_, _) => RecomputeCanvasOversized();
+            _canvas.Crashed += (ex, context) => Dispatcher.UIThread.Post(() => ShowRuntimeError(ex, context));
             _editorView.CaretPositionChanged += (line, col) => _caretLabel.Text = $"Ln {line}, Col {col}";
             _editorView.LiveDiagnosticsChanged += UpdateLiveDiagnostics;
             _editorView.ReferencesFound += UpdateReferencesFound;
@@ -758,6 +759,9 @@ namespace DanaProcessing.Ide
             {
                 new Avalonia.Animation.DoubleTransition { Property = OpacityProperty, Duration = TimeSpan.FromMilliseconds(220) }
             };
+            // Whatever was open (unsaved edits included) comes back next time.
+            Closed += (_, _) => _editorView.SaveSession();
+
             Opened += (_, _) =>
             {
                 Opacity = 1;
@@ -1213,6 +1217,18 @@ namespace DanaProcessing.Ide
                 BuildMenuItem("📤", Loc.Tr("Exportar sketch...", "Export sketch..."), "Ctrl+E", () => _ = ExportActiveSketchAsync()),
             });
 
+            var editMenu = BuildTextMenu(Loc.Tr("Editar", "Edit"), new Control[]
+            {
+                BuildMenuItem("↶", Loc.Tr("Deshacer", "Undo"), "Ctrl+Z", () => _editorView.Undo()),
+                BuildMenuItem("↷", Loc.Tr("Rehacer", "Redo"), "Ctrl+Y", () => _editorView.Redo()),
+                MenuSeparator(),
+                BuildMenuItem("🔍", Loc.Tr("Buscar...", "Find..."), "Ctrl+F", () => _editorView.OpenFind()),
+                BuildMenuItem("⇄", Loc.Tr("Reemplazar...", "Replace..."), "Ctrl+H", () => _editorView.OpenReplace()),
+                BuildMenuItem("↧", Loc.Tr("Ir a la línea...", "Go to line..."), "Ctrl+G", () => _editorView.ShowGoToLine()),
+                MenuSeparator(),
+                BuildMenuItem("✨", Loc.Tr("Formatear código", "Format code"), "Shift+Alt+F", () => _editorView.FormatDocument()),
+            });
+
             var sketchMenu = BuildTextMenu("Sketch", new Control[]
             {
                 MirrorEnabled(BuildMenuItem("▶", Loc.Tr("Ejecutar", "Run"), "Ctrl+R", () => _ = RunCurrentSketchAsync()), _runButton),
@@ -1246,7 +1262,7 @@ namespace DanaProcessing.Ide
                 Orientation = Orientation.Horizontal,
                 Spacing = 2,
                 VerticalAlignment = VerticalAlignment.Center,
-                Children = { fileMenu, sketchMenu, toolsMenu, helpMenu },
+                Children = { fileMenu, editMenu, sketchMenu, toolsMenu, helpMenu },
             };
         }
 
@@ -1345,6 +1361,12 @@ namespace DanaProcessing.Ide
                 Run(OpenSettings);
             else if (e.Key == Key.OemPeriod && mods == ctrl)
                 Run(StopSound);
+            else if (e.Key == Key.G && mods == ctrl)
+                Run(() => _editorView.ShowGoToLine());
+            else if (e.Key == Key.H && mods == ctrl)
+                Run(() => _editorView.OpenReplace());
+            else if (e.Key == Key.F && mods == (KeyModifiers.Shift | KeyModifiers.Alt))
+                Run(() => _editorView.FormatDocument());
         }
 
         private Border BuildTitleBar(Control menuBar, Control runGroup, Button agentButton, Border paneTogglePill)
@@ -1720,6 +1742,7 @@ namespace DanaProcessing.Ide
                     _outputText.Text = "";
                     _runTabDot.Fill = ClayTheme.TextMuted;
                     RefreshBottomPanelVisibility();
+                    _editorView.ClearRuntimeError();
 
                     ApplyRenderingSettings();
                     _canvas.LoadSketch(result.Sketch!);
@@ -2168,6 +2191,33 @@ namespace DanaProcessing.Ide
         /// errors already live) plus a status-bar flash -- a live loop that
         /// died is as much a "your code has a problem" as a compile error.
         /// </summary>
+        /// <summary>
+        /// The running sketch threw. Besides the overlay the canvas already
+        /// draws, say it where errors live (Run tab + status pill) and, when
+        /// the failure is in the sketch's own code, mark that line in the
+        /// editor and put the caret on it.
+        /// </summary>
+        private void ShowRuntimeError(Exception ex, string context)
+        {
+            var info = SketchCrashInfo.From(ex, context);
+            var where = info.Line > 0
+                ? Loc.Tr($"línea {info.Line}", $"line {info.Line}")
+                : Loc.Tr("dentro de DanaProcessing (revisá los argumentos que le pasás)", "inside DanaProcessing (check the arguments you pass it)");
+            _outputText.Text = $"✕ {info.ExceptionName} {Loc.Tr("en", "in")} {context}(), {where}:{Environment.NewLine}   {info.Message}";
+            _runTabDot.Fill = ClayTheme.Danger;
+            SetBottomTab(BottomTab.Run);
+            RefreshBottomPanelVisibility();
+
+            _statusDot.Fill = ClayTheme.Danger;
+            _statusLabel.Text = info.Line > 0
+                ? Loc.Tr($"Error al ejecutar (línea {info.Line})", $"Runtime error (line {info.Line})")
+                : Loc.Tr("Error al ejecutar", "Runtime error");
+            ((Border)_statusPill).Background = ClayTheme.DangerSurface;
+
+            if (info.Line > 0 && _runningTab != null && _runningTab == _editorView.ActiveTab)
+                _editorView.MarkRuntimeError(info.Line, info.Message);
+        }
+
         private void ShowAudioDiagnostic(string message)
         {
             var line = "♪ " + message;

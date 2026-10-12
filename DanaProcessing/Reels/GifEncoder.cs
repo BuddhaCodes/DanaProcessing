@@ -17,6 +17,7 @@ namespace DanaProcessing.Reels
         private readonly int[] _hist = new int[32768];
         private readonly byte[] _lut = new byte[32768];
         private readonly byte[] _palette = new byte[768];
+        private int _paletteBits = 8; // local color table holds 2^bits entries
         private bool _disposed;
 
         // LZW dictionary: key = (prefix << 8) | byte, direct-mapped, invalidated by generation.
@@ -60,8 +61,10 @@ namespace DanaProcessing.Reels
             // Image descriptor with a 256-entry local color table.
             _out.WriteByte(0x2C);
             WriteShort(_rx); WriteShort(_ry); WriteShort(_rw); WriteShort(_rh);
-            _out.WriteByte(0x87);
-            _out.Write(_palette, 0, 768);
+            // Only as big a color table as this frame needs: a 1x1 "nothing
+            // changed" frame then costs ~20 bytes instead of ~800.
+            _out.WriteByte((byte)(0x80 | (_paletteBits - 1)));
+            _out.Write(_palette, 0, 3 << _paletteBits);
 
             _out.WriteByte(8); // LZW minimum code size
             Lzw(_rw * _rh);
@@ -163,6 +166,8 @@ namespace DanaProcessing.Reels
             }
 
             Array.Clear(_palette);
+            _paletteBits = 1;
+            while ((1 << _paletteBits) < boxes.Count) _paletteBits++;
             var pr = new int[boxes.Count];
             var pg = new int[boxes.Count];
             var pb = new int[boxes.Count];

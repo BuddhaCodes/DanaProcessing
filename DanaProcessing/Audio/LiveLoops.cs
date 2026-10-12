@@ -149,6 +149,7 @@ namespace DanaProcessing.Audio
                         Cts = cts,
                     };
                     _running[name] = state;
+                    _engine.Offline?.LoopStarted();
                     _ = Task.Run(() => RunAsync(state));
                 }
             }
@@ -242,6 +243,7 @@ namespace DanaProcessing.Audio
             }
             finally
             {
+                _engine.Offline?.LoopEnded();
                 lock (_gate)
                 {
                     if (_running.TryGetValue(ctx.Name, out var current) && current == state)
@@ -273,6 +275,16 @@ namespace DanaProcessing.Audio
         {
             double now = _engine.Now;
             double wait = ctx.Time - now;
+
+            // Rendering offline (a reel export): time only moves when the
+            // exporter says so, so wait on its clock rather than the wall clock.
+            if (_engine.Offline is { } clock)
+            {
+                if (wait > 1e-9)
+                    return clock.WaitUntil(ctx.Time, ctx.Token);
+                ctx.Token.ThrowIfCancellationRequested();
+                return Task.CompletedTask;
+            }
 
             if (wait > 0.001)
                 return Task.Delay(TimeSpan.FromSeconds(wait), ctx.Token);

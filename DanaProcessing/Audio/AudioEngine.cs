@@ -58,6 +58,24 @@ namespace DanaProcessing.Audio
             }
         }
 
+        /// <summary>
+        /// Makes <paramref name="engine"/> the shared one (null = none yet) and
+        /// returns the previous one. Used while a reel renders its sound
+        /// offline, so the sketch's Play()/Sample()/live loops talk to it.
+        /// </summary>
+        internal static AudioEngine? SwapShared(AudioEngine? engine)
+        {
+            lock (SharedGate)
+            {
+                var previous = _shared;
+                _shared = engine;
+                return previous;
+            }
+        }
+
+        /// <summary>Set for an engine whose time is driven by hand (OfflineAudio) instead of a sound card.</summary>
+        internal OfflineClock? Offline { get; init; }
+
         /// <summary>The shared engine if anything has created it yet, without creating it.</summary>
         internal static AudioEngine? SharedIfCreated
         {
@@ -215,8 +233,12 @@ namespace DanaProcessing.Audio
 
             if (OperatingSystem.IsWindows())
                 return new WinMmOutput();
+            if (OperatingSystem.IsMacOS())
+                return new CoreAudioOutput();
+            if (OperatingSystem.IsLinux())
+                return new AlsaOutput(); // if libasound is missing, EnsureStarted() falls back to the clock-only output
 
-            Report("La salida de audio todavía no está disponible en este sistema operativo (por ahora solo Windows). Los live loops y OnNote() funcionan igual, sin sonido.");
+            Report("La salida de audio no está disponible en este sistema operativo. Los live loops y OnNote() funcionan igual, sin sonido.");
             return new ClockOnlyOutput();
         }
 

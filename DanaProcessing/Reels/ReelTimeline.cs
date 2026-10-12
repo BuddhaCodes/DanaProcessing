@@ -35,7 +35,7 @@ namespace DanaProcessing.Reels
         private readonly List<Segment> _segments = new();
         private readonly SketchStage? _stage;
 
-        private ReelTimeline(ReelScript script, Func<Sketch>? sketchFactory)
+        private ReelTimeline(ReelScript script, Func<Sketch>? sketchFactory, bool startAudio)
         {
             Script = script;
             Width = script.Width;
@@ -68,6 +68,12 @@ namespace DanaProcessing.Reels
             }
 
             int codeIndex = 0;
+            for (int c = 0; c < chains.Count; c++)
+            {
+                // Lines too long for the card even at the smallest font wrap onto extra rows.
+                int cols = CardLayout.MaxColumns(this, chains[c].Sum(s => s.Lines.Count));
+                chains[c] = chains[c].Select(s => CodeWrap.Wrap(s, cols)).ToList();
+            }
             foreach (var chain in chains)
             {
                 var layout = new CardLayout(this, chain.SelectMany(s => s.Lines).ToList());
@@ -87,7 +93,7 @@ namespace DanaProcessing.Reels
 
             if (script.ResultSeconds > 0 && sketchFactory != null)
             {
-                _stage = new SketchStage(sketchFactory, script, script.ResultSeconds);
+                _stage = new SketchStage(sketchFactory, script, script.ResultSeconds) { StartsAudio = startAudio };
                 _segments.Add(new ResultSegment(this, _stage) { Transition = script.ResultTransition });
             }
 
@@ -110,10 +116,20 @@ namespace DanaProcessing.Reels
             }
             Duration = t;
             Parts = parts;
+            KeyStrokes = _segments.OfType<CodeSegment>()
+                .SelectMany(s => s.KeyStrokes.Select(k => (s.Start + k.Time, k.Kind)))
+                .OrderBy(k => k.Item1)
+                .ToList();
         }
 
+        /// <summary>Every key the typing presses (including typos and their backspaces), in reel time.</summary>
+        public IReadOnlyList<(double Time, KeyStroke Kind)> KeyStrokes { get; }
+
         /// <summary>Builds the timeline for a script. <paramref name="sketchFactory"/> makes a fresh instance of the sketch for the result part (null = no result part).</summary>
-        public static ReelTimeline Build(ReelScript script, Func<Sketch>? sketchFactory) => new(script, sketchFactory);
+        public static ReelTimeline Build(ReelScript script, Func<Sketch>? sketchFactory) => new(script, sketchFactory, false);
+
+        /// <summary>Like Build(), but the result part also starts the sketch's sound (live loops) -- used by the exporter, which records it offline.</summary>
+        internal static ReelTimeline BuildWithAudio(ReelScript script, Func<Sketch>? sketchFactory) => new(script, sketchFactory, true);
 
         /// <summary>Problem the result part ran into (an exception in the sketch), if any.</summary>
         public Exception? SketchError => _stage?.Error;

@@ -57,6 +57,9 @@ namespace DanaProcessing
         }
 
         public static XML Load(string path) => new XML(XElement.Load(path));
+
+        /// <summary>Parses an XML string directly (no file involved), like Processing's parseXML(string). Throws if the text isn't well-formed XML.</summary>
+        public static XML Parse(string xml) => new XML(XElement.Parse(xml));
         public void Save(string path) => Element.Save(path);
 
         public override string ToString() => Element.ToString();
