@@ -67,4 +67,41 @@ public class DocsExamplesTests
         }
         Assert.True(failures.Count == 0, string.Join("\n", failures));
     }
+    [Fact]
+    public void The_live_generative_and_day_to_day_sections_have_examples()
+    {
+        var path = FindIndexHtml();
+        if (path == null)
+            return;
+        var html = File.ReadAllText(path);
+        foreach (var section in new[] { "live", "generative", "workflow" })
+            Assert.Contains($"<section class=\"doc-section\" id=\"{section}\"", html);
+        var ids = Extract(html).Select(e => e.Id).ToHashSet();
+        foreach (var id in new[] { "live-example-code", "midi-example-code", "generative-example-code",
+                                   "plotter-example-code", "workflow-example-code", "stats-example-code" })
+            Assert.Contains(id, ids);
+        // Each new API has an entry of its own.
+        foreach (var entry in new[] { "midi", "beat", "listento", "performance-mode", "seed", "variations",
+                                      "print-export", "stats", "data-folder", "rewind", "time-machine" })
+            Assert.Contains($"<h3 class=\"entry-title\" id=\"{entry}\"", html);
+    }
+
+    [Fact]
+    public void Every_keyword_and_link_points_at_something_on_the_page()
+    {
+        var path = FindIndexHtml();
+        if (path == null)
+            return;
+        var html = File.ReadAllText(path);
+        var ids = Regex.Matches(html, "\\bid=\"([^\"]+)\"").Select(m => m.Groups[1].Value).ToHashSet();
+
+        var map = html.Split("var keywordMap = {")[1].Split("};")[0];
+        var targets = Regex.Matches(map, "\"([^\"]+)\":\\s*\"([^\"]+)\"").Select(m => (Key: m.Groups[1].Value, Id: m.Groups[2].Value)).ToList();
+        Assert.Contains(targets, t => t.Key == "MidiCC");
+        Assert.Contains(targets, t => t.Key == "Beat");
+        Assert.All(targets, t => Assert.True(ids.Contains(t.Id), $"keyword {t.Key} -> #{t.Id} doesn't exist"));
+
+        var links = Regex.Matches(html, "href=\"#([A-Za-z][^\"]*)\"").Select(m => m.Groups[1].Value).Distinct();
+        Assert.All(links, l => Assert.True(ids.Contains(l), $"link #{l} doesn't exist"));
+    }
 }

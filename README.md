@@ -117,7 +117,7 @@ Synths, drums, `.wav` samples, envelopes, filters, and `Amplitude` / `Spectrum()
 
 | | |
 | --- | --- |
-| 🖥️ **An IDE that knows your sketch** | Live Roslyn diagnostics as you type, autocomplete for the whole API, go-to-definition, and a **Run** that compiles in memory in well under a second. |
+| 🖥️ **An IDE that knows your sketch** | Live Roslyn diagnostics (listed in the Live errors tab once you pause typing), autocomplete for the whole API, go-to-definition, and a **Run** that compiles in memory in well under a second. |
 | 🔥 **Hot reload that keeps state** | Tweak a value in a particle system you've been tuning for ten minutes and it keeps running, instead of starting over from `Setup()`. |
 | 🧊 **One API, two renderers** | 2D on SkiaSharp, real 3D on OpenGL (Silk.NET) with lights, cameras, materials, custom shaders and 200,000 GPU particles. |
 | 📦 **Any NuGet package as a library** | Put `// nuget: PackageName, 1.2.3` at the top of a sketch and it's downloaded and linked. No `.csproj` to touch. |
@@ -126,7 +126,7 @@ Synths, drums, `.wav` samples, envelopes, filters, and `Amplitude` / `Spectrum()
 | 🎲 **Seeds you can keep** | Every Run has a seed; the PNGs a sketch saves carry it (and the slider values), a variations sheet draws 9 or 16 alternatives side by side, and print export redraws any of them as vectors — a 16x poster or a pen-plotter SVG. |
 | ⏪ **A time machine** | Rewind the running sketch and continue from an earlier frame with its real state; every Run keeps its code and a picture, one click from coming back. |
 | 📊 **F3** | A performance panel (fps, `Draw()` time, memory per frame, GCs) in the IDE and in exported apps. |
-| 🗂️ **50+ examples, searchable** | From a minimal sketch to orbit cameras, ML.NET models that learn while you click, a TensorSharp neural network that paints, MIDI/OSC and a live-coded beat. Search by name, topic or a function in the code. |
+| 🗂️ **60+ examples, searchable** | From a minimal sketch to orbit cameras, ML.NET models that learn while you click, a TensorSharp neural network that paints, MIDI/OSC and a live-coded beat. Search by name, topic or a function in the code. |
 | 🚀 **Ship it as an app** | Export any sketch as a single, self-contained, double-clickable executable. |
 | 🌎 **English and Spanish** | The whole interface is localized and switchable from Settings. |
 

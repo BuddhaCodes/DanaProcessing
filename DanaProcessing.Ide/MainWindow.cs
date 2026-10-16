@@ -1932,7 +1932,7 @@ namespace DanaProcessing.Ide
         /// exactly while you're not looking closely at the canvas anyway: dropping to
         /// 1x the instant you start typing, restoring the real configured value (whatever
         /// Settings has, which may itself be 1x -- a harmless no-op in that case) once
-        /// you pause for the same ~450ms live diagnostics already debounce on.</summary>
+        /// you pause for as long as live diagnostics wait (SketchEditorView.LiveDiagnosticsDelay).</summary>
         private void OnTypingActivityChanged(bool isTyping)
         {
             _canvas.SupersampleScale = isTyping ? 1 : RenderingSettingsStore.Load().SupersampleScale2D;

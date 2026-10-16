@@ -101,8 +101,15 @@ namespace DanaProcessing.Ide.Editor
         private readonly EditorDiagnosticsColorizer _diagnosticsColorizer = new();
         private readonly RuntimeErrorLineRenderer _runtimeError = new();
         private readonly DispatcherTimer _diagnosticsTimer;
-        private readonly Border _diagnosticBanner;
-        private readonly TextBlock _diagnosticBannerText;
+
+        /// <summary>
+        /// How long the editor waits after the last keystroke before asking
+        /// Roslyn again. Long enough that a half-typed line ("private Color
+        /// _paletteRed" before its ';') doesn't light up while you're still
+        /// writing it; the errors live in the bottom "Live errors" tab and the
+        /// squiggles, not in a banner over the code.
+        /// </summary>
+        public static readonly TimeSpan LiveDiagnosticsDelay = TimeSpan.FromMilliseconds(1200);
 
         public SketchEditorView()
         {
@@ -268,7 +275,6 @@ namespace DanaProcessing.Ide.Editor
             _editor.TextArea.Caret.PositionChanged += (_, _) =>
             {
                 CaretPositionChanged?.Invoke(_editor.TextArea.Caret.Line, _editor.TextArea.Caret.Column);
-                UpdateDiagnosticBanner();
             };
 
             // ================================================================
@@ -278,25 +284,10 @@ namespace DanaProcessing.Ide.Editor
             _editor.TextArea.TextView.LineTransformers.Add(_diagnosticsColorizer);
             _editor.TextArea.TextView.BackgroundRenderers.Add(_runtimeError);
 
-            _diagnosticBannerText = new TextBlock
-            {
-                FontFamily = ClayTheme.FontBody,
-                FontSize = 12,
-                TextWrapping = Avalonia.Media.TextWrapping.Wrap,
-            };
-            _diagnosticBanner = new Border
-            {
-                Padding = new Thickness(14, 6),
-                Margin = new Thickness(12, 0, 12, 6),
-                CornerRadius = new CornerRadius(8),
-                IsVisible = false,
-                Child = _diagnosticBannerText,
-            };
-
             // Debounce: recompilar el semantic model en cada tecla sería
             // carísimo y redundante -- se espera a que el usuario haga una
             // pausa breve antes de volver a preguntarle a Roslyn.
-            _diagnosticsTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(450) };
+            _diagnosticsTimer = new DispatcherTimer { Interval = LiveDiagnosticsDelay };
             _diagnosticsTimer.Tick += async (_, _) =>
             {
                 _diagnosticsTimer.Stop();
@@ -307,9 +298,6 @@ namespace DanaProcessing.Ide.Editor
             _editor.TextChanged += (_, _) =>
             {
                 ClearRuntimeError();
-                // El mensaje bajo el cursor queda desactualizado hasta que el
-                // debounce de abajo recalcule contra el texto nuevo.
-                _diagnosticBanner.IsVisible = false;
                 _diagnosticsTimer.Stop();
                 _diagnosticsTimer.Start();
                 TypingActivityChanged?.Invoke(true);
@@ -455,9 +443,6 @@ namespace DanaProcessing.Ide.Editor
 
             DockPanel.SetDock(tabStripRow, Dock.Top);
             mainPanel.Children.Add(tabStripRow);
-
-            DockPanel.SetDock(_diagnosticBanner, Dock.Top);
-            mainPanel.Children.Add(_diagnosticBanner);
 
             var editorArea = new Panel { Children = { editorContainer, _emptyStateOverlay } };
             mainPanel.Children.Add(editorArea);
@@ -715,7 +700,7 @@ namespace DanaProcessing.Ide.Editor
             _activeTab.Document.Text = newSource;
         }
 
-        /// <summary>Clears the squiggles/banner/live-errors-tab for whatever was
+        /// <summary>Clears the squiggles/live-errors-tab for whatever was
         /// showing before — used when switching tabs (a new document's diagnostics
         /// haven't been computed yet) and when the last tab closes (nothing left to
         /// show diagnostics for). Pulled out as its own method rather than inlined
@@ -727,7 +712,6 @@ namespace DanaProcessing.Ide.Editor
         private void ClearDiagnosticsDisplay()
         {
             _diagnosticsColorizer.SetDiagnostics(Array.Empty<SketchDiagnostic>());
-            _diagnosticBanner.IsVisible = false;
             LiveDiagnosticsChanged?.Invoke(Array.Empty<LiveDiagnosticInfo>());
         }
 
@@ -831,7 +815,6 @@ namespace DanaProcessing.Ide.Editor
 
             _diagnosticsColorizer.SetDiagnostics(diagnostics);
             _editor.TextArea.TextView.Redraw();
-            UpdateDiagnosticBanner();
 
             var info = diagnostics
                 .Select(d =>
@@ -1196,31 +1179,6 @@ namespace DanaProcessing.Ide.Editor
                 var lineText = _editor.Document.GetText(docLine.Offset, docLine.Length).Trim();
                 return new ReferenceResultInfo(l.Start, loc.Line, loc.Column, lineText);
             }).ToList();
-
-        /// <summary>Shows the message of whichever diagnostic sits under the caret right
-        /// now, or hides the banner if there isn't one.</summary>
-        private void UpdateDiagnosticBanner()
-        {
-            var diag = _diagnosticsColorizer.FindAt(_editor.CaretOffset);
-            if (diag is null)
-            {
-                _diagnosticBanner.IsVisible = false;
-                return;
-            }
-
-            _diagnosticBannerText.Text = diag.Message;
-            if (diag.IsError)
-            {
-                _diagnosticBannerText.Foreground = ClayTheme.DangerHover;
-                _diagnosticBanner.Background = ClayTheme.DangerSurface;
-            }
-            else
-            {
-                _diagnosticBannerText.Foreground = new SolidColorBrush(Avalonia.Media.Color.Parse("#8A6A1F"));
-                _diagnosticBanner.Background = new SolidColorBrush(Avalonia.Media.Color.Parse("#FBF1DC"));
-            }
-            _diagnosticBanner.IsVisible = true;
-        }
 
         public async Task OpenFileAsync()
         {
