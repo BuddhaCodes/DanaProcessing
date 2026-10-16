@@ -42,7 +42,6 @@ namespace DanaProcessing.Audio
     public sealed class AudioEngine : IDisposable
     {
         private const int VoiceCount = 128;
-        private const int RingSize = 4096;
 
         private static readonly object SharedGate = new();
         private static AudioEngine? _shared;
@@ -142,9 +141,9 @@ namespace DanaProcessing.Audio
         private int _silenceRequests;
         private int _silenceSeen;
 
-        private readonly float[] _ring = new float[RingSize];
-        private int _ringPos;
-        private float _amplitude;
+        // Amplitude / Waveform / Spectrum of the master output (the same
+        // analysis the microphone input uses -- see AudioAnalyzer).
+        private readonly AudioAnalyzer _analyzer = new();
 
         public LiveLoopRunner Loops { get; }
 
@@ -154,9 +153,64 @@ namespace DanaProcessing.Audio
         public double Bpm
         {
             get => Volatile.Read(ref _bpm);
-            set => Volatile.Write(ref _bpm, Math.Clamp(value, 1, 999));
+            set => SetBpmAt(value, Now);
         }
         private double _bpm = 60;
+
+        // The beat clock behind Sketch.Beat(): a piecewise-linear map from
+        // engine seconds to beats. Each tempo change starts a new segment at the
+        // moment it takes effect (for a live loop, its logical time -- slightly
+        // in the future), so the clock stays continuous; the previous segment
+        // still answers for times before that.
+        private readonly object _beatGate = new();
+        private (double Time, double Beats, double Bpm) _segment = (0, 0, 60);
+        private (double Time, double Beats, double Bpm) _previousSegment = (0, 0, 60);
+
+        /// <summary>
+        /// Changes the tempo from engine time <paramref name="seconds"/> on. A
+        /// live loop passes its own logical time, so the change lands exactly
+        /// where its next notes do.
+        /// </summary>
+        internal void SetBpmAt(double bpm, double seconds)
+        {
+            bpm = Math.Clamp(bpm, 1, 999);
+            lock (_beatGate)
+            {
+                double beats = BeatsAtLocked(seconds);
+                _previousSegment = _segment;
+                _segment = (seconds, beats, bpm);
+                Volatile.Write(ref _bpm, bpm);
+            }
+        }
+
+        /// <summary>Musical position, in beats, at engine time <paramref name="seconds"/>.</summary>
+        public double BeatsAt(double seconds)
+        {
+            lock (_beatGate)
+                return BeatsAtLocked(seconds);
+        }
+
+        private double BeatsAtLocked(double seconds)
+        {
+            var seg = seconds >= _segment.Time ? _segment : _previousSegment;
+            return seg.Beats + (seconds - seg.Time) * seg.Bpm / 60.0;
+        }
+
+        /// <summary>
+        /// Makes engine time <paramref name="seconds"/> fall on the start of a
+        /// bar (the next multiple of <paramref name="beatsPerBar"/> beats, so the
+        /// clock never runs backwards). Live loops starting from silence call
+        /// this, which is what keeps Beat()/OnBeat() in step with them.
+        /// </summary>
+        internal void AlignBarAt(double seconds, int beatsPerBar = 4)
+        {
+            lock (_beatGate)
+            {
+                double beats = BeatsAtLocked(seconds);
+                _previousSegment = _segment;
+                _segment = (seconds, Math.Ceiling(beats / beatsPerBar - 1e-9) * beatsPerBar, _segment.Bpm);
+            }
+        }
 
         /// <summary>How far ahead of the clock live loops run, in seconds -- the
         /// cushion that absorbs thread-timing jitter so the rhythm stays tight.</summary>
@@ -177,7 +231,7 @@ namespace DanaProcessing.Audio
         public double AudibleNow => (Volatile.Read(ref _frame) - (_output?.LatencyFrames ?? 0)) / (double)SampleRate;
 
         /// <summary>Smoothed loudness of the master output, 0..1.</summary>
-        public float Amplitude => Volatile.Read(ref _amplitude);
+        public float Amplitude => _analyzer.Amplitude;
 
         /// <param name="outputFactory">null = pick the best output for this OS. Tests pass their own.</param>
         internal AudioEngine(Func<IAudioOutput>? outputFactory)
@@ -305,7 +359,6 @@ namespace DanaProcessing.Audio
             // Master: gain, soft clip, analysis taps.
             float gain = MasterVolume;
             double sumSquares = 0;
-            int ring = _ringPos;
             for (int i = 0; i < frames; i++)
             {
                 float l = SoftClip(buffer[2 * i] * gain);
@@ -315,15 +368,9 @@ namespace DanaProcessing.Audio
 
                 float mono = 0.5f * (l + r);
                 sumSquares += mono * mono;
-                _ring[ring] = mono;
-                ring = (ring + 1) & (RingSize - 1);
+                _analyzer.WriteSample(mono);
             }
-            Volatile.Write(ref _ringPos, ring);
-
-            float rms = (float)Math.Sqrt(sumSquares / Math.Max(1, frames));
-            float amp = _amplitude;
-            amp = rms > amp ? rms : amp * 0.85f + rms * 0.15f;
-            Volatile.Write(ref _amplitude, amp);
+            _analyzer.UpdateAmplitude((float)Math.Sqrt(sumSquares / Math.Max(1, frames)));
 
             Volatile.Write(ref _frame, blockStart + frames);
         }
@@ -352,18 +399,7 @@ namespace DanaProcessing.Audio
         }
 
         /// <summary>Copies the most recent mono output samples into <paramref name="dest"/> (oldest first).</summary>
-        public void GetWaveform(float[] dest)
-        {
-            int n = Math.Min(dest.Length, RingSize);
-            int end = Volatile.Read(ref _ringPos);
-            int start = (end - n) & (RingSize - 1);
-            for (int i = 0; i < n; i++)
-                dest[i] = _ring[(start + i) & (RingSize - 1)];
-        }
-
-        [ThreadStatic] private static float[]? _fftSamples;
-        [ThreadStatic] private static double[]? _fftRe;
-        [ThreadStatic] private static double[]? _fftIm;
+        public void GetWaveform(float[] dest) => _analyzer.GetWaveform(dest);
 
         /// <summary>
         /// Fills <paramref name="bands"/> with the current spectrum, split into
@@ -373,80 +409,8 @@ namespace DanaProcessing.Audio
         /// </summary>
         public void GetSpectrum(float[] bands)
         {
-            const int N = 1024;
-            var samples = _fftSamples ??= new float[N];
-            var re = _fftRe ??= new double[N];
-            var im = _fftIm ??= new double[N];
-
-            GetWaveform(samples);
-            for (int i = 0; i < N; i++)
-            {
-                double hann = 0.5 - 0.5 * Math.Cos(2 * Math.PI * i / (N - 1));
-                re[i] = samples[i] * hann;
-                im[i] = 0;
-            }
-            Fft(re, im);
-
-            double binHz = SampleRate / (double)N;
-            double lo = Math.Log(30), hi = Math.Log(16000);
-            for (int b = 0; b < bands.Length; b++)
-            {
-                double f0 = Math.Exp(lo + (hi - lo) * b / bands.Length);
-                double f1 = Math.Exp(lo + (hi - lo) * (b + 1) / bands.Length);
-                int k0 = Math.Clamp((int)(f0 / binHz), 1, N / 2 - 1);
-                int k1 = Math.Clamp((int)Math.Ceiling(f1 / binHz), k0 + 1, N / 2);
-
-                double peak = 0;
-                for (int k = k0; k < k1; k++)
-                {
-                    double mag = Math.Sqrt(re[k] * re[k] + im[k] * im[k]) * 4.0 / N; // x2 one-sided, x2 Hann gain
-                    if (mag > peak)
-                        peak = mag;
-                }
-
-                double db = 20 * Math.Log10(peak + 1e-9);
-                bands[b] = (float)Math.Clamp((db + 60) / 60, 0, 1);
-            }
-        }
-
-        private static void Fft(double[] re, double[] im)
-        {
-            int n = re.Length;
-            for (int i = 1, j = 0; i < n; i++)
-            {
-                int bit = n >> 1;
-                for (; (j & bit) != 0; bit >>= 1)
-                    j ^= bit;
-                j ^= bit;
-                if (i < j)
-                {
-                    (re[i], re[j]) = (re[j], re[i]);
-                    (im[i], im[j]) = (im[j], im[i]);
-                }
-            }
-
-            for (int len = 2; len <= n; len <<= 1)
-            {
-                double ang = -2 * Math.PI / len;
-                double wr = Math.Cos(ang), wi = Math.Sin(ang);
-                for (int i = 0; i < n; i += len)
-                {
-                    double cr = 1, ci = 0;
-                    for (int k = 0; k < len / 2; k++)
-                    {
-                        int a = i + k, b = a + len / 2;
-                        double tr = re[b] * cr - im[b] * ci;
-                        double ti = re[b] * ci + im[b] * cr;
-                        re[b] = re[a] - tr;
-                        im[b] = im[a] - ti;
-                        re[a] += tr;
-                        im[a] += ti;
-                        double ncr = cr * wr - ci * wi;
-                        ci = cr * wi + ci * wr;
-                        cr = ncr;
-                    }
-                }
-            }
+            _analyzer.SampleRate = SampleRate;
+            _analyzer.GetSpectrum(bands);
         }
 
         public void Dispose()

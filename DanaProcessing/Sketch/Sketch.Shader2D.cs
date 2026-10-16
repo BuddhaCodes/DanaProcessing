@@ -42,7 +42,7 @@ namespace DanaProcessing
         }
 
         /// <summary>Like CreateShader2D, reading the SkSL from a file.</summary>
-        public PShader2D LoadShader2D(string path) => CreateShader2D(File.ReadAllText(path));
+        public PShader2D LoadShader2D(string path) => CreateShader2D(File.ReadAllText(ResolveInputPath(path)));
 
         /// <summary>Fills the whole canvas with <paramref name="shader"/>.</summary>
         public void Shade(PShader2D shader) => Shade(shader, 0, 0, Width, Height);

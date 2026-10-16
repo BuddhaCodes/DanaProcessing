@@ -11,8 +11,12 @@ namespace DanaProcessing
     /// Processing's own noiseDetail() starts with — rather than the single flat
     /// octave this used to compute. Call Sketch.NoiseSeed()/NoiseDetail() to
     /// change either.
+    ///
+    /// One instance per sketch (it used to be one static table for the whole
+    /// process): a preview or the variations sheet seeding its own noise must
+    /// never change the noise of the sketch running in the IDE.
     /// </summary>
-    internal static class PerlinNoise
+    internal sealed class PerlinNoise
     {
         private static readonly int[] Permutation = {
             151,160,137,91,90,15,131,13,201,95,96,53,194,233,7,225,140,36,103,30,69,142,
@@ -28,20 +32,20 @@ namespace DanaProcessing
             214,31,181,199,106,157,184,84,204,176,215,205,3
         };
 
-        private static readonly int[] P = new int[512];
+        private readonly int[] P = new int[512];
 
         // Defaults matching Processing's own noiseDetail() starting values.
-        private static int _octaves = 4;
-        private static float _falloff = 0.5f;
+        private int _octaves = 4;
+        private float _falloff = 0.5f;
 
-        static PerlinNoise()
+        public PerlinNoise()
         {
             for (int i = 0; i < 256; i++)
                 P[i] = P[i + 256] = Permutation[i % Permutation.Length];
         }
 
         /// <summary>Reshuffles the permutation table from the given seed, so Noise() becomes repeatable. Called by Sketch.NoiseSeed().</summary>
-        public static void Seed(int seed)
+        public void Seed(int seed)
         {
             var rnd = new Random(seed);
             var perm = new int[256];
@@ -57,7 +61,7 @@ namespace DanaProcessing
         }
 
         /// <summary>Sets octave count and falloff for the multi-octave sum below. Called by Sketch.NoiseDetail().</summary>
-        public static void SetDetail(int octaves, float falloff)
+        public void SetDetail(int octaves, float falloff)
         {
             _octaves = Math.Max(1, octaves);
             _falloff = falloff;
@@ -75,7 +79,7 @@ namespace DanaProcessing
         }
 
         /// <summary>Single-octave raw noise in roughly [-1, 1] — the original implementation, now just one ingredient of the multi-octave sum below.</summary>
-        private static float RawNoiseSigned(float x, float y)
+        private float RawNoiseSigned(float x, float y)
         {
             int xi = (int)MathF.Floor(x) & 255;
             int yi = (int)MathF.Floor(y) & 255;
@@ -97,7 +101,7 @@ namespace DanaProcessing
         }
 
         /// <summary>Sums _octaves layers of RawNoiseSigned at doubling frequency and _falloff-scaled amplitude, then remaps the result to Processing-style [0, 1].</summary>
-        public static float Noise(float x, float y)
+        public float Noise(float x, float y)
         {
             float total = 0f;
             float frequency = 1f;

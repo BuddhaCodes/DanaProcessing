@@ -135,7 +135,15 @@ namespace DanaProcessing.Audio
                     return;
 
                 _engine.EnsureStarted();
+                bool fromSilence = !_running.Values.Any(state => !state.StopAfterPass);
                 double start = NextStartTime();
+
+                // Music starting from silence: its first downbeat becomes the
+                // start of a bar on the beat clock, so Beat(), Bar() and OnBeat()
+                // in Draw() line up with what the loops play.
+                // (A loop's notes sound ScheduleAhead after its logical time.)
+                if (fromSilence)
+                    _engine.AlignBarAt(start + _engine.ScheduleAhead);
 
                 foreach (var name in methods.Keys)
                 {

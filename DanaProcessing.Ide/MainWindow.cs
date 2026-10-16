@@ -44,7 +44,7 @@ namespace DanaProcessing.Ide
     /// currently has keyboard focus — the one animated "signature" of this
     /// window; everything else stays deliberately still.
     /// </summary>
-    public class MainWindow : Window
+    public partial class MainWindow : Window
     {
         // Below this client-area width the editor and canvas no longer fit
         // side by side at a usable size, so we collapse to one pane at a
@@ -76,6 +76,7 @@ namespace DanaProcessing.Ide
         private string? _pendingUpdateVersion;
         private readonly SketchEditorView _editorView;
         private readonly AvaloniaSketchCanvas _canvas;
+        private readonly ScrollViewer _canvasScroll;
         private readonly TextBlock _outputText;
         private readonly Border _outputPanel;
 
@@ -181,13 +182,18 @@ namespace DanaProcessing.Ide
             _canvas = new AvaloniaSketchCanvas(new PlaceholderSketch());
             _canvas.SketchSizeChanged += (_, _) => RecomputeCanvasOversized();
             _canvas.Crashed += (ex, context) => Dispatcher.UIThread.Post(() => ShowRuntimeError(ex, context));
+            _canvas.ResumedFrom += frame => ShowTransientStatus(Loc.Tr(
+                $"⤺ El sketch volvió al cuadro {frame} y sigue desde ahí",
+                $"⤺ The sketch went back to frame {frame} and continues from there"));
             _editorView.CaretPositionChanged += (line, col) => _caretLabel.Text = $"Ln {line}, Col {col}";
             _editorView.LiveDiagnosticsChanged += UpdateLiveDiagnostics;
             _editorView.ReferencesFound += UpdateReferencesFound;
             _editorView.StatusMessageRequested += ShowTransientStatus;
             _editorView.TabSaved += OnTabSaved;
             _editorView.TypingActivityChanged += OnTypingActivityChanged;
-            _editorView.EditorFocusChanged += focused => _canvas.IsPaused = focused;
+            // Pause the sketch while you type in the editor -- except on stage
+            // (performance mode), where it must keep playing under the code.
+            _editorView.EditorFocusChanged += focused => _canvas.IsPaused = focused && _performanceWindow == null;
 
             // --- Grupo de ejecución: [▶ Ejecutar][▾] ---
             // Antes eran tres botones sueltos en el title bar (▶ Ejecutar, ⚡ y
@@ -252,7 +258,7 @@ namespace DanaProcessing.Ide
                 Orientation = Orientation.Horizontal,
                 Spacing = 1,
                 VerticalAlignment = VerticalAlignment.Center,
-                Children = { _runButton, runOptionsButton },
+                Children = { _runButton, runOptionsButton, BuildSeedButton() },
             };
 
             // El Asistente es lo único que queda como botón propio fuera del
@@ -448,7 +454,7 @@ namespace DanaProcessing.Ide
             // rest of the window's layout.
             _canvas.HorizontalAlignment = HorizontalAlignment.Center;
             _canvas.VerticalAlignment = VerticalAlignment.Center;
-            var canvasScroll = new ScrollViewer { Content = _canvas };
+            var canvasScroll = _canvasScroll = new ScrollViewer { Content = _canvas };
 
             // Rewind bar under the canvas (see TimelineBar / FrameHistory).
             var timeline = new TimelineBar(_canvas);
@@ -1235,6 +1241,7 @@ namespace DanaProcessing.Ide
                 BuildMenuItem("💾", Loc.Tr("Guardar como...", "Save as..."), "Ctrl+Shift+S", () => _ = _editorView.SaveActiveTabAsAsync()),
                 MenuSeparator(),
                 BuildMenuItem("📤", Loc.Tr("Exportar sketch...", "Export sketch..."), "Ctrl+E", () => _ = ExportActiveSketchAsync()),
+                BuildMenuItem("🖨", Loc.Tr("Exportar para imprimir (PNG grande / SVG)...", "Export for print (big PNG / SVG)..."), "Ctrl+Shift+E", () => _ = ExportForPrintAsync()),
             });
 
             var editMenu = BuildTextMenu(Loc.Tr("Editar", "Edit"), new Control[]
@@ -1249,19 +1256,26 @@ namespace DanaProcessing.Ide
                 BuildMenuItem("✨", Loc.Tr("Formatear código", "Format code"), "Shift+Alt+F", () => _editorView.FormatDocument()),
             });
 
-            var sketchMenu = BuildTextMenu("Sketch", new Control[]
-            {
+            var sketchMenu = BuildTextMenu("Sketch",
+            [
                 MirrorEnabled(BuildMenuItem("▶", Loc.Tr("Ejecutar", "Run"), "Ctrl+R", () => _ = RunCurrentSketchAsync()), _runButton),
                 MirrorEnabled(BuildMenuItem("⚡", "Hot reload", "Ctrl+Shift+R", () => _ = HotReloadCurrentSketchAsync()), _hotReloadButton),
                 MirrorEnabled(BuildMenuItem("🎚", Loc.Tr("Aplicar tweaks al código", "Apply tweaks to code"), null, ApplyTweaksToCode), _hotReloadButton),
                 MirrorEnabled(BuildMenuItem("⏺", Loc.Tr("Grabar interacción para el reel (empezar/terminar)", "Record interaction for the reel (start/stop)"), null, ToggleInputRecording), _hotReloadButton),
                 MirrorEnabled(BuildMenuItem("⏩", Loc.Tr("Ejecutar en ventana aparte", "Run in a separate window"), "Ctrl+F5", () => _ = RunInSeparateWindowAsync()), _runFastButton),
                 BuildMenuItem("■", Loc.Tr("Detener sonido", "Stop sound"), "Ctrl+.", StopSound),
+                BuildMenuItem("📊", Loc.Tr("Panel de rendimiento", "Performance panel"), Loc.Tr("F3 en el sketch", "F3 on the sketch"), () => _canvas.ToggleStats()),
+                BuildMenuItem("🎭", Loc.Tr("Modo performance (código sobre el visual)", "Performance mode (code over the visuals)"), "F11", () => _ = TogglePerformanceModeAsync()),
+                BuildMenuItem("🕘", Loc.Tr("Máquina del tiempo...", "Time machine..."), "Ctrl+Shift+H", OpenCodeHistory),
+                MenuSeparator(),
+                .. BuildSeedMenuItems(),
                 MenuSeparator(),
                 BuildMenuItem("🧩", Loc.Tr("Ejemplos...", "Examples..."), null, OpenSamples),
                 BuildMenuItem("🎬", Loc.Tr("Crear reel...", "Create reel..."), null, OpenReelWindow),
                 BuildMenuItem("📦", Loc.Tr("Paquetes NuGet...", "NuGet Packages..."), null, OpenNuGetPackages),
-            });
+                MenuSeparator(),
+                .. BuildDataMenuItems(),
+            ]);
 
             var toolsMenu = BuildTextMenu(Loc.Tr("Herramientas", "Tools"), new Control[]
             {
@@ -1325,7 +1339,13 @@ namespace DanaProcessing.Ide
             // A fresh instance per use: the reel's result part restarts the
             // sketch whenever it seeks backwards or exports.
             var type = result.Sketch!.GetType();
-            return new ReelWindow.ReelSource(source, () => (Sketch)Activator.CreateInstance(type)!, Array.Empty<string>());
+            string? folder = ActiveSketchFolder;
+            return new ReelWindow.ReelSource(source, () =>
+            {
+                var sketch = (Sketch)Activator.CreateInstance(type)!;
+                sketch.SetSketchFolder(folder);
+                return sketch;
+            }, Array.Empty<string>());
         }
 
         private void InsertAtTopOfActiveTab(string text) => _editorView.ActiveTab?.Document.Insert(0, text);
@@ -1365,6 +1385,14 @@ namespace DanaProcessing.Ide
                 Run(() => { if (_runButton.IsEnabled) _ = RunCurrentSketchAsync(); });
             else if (e.Key == Key.R && mods == ctrlShift)
                 Run(() => { if (_hotReloadButton.IsEnabled) _ = HotReloadCurrentSketchAsync(); });
+            else if (e.Key == Key.F6 && mods == KeyModifiers.None)
+                Run(RerollAndRun);
+            else if (e.Key == Key.F11 && mods == KeyModifiers.None)
+                Run(() => _ = TogglePerformanceModeAsync());
+            else if (e.Key == Key.V && mods == ctrlShift)
+                Run(OpenVariations);
+            else if (e.Key == Key.H && mods == ctrlShift)
+                Run(OpenCodeHistory);
             else if (e.Key == Key.F5 && mods == ctrl)
                 Run(() => { if (_runFastButton.IsEnabled) _ = RunInSeparateWindowAsync(); });
             else if (e.Key == Key.N && mods == ctrl)
@@ -1377,6 +1405,8 @@ namespace DanaProcessing.Ide
                 Run(() => _ = _editorView.SaveActiveTabAsAsync());
             else if (e.Key == Key.E && mods == ctrl)
                 Run(() => _ = ExportActiveSketchAsync());
+            else if (e.Key == Key.E && mods == ctrlShift)
+                Run(() => _ = ExportForPrintAsync());
             else if (e.Key == Key.I && mods == ctrl)
                 Run(OpenAgentWindow);
             else if (e.Key == Key.OemComma && mods == ctrl)
@@ -1848,12 +1878,13 @@ namespace DanaProcessing.Ide
                     _editorView.ClearRuntimeError();
 
                     ApplyRenderingSettings();
-                    _canvas.LoadSketch(result.Sketch!);
+                    LoadWithSeed(result.Sketch!);
+                    _ = RecordRunInHistoryAsync(_editorView.ActiveSourceText ?? "", _seed);
                     _hasRunOnce = true;
                     _runningTab = _editorView.ActiveTab;
                     RegisterSuccessfulRun();
                     _statusDot.Fill = ClayTheme.Success;
-                    _statusLabel.Text = Loc.Tr("Listo", "Ready");
+                    _statusLabel.Text = Loc.Tr("Listo", "Ready") + SeedSuffix();
                     ((Border)_statusPill).Background = ClayTheme.SuccessSurface;
 
                     // On a narrow window the canvas is hidden until you ask for
@@ -1950,7 +1981,7 @@ namespace DanaProcessing.Ide
                     // it can't cleanly apply — fall back to the same full
                     // restart Run does, rather than leaving the edit unapplied.
                     ApplyRenderingSettings();
-                    _canvas.LoadSketch(result.Sketch!);
+                    LoadWithSeed(result.Sketch!, keepCurrentSeed: true);
                 }
 
                 _hasRunOnce = true;
@@ -2036,6 +2067,8 @@ namespace DanaProcessing.Ide
                 ((Border)_statusPill).Background = ClayTheme.SuccessSurface;
 
                 _fastRunWindow?.Close();
+                result.Sketch!.ApplySeed(SeedForRun());
+                result.Sketch!.SetSketchFolder(ActiveSketchFolder);
                 var title = _editorView.ActiveTab?.Title ?? "Sketch";
                 _fastRunWindow = new AvaloniaSketchWindow(result.Sketch!, title);
                 _fastRunWindow.Closed += (_, _) => _fastRunWindow = null;
@@ -2102,7 +2135,7 @@ namespace DanaProcessing.Ide
                 var progress = new Progress<string>(message =>
                     _outputText.Text = string.IsNullOrEmpty(_outputText.Text) ? message : _outputText.Text + Environment.NewLine + message);
 
-                var result = await SketchExporter.ExportAsync(source, destinationFolder, sketchName, windowless, progress);
+                var result = await SketchExporter.ExportAsync(source, destinationFolder, sketchName, windowless, progress, sketchFolder: ActiveSketchFolder);
 
                 if (result.Success)
                 {

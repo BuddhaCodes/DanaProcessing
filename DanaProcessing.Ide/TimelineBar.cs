@@ -10,9 +10,10 @@ using DanaProcessing.Ide.Theme;
 namespace DanaProcessing.Ide
 {
     /// <summary>
-    /// The rewind bar under the canvas: pause/resume, one frame back/forward
-    /// and a slider over the recorded frames (see AvaloniaSketchCanvas's
-    /// Freeze/StepBack/StepForward/ScrubTo and FrameHistory). Polls the canvas
+    /// The rewind bar under the canvas: pause/resume, one frame back/forward,
+    /// "continue from this frame" (real rewind: the sketch's state goes back
+    /// too) and a slider over the recorded frames (see AvaloniaSketchCanvas's
+    /// Freeze/StepBack/StepForward/ScrubTo/ResumeFromHere and FrameHistory). Polls the canvas
     /// a few times a second rather than listening to every frame -- the count
     /// of recorded frames changes 60 times a second and nobody needs the label
     /// to.
@@ -23,6 +24,7 @@ namespace DanaProcessing.Ide
         private readonly Button _playPause;
         private readonly Button _back;
         private readonly Button _forward;
+        private readonly Button _resumeHere;
         private readonly Slider _slider;
         private readonly TextBlock _label;
         private bool _updating;
@@ -36,6 +38,11 @@ namespace DanaProcessing.Ide
             _back = MakeButton("⏮", Loc.Tr("Un cuadro atrás", "One frame back"), () => _canvas.StepBack());
             _playPause = MakeButton("⏸", Loc.Tr("Pausar y rebobinar", "Pause and rewind"), TogglePlay);
             _forward = MakeButton("⏭", Loc.Tr("Un cuadro adelante (en el último, corre un Draw() real)", "One frame forward (on the newest, runs one real Draw())"), () => _canvas.StepForward());
+            _resumeHere = MakeButton("⤺", Loc.Tr(
+                "Seguir desde este cuadro: el sketch vuelve al estado que tenía acá (sus campos, su azar) y sigue corriendo desde aquí",
+                "Continue from this frame: the sketch goes back to the state it had here (its fields, its randomness) and runs on from here"),
+                () => _canvas.ResumeFromHere());
+            _resumeHere.IsVisible = false;
 
             _slider = new Slider
             {
@@ -66,7 +73,7 @@ namespace DanaProcessing.Ide
                 Orientation = Orientation.Horizontal,
                 Spacing = 2,
                 VerticalAlignment = VerticalAlignment.Center,
-                Children = { _back, _playPause, _forward },
+                Children = { _back, _playPause, _forward, _resumeHere },
             };
 
             var layout = new DockPanel();
@@ -121,6 +128,8 @@ namespace DanaProcessing.Ide
                 _slider.IsEnabled = count > 1;
 
                 _playPause.Content = frozen ? "▶" : "⏸";
+                _resumeHere.IsVisible = frozen;
+                _resumeHere.IsEnabled = frozen && _canvas.CanResumeFromHere;
                 ToolTip.SetTip(_playPause, frozen
                     ? Loc.Tr("Seguir corriendo", "Resume")
                     : Loc.Tr("Pausar y rebobinar", "Pause and rewind"));

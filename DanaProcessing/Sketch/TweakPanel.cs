@@ -1,8 +1,20 @@
 using System.Reflection;
+using DanaProcessing.Midi;
 using SkiaSharp;
 
 namespace DanaProcessing
 {
+    /// <summary>A knob/fader (CC) or a pad/key (note) connected to a [Tweak] row. Channel 0 = any channel.</summary>
+    internal readonly record struct MidiBinding(bool IsNote, int Number, int Channel)
+    {
+        public bool Matches(MidiMessage m) =>
+            (Channel == 0 || Channel == m.Channel)
+            && (IsNote ? m.Kind == MidiKind.NoteOn && m.Note == Number
+                       : m.Kind == MidiKind.ControlChange && m.Controller == Number);
+
+        public override string ToString() => (IsNote ? "N" : "CC") + Number;
+    }
+
     /// <summary>
     /// The slider panel behind <see cref="TweakAttribute"/>. Drawn by the engine
     /// itself right after Draw() (see Sketch.RenderFrame) and fed mouse events
@@ -15,6 +27,11 @@ namespace DanaProcessing
     /// rebuilds its rows whenever the sketch's runtime Type changes (FieldInfos
     /// from the old compiled type can't read the new one). What carries over is
     /// only what should: folded/unfolded, visibility and auto ranges.
+    ///
+    /// MIDI learn: the MIDI pill in the header turns learning on; then move a
+    /// slider and turn a knob on your controller -- they're connected from then
+    /// on. Connections are kept per sketch class for the whole session, so they
+    /// survive Run and Hot Reload (Sketch.MapMidi writes one from code).
     /// </summary>
     internal sealed class TweakPanel
     {
@@ -23,6 +40,12 @@ namespace DanaProcessing
         private const float HeaderHeight = 26f;
         private const float RowHeight = 36f;
         private const float Pad = 12f;
+        private const float PillWidth = 44f;
+
+        // MIDI connections, per sketch class (by full name, so a recompiled
+        // sketch -- a new Type with the same name -- keeps them), per row key.
+        private static readonly object BindingsGate = new();
+        private static readonly Dictionary<string, Dictionary<string, MidiBinding>> Bindings = new();
 
         private enum RowKind { Float, Double, Int, Bool, ColorR, ColorG, ColorB }
 
@@ -40,6 +63,10 @@ namespace DanaProcessing
         public bool Visible { get; set; } = true;
         public bool Collapsed { get; set; }
 
+        /// <summary>MIDI learn on: the next knob turned connects to the last row touched.</summary>
+        public bool Learning { get; set; }
+        private string? _learnKey;
+
         // Paints are created once and reused every frame.
         private readonly SKPaint _bg = new() { Color = new SKColor(18, 20, 28, 225), IsAntialias = true };
         private readonly SKPaint _hover = new() { Color = new SKColor(255, 255, 255, 18), IsAntialias = true };
@@ -50,6 +77,11 @@ namespace DanaProcessing
         private readonly SKPaint _title = new() { Color = new SKColor(255, 200, 140), IsAntialias = true, TextSize = 12, FakeBoldText = true };
         private readonly SKPaint _label = new() { Color = new SKColor(225, 228, 235), IsAntialias = true, TextSize = 12 };
         private readonly SKPaint _value = new() { Color = new SKColor(160, 166, 180), IsAntialias = true, TextSize = 12 };
+        private readonly SKPaint _midi = new() { Color = new SKColor(90, 215, 205), IsAntialias = true, TextSize = 11, FakeBoldText = true };
+        private readonly SKPaint _midiFill = new() { Color = new SKColor(90, 215, 205), IsAntialias = true };
+        private readonly SKPaint _midiOutline = new() { Color = new SKColor(90, 215, 205), IsAntialias = true, Style = SKPaintStyle.Stroke, StrokeWidth = 1.5f };
+        private readonly SKPaint _pillText = new() { Color = new SKColor(18, 20, 28), IsAntialias = true, TextSize = 10.5f, FakeBoldText = true };
+        private readonly SKPaint _warn = new() { Color = new SKColor(240, 130, 110), IsAntialias = true, TextSize = 11 };
 
         // ---------------------------------------------------------------
         // Rows
@@ -211,6 +243,12 @@ namespace DanaProcessing
             return row >= 0 && row < _rows.Count ? row : -2;
         }
 
+        private static SKRect Pill(Sketch sketch)
+        {
+            float right = Left(sketch) + PanelWidth - Pad;
+            return new SKRect(right - PillWidth, Margin + 5, right, Margin + 21);
+        }
+
         private static (float X0, float X1) Track(Sketch sketch)
         {
             float left = Left(sketch);
@@ -229,6 +267,9 @@ namespace DanaProcessing
         /// <summary>True once this field's slider/checkbox has been moved (survives hot reload, like the rest of the panel). See Sketch.GetTweakValues.</summary>
         public bool WasTouched(string fieldName) => _touched.Contains(fieldName);
 
+        /// <summary>Counts a field as tuned without its slider moving (values read back from a PNG).</summary>
+        public void MarkTouched(string fieldName) => _touched.Add(fieldName);
+
         // ---------------------------------------------------------------
         // Input -- each returns true when the panel used the event, in which
         // case the sketch's own callback must NOT fire (otherwise dragging a
@@ -246,11 +287,24 @@ namespace DanaProcessing
 
             if (hit == -1)
             {
-                Collapsed = !Collapsed;
+                var pill = Pill(sketch);
+                if (x >= pill.Left - 4 && x <= pill.Right + 4)
+                {
+                    Learning = !Learning;
+                    _learnKey = null;
+                    if (Learning)
+                        MidiHub.EnsureOpen();
+                }
+                else
+                {
+                    Collapsed = !Collapsed;
+                }
                 return Capture();
             }
 
             var row = _rows[hit];
+            if (Learning)
+                _learnKey = RowKey(row); // the next knob turned connects here
             if (row.Kind == RowKind.Bool)
             {
                 WriteNumber(sketch, row, ReadNumber(sketch, row.Field, row.Kind) >= 0.5f ? 0f : 1f);
@@ -298,6 +352,125 @@ namespace DanaProcessing
         }
 
         // ---------------------------------------------------------------
+        // MIDI -- learn and bound knobs (Sketch.DispatchMidi calls OnMidi
+        // with every message, before the sketch's own OnMidi)
+        // ---------------------------------------------------------------
+
+        private static string RowKey(Row row) => row.Kind switch
+        {
+            RowKind.ColorR => row.Field.Name + ".r",
+            RowKind.ColorG => row.Field.Name + ".g",
+            RowKind.ColorB => row.Field.Name + ".b",
+            _ => row.Field.Name,
+        };
+
+        private static string TypeKey(Sketch sketch) => sketch.GetType().FullName ?? sketch.GetType().Name;
+
+        private static MidiBinding? BindingFor(Sketch sketch, Row row)
+        {
+            lock (BindingsGate)
+                return Bindings.TryGetValue(TypeKey(sketch), out var map) && map.TryGetValue(RowKey(row), out var b) ? b : null;
+        }
+
+        /// <summary>True when MIDI matters to this panel: learning, or some row of this sketch class is connected.</summary>
+        public bool WantsMidi(Sketch sketch)
+        {
+            if (Learning)
+                return true;
+            lock (BindingsGate)
+                return Bindings.TryGetValue(TypeKey(sketch), out var map) && map.Count > 0;
+        }
+
+        /// <summary>
+        /// Connects <paramref name="binding"/> to the row named <paramref name="field"/>
+        /// (a field name, with ".r"/".g"/".b" for a Color channel). One knob drives
+        /// one row: connecting it here disconnects it from any other row.
+        /// </summary>
+        public void Bind(Sketch sketch, string field, MidiBinding binding)
+        {
+            Build(sketch);
+            string wanted = field.Trim();
+            Row? match = null;
+            foreach (var row in _rows)
+            {
+                string key = RowKey(row);
+                if (string.Equals(key, wanted, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(key.TrimStart('_'), wanted.TrimStart('_'), StringComparison.OrdinalIgnoreCase))
+                {
+                    match = row;
+                    break;
+                }
+            }
+            if (match == null)
+            {
+                bool isColor = _rows.Exists(r => r.Kind == RowKind.ColorR && string.Equals(r.Field.Name.TrimStart('_'), wanted.TrimStart('_'), StringComparison.OrdinalIgnoreCase));
+                DanaLogger.Warn(isColor
+                    ? $"MapMidi(\"{field}\"): es un Color -- elegí el canal: \"{wanted}.r\", \"{wanted}.g\" o \"{wanted}.b\"."
+                    : $"MapMidi(\"{field}\"): no hay un campo [Tweak] con ese nombre.");
+                return;
+            }
+            SetBinding(sketch, RowKey(match), binding);
+        }
+
+        private static void SetBinding(Sketch sketch, string rowKey, MidiBinding binding)
+        {
+            lock (BindingsGate)
+            {
+                string type = TypeKey(sketch);
+                if (!Bindings.TryGetValue(type, out var map))
+                    Bindings[type] = map = new Dictionary<string, MidiBinding>();
+                foreach (var other in map.Where(kv => kv.Value == binding && kv.Key != rowKey).Select(kv => kv.Key).ToList())
+                    map.Remove(other);
+                map[rowKey] = binding;
+            }
+        }
+
+        /// <summary>Removes every MIDI connection of every sketch class (tests; a "forget MIDI" command).</summary>
+        public static void ClearAllBindings()
+        {
+            lock (BindingsGate)
+                Bindings.Clear();
+        }
+
+        public void OnMidi(Sketch sketch, MidiMessage m)
+        {
+            Build(sketch);
+
+            if (Learning && _learnKey != null && m.Kind is MidiKind.ControlChange or MidiKind.NoteOn)
+            {
+                var learned = m.Kind == MidiKind.ControlChange
+                    ? new MidiBinding(false, m.Controller, m.Channel)
+                    : new MidiBinding(true, m.Note, m.Channel);
+                SetBinding(sketch, _learnKey, learned);
+                DanaLogger.Info($"MIDI learn: {learned} (canal {m.Channel}) -> {_learnKey}");
+                _learnKey = null;
+            }
+
+            if (m.Kind is not (MidiKind.ControlChange or MidiKind.NoteOn))
+                return;
+
+            foreach (var row in _rows)
+            {
+                if (BindingFor(sketch, row) is not { } binding || !binding.Matches(m))
+                    continue;
+
+                if (row.Kind == RowKind.Bool)
+                {
+                    bool on = binding.IsNote
+                        ? ReadNumber(sketch, row.Field, row.Kind) < 0.5f // a pad hit toggles
+                        : m.Value >= 64;
+                    WriteNumber(sketch, row, on ? 1f : 0f);
+                }
+                else
+                {
+                    float t = (binding.IsNote ? m.Velocity : m.Value) / 127f;
+                    WriteNumber(sketch, row, row.Min + (row.Max - row.Min) * t);
+                }
+                _touched.Add(row.Field.Name);
+            }
+        }
+
+        // ---------------------------------------------------------------
         // Drawing (raw Skia, so the sketch's own Fill/Stroke/TextSize state
         // is never touched)
         // ---------------------------------------------------------------
@@ -312,8 +485,24 @@ namespace DanaProcessing
             canvas.DrawRoundRect(new SKRect(left, top, left + PanelWidth, top + PanelHeight), 8, 8, _bg);
 
             canvas.DrawText(Collapsed ? "+  TWEAK" : "-  TWEAK", left + Pad, top + 17, _title);
-            string count = _rows.Count == 1 ? "1 value" : $"{_rows.Count} values";
-            canvas.DrawText(count, left + PanelWidth - Pad - _value.MeasureText(count), top + 17, _value);
+
+            // MIDI learn pill: outlined when off, filled while learning.
+            var pill = Pill(sketch);
+            if (Learning)
+            {
+                canvas.DrawRoundRect(pill, 8, 8, _midiFill);
+                canvas.DrawText("MIDI", pill.MidX - _pillText.MeasureText("MIDI") / 2, pill.Bottom - 4.5f, _pillText);
+            }
+            else
+            {
+                canvas.DrawRoundRect(pill, 8, 8, _midiOutline);
+                canvas.DrawText("MIDI", pill.MidX - _midi.MeasureText("MIDI") / 2, pill.Bottom - 4.5f, _midi);
+            }
+
+            bool noDevices = Learning && MidiHub.IsOpen && MidiHub.Devices.Count == 0;
+            string count = noDevices ? "no MIDI input" : Learning ? "turn a knob" : _rows.Count == 1 ? "1 value" : $"{_rows.Count} values";
+            var countPaint = noDevices ? _warn : Learning ? _midi : _value;
+            canvas.DrawText(count, pill.Left - 8 - countPaint.MeasureText(count), top + 17, countPaint);
 
             if (Collapsed)
                 return;
@@ -330,6 +519,11 @@ namespace DanaProcessing
                     canvas.DrawRoundRect(new SKRect(left + 4, rowTop, left + PanelWidth - 4, rowTop + RowHeight), 6, 6, _hover);
 
                 canvas.DrawText(row.Label, x0, rowTop + 14, _label);
+                string key = RowKey(row);
+                if (Learning && key == _learnKey)
+                    canvas.DrawRoundRect(new SKRect(left + 3, rowTop + 1, left + PanelWidth - 3, rowTop + RowHeight - 1), 6, 6, _midiOutline);
+                if (BindingFor(sketch, row) is { } bound)
+                    canvas.DrawText(bound.ToString(), x0 + _label.MeasureText(row.Label) + 6, rowTop + 14, _midi);
                 float v = ReadNumber(sketch, row.Field, row.Kind);
 
                 if (row.Kind == RowKind.Bool)

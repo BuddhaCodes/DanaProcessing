@@ -190,19 +190,33 @@ namespace DanaProcessing
                 return;
 
             FrameCount++;
+            MakeAmbientRandom(); // PVector.Random2D() & co. follow this sketch's seed
 
             // Notes/samples that just reached the speakers -> OnNote(), so
             // this frame's Draw() already sees them (see Sketch.Audio.cs).
             DispatchAudioEvents();
 
-            // [Tweak] panel (see Sketch.Tweak.cs): drawn on top of the frame,
-            // with the canvas put back to how the host handed it over -- a
+            // One reading of the beat clock per frame: Beat()/Phase()/OnBeat()
+            // all see the same instant during this Draw() (Sketch.Rhythm.cs).
+            SampleBeatClock();
+
+            // Knobs/pads that moved since the last frame -> [Tweak] MIDI
+            // connections, then OnMidi() (see Sketch.Midi.cs).
+            DispatchMidi();
+
+            // Overlays -- the [Tweak] panel (see Sketch.Tweak.cs) and the F3
+            // stats panel (StatsPanel) -- are drawn on top of the frame, with
+            // the canvas put back to how the host handed it over: a
             // Translate()/Clip() the sketch left behind in Draw() must not move
-            // or clip the panel. Only when there IS a panel, so sketches without
-            // [Tweak] fields render exactly as before.
+            // or clip them. Only when there IS an overlay, so plain sketches
+            // render exactly as before. Draw() is always timed (cheap), so the
+            // stats are ready the moment F3 opens them.
             bool tweaks = Tweaks.IsActive(this);
+            bool stats = Stats.Visible;
+            bool overlays = tweaks || stats;
             var frameCanvas = Canvas;
-            int saveCount = tweaks ? frameCanvas.Save() : 0;
+            int saveCount = overlays ? frameCanvas.Save() : 0;
+            Stats.BeginFrame();
             try
             {
                 if (Renderer != RendererKind.Renderer3D)
@@ -230,13 +244,39 @@ namespace DanaProcessing
             }
             finally
             {
-                if (tweaks)
+                Stats.EndFrame();
+                if (overlays)
                     frameCanvas.RestoreToCount(saveCount);
             }
 
             if (tweaks)
                 Tweaks.Draw(this, frameCanvas);
+            if (stats)
+                Stats.Draw(this, frameCanvas);
         }
+
+        // Performance overlay (F3) -- see StatsPanel. Lazy for the same reason
+        // as the [Tweak] panel: sketches made without their constructor.
+        private StatsPanel? _statsPanel;
+        private StatsPanel Stats => _statsPanel ??= new StatsPanel();
+
+        /// <summary>Shows the performance panel: fps, Draw() time, memory allocated per frame, garbage collections. F3 toggles it too (in the IDE and in exported apps).</summary>
+        public void ShowStats() => Stats.Show();
+
+        /// <summary>Hides the performance panel.</summary>
+        public void HideStats() => Stats.Hide();
+
+        /// <summary>True while the performance panel is on screen.</summary>
+        public bool IsStatsVisible => Stats.Visible;
+
+        /// <summary>Host hook: F3.</summary>
+        internal void ToggleStats() => Stats.Toggle();
+
+        /// <summary>Average Draw() time in milliseconds over the last ~2 seconds of frames (measured whether or not the panel shows).</summary>
+        public double DrawTime => Stats.AverageDrawMs;
+
+        /// <summary>The frame rate the sketch actually reaches, measured over the last ~2 seconds (Processing's frameRate variable).</summary>
+        public double ActualFrameRate => Stats.Fps;
 
         /// <summary>
         /// Width of the sketch's own backing buffer in actual pixels, like
@@ -377,7 +417,14 @@ namespace DanaProcessing
             if (_stopped)
                 return;
             _stopped = true;
-            OnStop();
+            try
+            {
+                OnStop();
+            }
+            finally
+            {
+                ReleaseMicrophone(); // the OS's "mic in use" light goes off with the sketch
+            }
         }
 
         public virtual void KeyPressed() { }
@@ -391,6 +438,7 @@ namespace DanaProcessing
         /// <summary>Loads an image from disk. Throws if the file doesn't exist or isn't a decodable image.</summary>
         public PImage LoadImage(string path)
         {
+            path = ResolveInputPath(path);
             var bitmap = SKBitmap.Decode(path);
             if (bitmap == null)
                 throw new InvalidOperationException($"No se pudo cargar la imagen: '{path}'. Verifica la ruta y el formato.");
@@ -430,6 +478,7 @@ namespace DanaProcessing
 
         public PImage RequestImage(string path)
         {
+            path = ResolveInputPath(path);
             var placeholder = PImage.CreatePlaceholder();
             System.Threading.Tasks.Task.Run(() =>
             {
@@ -458,7 +507,7 @@ namespace DanaProcessing
         public PFont CreateFont(string fontFamily, float size) => PFont.CreateFromFamily(fontFamily, size);
 
         /// <summary>Loads a font file from disk at a given size, like Processing's loadFont(path) — see the PFont class remark for the one difference from Processing's own (.vlw-based) loadFont().</summary>
-        public PFont LoadFont(string path, float size = 32) => PFont.LoadFromFile(path, size);
+        public PFont LoadFont(string path, float size = 32) => PFont.LoadFromFile(ResolveInputPath(path), size);
 
         // =====================================================================
         // Data — https://processing.org/reference/loadStrings_.html and
@@ -468,34 +517,34 @@ namespace DanaProcessing
         // =====================================================================
 
         /// <summary>Reads a text file as an array of lines, like Processing's loadStrings().</summary>
-        public string[] LoadStrings(string path) => File.ReadAllLines(path);
+        public string[] LoadStrings(string path) => File.ReadAllLines(ResolveInputPath(path));
 
         /// <summary>Writes an array of lines to a text file, one per line, like Processing's saveStrings().</summary>
-        public void SaveStrings(string path, string[] lines) => File.WriteAllLines(path, lines);
+        public void SaveStrings(string path, string[] lines) => File.WriteAllLines(PrepareOutput(path), lines);
 
         /// <summary>Reads a file's raw bytes, like Processing's loadBytes().</summary>
-        public byte[] LoadBytes(string path) => File.ReadAllBytes(path);
+        public byte[] LoadBytes(string path) => File.ReadAllBytes(ResolveInputPath(path));
 
         /// <summary>Writes raw bytes to a file, like Processing's saveBytes().</summary>
-        public void SaveBytes(string path, byte[] data) => File.WriteAllBytes(path, data);
+        public void SaveBytes(string path, byte[] data) => File.WriteAllBytes(PrepareOutput(path), data);
 
         /// <summary>Loads a JSON file as a JSONObject, like Processing's loadJSONObject(path). Throws if the file's top-level value isn't a JSON object — use LoadJSONArray() for a file whose top level is an array.</summary>
-        public JSONObject LoadJSONObject(string path) => JSONObject.Load(path);
+        public JSONObject LoadJSONObject(string path) => JSONObject.Load(ResolveInputPath(path));
 
         /// <summary>Writes a JSONObject to a file, pretty-printed, like Processing's saveJSONObject(json, path).</summary>
-        public void SaveJSONObject(JSONObject json, string path) => json.Save(path);
+        public void SaveJSONObject(JSONObject json, string path) => json.Save(PrepareOutput(path));
 
         /// <summary>Loads a JSON file as a JSONArray, like Processing's loadJSONArray(path).</summary>
-        public JSONArray LoadJSONArray(string path) => JSONArray.Load(path);
+        public JSONArray LoadJSONArray(string path) => JSONArray.Load(ResolveInputPath(path));
 
         /// <summary>Writes a JSONArray to a file, pretty-printed, like Processing's saveJSONArray(json, path).</summary>
-        public void SaveJSONArray(JSONArray json, string path) => json.Save(path);
+        public void SaveJSONArray(JSONArray json, string path) => json.Save(PrepareOutput(path));
 
         /// <summary>Loads an XML file, like Processing's loadXML(path).</summary>
-        public XML LoadXML(string path) => XML.Load(path);
+        public XML LoadXML(string path) => XML.Load(ResolveInputPath(path));
 
         /// <summary>Writes an XML element (and its children) to a file, like Processing's saveXML(xml, path).</summary>
-        public void SaveXML(XML xml, string path) => xml.Save(path);
+        public void SaveXML(XML xml, string path) => xml.Save(PrepareOutput(path));
 
         /// <summary>Parses an already-in-memory JSON string as a JSONObject, like Processing's parseJSONObject(string) — https://processing.org/reference/parseJSONObject_.html. Use this instead of LoadJSONObject() when the JSON came from somewhere other than a file on disk (a network response, a string you built by hand, text pasted into the sketch...).</summary>
         public JSONObject ParseJSONObject(string json) => JSONObject.Parse(json);
@@ -508,27 +557,42 @@ namespace DanaProcessing
 
 
         /// <summary>Loads a CSV file as a Table, like Processing's loadTable(path, options). `options` supports "header" for a first line naming the columns.</summary>
-        public Table LoadTable(string path, string options = "") => Table.LoadCsv(path, options);
+        public Table LoadTable(string path, string options = "") => Table.LoadCsv(ResolveInputPath(path), options);
 
         /// <summary>Writes a Table to a CSV file, like Processing's saveTable(table, path).</summary>
-        public void SaveTable(Table table, string path) => table.SaveCsv(path);
+        public void SaveTable(Table table, string path) => table.SaveCsv(PrepareOutput(path));
+
+        /// <summary>A relative output path, moved into the sketch folder, with its directory created.</summary>
+        private string PrepareOutput(string path)
+        {
+            path = ResolveOutputPath(path);
+            var dir = Path.GetDirectoryName(Path.GetFullPath(path));
+            if (!string.IsNullOrEmpty(dir))
+                Directory.CreateDirectory(dir);
+            return path;
+        }
 
         // =====================================================================
         // Utility functions (Processing-style)
         // =====================================================================
 
-        // Not readonly: RandomSeed() (see Sketch.RandomNoise.cs) needs to swap
-        // this out for a freshly-seeded instance.
-        private static Random _rand = new Random();
-
-        public float Random(float max) => (float)(_rand.NextDouble() * max);
-        public float Random(float min, float max) => min + (float)(_rand.NextDouble() * (max - min));
+        public float Random(float max) => (float)(Rng.NextDouble() * max);
+        public float Random(float min, float max) => min + (float)(Rng.NextDouble() * (max - min));
 
         public float Map(float value, float start1, float stop1, float start2, float stop2) =>
             start2 + (stop2 - start2) * ((value - start1) / (stop1 - start1));
 
-        public float Noise(float x) => PerlinNoise.Noise(x, 0);
-        public float Noise(float x, float y) => PerlinNoise.Noise(x, y);
+        public float Noise(float x)
+        {
+            EnsureSeeded();
+            return NoiseGen.Noise(x, 0);
+        }
+
+        public float Noise(float x, float y)
+        {
+            EnsureSeeded();
+            return NoiseGen.Noise(x, y);
+        }
 
         // =====================================================================
         // Saving output — Save() itself lives on GraphicsContext (shared with
@@ -548,6 +612,8 @@ namespace DanaProcessing
         /// is the more broadly useful stand-in.
         /// </summary>
         public void SaveFrame(string pattern = "screen-####.png") => Save(ResolveFramePattern(pattern, FrameCount));
+
+        internal override IEnumerable<KeyValuePair<string, string>> ImageMetadata() => SketchImageInfo.Describe(this);
 
         private static string ResolveFramePattern(string pattern, int frameCount)
         {

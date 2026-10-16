@@ -32,7 +32,15 @@ namespace DanaProcessing
         public double Bpm
         {
             get => AudioEngine.Shared.Bpm;
-            set => AudioEngine.Shared.Bpm = value;
+            set
+            {
+                // Inside a live loop the change happens where the loop's next
+                // notes will sound (its logical time + ScheduleAhead), not at
+                // "now"; Beat() stays exactly in step with the music either way.
+                var engine = AudioEngine.Shared;
+                var ctx = LiveLoopRunner.Current.Value;
+                engine.SetBpmAt(value, ctx != null ? ctx.Time + engine.ScheduleAhead : engine.Now);
+            }
         }
 
         /// <summary>
@@ -139,7 +147,7 @@ namespace DanaProcessing
 
         /// <summary>Loads a .wav file into memory (cached by path), ready for Sample(...).</summary>
         public SampleBuffer LoadSample(string path)
-            => SampleCache.GetOrAdd(Path.GetFullPath(path), SampleBuffer.LoadWav);
+            => SampleCache.GetOrAdd(Path.GetFullPath(ResolveInputPath(path)), SampleBuffer.LoadWav);
 
         private void ScheduleSample(SampleBuffer? buffer, Synth drum, string label, double amp, double rate, double pan)
         {
@@ -161,30 +169,77 @@ namespace DanaProcessing
             engine.Schedule(e, new NoteEvent(when, 0, amp, drum, label.ToLowerInvariant(), ctx?.Name));
         }
 
-        /// <summary>How loud the sketch's sound is right now, 0..1 (smoothed). 0 while nothing has played.</summary>
-        public float Amplitude => AudioEngine.SharedIfCreated?.Amplitude ?? 0f;
+        /// <summary>
+        /// How loud it is right now, 0..1 (smoothed): the sketch's own sound by
+        /// default, or the microphone after ListenTo(AudioSource.Microphone).
+        /// 0 while nothing has played.
+        /// </summary>
+        public float Amplitude => _listenTo switch
+        {
+            AudioSource.Microphone => Microphone.Analyzer.Amplitude,
+            AudioSource.Both => Math.Max(Microphone.Analyzer.Amplitude, AudioEngine.SharedIfCreated?.Amplitude ?? 0f),
+            _ => AudioEngine.SharedIfCreated?.Amplitude ?? 0f,
+        };
 
-        /// <summary>Fills <paramref name="dest"/> with the latest output samples (-1..1), oldest first.</summary>
+        /// <summary>Fills <paramref name="dest"/> with the latest samples (-1..1), oldest first -- of whatever ListenTo() picked.</summary>
         public void Waveform(float[] dest)
         {
             var engine = AudioEngine.SharedIfCreated;
-            if (engine == null)
-                Array.Clear(dest);
-            else
-                engine.GetWaveform(dest);
+            switch (_listenTo)
+            {
+                case AudioSource.Microphone:
+                    Microphone.Analyzer.GetWaveform(dest);
+                    break;
+                case AudioSource.Both:
+                    Microphone.Analyzer.GetWaveform(dest);
+                    if (engine != null)
+                    {
+                        var other = Scratch(dest.Length);
+                        engine.GetWaveform(other);
+                        for (int i = 0; i < dest.Length; i++)
+                            dest[i] = Math.Clamp(dest[i] + other[i], -1f, 1f);
+                    }
+                    break;
+                default:
+                    if (engine == null)
+                        Array.Clear(dest);
+                    else
+                        engine.GetWaveform(dest);
+                    break;
+            }
         }
 
         /// <summary>
         /// Fills <paramref name="bands"/> with the current spectrum: bands.Length
-        /// log-spaced bands from 30 Hz (index 0) to 16 kHz, each 0..1.
+        /// log-spaced bands from 30 Hz (index 0) to 16 kHz, each 0..1 -- of the
+        /// sketch's sound, the microphone, or both (the louder of the two per
+        /// band), as ListenTo() says.
         /// </summary>
         public void Spectrum(float[] bands)
         {
             var engine = AudioEngine.SharedIfCreated;
-            if (engine == null)
-                Array.Clear(bands);
-            else
-                engine.GetSpectrum(bands);
+            switch (_listenTo)
+            {
+                case AudioSource.Microphone:
+                    Microphone.Analyzer.GetSpectrum(bands);
+                    break;
+                case AudioSource.Both:
+                    Microphone.Analyzer.GetSpectrum(bands);
+                    if (engine != null)
+                    {
+                        var other = Scratch(bands.Length);
+                        engine.GetSpectrum(other);
+                        for (int i = 0; i < bands.Length; i++)
+                            bands[i] = Math.Max(bands[i], other[i]);
+                    }
+                    break;
+                default:
+                    if (engine == null)
+                        Array.Clear(bands);
+                    else
+                        engine.GetSpectrum(bands);
+                    break;
+            }
         }
 
         /// <summary>
@@ -200,8 +255,9 @@ namespace DanaProcessing
 
         /// <summary>
         /// True for a sketch that only looks along -- the Examples window's live
-        /// preview -- so it never takes OnNote() events (one shared queue) away
-        /// from the sketch actually running in the IDE. Set by the host.
+        /// preview, the variations sheet -- so it never takes OnNote() events
+        /// (one shared queue) away from the sketch actually running in the IDE,
+        /// and never opens a device (MIDI inputs, the microphone). Set by the host.
         /// Phrased as "ignores" so the default (false) needs no initializer:
         /// sketches created without running constructors still get OnNote().
         /// </summary>

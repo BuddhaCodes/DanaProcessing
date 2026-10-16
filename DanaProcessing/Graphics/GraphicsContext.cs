@@ -1579,7 +1579,7 @@ namespace DanaProcessing
         public PGraphics CreateGraphics(int w, int h, RendererKind renderer = RendererKind.Renderer2D) => new PGraphics(w, h, renderer);
 
         /// <summary>Loads a vector shape from an SVG file, like Processing's loadShape(). Uses the Svg.Skia package (bundled).</summary>
-        public PShape LoadShape(string path) => PShape.LoadSvg(path);
+        public PShape LoadShape(string path) => PShape.LoadSvg(ResolveInputPath(path));
 
         /// <summary>Current Fill() color as a Color, or null if NoFill() is active — used by CreateShape() to bake the *current* style into a standalone PShape at the moment it's built.</summary>
         private Color? CurrentFillColor => _fillEnabled ? new Color(_fillPaint.Color) : (Color?)null;
@@ -1839,6 +1839,7 @@ namespace DanaProcessing
         public void Save(string path, int quality = 100)
         {
             EnsureReady();
+            path = ResolveOutputPath(path);
 
             if (Surface == null)
                 throw new InvalidOperationException(
@@ -1860,9 +1861,26 @@ namespace DanaProcessing
             if (!string.IsNullOrEmpty(dir))
                 Directory.CreateDirectory(dir);
 
-            using var stream = File.OpenWrite(path);
-            data.SaveTo(stream);
+            // A PNG carries what it takes to make it again (seed, sketch, frame,
+            // [Tweak] values -- see SketchImageInfo); other formats are plain.
+            byte[] bytes = data.ToArray();
+            var metadata = format == SKEncodedImageFormat.Png ? ImageMetadata().ToList() : null;
+            if (metadata is { Count: > 0 })
+                bytes = PngText.Add(bytes, metadata);
+
+            // File.WriteAllBytes truncates: File.OpenWrite didn't, so saving over
+            // a bigger file used to leave its tail behind.
+            File.WriteAllBytes(path, bytes);
         }
+
+        /// <summary>Where a relative path to read from points (Sketch: data/ and the sketch folder). Identity by default.</summary>
+        internal virtual string ResolveInputPath(string path) => path;
+
+        /// <summary>Where a relative path to write to goes (Sketch: the sketch folder). Identity by default.</summary>
+        internal virtual string ResolveOutputPath(string path) => path;
+
+        /// <summary>Text stored inside the PNGs this context saves. Sketch adds its seed and [Tweak] values; PGraphics has none.</summary>
+        internal virtual IEnumerable<KeyValuePair<string, string>> ImageMetadata() => Array.Empty<KeyValuePair<string, string>>();
 
         private static SKEncodedImageFormat ResolveImageFormat(string path) => Path.GetExtension(path).ToLowerInvariant() switch
         {

@@ -42,7 +42,7 @@ namespace DanaProcessing
             if (_rawDocument != null)
                 throw new InvalidOperationException("BeginRaw()/BeginRecord() ya está activo — llama EndRaw()/EndRecord() antes de empezar una grabación nueva.");
 
-            _rawStream = new SKFileWStream(path);
+            _rawStream = new SKFileWStream(ResolveOutputPath(path));
             _rawDocument = SKDocument.CreatePdf(_rawStream);
             var pageCanvas = _rawDocument.BeginPage(Width, Height);
 

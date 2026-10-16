@@ -111,7 +111,7 @@ public override void OnNote(NoteEvent e)
 }
 ```
 
-Synths, drums, `.wav` samples, envelopes, filters, and `Amplitude` / `Spectrum()` to drive your visuals. Sound currently plays on Windows; on macOS and Linux the loops and visuals run on the same clock, silently for now.
+Synths, drums, `.wav` samples, envelopes, filters, and `Amplitude` / `Spectrum()` to drive your visuals — of the sketch's own sound, or of the room with `ListenTo(AudioSource.Microphone)`. `Beat()`, `Phase()`, `Pulse()`, `OnBeat()` and `BeatTween(..., Ease.OutBack)` tie animation to the music's clock with no arithmetic, and MIDI controllers come in with `OnMidi()` / `MidiCC()` — or by MIDI learn, straight onto `[Tweak]` sliders. Sound plays through WinMM on Windows, CoreAudio on macOS and ALSA on Linux, all without extra packages.
 
 ## 🧰 What you get
 
@@ -122,6 +122,10 @@ Synths, drums, `.wav` samples, envelopes, filters, and `Amplitude` / `Spectrum()
 | 🧊 **One API, two renderers** | 2D on SkiaSharp, real 3D on OpenGL (Silk.NET) with lights, cameras, materials, custom shaders and 200,000 GPU particles. |
 | 📦 **Any NuGet package as a library** | Put `// nuget: PackageName, 1.2.3` at the top of a sketch and it's downloaded and linked. No `.csproj` to touch. |
 | 🔊 **Live-coded sound** | Live loops, synths, drums and samples, with visuals that react on the beat. |
+| 🎛️ **Made to play live** | `[Tweak]` sliders you can MIDI-learn onto your controller's knobs, a performance mode with the code floating over the full-screen visuals (on the projector), and visuals locked to the beat. |
+| 🎲 **Seeds you can keep** | Every Run has a seed; the PNGs a sketch saves carry it (and the slider values), a variations sheet draws 9 or 16 alternatives side by side, and print export redraws any of them as vectors — a 16x poster or a pen-plotter SVG. |
+| ⏪ **A time machine** | Rewind the running sketch and continue from an earlier frame with its real state; every Run keeps its code and a picture, one click from coming back. |
+| 📊 **F3** | A performance panel (fps, `Draw()` time, memory per frame, GCs) in the IDE and in exported apps. |
 | 🗂️ **50+ examples, searchable** | From a minimal sketch to orbit cameras, ML.NET models that learn while you click, a TensorSharp neural network that paints, MIDI/OSC and a live-coded beat. Search by name, topic or a function in the code. |
 | 🚀 **Ship it as an app** | Export any sketch as a single, self-contained, double-clickable executable. |
 | 🌎 **English and Spanish** | The whole interface is localized and switchable from Settings. |

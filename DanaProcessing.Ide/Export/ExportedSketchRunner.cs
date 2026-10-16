@@ -73,7 +73,11 @@ namespace DanaProcessing.Ide.Export
             var result = SketchCompiler.Compile(source, extraReferences);
 
             if (result.Success)
+            {
+                // data/ was copied next to sketch.cs: relative paths work like in the IDE.
+                result.Sketch!.SetSketchFolder(baseDir);
                 return new AvaloniaSketchWindow(result.Sketch!, result.Sketch!.GetType().Name, windowless: IsWindowless);
+            }
 
             return BuildErrorWindow(result.Errors);
         }

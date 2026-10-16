@@ -14,15 +14,13 @@ namespace DanaProcessing
     /// types — like PVector, you just `new FloatList()` directly, no Sketch
     /// factory method needed.
     ///
-    /// Shuffle() is independent of Sketch's own Random()/RandomSeed() state
-    /// by default (it uses its own internal Random); pass your own
-    /// System.Random to Shuffle(rng) if you need a sketch's seed to also
-    /// control shuffling, for reproducible results.
+    /// Shuffle() follows the running sketch's seed by default (the same
+    /// generator as Random()), so a seeded sketch shuffles the same way every
+    /// time; pass your own System.Random to Shuffle(rng) to use another.
     /// </summary>
     public sealed class FloatList : IEnumerable<float>
     {
         private readonly List<float> _items;
-        private static readonly Random SharedRandom = new Random();
 
         public FloatList() => _items = new List<float>();
         public FloatList(IEnumerable<float> values) => _items = new List<float>(values);
@@ -44,7 +42,7 @@ namespace DanaProcessing
 
         public void Shuffle(Random? rng = null)
         {
-            rng ??= SharedRandom;
+            rng ??= Sketch.AmbientRandom;
             for (int i = _items.Count - 1; i > 0; i--)
             {
                 int j = rng.Next(i + 1);
@@ -67,7 +65,6 @@ namespace DanaProcessing
     public sealed class IntList : IEnumerable<int>
     {
         private readonly List<int> _items;
-        private static readonly Random SharedRandom = new Random();
 
         public IntList() => _items = new List<int>();
         public IntList(IEnumerable<int> values) => _items = new List<int>(values);
@@ -89,7 +86,7 @@ namespace DanaProcessing
 
         public void Shuffle(Random? rng = null)
         {
-            rng ??= SharedRandom;
+            rng ??= Sketch.AmbientRandom;
             for (int i = _items.Count - 1; i > 0; i--)
             {
                 int j = rng.Next(i + 1);
@@ -120,7 +117,6 @@ namespace DanaProcessing
     public sealed class StringList : IEnumerable<string>
     {
         private readonly List<string> _items;
-        private static readonly Random SharedRandom = new Random();
 
         public StringList() => _items = new List<string>();
         public StringList(IEnumerable<string> values) => _items = new List<string>(values);
@@ -142,7 +138,7 @@ namespace DanaProcessing
 
         public void Shuffle(Random? rng = null)
         {
-            rng ??= SharedRandom;
+            rng ??= Sketch.AmbientRandom;
             for (int i = _items.Count - 1; i > 0; i--)
             {
                 int j = rng.Next(i + 1);

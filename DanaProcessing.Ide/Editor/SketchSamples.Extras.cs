@@ -6,11 +6,15 @@ namespace DanaProcessing.Ide.Editor
     /// Samples added after 1.0 that need features from the same release
     /// (OnStop(), LoadImage(byte[]), runtimes/ support in `// nuget:`, Shade()).
     /// Kept in their own file so SketchSample.cs stays reviewable; All (in
-    /// SketchSample.cs) lists these after the original catalog.
+    /// SketchSample.cs) lists these after the original catalog, followed by
+    /// the ones in SketchSamples.Live.cs.
     /// </summary>
     public static partial class SketchSamples
     {
-        private static readonly SketchSample[] Extras =
+        // The 1.x additions, then the live-performance ones (SketchSamples.Live.cs).
+        private static SketchSample[] Extras => ExtrasV1.Concat(Live).ToArray();
+
+        private static readonly SketchSample[] ExtrasV1 =
         {
             new SketchSample(
                 Loc.Tr("Arduino por puerto serie (System.IO.Ports)", "Arduino over serial (System.IO.Ports)"),

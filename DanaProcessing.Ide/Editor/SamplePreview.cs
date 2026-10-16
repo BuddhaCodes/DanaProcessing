@@ -22,12 +22,13 @@ namespace DanaProcessing.Ide.Editor
     ///
     /// Samples that would do something unexpected just by being looked at are
     /// shown without a preview: sound ([LiveLoop], Play, Sample), `// nuget:`
-    /// downloads, and 3D/GPU (each preview would create a GL context).
+    /// downloads, 3D/GPU (each preview would create a GL context), and MIDI or
+    /// the microphone (a preview must never grab a device).
     /// </summary>
     public sealed class SamplePreview : Border
     {
         private static readonly Regex NoPreview = new(
-            @"//\s*nuget:|\[LiveLoop\]|\bPlay\s*\(|\bSample\s*\(|Renderer3D|CreateGpuParticles",
+            @"//\s*nuget:|\[LiveLoop\]|\bPlay\s*\(|\bSample\s*\(|Renderer3D|CreateGpuParticles|OnMidi|\bMidi\w*\s*\(|MapMidi|ListenTo\s*\(",
             RegexOptions.Compiled);
 
         private readonly Viewbox _box;
@@ -78,8 +79,8 @@ namespace DanaProcessing.Ide.Editor
 
             if (NoPreview.IsMatch(sample.Source))
             {
-                ShowNote(Loc.Tr("Sin vista previa: usa sonido, paquetes NuGet o 3D. Abrilo para verlo correr.",
-                                "No preview: it uses sound, NuGet packages or 3D. Open it to see it run."));
+                ShowNote(Loc.Tr("Sin vista previa: usa sonido, MIDI, micrófono, paquetes NuGet o 3D. Abrilo para verlo correr.",
+                                "No preview: it uses sound, MIDI, the microphone, NuGet packages or 3D. Open it to see it run."));
                 return;
             }
 

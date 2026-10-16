@@ -127,6 +127,9 @@ namespace DanaProcessing.AvaloniaHost
         /// <summary>The current height the loaded sketch has requested via Size(w, h).</summary>
         public int SketchHeight => _sketch.Height;
 
+        /// <summary>How many frames the loaded sketch has drawn (its FrameCount).</summary>
+        public int SketchFrameCount => _sketch.FrameCount;
+
         /// <summary>
         /// Raised after Setup() first runs, and again any time the loaded
         /// sketch calls Size(w, h) afterward — lets a host (like the IDE
@@ -210,6 +213,11 @@ namespace DanaProcessing.AvaloniaHost
                 _historyIndex = -1;
                 _frozen = false;
                 _stepOnce = false;
+                _resumeRequest = -1;
+                _stateUnsupported = false;
+                _stateEvery = 1;
+                _stateCountdown = 0;
+                _captureMsAverage = 0;
             }
 
             // The old sketch's size no longer applies. Ask for a fresh layout
@@ -451,6 +459,15 @@ namespace DanaProcessing.AvaloniaHost
 
         private void OnKeyDown(object? sender, KeyEventArgs e)
         {
+            // F3: the engine's performance panel (fps, Draw() time, allocations).
+            // Handled here so it works in every host, and never reaches the sketch.
+            if (e.Key == Key.F3 && e.KeyModifiers == KeyModifiers.None)
+            {
+                ToggleStats();
+                e.Handled = true;
+                return;
+            }
+
             _sketch.IsKeyPressed = true;
             SetSketchKeyFrom(e.Key);
             if (_inputRecorder != null && _sketch.Key != '\0')
@@ -481,6 +498,27 @@ namespace DanaProcessing.AvaloniaHost
                 _sketch.Key = '\0';
         }
 
+        /// <summary>Shows/hides the sketch's [Tweak] panel (its values and MIDI connections stay).</summary>
+        public void ToggleTweaks()
+        {
+            lock (_sketchLock)
+            {
+                if (_sketch.IsTweakPanelVisible)
+                    _sketch.HideTweaks();
+                else
+                    _sketch.ShowTweaks();
+            }
+            InvalidateVisual();
+        }
+
+        /// <summary>Shows/hides the engine's performance panel (what F3 over the canvas does).</summary>
+        public void ToggleStats()
+        {
+            lock (_sketchLock)
+                _sketch.ToggleStats();
+            InvalidateVisual();
+        }
+
         /// <summary>
         /// The running sketch's [Tweak] values (see Sketch.GetTweakValues) --
         /// what the IDE's "Apply tweaks to code" writes back into the source.
@@ -497,7 +535,10 @@ namespace DanaProcessing.AvaloniaHost
         // Rewind -- see FrameHistory. Freeze() stops running the sketch and
         // shows recorded frames instead; StepBack/StepForward/ScrubTo move
         // through them; StepForward on the newest frame runs exactly one real
-        // Draw(). Purely visual: the sketch's own state is never rolled back.
+        // Draw(). Frames also carry a SketchState (the sketch's fields, deep
+        // copied) when it's cheap enough, so ResumeFromHere() can put the
+        // sketch back to a rewound frame and continue running from there --
+        // the timeline forks at that point.
         // =====================================================================
 
         private readonly FrameHistory _history = new();
@@ -507,6 +548,95 @@ namespace DanaProcessing.AvaloniaHost
 
         /// <summary>Keep the last frames for rewinding (on by default; ~128 MB at most). Turning it off doesn't clear what's already there.</summary>
         public bool RecordHistory { get; set; } = true;
+
+        /// <summary>Also keep the sketch's state with the frames, so rewind can continue from a past frame (on by default).</summary>
+        public bool RecordState { get; set; } = true;
+
+        // Capturing the state costs time on the render thread: when it's slow,
+        // only every N-th frame gets one (keeping the average under ~1.5 ms).
+        private bool _stateUnsupported;
+        private int _stateEvery = 1;
+        private int _stateCountdown;
+        private double _captureMsAverage;
+        private volatile int _resumeRequest = -1;
+
+        /// <summary>Raised (on the UI thread) after ResumeFromHere() put the sketch back, with the FrameCount it continues from.</summary>
+        public event Action<int>? ResumedFrom;
+
+        /// <summary>True when the frame on screen (or one before it) has a saved state to continue from.</summary>
+        public bool CanResumeFromHere => _frozen && !_stateUnsupported && _history.StateIndexAtOrBefore(_historyIndex) >= 0;
+
+        /// <summary>
+        /// Rewind for real: the sketch's fields go back to the shown frame (or
+        /// the nearest earlier one that has a saved state), the picture too, and
+        /// it runs on from there. Frames after it are forgotten.
+        /// </summary>
+        public void ResumeFromHere()
+        {
+            if (!_frozen)
+                return;
+            _resumeRequest = Math.Max(0, _historyIndex);
+            InvalidateVisual();
+        }
+
+        /// <summary>Render thread, under _sketchLock: maybe snapshot the sketch for this frame.</summary>
+        private SketchState? MaybeCaptureState()
+        {
+            if (!RecordState || _stateUnsupported || --_stateCountdown > 0)
+                return null;
+            long start = System.Diagnostics.Stopwatch.GetTimestamp();
+            var state = SketchState.Capture(_sketch);
+            double ms = (System.Diagnostics.Stopwatch.GetTimestamp() - start) * 1000.0 / System.Diagnostics.Stopwatch.Frequency;
+            if (state == null)
+            {
+                _stateUnsupported = true; // too big (or uncopyable): rewind stays visual for this run
+                return null;
+            }
+            _captureMsAverage = _captureMsAverage == 0 ? ms : _captureMsAverage * 0.9 + ms * 0.1;
+            _stateEvery = Math.Clamp((int)Math.Ceiling(_captureMsAverage / 1.5), 1, 60);
+            _stateCountdown = _stateEvery;
+            return state;
+        }
+
+        /// <summary>Render thread: carries out a ResumeFromHere() request.</summary>
+        private void ApplyResume(int target)
+        {
+            int index = _history.StateIndexAtOrBefore(target);
+            var state = _history.StateAt(index);
+            var picture = _history.Get(index);
+            if (state == null || picture == null || _offscreenSurface == null)
+                return;
+
+            lock (_sketchLock)
+            {
+                try
+                {
+                    state.Restore(_sketch);
+                }
+                catch (Exception ex)
+                {
+                    DanaLogger.ErrorFromException(ex, "Rebobinado: no se pudo restaurar el estado");
+                    return;
+                }
+
+                // The picture of that frame goes back on the canvas too: sketches
+                // that never call Background() keep drawing on top of it.
+                var canvas = _offscreenSurface.Canvas;
+                canvas.Save();
+                canvas.Clear(SKColors.Transparent);
+                canvas.Scale(Math.Max(1, _offscreenScale));
+                canvas.DrawImage(picture, 0, 0, new SKSamplingOptions(SKFilterMode.Linear, SKMipmapMode.Linear));
+                canvas.Restore();
+            }
+
+            _history.TruncateAfter(index);
+            _historyIndex = index;
+            _frozen = false;
+            _stepOnce = false;
+            int frameCount = state.FrameCount;
+            RaiseHistoryChanged();
+            Dispatcher.UIThread.Post(() => ResumedFrom?.Invoke(frameCount));
+        }
 
         /// <summary>True while rewound/paused on a recorded frame.</summary>
         public bool IsFrozen => _frozen;
@@ -772,6 +902,13 @@ namespace DanaProcessing.AvaloniaHost
             if (_offscreenSurface == null)
                 return; // sketch size not yet valid — nothing to draw
 
+            int resume = _resumeRequest;
+            if (resume >= 0)
+            {
+                _resumeRequest = -1;
+                ApplyResume(resume);
+            }
+
             // Frozen (rewind): don't run the sketch at all, just show the frame
             // the user scrubbed to. A StepForward() past the newest frame sets
             // _stepOnce, which lets exactly one real frame through below.
@@ -812,6 +949,7 @@ namespace DanaProcessing.AvaloniaHost
             // (or a plain Run) can reassign _sketch from the UI thread at any
             // moment — holding the lock for this whole per-frame block is what
             // stops a swap from landing mid-Draw().
+            SketchState? frameState = null;
             lock (_sketchLock)
             {
                 if (!_crashed)
@@ -824,6 +962,10 @@ namespace DanaProcessing.AvaloniaHost
 
                     _sketch.PMouseX = _sketch.MouseX;
                     _sketch.PMouseY = _sketch.MouseY;
+
+                    // Under the same lock as Draw(): input can't change the sketch mid-copy.
+                    if (RecordHistory && !_crashed)
+                        frameState = MaybeCaptureState();
                 }
 
                 if (_crashed && _crashException != null)
@@ -849,7 +991,7 @@ namespace DanaProcessing.AvaloniaHost
             {
                 var frame = SnapshotLogical(_offscreenSurface, _sketch.Width, _sketch.Height);
                 if (frame != null)
-                    _history.Push(frame, _sketch.FrameCount);
+                    _history.Push(frame, _sketch.FrameCount, frameState);
                 if (_frozen)
                 {
                     // That was a single step: show it, and stay frozen on it.

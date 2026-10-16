@@ -46,7 +46,8 @@ namespace DanaProcessing.Ide.Export
             string sketchName,
             bool windowless = false,
             IProgress<string>? progress = null,
-            CancellationToken ct = default)
+            CancellationToken ct = default,
+            string? sketchFolder = null)
         {
             var installDir = AppContext.BaseDirectory;
             var exportFolder = Path.Combine(destinationParentFolder, SanitizeFolderName(sketchName));
@@ -125,6 +126,11 @@ namespace DanaProcessing.Ide.Export
                     foreach (var file in Directory.GetFiles(dir))
                         File.Copy(file, Path.Combine(exportFolder, Path.GetFileName(file)), overwrite: true);
 
+                // The sketch's data/ folder (images, fonts, CSV...) goes next to
+                // sketch.cs, where ExportedSketchRunner tells the sketch to look.
+                if (sketchFolder != null && CopyDataFolder(sketchFolder, exportFolder, ct) is int copied and > 0)
+                    progress?.Report(Loc.Tr($"data/: {copied} archivo(s) copiados", $"data/: {copied} file(s) copied"));
+
                 progress?.Report(Loc.Tr("Escribiendo el sketch...", "Writing the sketch..."));
                 await File.WriteAllTextAsync(Path.Combine(exportFolder, ExportedSketchRunner.MarkerFileName), source, ct);
 
@@ -137,6 +143,28 @@ namespace DanaProcessing.Ide.Export
             }
 
             return new ExportResult(true, exportFolder, Array.Empty<string>());
+        }
+
+        /// <summary>
+        /// Copies <paramref name="sketchFolder"/>/data (if it exists) into
+        /// <paramref name="exportFolder"/>/data, subfolders included. Returns how
+        /// many files were copied.
+        /// </summary>
+        public static int CopyDataFolder(string sketchFolder, string exportFolder, CancellationToken ct = default)
+        {
+            var source = Path.Combine(sketchFolder, "data");
+            if (!Directory.Exists(source))
+                return 0;
+            int copied = 0;
+            foreach (var file in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories))
+            {
+                ct.ThrowIfCancellationRequested();
+                var target = Path.Combine(exportFolder, "data", Path.GetRelativePath(source, file));
+                Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+                File.Copy(file, target, overwrite: true);
+                copied++;
+            }
+            return copied;
         }
 
         /// <summary>Walks up from AppContext.BaseDirectory looking for

@@ -135,13 +135,13 @@ namespace DanaProcessing
         public static PVector operator /(PVector v, float n) => new PVector(v.X / n, v.Y / n, v.Z / n);
 
         /// <summary>A random 2D unit vector (length 1, random direction), like Processing's PVector.random2D().</summary>
-        public static PVector Random2D() => FromAngle((float)(System.Random.Shared.NextDouble() * Math.PI * 2));
+        public static PVector Random2D() => FromAngle((float)(Sketch.AmbientRandom.NextDouble() * Math.PI * 2));
 
         /// <summary>A random 3D unit vector, uniformly spread over the sphere, like Processing's PVector.random3D().</summary>
         public static PVector Random3D()
         {
-            float z = (float)(System.Random.Shared.NextDouble() * 2 - 1);
-            float a = (float)(System.Random.Shared.NextDouble() * Math.PI * 2);
+            float z = (float)(Sketch.AmbientRandom.NextDouble() * 2 - 1);
+            float a = (float)(Sketch.AmbientRandom.NextDouble() * Math.PI * 2);
             float r = MathF.Sqrt(1 - z * z);
             return new PVector(r * MathF.Cos(a), r * MathF.Sin(a), z);
         }

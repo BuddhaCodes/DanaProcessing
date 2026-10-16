@@ -84,7 +84,7 @@ Status labels: **Idea** (scoped, not started) · **In progress** · **Shipped**.
 
 ---
 
-## 6. Tweak mode — In progress
+## 6. Tweak mode — Shipped (1.x), MIDI learn added
 
 **The pitch.** Processing had a "Tweak mode"; DanaProcessing can go further because hot reload already keeps state. Mark a field with `[Tweak(0, 10)]` and a slider panel appears over the running sketch: drag it and the value changes live, no recompile, no restart. It's the fastest possible loop for tuning a generative piece, and it looks great in a Reel.
 
@@ -92,13 +92,15 @@ Status labels: **Idea** (scoped, not started) · **In progress** · **Shipped**.
 
 **Second step — written, not yet compiled: back into the code.** *Sketch → Apply tweaks to code* writes the moved values into the fields' initializers (`TweakSourceRewriter` in the IDE, Roslyn-based, tests in `TweakSourceRewriterTests.cs`). Only sliders you actually moved count (the panel tracks them, across hot reloads too), and an initializer that already evaluates to the running value is left as written — so `1.5708f` never turns into `1.571f` and `MathF.PI / 2` survives untouched. One document update: a single Ctrl+Z undoes it.
 
-**Next.** Drag numbers straight in the editor (Roslyn knows where each literal is), no `[Tweak]` needed; remember panel position per sketch.
+**MIDI learn.** The MIDI pill in the panel's header: touch a slider, turn a knob, connected — for the rest of the session, through Run and Hot Reload; `MapMidi("speed", 21)` makes it permanent. See section 8.
+
+**Next.** Drag numbers straight in the editor (Roslyn knows where each literal is), no `[Tweak]` needed; remember panel position per sketch; save MIDI connections with the sketch.
 
 ---
 
-## 7. Ideas backlog, first pass — written, not yet compiled
+## 7. Ideas backlog, first pass — Shipped (PR #7)
 
-Everything here was written against the real code and APIs (checked in their sources), syntax-checked, but **not compiled or run** — the environment it was written in had no .NET SDK or NuGet access. Build, run the tests, then try each by hand.
+Compiled and tested in CI on Windows, macOS and Linux.
 
 - **An agent that sees the canvas.** New `look_at_canvas` tool: the canvas encodes its next finished frame as a JPEG (max 768 px) on the render thread (`AvaloniaSketchCanvas.CaptureFrameAsync`); Anthropic gets it as an image block inside the tool_result, OpenAI (text-only tool messages) as a user message right after. The system prompt now asks the agent to look before calling anything visual done.
 - **Rewind.** `FrameHistory` keeps the last frames at logical size (128 MB budget, up to 600 frames); the canvas can `Freeze()`/`StepBack()`/`StepForward()`/`ScrubTo()` — frozen means the sketch doesn't run, and stepping forward from the newest frame runs exactly one real `Draw()`. `TimelineBar` under the canvas drives it. Visual only: the sketch's state isn't rolled back (re-running from an earlier frame would need state snapshots — next step).
@@ -114,12 +116,39 @@ Everything here was written against the real code and APIs (checked in their sou
 
 ---
 
+## 8. Play it live · generative art · day to day — Written, compiled and tested
+
+Built and tested against .NET 10 and the project's own dependencies (every test passing, the new ones included), and the new IDE windows checked on screen. Still worth trying by hand on real hardware: a MIDI controller, a microphone, a second screen.
+
+**To play live**
+
+- **MIDI input + MIDI learn for `[Tweak]`.** No packages: WinMM / CoreMIDI / ALSA rawmidi via P/Invoke (`MidiBackends`), opened the first time a sketch uses MIDI, merged into one ring buffer that every sketch reads with its own cursor (`MidiHub`) — the IDE's sketch and a preview never steal messages. `OnMidi(MidiMessage)`, `MidiCC()`, `MidiNoteDown()`, `MapMidi()`/`MapMidiNote()`. Learn: the panel's MIDI pill, touch a slider, turn a knob. Tests: `MidiTests` (parser with running status/SysEx/real-time bytes, per-sketch cursors, learn, mapping, colors, pads toggling bools). Sample: "MIDI learn: a flower you play with knobs".
+- **Performance mode (F11).** `PerformanceWindow`: the IDE's own canvas moves full screen (the second display when there is one) under the active tab's own document, big, highlighted and see-through; Ctrl+Enter hot-reloads, Ctrl+H hides the code, Ctrl+T the sliders, Ctrl +/− and Ctrl ↑/↓ size and backdrop. Tests: `PerformanceModeTests`.
+- **Rhythm for visuals.** `Beat()`, `Bar()`, `Phase()`, `Pulse()`, `PingPong()`, `OnBeat()`, `BeatEase()`, `BeatTween()` and `Easing` (Penner's curves). The audio engine keeps a piecewise beat clock — continuous across tempo changes, changes from a loop take effect at the loop's time, and loops starting from silence put their downbeat on a bar line. Read at `AudibleNow`, once per frame. Tests: `RhythmTests`. Sample: "Visuals in time".
+- **Microphone input.** `ListenTo(AudioSource.Microphone | Sketch | Both)`, `MicLevel`, `MicGain`. Capture via waveIn / AudioQueue input / ALSA capture; the analysis taps were pulled out into `AudioAnalyzer` (shared by the engine and the mic). The mic opens with the first listener and closes with the last (OnStop / a new Run). Tests: `MicrophoneTests` (fake input: amplitude, spectrum band, gain, lifetime, failures). Sample: "Microphone: the room makes the spectrum dance".
+
+**For generative art**
+
+- **Seeds.** Each sketch has its own generator and its own Perlin noise now (they were static and shared by every sketch); `Seed`, set by the IDE before `Setup()` — 🎲 / F6 for a new one, 🔒 to keep it. `PVector.Random2D()` and list `Shuffle()` follow it too. Every PNG a sketch saves carries seed, sketch, frame and `[Tweak]` values in iTXt chunks (`PngText`, `SketchImageInfo`); *Open seed from PNG* brings them back. (Also fixed: `Save()` over a bigger file left its tail behind.) Tests: `SeedTests`. Sample: "Seeded landscapes".
+- **Variations sheet** (Ctrl+Shift+V). `VariationRenderer` plans and renders 9 or 16 runs off-screen in parallel — by seed, by random `[Tweak]` values inside the slider ranges, or both — in preview mode (no sound, MIDI, mic or panel); clicking one locks its seed and applies its values. Tests: `VariationTests`.
+- **Print export** (Ctrl+Shift+E). `PrintExport` records the first N frames of a fresh instance as an `SKPicture` and plays it back at 2x–16x one band at a time into a streaming PNG writer (`PngStreamWriter`), or into an SVG; `PlotterSvg` flattens groups, drops backgrounds, turns fills into outlines, groups strokes by color (one pen each, Inkscape layers) and reorders them nearest-neighbour, flipping open polylines. Sketches that read pixels fall back to a raster render. Tests: `PrintExportTests`. Sample: "For a plotter: flow lines with two pens".
+
+**Day to day**
+
+- **Code time machine** (Ctrl+Shift+H). Every Run keeps the code and, 1.5 s later, a thumbnail (`CodeHistory`, per sketch file, de-duplicated, last 200); `CodeHistoryWindow` shows them with a "+n −m lines to now" diff; restore (one Ctrl+Z) or open in a new tab. Tests: `CodeHistoryTests`.
+- **Real rewind.** `SketchState` deep-copies the sketch's own fields plus FrameCount, generator, seed and noise (cycles kept, native wrappers shared, size-capped); `FrameHistory` keeps one with the frames — adaptively, so capture stays under ~1.5 ms a frame on average — and ⤺ in the timeline puts state and picture back and forks the timeline. Tests: `SketchStateTests`. Sample: "Real rewind: the Game of Life".
+- **Performance panel (F3).** `StatsPanel`, drawn by the engine like the `[Tweak]` panel: fps, `Draw()` time, bytes allocated per frame, GCs, a bar graph against the budget; `DrawTime` / `ActualFrameRate` from code. Tests: `StatsTests`. Sample: "Performance panel (F3)".
+- **The `data/` folder.** Relative loads look in `data/` next to the .cs, then the sketch folder; relative saves go to the sketch folder; `DataPath()`, `SketchPath()`; export copies `data/`; *Add file to data/...*. Tests: `DataFolderTests`. Sample: "The data/ folder".
+
+**Known limits.** macOS needs `NSMicrophoneUsageDescription` in the app bundle's Info.plist for the microphone (the release workflow doesn't add it yet). ALSA MIDI opens hardware ports (`hw:N,0`), not virtual sequencer ports. Rewind restores the sketch's fields, not its drawing state or `Millis()`.
+
+---
+
 ## Other directions worth a line, not yet scoped
 
 Came up while thinking through the initiatives above but aren't fleshed out — flagging so they don't get lost, not committing to them:
 
 - **A sketch-sharing gallery**, OpenProcessing-style, even as something as light as a GitHub-backed community samples browser inside the IDE.
-- **Rewind / time scrubbing.** `VirtualMillis` already makes the clock controllable; a ring buffer of the last N frames would let you pause, scrub back, step frame by frame and "re-run from frame 300 with this change". A debugger for creative coding.
 - **Live shader sketches (Shadertoy-style).** A sketch kind that's just a fragment shader, with `time`, `mouse`, resolution and the **audio spectrum** (as a texture) wired up automatically, recompiled on save. Ties the sound engine to the GPU.
 - **An agent that can see the canvas.** The IDE agent already knows the API; give it a rendered frame of the running sketch (the Reels pipeline already renders offscreen) so it can act on "make it feel like a sunset" or "why is nothing showing up?" and check its own result.
 - **Web export (WebAssembly).** Today a sketch exports as a desktop executable; a link that opens in the browser (SkiaSharp runs on WASM) is what would make the sharing gallery above really work. Hard, but the biggest lever for spreading the project.
