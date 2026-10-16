@@ -145,6 +145,17 @@
   <div class="topic-main">
 <details class="on-this-page-mobile"><summary>On this page · 6 entries</summary><ul><li><a href="#tutorial-1">1. A canvas and a circle</a></li><li><a href="#tutorial-2">2. Shapes and color: a night scene</a></li><li><a href="#tutorial-3">3. Animation: one firefly</a></li><li><a href="#tutorial-4">4. Many fireflies: classes, lists and vectors</a></li><li><a href="#tutorial-5">5. Interaction: mouse and keyboard</a></li><li><a href="#tutorial-6">6. Sound, saving and sharing</a></li></ul></details>
 <div class="doc">
+<figure class="reel-figure">
+  <div class="phone">
+    <video class="reel" controls muted loop playsinline preload="metadata" data-autoplay
+           poster="../assets/media/fireflies-poster.jpg"
+           aria-label="Reel: Fireflies in 60 lines of C#. The sketch is written step by step, then it runs: glowing fireflies on a night sky that flee the mouse.">
+      <source src="../assets/media/fireflies.mp4" type="video/mp4">
+    </video>
+    <button type="button" class="reel-toggle" hidden>Pause</button>
+  </div>
+  <figcaption><strong>What you&#39;ll build.</strong> One sketch, six steps: a night sky full of fireflies that glow, wander, flee the mouse and multiply when you click — about 60 lines of C#. This reel was made with the IDE&#39;s own <a href="reels.html">reel export</a>.</figcaption>
+</figure>
 <h2 class="entry-title" id="tutorial-1">1. A canvas and a circle <span class="badge">3 min</span></h2>
 <p class="entry-desc">Every sketch is a class that inherits from <code class="inline">Sketch</code>. <code class="inline">Setup()</code> runs once: give the canvas a size. <code class="inline">Draw()</code> runs about 60 times a second: clear the background and draw. <code class="inline">MouseX</code> and <code class="inline">MouseY</code> are always where the mouse is, so the circle follows it.</p>
 <div class="code-block"><div class="code-bar"><span class="code-label">C#</span><div class="code-actions"><button type="button" class="copy-btn" data-target="tutorial-1-code">Copy code</button><button class="dana-test-btn" data-target="tutorial-1-code" type="button"><svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M7 4l13 8-13 8z"></path></svg><span class="dana-test-label">Run in Dana</span></button></div></div><pre id="tutorial-1-code" tabindex="0" aria-label="Code, scrollable"><span class="kw">public</span> <span class="kw">class</span> Fireflies : <span class="tp">Sketch</span>

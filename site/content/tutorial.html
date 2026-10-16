@@ -1,5 +1,17 @@
 <!--meta {"title": "Your first 30 minutes", "nav": "30-minute tutorial", "summary": "From an empty tab to a night full of fireflies that react to the mouse, make sound and turn into a video. Six steps, each a complete sketch you can run: open the IDE, press…", "tags": []} -->
 <p class="section-intro">From an empty tab to a night full of fireflies that react to the mouse, make sound and turn into a video. Six steps, each a complete sketch you can run: open the IDE, press <strong>Test in Dana</strong> (or paste the code into a new tab and press <strong>Run</strong>), then try the small change suggested under it. No C# knowledge needed; it comes along the way.</p>
+
+<figure class="reel-figure">
+  <div class="phone">
+    <video class="reel" controls muted loop playsinline preload="metadata" data-autoplay
+           poster="../assets/media/fireflies-poster.jpg"
+           aria-label="Reel: Fireflies in 60 lines of C#. The sketch is written step by step, then it runs: glowing fireflies on a night sky that flee the mouse.">
+      <source src="../assets/media/fireflies.mp4" type="video/mp4">
+    </video>
+    <button type="button" class="reel-toggle" hidden>Pause</button>
+  </div>
+  <figcaption><strong>What you&#39;ll build.</strong> One sketch, six steps: a night sky full of fireflies that glow, wander, flee the mouse and multiply when you click — about 60 lines of C#. This reel was made with the IDE&#39;s own <a href="#reels">reel export</a>.</figcaption>
+</figure>
 <h3 class="entry-title" id="tutorial-1">1. A canvas and a circle <span class="sig-return">3 min</span></h3>
 <p class="entry-desc">Every sketch is a class that inherits from <code class="inline">Sketch</code>. <code class="inline">Setup()</code> runs once: give the canvas a size. <code class="inline">Draw()</code> runs about 60 times a second: clear the background and draw. <code class="inline">MouseX</code> and <code class="inline">MouseY</code> are always where the mouse is, so the circle follows it.</p>
 <div class="code-block">

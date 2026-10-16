@@ -110,6 +110,38 @@
     });
   }
 
+  // ---------- Reels: muted, looping, never forced on anyone ----------
+  // Without JavaScript the video just has its own controls. With it: it
+  // plays by itself only if the system doesn't ask for reduced motion, a
+  // "Pause" button is always there (anything moving for more than 5 s must
+  // be stoppable), and it rests while scrolled out of view.
+  var reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  document.querySelectorAll("video[data-autoplay]").forEach(function (video) {
+    var button = video.parentElement.querySelector(".reel-toggle");
+    if (!button) return;
+    video.removeAttribute("controls");
+    button.hidden = false;
+    var userPaused = reduceMotion;
+    var sync = function () { button.textContent = video.paused ? "▶ Play" : "❚❚ Pause"; };
+    var play = function () { var p = video.play(); if (p && p.catch) p.catch(function () { sync(); }); };
+    video.addEventListener("play", sync);
+    video.addEventListener("pause", sync);
+    button.addEventListener("click", function () {
+      if (video.paused) { userPaused = false; play(); } else { userPaused = true; video.pause(); }
+    });
+    if ("IntersectionObserver" in window) {
+      new IntersectionObserver(function (entries) {
+        entries.forEach(function (e) {
+          if (e.isIntersecting && !userPaused) play();
+          else if (!e.isIntersecting && !video.paused) video.pause();
+        });
+      }, { threshold: 0.25 }).observe(video);
+    } else if (!userPaused) {
+      play();
+    }
+    sync();
+  });
+
   // ---------- Copy code ----------
   document.querySelectorAll(".copy-btn").forEach(function (btn) {
     btn.addEventListener("click", function () {

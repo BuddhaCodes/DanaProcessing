@@ -40,20 +40,16 @@
         </ul>
       </details>
     </div>
-    <figure class="hero-code">
-      <div class="hero-code-bar">
-        <figcaption>Fireflies.cs</figcaption>
-        <span class="live-chip"><span class="dot breathe" aria-hidden="true"></span>■ Stop · 1:42</span>
+    <figure class="hero-reel">
+      <div class="phone">
+        <video class="reel" controls muted loop playsinline preload="metadata" data-autoplay
+               poster="assets/media/fireflies-poster.jpg"
+               aria-label="Reel: Fireflies in 60 lines of C#. The sketch is written step by step, then it runs: glowing fireflies on a night sky that flee the mouse.">
+          <source src="assets/media/fireflies.mp4" type="video/mp4">
+        </video>
+        <button type="button" class="reel-toggle" hidden>Pause</button>
       </div>
-      <pre tabindex="0" aria-label="Fireflies sketch code"><span class="kw">public override void</span> Draw()
-{
-    Background(<span class="str">12</span>, <span class="str">14</span>, <span class="str">30</span>);
-    <span class="kw">foreach</span> (<span class="kw">var</span> f <span class="kw">in</span> flies)
-    {
-        Fill(<span class="str">255</span>, <span class="str">230</span>, <span class="str">120</span>, <span class="str">200</span> * Pulse(<span class="str">1</span>));
-        Circle(f.X, f.Y, <span class="str">6</span>);
-    }
-}</pre>
+      <figcaption><strong>Fireflies in 60 lines of C#</strong> · <a href="ref:tutorial">build it in the tutorial</a></figcaption>
     </figure>
   </div>
 </section>
