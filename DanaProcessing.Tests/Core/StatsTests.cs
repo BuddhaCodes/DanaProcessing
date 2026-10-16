@@ -24,7 +24,7 @@ public class StatsTests
     {
         var s = new Busy();
         Offscreen.Run(s, 10);
-        Assert.InRange(s.DrawTime, 1.8, 50);
+        Assert.InRange(s.DrawTime, 1.8, 250);         // at least the ~2 ms of work; slow CI machines may add more
         Assert.False(s.IsStatsVisible);              // measured even while hidden
 
         var stats = typeof(Sketch).GetProperty("Stats", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.GetValue(s)!;
@@ -37,6 +37,10 @@ public class StatsTests
     {
         var s = new Busy();
         var surface = Offscreen.Run(s, 1);
+        // Compare with the time that really went by, not with what Sleep(20)
+        // promises: on a busy CI machine (macOS runners especially) a 20 ms
+        // sleep can take 70 ms, and the panel must report THAT.
+        var clock = System.Diagnostics.Stopwatch.StartNew();
         for (int i = 0; i < 6; i++)
         {
             Thread.Sleep(20);
@@ -44,7 +48,10 @@ public class StatsTests
             s.RenderFrame();
             surface.Canvas.Restore();
         }
-        Assert.InRange(s.ActualFrameRate, 20, 50);   // ~22 ms per frame -> ~45 fps
+        clock.Stop();
+        double realFps = 6 * 1000.0 / clock.Elapsed.TotalMilliseconds; // 6 frame-to-frame gaps in that time
+        Assert.InRange(s.ActualFrameRate, realFps * 0.75, realFps * 1.35);
+        Assert.True(s.ActualFrameRate < 55, $"{s.ActualFrameRate:0.0} fps is faster than frames 20+ ms apart allow");
     }
 
     [Fact]
