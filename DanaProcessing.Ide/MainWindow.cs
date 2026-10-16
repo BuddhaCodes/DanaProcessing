@@ -58,8 +58,13 @@ namespace DanaProcessing.Ide
         // every tab, same as the editor's one shared TextEditor).
         private EditorTab? _runningTab;
         private readonly Button _runButton;
-        // ■ Stop: the only thing that stops a running sketch (and its sound).
-        private Button? _stopButton;
+        // Run is a switch: ▶ Run when stopped, ■ Stop · m:ss while a sketch is
+        // live (see RunToggle) -- the only thing that stops a running sketch.
+        private readonly TextBlock _runLabel;
+        private readonly Ellipse _liveDot;
+        private readonly Button _runOptionsButton;
+        private readonly DispatcherTimer _runClock;
+        private DateTime _liveSinceUtc = DateTime.UtcNow;
         private readonly Button _hotReloadButton;
         private readonly Button _applyTweaksButton;
         private readonly Button _runFastButton;
@@ -206,15 +211,49 @@ namespace DanaProcessing.Ide
             // con su nombre y su atajo de teclado (también están en el menú
             // "Sketch").
             var runRadius = ClayTheme.RadiusButton;
+            // A small "on air" dot that breathes while the sketch is live.
+            _liveDot = new Ellipse
+            {
+                Width = 8,
+                Height = 8,
+                Fill = ClayTheme.Accent,
+                VerticalAlignment = VerticalAlignment.Center,
+                IsVisible = false,
+            };
+            _ = new Avalonia.Animation.Animation
+            {
+                Duration = TimeSpan.FromSeconds(1.4),
+                IterationCount = Avalonia.Animation.IterationCount.Infinite,
+                PlaybackDirection = Avalonia.Animation.PlaybackDirection.Alternate,
+                Children =
+                {
+                    new Avalonia.Animation.KeyFrame { Cue = new Avalonia.Animation.Cue(0), Setters = { new Avalonia.Styling.Setter(OpacityProperty, 1.0) } },
+                    new Avalonia.Animation.KeyFrame { Cue = new Avalonia.Animation.Cue(1), Setters = { new Avalonia.Styling.Setter(OpacityProperty, 0.25) } },
+                },
+            }.RunAsync(_liveDot);
+            _runLabel = new TextBlock { Text = RunToggle.Label(false, TimeSpan.Zero), VerticalAlignment = VerticalAlignment.Center };
             _runButton = new Button
             {
-                Content = Loc.Tr("▶  Ejecutar", "▶  Run"),
+                Content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Children = { _liveDot, _runLabel } },
                 Classes = { "clay-run" },
+                // Wide enough for "■ Stop · 12:05", so flipping Run <-> Stop
+                // (and the clock ticking) never shoves the title bar around.
+                MinWidth = 168,
+                HorizontalContentAlignment = HorizontalAlignment.Center,
                 Padding = new Avalonia.Thickness(18, 8, 14, 8),
                 CornerRadius = new CornerRadius(runRadius.TopLeft, 0, 0, runRadius.BottomLeft),
             };
-            ToolTip.SetTip(_runButton, Loc.Tr("Compilar y ejecutar el sketch  (Ctrl+R)", "Compile and run the sketch  (Ctrl+R)"));
-            _runButton.Click += async (_, _) => await RunCurrentSketchAsync();
+            ToolTip.SetTip(_runButton, RunToggle.Tooltip(false));
+            _runButton.Click += async (_, _) =>
+            {
+                if (IsSketchLive)
+                    StopCurrentSketch();
+                else
+                    await RunCurrentSketchAsync();
+            };
+            // While live, the label counts up: "■ Stop · 1:42".
+            _runClock = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+            _runClock.Tick += (_, _) => UpdateRunToggle();
 
             // Disabled until a Run has happened AND the active tab is the one
             // that Run loaded -- hot-reloading only makes sense against a
@@ -246,7 +285,10 @@ namespace DanaProcessing.Ide
                 "Como Processing: compila rápido y abre el sketch solo, sin el IDE alrededor",
                 "Like Processing: compiles fast and opens the sketch on its own, no IDE around it"));
 
-            var runOptionsButton = new Button
+            var restartItem = MirrorEnabled(
+                BuildMenuItem("↻", Loc.Tr("Reiniciar desde cero", "Restart from scratch"), "Ctrl+R", () => _ = RunCurrentSketchAsync()),
+                _runButton);
+            var runOptionsButton = _runOptionsButton = new Button
             {
                 Content = "▾",
                 Classes = { "clay-run" },
@@ -254,14 +296,14 @@ namespace DanaProcessing.Ide
                 CornerRadius = new CornerRadius(0, runRadius.TopRight, runRadius.BottomRight, 0),
             };
             ToolTip.SetTip(runOptionsButton, Loc.Tr("Más formas de ejecutar", "More ways to run"));
-            AttachMenuFlyout(runOptionsButton, PlacementMode.BottomEdgeAlignedRight, new Control[] { _hotReloadButton, _applyTweaksButton, _runFastButton });
+            AttachMenuFlyout(runOptionsButton, PlacementMode.BottomEdgeAlignedRight, new Control[] { restartItem, _hotReloadButton, _applyTweaksButton, _runFastButton });
 
             var runGroup = new StackPanel
             {
                 Orientation = Orientation.Horizontal,
                 Spacing = 1,
                 VerticalAlignment = VerticalAlignment.Center,
-                Children = { _runButton, runOptionsButton, BuildSeedButton(), BuildStopButton() },
+                Children = { _runButton, runOptionsButton, BuildSeedButton() },
             };
 
             // El Asistente es lo único que queda como botón propio fuera del
@@ -1266,7 +1308,7 @@ namespace DanaProcessing.Ide
                 MirrorEnabled(BuildMenuItem("🎚", Loc.Tr("Aplicar tweaks al código", "Apply tweaks to code"), null, ApplyTweaksToCode), _hotReloadButton),
                 MirrorEnabled(BuildMenuItem("⏺", Loc.Tr("Grabar interacción para el reel (empezar/terminar)", "Record interaction for the reel (start/stop)"), null, ToggleInputRecording), _hotReloadButton),
                 MirrorEnabled(BuildMenuItem("⏩", Loc.Tr("Ejecutar en ventana aparte", "Run in a separate window"), "Ctrl+F5", () => _ = RunInSeparateWindowAsync()), _runFastButton),
-                MirrorEnabled(BuildMenuItem("⏹", Loc.Tr("Detener el sketch", "Stop the sketch"), "Shift+F5", StopCurrentSketch), _stopButton!),
+                BuildMenuItem("⏹", Loc.Tr("Detener el sketch", "Stop the sketch"), "Shift+F5", StopCurrentSketch),
                 BuildMenuItem("■", Loc.Tr("Detener sonido", "Stop sound"), "Ctrl+.", StopSound),
                 BuildMenuItem("📊", Loc.Tr("Panel de rendimiento", "Performance panel"), Loc.Tr("F3 en el sketch", "F3 on the sketch"), () => _canvas.ToggleStats()),
                 BuildMenuItem("🎭", Loc.Tr("Modo performance (código sobre el visual)", "Performance mode (code over the visuals)"), "F11", () => _ = TogglePerformanceModeAsync()),
@@ -1711,8 +1753,7 @@ namespace DanaProcessing.Ide
         private void UpdateHotReloadButtonEnabled()
         {
             _hotReloadButton.IsEnabled = !_isRunning && _runningTab != null && _runningTab == _editorView.ActiveTab;
-            if (_stopButton != null)
-                _stopButton.IsEnabled = _runningTab != null && !_canvas.IsStopped;
+            UpdateRunToggle();
         }
 
         /// <summary>Fire-and-forget startup check — silent either way: shows the banner
@@ -1890,6 +1931,7 @@ namespace DanaProcessing.Ide
                     _ = RecordRunInHistoryAsync(_editorView.ActiveSourceText ?? "", _seed);
                     _hasRunOnce = true;
                     _runningTab = _editorView.ActiveTab;
+                    _liveSinceUtc = DateTime.UtcNow; // a fresh Run: the clock starts over
                     RegisterSuccessfulRun();
                     _statusDot.Fill = ClayTheme.Success;
                     _statusLabel.Text = Loc.Tr("Listo", "Ready") + SeedSuffix();
@@ -1990,6 +2032,7 @@ namespace DanaProcessing.Ide
                     // restart Run does, rather than leaving the edit unapplied.
                     ApplyRenderingSettings();
                     LoadWithSeed(result.Sketch!, keepCurrentSeed: true);
+                    _liveSinceUtc = DateTime.UtcNow; // a real restart: the Run clock starts over
                 }
 
                 _hasRunOnce = true;
@@ -2323,22 +2366,24 @@ namespace DanaProcessing.Ide
         /// already use, for SketchEditorView's navigation feedback ("no symbol here", "no
         /// source available for X") — a transient message rather than a permanent one, so
         /// it auto-reverts to "Listo" instead of sitting there looking stale forever.</summary>
-        private Button BuildStopButton()
+        /// <summary>A sketch is on the canvas and playing (not stopped, not the placeholder).</summary>
+        private bool IsSketchLive => _runningTab != null && !_canvas.IsStopped;
+
+        /// <summary>Flips the Run/Stop switch to match: label, tooltip, the breathing dot, the dark "live" look and the clock.</summary>
+        private void UpdateRunToggle()
         {
-            _stopButton = new Button
-            {
-                Content = Loc.Tr("■  Detener", "■  Stop"),
-                Classes = { "clay-secondary" },
-                Padding = new Avalonia.Thickness(12, 7),
-                Margin = new Avalonia.Thickness(6, 0, 0, 0),
-                VerticalAlignment = VerticalAlignment.Center,
-                IsEnabled = false, // nothing running yet
-            };
-            ToolTip.SetTip(_stopButton, Loc.Tr(
-                "Detener el sketch y su sonido (Shift+F5). Mientras no lo detengas, sigue corriendo aunque estés en el código",
-                "Stop the sketch and its sound (Shift+F5). Until you stop it, it keeps running even while you're in the code"));
-            _stopButton.Click += (_, _) => StopCurrentSketch();
-            return _stopButton;
+            if (_runLabel == null)
+                return; // still building the window
+            bool live = IsSketchLive;
+            _runLabel.Text = RunToggle.Label(live, DateTime.UtcNow - _liveSinceUtc);
+            ToolTip.SetTip(_runButton, RunToggle.Tooltip(live));
+            _liveDot.IsVisible = live;
+            _runButton.Classes.Set("live", live);
+            _runOptionsButton.Classes.Set("live", live);
+            if (live && !_runClock.IsEnabled)
+                _runClock.Start();
+            else if (!live && _runClock.IsEnabled)
+                _runClock.Stop();
         }
 
         /// <summary>

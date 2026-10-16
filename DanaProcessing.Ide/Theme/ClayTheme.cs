@@ -361,6 +361,56 @@ namespace DanaProcessing.Ide.Theme
             },
 
             // ============================================================
+            // === RUN BUTTON WHILE LIVE (.live): the same button is now Stop ===
+            // ============================================================
+            // Dark ink while a sketch plays -- so "something is running" reads
+            // from across the room -- and danger red under the pointer, the
+            // moment a click would stop it. Declared after clay-run so it wins.
+            new Style(x => x.OfType<Button>().Class("clay-run").Class("live"))
+            {
+                Setters =
+                {
+                    new Setter(Button.BackgroundProperty, TextPrimary),
+                    new Setter(Button.ForegroundProperty, Base),
+                }
+            },
+            new Style(x => x.OfType<Button>().Class("clay-run").Class("live").Class(":pointerover"))
+            {
+                Setters =
+                {
+                    new Setter(Button.BackgroundProperty, DangerHover),
+                    new Setter(Visual.OpacityProperty, 1.0),
+                }
+            },
+            new Style(x => x.OfType<Button>().Class("clay-run").Class("live")
+                .Template().OfType<ContentPresenter>())
+            {
+                Setters =
+                {
+                    new Setter(ContentPresenter.BackgroundProperty, TextPrimary),
+                    new Setter(TextBlock.ForegroundProperty, Base),
+                }
+            },
+            new Style(x => x.OfType<Button>().Class("clay-run").Class("live").Class(":pointerover")
+                .Template().OfType<ContentPresenter>())
+            {
+                Setters =
+                {
+                    new Setter(ContentPresenter.BackgroundProperty, DangerHover),
+                    new Setter(TextBlock.ForegroundProperty, TextOnDanger),
+                }
+            },
+            new Style(x => x.OfType<Button>().Class("clay-run").Class("live").Class(":pressed")
+                .Template().OfType<ContentPresenter>())
+            {
+                Setters =
+                {
+                    new Setter(ContentPresenter.BackgroundProperty, DangerHover),
+                    new Setter(TextBlock.ForegroundProperty, TextOnDanger),
+                }
+            },
+
+            // ============================================================
             // === SECONDARY BUTTON (Nuevo, Abrir, Guardar, Guardar como) ===
             // ============================================================
             new Style(x => x.OfType<Button>().Class("clay-secondary"))
