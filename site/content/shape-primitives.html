@@ -1,0 +1,90 @@
+<!--meta {"title": "2D primitives", "nav": "2D Primitives", "summary": "Rect, ellipse, arc, and custom-shape drawing all share the same four-argument alignment convention, resolved by ShapeAlignMode.", "tags": ["2D"]} -->
+<p class="section-intro">Rect, ellipse, arc, and custom-shape drawing all share the same four-argument alignment convention, resolved by <code class="inline">ShapeAlignMode</code>.</p>
+
+<h3 class="entry-title" id="rectmode">RectMode / EllipseMode / ShapeMode(<span class="tp">ShapeAlignMode</span> mode)</h3>
+<p class="entry-desc">Sets how the four arguments are interpreted. Default is <code class="inline">Corner</code> for rect and shape, <code class="inline">Center</code> for ellipse.</p>
+
+<div class="table-wrap">
+  <table>
+    <tr><th>mode</th><th>a, b, c, d mean</th></tr>
+    <tr><td>Corner</td><td>x, y, width, height</td></tr>
+    <tr><td>Corners</td><td>x1, y1, x2, y2 (opposite corners)</td></tr>
+    <tr><td>Center</td><td>center x, center y, width, height</td></tr>
+    <tr><td>Radius</td><td>center x, center y, x-radius, y-radius</td></tr>
+  </table>
+</div>
+
+<h3 class="entry-title" id="rect">Rect(a, b, c, d) · Ellipse(a, b, c, d)</h3>
+<p class="entry-desc">Draws per the active mode, filled and/or stroked.</p>
+
+<h3 class="entry-title" id="square">Square(x, y, extent)</h3>
+<p class="entry-desc">A <code class="inline">Rect</code> with equal width and height — a plain alias, still subject to the current <code class="inline">RectMode()</code>.</p>
+
+<h3 class="entry-title" id="circle">Circle(x, y, extent)</h3>
+<p class="entry-desc">An <code class="inline">Ellipse</code> with equal width and height — a plain alias for <code class="inline">Ellipse(x, y, extent, extent)</code>, still subject to the current <code class="inline">EllipseMode()</code>.</p>
+
+<h3 class="entry-title" id="line">Line(x1, y1, x2, y2) · Point(x, y)</h3>
+<p class="entry-desc">A straight stroked segment, or a single point.</p>
+
+<h3 class="entry-title" id="triangle">Triangle(x1,y1, x2,y2, x3,y3) · Polygon(...) · Quad(...)</h3>
+<p class="entry-desc"><code class="inline">Polygon</code> closes and fills/strokes an arbitrary point list.</p>
+
+<h3 class="entry-title" id="arc">Arc(a, b, c, d, start, stop, mode = ArcMode.Open)</h3>
+<p class="entry-desc">Draws an arc of the ellipse bounded per <code class="inline">EllipseMode</code>.</p>
+
+<table class="enum-table">
+  <caption>ArcMode</caption>
+  <tr><td>Open</td><td>Just the curved arc, unconnected.</td></tr>
+  <tr><td>Chord</td><td>Arc closed with a straight line between ends.</td></tr>
+  <tr><td>Pie</td><td>Arc closed through the center — a wedge.</td></tr>
+</table>
+
+<h3 class="entry-title" id="bezier">Bezier(x1,y1, cx1,cy1, cx2,cy2, x2,y2)</h3>
+<p class="entry-desc">Draws a cubic Bézier curve, stroked only.</p>
+
+<h3 class="entry-title" id="bezierpoint">BezierPoint(...) · BezierTangent(...) <span class="sig-return">→ float</span></h3>
+<p class="entry-desc">Evaluate one axis of a cubic Bézier at parameter <code class="inline">t</code>.</p>
+
+<h3 class="entry-title" id="curve">Curve(x1,y1, x2,y2, x3,y3, x4,y4) · CurveTightness(<span class="tp">float</span> t)</h3>
+<p class="entry-desc">A Catmull-Rom curve through four points.</p>
+
+<h3 class="entry-title" id="curvepoint">CurvePoint(...) · CurveTangent(...) <span class="sig-return">→ float</span></h3>
+<p class="entry-desc">Evaluate one axis of a Catmull-Rom curve at parameter <code class="inline">t</code>, the way <code class="inline">Curve()</code>/<code class="inline">CurveVertex()</code> shape it. Always uses the standard tension — unlike <code class="inline">Curve()</code> itself, this doesn't read <code class="inline">CurveTightness()</code>, matching Processing's own <code class="inline">curvePoint()</code>.</p>
+
+<h3 class="entry-title" id="bezierdetail">BezierDetail(<span class="tp">int</span> detail) · CurveDetail(<span class="tp">int</span> detail)</h3>
+<p class="entry-desc">Stored for API parity with sketches ported from Processing. Skia already draws exact, analytically-flattened Bézier/Catmull-Rom curves regardless of segment count, so neither has any visible effect here.</p>
+
+<h3 class="entry-title" id="shape-primitives-example">Runnable example</h3>
+<p class="entry-desc">A complete sketch using this section. <strong>Test in Dana</strong> opens it in the IDE, or paste it into a new tab and press Run.</p>
+<div class="code-block">
+  <pre id="shape-primitives-example-code"><span class="cm">// The basic shapes, with stroke and fill.</span>
+<span class="kw">public</span> <span class="kw">class</span> Primitives : <span class="tp">Sketch</span>
+{
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup() =&gt; Size(<span class="str">640</span>, <span class="str">260</span>);
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        Background(<span class="str">250</span>, <span class="str">246</span>, <span class="str">240</span>);
+        Stroke(<span class="str">40</span>);
+        StrokeWeight(<span class="str">3</span>);
+        Fill(<span class="str">255</span>, <span class="str">170</span>, <span class="str">120</span>);
+
+        Point(<span class="str">30</span>, <span class="str">130</span>);
+        Line(<span class="str">60</span>, <span class="str">60</span>, <span class="str">120</span>, <span class="str">200</span>);
+        Rect(<span class="str">140</span>, <span class="str">60</span>, <span class="str">90</span>, <span class="str">140</span>);
+        Square(<span class="str">250</span>, <span class="str">90</span>, <span class="str">80</span>);
+        Ellipse(<span class="str">400</span>, <span class="str">130</span>, <span class="str">110</span>, <span class="str">70</span>);
+        Circle(<span class="str">520</span>, <span class="str">130</span>, <span class="str">90</span>);
+        Triangle(<span class="str">560</span>, <span class="str">220</span>, <span class="str">600</span>, <span class="str">150</span>, <span class="str">630</span>, <span class="str">220</span>);
+        Arc(<span class="str">400</span>, <span class="str">220</span>, <span class="str">80</span>, <span class="str">80</span>, <span class="str">0</span>, PI, <span class="tp">ArcMode</span>.Pie);
+
+        NoFill();
+        StrokeWeight(<span class="str">1</span>);
+        Quad(<span class="str">20</span>, <span class="str">20</span>, <span class="str">600</span>, <span class="str">30</span>, <span class="str">610</span>, <span class="str">40</span>, <span class="str">30</span>, <span class="str">40</span>);
+    }
+}</pre>
+  <button class="dana-test-btn" data-target="shape-primitives-example-code" title="Run in DanaProcessing IDE">
+    <i class="ph-bold ph-play"></i>
+    <span class="dana-test-label">Test in Dana</span>
+  </button>
+</div>

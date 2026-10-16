@@ -1,0 +1,54 @@
+<!--meta {"title": "Random & noise", "nav": "Random & noise", "summary": "Random & noise", "tags": []} -->
+<h3 class="entry-title" id="random">Random(<span class="tp">float</span> max) · Random(min, max)</h3>
+<p class="entry-desc">Uniform random float.</p>
+
+<h3 class="entry-title" id="randomgaussian">RandomGaussian() <span class="sig-return">→ float</span></h3>
+<p class="entry-desc">Normally distributed (mean 0, standard deviation 1).</p>
+
+<h3 class="entry-title" id="randomseed">RandomSeed(<span class="tp">int</span> seed)</h3>
+<p class="entry-desc">Reseeds the shared random generator.</p>
+
+<h3 class="entry-title" id="noise">Noise(<span class="tp">float</span> x) · Noise(x, y) <span class="sig-return">→ float</span></h3>
+<p class="entry-desc">Smooth pseudo-random value in [0, 1].</p>
+
+<h3 class="entry-title" id="noiseseed">NoiseSeed(<span class="tp">int</span> seed) · NoiseDetail(<span class="tp">int</span> octaves, <span class="tp">float</span> falloff = 0.5f)</h3>
+<p class="entry-desc">Reshuffles the noise permutation table, or changes octaves and falloff.</p>
+
+<h3 class="entry-title" id="random-noise-example">Runnable example</h3>
+<p class="entry-desc">A complete sketch using this section. <strong>Test in Dana</strong> opens it in the IDE, or paste it into a new tab and press Run.</p>
+<div class="code-block">
+  <pre id="random-noise-example-code"><span class="cm">// Random scatters, Noise flows: the same landscape, two ways.</span>
+<span class="kw">public</span> <span class="kw">class</span> Terrain : <span class="tp">Sketch</span>
+{
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup() =&gt; Size(<span class="str">600</span>, <span class="str">300</span>);
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        Background(<span class="str">250</span>);
+        <span class="kw">float</span> t = FrameCount * <span class="str">0.01f</span>;
+
+        <span class="cm">// Top: Random() -- jumpy.</span>
+        Stroke(<span class="str">200</span>, <span class="str">80</span>, <span class="str">60</span>); NoFill();
+        BeginShape();
+        RandomSeed(FrameCount / <span class="str">10</span>);
+        <span class="kw">for</span> (<span class="kw">int</span> x = <span class="str">0</span>; x &lt;= Width; x += <span class="str">10</span>)
+Vertex(x, <span class="str">80</span> + Random(-<span class="str">40</span>, <span class="str">40</span>));
+        EndShape();
+
+        <span class="cm">// Bottom: Noise() -- smooth, and it moves when t changes.</span>
+        Stroke(<span class="str">60</span>, <span class="str">120</span>, <span class="str">200</span>);
+        BeginShape();
+        <span class="kw">for</span> (<span class="kw">int</span> x = <span class="str">0</span>; x &lt;= Width; x += <span class="str">5</span>)
+Vertex(x, <span class="str">220</span> + (Noise(x * <span class="str">0.01f</span>, t) - <span class="str">0.5f</span>) * <span class="str">160</span>);
+        EndShape();
+
+        Fill(<span class="str">30</span>); NoStroke();
+        Text(<span class="str">"Random()"</span>, <span class="str">10</span>, <span class="str">20</span>);
+        Text(<span class="str">"Noise()"</span>, <span class="str">10</span>, <span class="str">160</span>);
+    }
+}</pre>
+  <button class="dana-test-btn" data-target="random-noise-example-code" title="Run in DanaProcessing IDE">
+    <i class="ph-bold ph-play"></i>
+    <span class="dana-test-label">Test in Dana</span>
+  </button>
+</div>

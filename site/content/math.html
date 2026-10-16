@@ -1,0 +1,62 @@
+<!--meta {"title": "Math & trig", "nav": "Math & trig", "summary": "Free functions on Sketch, mirroring Processing's globals. All angles are radians (RotateDegrees() is the one degrees-based helper).", "tags": []} -->
+<p class="section-intro">Free functions on <code class="inline">Sketch</code>, mirroring Processing's globals. All angles are radians (<code class="inline">RotateDegrees()</code> is the one degrees-based helper).</p>
+
+<div class="table-wrap">
+  <table>
+    <tr><th>constant</th><th>value</th></tr>
+    <tr><td>PI / TWO_PI / TAU</td><td>π, 2π, 2π (alias)</td></tr>
+    <tr><td>HALF_PI / QUARTER_PI</td><td>π/2, π/4</td></tr>
+  </table>
+</div>
+
+<div class="table-wrap">
+  <table>
+    <tr><th>function</th><th>does</th></tr>
+    <tr><td>Sin / Cos / Tan / Asin / Acos / Atan / Atan2</td><td>Standard trig</td></tr>
+    <tr><td>Degrees(rad) / Radians(deg)</td><td>Angle unit conversion</td></tr>
+    <tr><td>Constrain(v, min, max)</td><td>Clamps a float or int</td></tr>
+    <tr><td>Dist(...)</td><td>Distance between points</td></tr>
+    <tr><td>Mag(x, y) / Mag(x, y, z)</td><td>Distance from the origin — the free-function form of <code class="inline">PVector.Mag()</code></td></tr>
+    <tr><td>Lerp(start, stop, amt)</td><td>Linear interpolation</td></tr>
+    <tr><td>Norm(value, start, stop)</td><td>Normalizes into [0, 1]</td></tr>
+    <tr><td>Map(value, s1, e1, s2, e2)</td><td>Remaps a value</td></tr>
+    <tr><td>Sq / Sqrt / Abs / Ceil / Floor / Round / Pow / Log / Exp</td><td>Scalar math</td></tr>
+    <tr><td>Max(...) / Min(...)</td><td>Two-argument or params-array</td></tr>
+  </table>
+</div>
+
+<h3 class="entry-title" id="math-example">Runnable example</h3>
+<p class="entry-desc">A complete sketch using this section. <strong>Test in Dana</strong> opens it in the IDE, or paste it into a new tab and press Run.</p>
+<div class="code-block">
+  <pre id="math-example-code"><span class="cm">// Map, Constrain, Lerp, Dist and trig: a ball that eases toward the mouse.</span>
+<span class="kw">public</span> <span class="kw">class</span> Easing : <span class="tp">Sketch</span>
+{
+    <span class="kw">float</span> x = <span class="str">300</span>, y = <span class="str">200</span>;
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup() =&gt; Size(<span class="str">600</span>, <span class="str">400</span>);
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        Background(<span class="str">240</span>);
+        x = Lerp(x, MouseX, <span class="str">0.08f</span>);
+        y = Lerp(y, MouseY, <span class="str">0.08f</span>);
+
+        <span class="kw">float</span> d = Dist(x, y, MouseX, MouseY);
+        <span class="kw">float</span> size = Constrain(Map(d, <span class="str">0</span>, <span class="str">200</span>, <span class="str">20</span>, <span class="str">80</span>), <span class="str">20</span>, <span class="str">80</span>);
+        Fill(<span class="str">60</span>, <span class="str">120</span>, <span class="str">200</span>); NoStroke();
+        Circle(x, y, size);
+
+        <span class="cm">// Atan2 gives the angle toward the mouse.</span>
+        <span class="kw">float</span> a = Atan2(MouseY - y, MouseX - x);
+        Stroke(<span class="str">200</span>, <span class="str">60</span>, <span class="str">60</span>); StrokeWeight(<span class="str">3</span>);
+        Line(x, y, x + Cos(a) * <span class="str">60</span>, y + Sin(a) * <span class="str">60</span>);
+
+        Fill(<span class="str">30</span>);
+        Text(<span class="str">$"distance {d:0} · angle {Degrees(a):0}°"</span>, <span class="str">10</span>, <span class="str">20</span>);
+    }
+}</pre>
+  <button class="dana-test-btn" data-target="math-example-code" title="Run in DanaProcessing IDE">
+    <i class="ph-bold ph-play"></i>
+    <span class="dana-test-label">Test in Dana</span>
+  </button>
+</div>

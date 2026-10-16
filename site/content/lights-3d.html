@@ -1,0 +1,21 @@
+<!--meta {"title": "Lights", "nav": "Lights", "summary": "Up to 8 lights — Processing's own cap — combined with a Blinn-Phong shading model. Without any light call, Box()/Sphere() and custom 3D meshes draw flat and fully unlit,…", "tags": ["3D renderer"]} -->
+<p class="section-intro">Up to 8 lights — Processing's own cap — combined with a Blinn-Phong shading model. Without any light call, <code class="inline">Box()</code>/<code class="inline">Sphere()</code> and custom 3D meshes draw flat and fully unlit, ignoring normals entirely, which is Processing's own documented default too.</p>
+<div class="note"><strong>The light list resets every frame.</strong> <code class="inline">BeginDraw()</code> clears all active lights, so <code class="inline">Lights()</code>/<code class="inline">PointLight()</code>/etc. need to be called again every <code class="inline">Draw()</code> to stay active — not just once in <code class="inline">Setup()</code>. This matches Processing's own documented requirement exactly. Lights past the 8-light cap are silently ignored, not an error.</div>
+
+<h3 class="entry-title" id="lights">Lights() · NoLights()</h3>
+<p class="entry-desc"><code class="inline">Lights()</code> turns on Processing's default rig — a mid-gray ambient light plus a mid-gray directional light shining straight along -Z — with <code class="inline">LightFalloff(1,0,0)</code> (no falloff) and <code class="inline">LightSpecular(0,0,0)</code> (no specular contribution). <code class="inline">NoLights()</code> clears everything back to flat/unlit.</p>
+
+<h3 class="entry-title" id="ambientlight">AmbientLight(r, g, b) · AmbientLight(r, g, b, x, y, z)</h3>
+<p class="entry-desc">Uniform light that lights every surface regardless of orientation. The no-position overload is infinite and unattenuated; the positioned overload falls off with distance according to the current <code class="inline">LightFalloff()</code>.</p>
+
+<h3 class="entry-title" id="directionallight">DirectionalLight(r, g, b, nx, ny, nz)</h3>
+<p class="entry-desc">Shines from a fixed direction with no position and no distance falloff — think sunlight. <code class="inline">(nx, ny, nz)</code> is the direction the light travels <em>from</em>, matching Processing's own convention.</p>
+
+<h3 class="entry-title" id="pointlight">PointLight(r, g, b, x, y, z)</h3>
+<p class="entry-desc">Radiates equally in all directions from a position, attenuated by the current <code class="inline">LightFalloff()</code> with distance.</p>
+
+<h3 class="entry-title" id="spotlight">SpotLight(r, g, b, x, y, z, nx, ny, nz, angle, concentration)</h3>
+<p class="entry-desc">A cone of light at <code class="inline">(x, y, z)</code>, aimed along <code class="inline">(nx, ny, nz)</code>. <code class="inline">angle</code> (radians) is the half-angle of the cone; <code class="inline">concentration</code> controls how sharply intensity falls off toward the cone's edge (higher = tighter hotspot). Also attenuated by <code class="inline">LightFalloff()</code> with distance.</p>
+
+<h3 class="entry-title" id="lightfalloff">LightFalloff(constant, linear, quadratic) · LightSpecular(r, g, b)</h3>
+<p class="entry-desc">Style state affecting lights added <em>after</em> the call — like <code class="inline">Fill()</code>/<code class="inline">Stroke()</code>, not retroactive. <code class="inline">LightFalloff()</code> sets the distance-attenuation coefficients for point/spot/positional-ambient lights (Processing's own default: <code class="inline">(1, 0, 0)</code> — no falloff at all). <code class="inline">LightSpecular()</code> sets the color used for specular highlights and has no visible effect until <code class="inline">Shininess()</code> is above 0 — see <a href="#material-3d">Material properties</a>.</p>

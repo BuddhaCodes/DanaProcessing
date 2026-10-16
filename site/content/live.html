@@ -1,0 +1,246 @@
+<!--meta {"title": "Playing live", "nav": "Playing live: MIDI, beat, mic", "summary": "Everything for taking a sketch on stage: knobs and pads from a MIDI controller (with MIDI learn on the [Tweak] sliders), visuals that move in time with the music, a microphone…", "tags": []} -->
+<p class="section-intro">Everything for taking a sketch on stage: knobs and pads from a MIDI controller (with MIDI learn on the [Tweak] sliders), visuals that move in time with the music, a microphone that hears the room, and a full-screen mode that shows the code to the audience while you change it. No packages — MIDI and the microphone talk to the OS directly on Windows, macOS and Linux.</p>
+
+<h3 class="entry-title" id="midi">OnMidi(<span class="tp">MidiMessage</span> m) · MidiCC(controller, channel?) <span class="sig-return">→ float</span> · MidiNoteDown(note) · MapMidi(field, controller) · MidiInputs()</h3>
+<p class="entry-desc">MIDI input from any controller, with no packages: the engine opens every MIDI input the OS has (WinMM on Windows, CoreMIDI on macOS, ALSA on Linux) the first time the sketch uses MIDI. Override <code class="inline">OnMidi</code> to react to each message on the drawing thread, right before <code class="inline">Draw()</code>: <code class="inline">m.Kind</code> is NoteOn, NoteOff, ControlChange, PitchBend..., <code class="inline">m.Value01</code> is a knob or fader as 0..1, <code class="inline">m.Velocity</code>, <code class="inline">m.Bend</code> and <code class="inline">m.Channel</code> (1..16) the rest. Or just read the latest state: <code class="inline">MidiCC(21)</code> is knob 21 as 0..1, <code class="inline">MidiNoteDown(36)</code> is true while that pad is held. <code class="inline">RefreshMidi()</code> picks up a controller plugged in later.</p>
+<div class="note"><strong>MIDI learn.</strong> Click <em>MIDI</em> in the [Tweak] panel's header, touch a slider and turn a knob: they're connected, and from then on the knob moves the slider (a pad toggles a bool). Connections last the whole IDE session, through Run and ⚡ Hot Reload. To make one part of the sketch, write it in <code class="inline">Setup()</code>: <code class="inline">MapMidi("speed", 21)</code>, <code class="inline">MapMidiNote("trails", 36)</code>, and <code class="inline">MapMidi("bg.r", 22)</code> for a channel of a <code class="inline">Color</code>.</div>
+
+<h3 class="entry-title" id="beat">Beat() · Bar() <span class="sig-return">→ double</span> · Phase(beats) · Pulse(beats) · PingPong(beats) · BeatTween(from, to, ease, beats) <span class="sig-return">→ float</span> · OnBeat(beats) <span class="sig-return">→ bool</span></h3>
+<p class="entry-desc">Musical time for visuals, so an animation is tied to the music without any arithmetic. <code class="inline">Beat()</code> is where the music is, in beats (2.5 = halfway through the third beat), <code class="inline">Bar()</code> the same in bars. <code class="inline">Phase(n)</code> ramps 0 → 1 every n beats, <code class="inline">Pulse(n)</code> is 1 on the beat and fades out before the next, <code class="inline">PingPong(n)</code> goes 0 → 1 → 0, and <code class="inline">OnBeat(n)</code> is true on the one frame a new beat (or every n beats: <code class="inline">OnBeat(4)</code> = each bar) starts. <code class="inline">BeatTween(100, 400, Ease.OutBack)</code> moves between two values landing exactly on the next beat; <code class="inline">Easing.Apply(Ease.InOutCubic, t)</code>, <code class="inline">Easing.OutBounce(t)</code> and the rest are there for any 0..1 progress.</p>
+<div class="note"><strong>Locked to what you hear.</strong> While sound plays they follow the audio engine's clock at what reaches the speakers; when live loops start from silence their first downbeat is the start of a bar, and a tempo change (<code class="inline">Bpm = 140</code>, even from inside a loop) never makes the count jump. With no sound they follow <code class="inline">Millis()</code> at the current <code class="inline">Bpm</code>. The clock is read once per frame, so every call in one <code class="inline">Draw()</code> sees the same instant.</div>
+
+<h3 class="entry-title" id="listento">ListenTo(<span class="tp">AudioSource</span> source) · MicLevel <span class="sig-return">→ float</span> · MicGain · MicStatus</h3>
+<p class="entry-desc">Makes <code class="inline">Amplitude</code>, <code class="inline">Waveform()</code> and <code class="inline">Spectrum()</code> hear the real world: <code class="inline">ListenTo(AudioSource.Microphone)</code> switches them to the default microphone (or line in), <code class="inline">AudioSource.Both</code> hears the sketch's own sound and the room, <code class="inline">AudioSource.Sketch</code> goes back. <code class="inline">MicLevel</code> reads the microphone whatever was chosen. Microphones are quiet next to the sketch's own sound: <code class="inline">MicGain = 4</code> boosts them. The microphone opens when the first sketch listens and closes when the last one stops, so the OS's "in use" light means a sketch is really listening.</p>
+<div class="note"><strong>Permission.</strong> The first time, the OS may ask whether DanaProcessing can use the microphone. If it can't open one, nothing throws: <code class="inline">Amplitude</code> reads 0 and <code class="inline">MicStatus</code> says why.</div>
+
+<h3 class="entry-title" id="performance-mode">Performance mode <span class="sig-return">F11</span></h3>
+<p class="entry-desc">For playing on stage, algorave style. <em>Sketch → Performance mode</em> (F11) puts the running sketch full screen — on the second display when there is one, so the projector gets the visuals — with its code floating on top, big and see-through, still editable. The sketch, its music and its state never stop: the canvas is the same one the IDE was showing, and the code is the same tab, so every keystroke is in the IDE too.</p>
+<div class="table-wrap">
+  <table>
+    <tr><th>Key</th><th>Does</th></tr>
+    <tr><td><code class="inline">Ctrl+Enter</code></td><td>⚡ Hot Reload (a full Run if the fields changed)</td></tr>
+    <tr><td><code class="inline">Ctrl+Shift+Enter</code></td><td>▶ Run from the start</td></tr>
+    <tr><td><code class="inline">Ctrl+H</code></td><td>Hide / show the code (hidden, the keyboard goes to the sketch)</td></tr>
+    <tr><td><code class="inline">Ctrl+T</code></td><td>Hide / show the [Tweak] sliders — MIDI-mapped knobs keep working</td></tr>
+    <tr><td><code class="inline">Ctrl +</code> / <code class="inline">Ctrl −</code></td><td>Code size</td></tr>
+    <tr><td><code class="inline">Ctrl ↑</code> / <code class="inline">Ctrl ↓</code></td><td>How dark the band behind the code is</td></tr>
+    <tr><td><code class="inline">Esc</code></td><td>Back to the IDE</td></tr>
+  </table>
+</div>
+<div class="note"><strong>Errors don't stop the show.</strong> A compile error shows in the status line at the bottom and the last good version keeps running, so a typo in front of an audience never blanks the screen.</div>
+
+<h3 class="entry-title" id="live-example">Runnable example: visuals in time</h3>
+<p class="entry-desc">Two live loops at 110 BPM; the ring throbs with <code class="inline">Pulse()</code>, the blocks land on the beat with <code class="inline">BeatTween()</code> and the palette changes every bar with <code class="inline">OnBeat(4)</code>. <strong>Test in Dana</strong> opens it in the IDE, or paste it into a new tab and press Run. It is also in <em>Sketch → Examples</em>.</p>
+<div class="code-block">
+  <pre id="live-example-code"><span class="cm">// Visuals in time with the music -- no math with Millis() or frame counts.</span>
+<span class="cm">//</span>
+<span class="cm">//   Beat()          where the music is, in beats (2.5 = halfway through beat 3)</span>
+<span class="cm">//   Phase(n)        0 -&gt; 1 ramp every n beats (0 = right on the beat)</span>
+<span class="cm">//   Pulse(n)        1 on the beat, fading out before the next one</span>
+<span class="cm">//   OnBeat(n)       true on the one frame a new beat (or every n beats) starts</span>
+<span class="cm">//   BeatTween(a, b, Ease.OutBack)   a -&gt; b, landing exactly on the next beat</span>
+<span class="cm">//</span>
+<span class="cm">// While sound plays they follow what you HEAR; the loops' first downbeat is</span>
+<span class="cm">// beat 0 of a bar. Change Bpm and press Hot Reload: everything keeps up.</span>
+<span class="kw">public</span> <span class="kw">class</span> MySketch : <span class="tp">Sketch</span>
+{
+    <span class="kw">private</span> <span class="kw">int</span> _palette;
+    <span class="kw">private</span> <span class="kw">readonly</span> <span class="kw">float</span>[] _hues = { <span class="str">200</span>, <span class="str">330</span>, <span class="str">40</span>, <span class="str">160</span> };
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup()
+    {
+        Size(<span class="str">720</span>, <span class="str">480</span>);
+        Bpm = <span class="str">110</span>;
+    }
+
+    [<span class="tp">LiveLoop</span>]
+    <span class="kw">async</span> <span class="tp">Task</span> Drums()
+    {
+        <span class="kw">for</span> (<span class="kw">int</span> i = <span class="str">0</span>; i &lt; <span class="str">4</span>; i++)
+        {
+<span class="tp">Sample</span>(<span class="str">"kick"</span>);
+<span class="kw">if</span> (i % <span class="str">2</span> == <span class="str">1</span>) <span class="tp">Sample</span>(<span class="str">"snare"</span>, amp: <span class="str">0.7</span>);
+<span class="kw">await</span> Sleep(<span class="str">0.5</span>);
+<span class="tp">Sample</span>(<span class="str">"hat"</span>, amp: <span class="str">0.4</span>);
+<span class="kw">await</span> Sleep(<span class="str">0.5</span>);
+        }
+    }
+
+    [<span class="tp">LiveLoop</span>]
+    <span class="kw">async</span> <span class="tp">Task</span> Bass()
+    {
+        <span class="kw">foreach</span> (<span class="kw">var</span> note <span class="kw">in</span> <span class="kw">new</span>[] { <span class="str">"E2"</span>, <span class="str">"E2"</span>, <span class="str">"G2"</span>, <span class="str">"A2"</span> })
+        {
+UseSynth(<span class="tp">Synth</span>.Saw);
+Play(note, amp: <span class="str">0.4</span>, release: <span class="str">0.5</span>, cutoff: <span class="str">75</span>);
+<span class="kw">await</span> Sleep(<span class="str">1</span>);
+        }
+    }
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        <span class="kw">if</span> (OnBeat(<span class="str">4</span>))
+_palette = (_palette + <span class="str">1</span>) % _hues.Length;  <span class="cm">// a new color every bar</span>
+        <span class="kw">float</span> hue = _hues[_palette];
+
+        Background(<span class="str">12</span>, <span class="str">12</span>, <span class="str">18</span>);
+
+        <span class="cm">// 1. The ring throbs on every beat.</span>
+        <span class="kw">float</span> throb = Pulse(<span class="str">1</span>, sharpness: <span class="str">5</span>);
+        NoFill();
+        StrokeWeight(<span class="str">6</span> + throb * <span class="str">10</span>);
+        StrokeHSB(hue, <span class="str">70</span>, <span class="str">100</span>);
+        Circle(<span class="str">180</span>, <span class="str">200</span>, <span class="str">140</span> + throb * <span class="str">60</span>);
+
+        <span class="cm">// 2. Blocks slide to a new spot on every beat, landing on the next one.</span>
+        NoStroke();
+        <span class="kw">for</span> (<span class="kw">int</span> i = <span class="str">0</span>; i &lt; <span class="str">4</span>; i++)
+        {
+<span class="kw">int</span> step = (<span class="kw">int</span>)Beat() + i;
+<span class="kw">float</span> from = <span class="str">360</span> + (step % <span class="str">4</span>) * <span class="str">80</span>;
+<span class="kw">float</span> to = <span class="str">360</span> + ((step + <span class="str">1</span>) % <span class="str">4</span>) * <span class="str">80</span>;
+<span class="kw">float</span> x = BeatTween(from, to, <span class="tp">Ease</span>.OutBack);
+FillHSB((hue + i * <span class="str">30</span>) % <span class="str">360</span>, <span class="str">60</span>, <span class="str">95</span>);
+Rect(x, <span class="str">90</span> + i * <span class="str">60</span>, <span class="str">50</span>, <span class="str">40</span>);
+        }
+
+        <span class="cm">// 3. A 16-step sequencer row: the cursor is Beat() in sixteenths.</span>
+        <span class="kw">int</span> sixteenth = (<span class="kw">int</span>)(Beat() * <span class="str">4</span>) % <span class="str">16</span>;
+        <span class="kw">for</span> (<span class="kw">int</span> i = <span class="str">0</span>; i &lt; <span class="str">16</span>; i++)
+        {
+<span class="kw">bool</span> on = i == sixteenth;
+<span class="kw">if</span> (on) FillHSB(hue, <span class="str">50</span>, <span class="str">100</span>); <span class="kw">else</span> Fill(<span class="str">255</span>, i % <span class="str">4</span> == <span class="str">0</span> ? <span class="str">70</span> : <span class="str">35</span>);
+Rect(<span class="str">40</span> + i * <span class="str">40</span>, <span class="str">400</span>, <span class="str">32</span>, on ? <span class="str">40</span> : <span class="str">24</span>);
+        }
+
+        <span class="cm">// 4. Bars and beats as text.</span>
+        Fill(<span class="str">255</span>, <span class="str">200</span>);
+        TextSize(<span class="str">14</span>);
+        Text(<span class="str">$"bar {(int)Bar() + 1}   beat {(int)Beat() % 4 + 1}   {Bpm:0} BPM"</span>, <span class="str">40</span>, <span class="str">380</span>);
+    }
+}</pre>
+  <button class="dana-test-btn" data-target="live-example-code" title="Run in DanaProcessing IDE">
+    <i class="ph-bold ph-play"></i>
+    <span class="dana-test-label">Test in Dana</span>
+  </button>
+</div>
+
+<h3 class="entry-title" id="midi-example">Runnable example: MIDI learn</h3>
+<p class="entry-desc">A flower played with a MIDI controller: click MIDI in the [Tweak] panel, touch a slider, turn a knob. Without a controller, the sliders work with the mouse and keys 1–8 fake pad hits. <strong>Test in Dana</strong> opens it in the IDE, or paste it into a new tab and press Run. It is also in <em>Sketch → Examples</em>.</p>
+<div class="code-block">
+  <pre id="midi-example-code"><span class="cm">// MIDI learn: play this flower with a MIDI controller.</span>
+<span class="cm">//</span>
+<span class="cm">// 1. Click MIDI in the [Tweak] panel (top right): it lights up.</span>
+<span class="cm">// 2. Touch a slider, then turn a knob or move a fader: they're connected.</span>
+<span class="cm">// 3. Do the same with as many sliders as you like, then click MIDI again.</span>
+<span class="cm">//</span>
+<span class="cm">// Connections last the whole session (Run and Hot Reload keep them). To make</span>
+<span class="cm">// one permanent, write it in Setup(): MapMidi("petals", 21);</span>
+<span class="cm">// Pads and keys fire bursts (OnMidi), sized by velocity; the pitch-bend wheel</span>
+<span class="cm">// twists the whole flower. No controller? Keys 1-8 fake pad hits.</span>
+<span class="kw">public</span> <span class="kw">class</span> MySketch : <span class="tp">Sketch</span>
+{
+    [<span class="tp">Tweak</span>(<span class="str">3</span>, <span class="str">24</span>)] <span class="kw">int</span> petals = <span class="str">9</span>;
+    [<span class="tp">Tweak</span>(<span class="str">30</span>, <span class="str">260</span>)] <span class="kw">float</span> radius = <span class="str">150</span>;
+    [<span class="tp">Tweak</span>(<span class="str">0</span>, <span class="str">3</span>)] <span class="kw">float</span> spin = <span class="str">0.5f</span>;
+    [<span class="tp">Tweak</span>(<span class="str">0</span>, <span class="str">360</span>)] <span class="kw">float</span> hue = <span class="str">200</span>;
+    [<span class="tp">Tweak</span>(<span class="str">0</span>, <span class="str">1</span>)] <span class="kw">float</span> wobble = <span class="str">0.35f</span>;
+    [<span class="tp">Tweak</span>] <span class="kw">bool</span> trails = <span class="kw">true</span>;
+
+    <span class="kw">private</span> <span class="kw">readonly</span> <span class="tp">List</span>&lt;Burst&gt; _bursts = <span class="kw">new</span>();
+    <span class="kw">private</span> <span class="kw">float</span> _bend;   <span class="cm">// -1..1 from the pitch-bend wheel</span>
+    <span class="kw">private</span> <span class="kw">float</span> _angle;
+    <span class="kw">private</span> <span class="kw">string</span> _status = <span class="str">""</span>;
+
+    <span class="kw">private</span> <span class="kw">sealed</span> <span class="kw">class</span> Burst
+    {
+        <span class="kw">public</span> <span class="kw">float</span> X, Y, Size, Hue, Life = <span class="str">1</span>;
+    }
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup()
+    {
+        Size(<span class="str">720</span>, <span class="str">520</span>);
+        <span class="kw">var</span> inputs = MidiInputs();
+        _status = inputs.Length == <span class="str">0</span>
+? <span class="str">"No MIDI controller found -- keys 1-8 fake pad hits"</span>
+: <span class="str">"MIDI: "</span> + <span class="kw">string</span>.Join(<span class="str">", "</span>, inputs);
+    }
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> OnMidi(<span class="tp">MidiMessage</span> m)
+    {
+        <span class="kw">if</span> (m.Kind == <span class="tp">MidiKind</span>.NoteOn)
+Fire(m.<span class="tp">Note</span>, m.Velocity / <span class="str">127f</span>);
+        <span class="kw">else</span> <span class="kw">if</span> (m.Kind == <span class="tp">MidiKind</span>.PitchBend)
+_bend = m.Bend / <span class="str">8192f</span>;
+    }
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> KeyPressed()
+    {
+        <span class="kw">if</span> (Key &gt;= <span class="str">'1'</span> &amp;&amp; Key &lt;= <span class="str">'8'</span>)
+Fire(<span class="str">36</span> + (Key - <span class="str">'1'</span>), <span class="str">0.8f</span>);
+    }
+
+    <span class="kw">private</span> <span class="kw">void</span> Fire(<span class="kw">int</span> note, <span class="kw">float</span> strength)
+    {
+        <span class="kw">float</span> a = note * <span class="str">0.7f</span>;
+        _bursts.Add(<span class="kw">new</span> Burst
+        {
+X = Width / <span class="str">2f</span> + Cos(a) * radius * <span class="str">0.8f</span>,
+Y = Height / <span class="str">2f</span> + Sin(a) * radius * <span class="str">0.8f</span>,
+Size = <span class="str">30</span> + strength * <span class="str">160</span>,
+Hue = (hue + note * <span class="str">15</span>) % <span class="str">360</span>,
+        });
+    }
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        <span class="kw">if</span> (trails)
+Background(<span class="str">10</span>, <span class="str">12</span>, <span class="str">20</span>, <span class="str">40</span>);
+        <span class="kw">else</span>
+Background(<span class="str">10</span>, <span class="str">12</span>, <span class="str">20</span>);
+
+        _angle += spin * <span class="str">0.02f</span>;
+        <span class="kw">float</span> t = Millis() / <span class="str">1000f</span>;
+
+        PushMatrix();
+        Translate(Width / <span class="str">2f</span>, Height / <span class="str">2f</span>);
+        Rotate(_angle + _bend * <span class="str">1.2f</span>);
+        NoFill();
+        StrokeWeight(<span class="str">2</span>);
+        <span class="kw">for</span> (<span class="kw">int</span> ring = <span class="str">0</span>; ring &lt; <span class="str">4</span>; ring++)
+        {
+<span class="kw">float</span> r = radius * (<span class="str">1</span> - ring * <span class="str">0.2f</span>);
+StrokeHSB((hue + ring * <span class="str">25</span>) % <span class="str">360</span>, <span class="str">70</span>, <span class="str">100</span>, <span class="str">200</span>);
+BeginShape();
+<span class="kw">for</span> (<span class="kw">int</span> i = <span class="str">0</span>; i &lt;= <span class="str">200</span>; i++)
+{
+    <span class="kw">float</span> a = TWO_PI * i / <span class="str">200</span>;
+    <span class="kw">float</span> petal = Sin(a * petals + t * <span class="str">1.5f</span> + ring) * wobble;
+    <span class="kw">float</span> rr = r * (<span class="str">0.6f</span> + <span class="str">0.4f</span> * Abs(Cos(a * petals / <span class="str">2f</span>))) * (<span class="str">1</span> + petal * <span class="str">0.3f</span>);
+    Vertex(Cos(a) * rr, Sin(a) * rr);
+}
+EndShape(<span class="kw">true</span>);
+        }
+        PopMatrix();
+
+        NoStroke();
+        <span class="kw">for</span> (<span class="kw">int</span> i = _bursts.Count - <span class="str">1</span>; i &gt;= <span class="str">0</span>; i--)
+        {
+<span class="kw">var</span> b = _bursts[i];
+FillHSB(b.Hue, <span class="str">60</span>, <span class="str">100</span>, <span class="str">180</span> * b.Life);
+Circle(b.X, b.Y, b.Size * (<span class="str">2</span> - b.Life));
+b.Life -= <span class="str">0.03f</span>;
+<span class="kw">if</span> (b.Life &lt;= <span class="str">0</span>)
+    _bursts.RemoveAt(i);
+        }
+
+        Fill(<span class="str">255</span>, <span class="str">160</span>);
+        TextSize(<span class="str">13</span>);
+        Text(_status, <span class="str">14</span>, Height - <span class="str">16</span>);
+    }
+}</pre>
+  <button class="dana-test-btn" data-target="midi-example-code" title="Run in DanaProcessing IDE">
+    <i class="ph-bold ph-play"></i>
+    <span class="dana-test-label">Test in Dana</span>
+  </button>
+</div>

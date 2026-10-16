@@ -169,7 +169,9 @@ dotnet run --project DanaProcessing.Ide
 
 ## 📚 Documentation
 
-The full reference, method by method, lives at **[buddhacodes.github.io/DanaProcessing](https://buddhacodes.github.io/DanaProcessing/)**, with separate views for 2D, 3D and Sound. It's also in [`index.html`](index.html) if you prefer to open it locally.
+The full reference, method by method, lives at **[buddhacodes.github.io/DanaProcessing](https://buddhacodes.github.io/DanaProcessing/)**: one page per topic (2D, 3D, sound, live, the IDE...), a search box (press <kbd>/</kbd>) and an [A–Z index](https://buddhacodes.github.io/DanaProcessing/reference/a-z.html). Open [`index.html`](index.html) to read it locally.
+
+The pages are generated: edit a topic in [`site/content/`](site/content) (or the home page in `site/home.html`), then run `python site/build.py`. The look lives in `assets/site.css` and `assets/site.js`. Old links to the one-page site (`index.html#fill`) still land on the right page.
 
 ## 🏗️ What's in the repository
 

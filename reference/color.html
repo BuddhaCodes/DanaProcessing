@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en" data-root="../">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-N4ZWC7GN1B"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-N4ZWC7GN1B');
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Color — DanaProcessing reference</title>
+<meta name="description" content="Fill and stroke are persistent state, set before the shape that uses them. All three-argument color methods are interpreted through the current ColorMode — RGB (0–255) or HSB…">
+<link rel="canonical" href="https://buddhacodes.github.io/DanaProcessing/reference/color.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="DanaProcessing">
+<meta property="og:title" content="Color — DanaProcessing reference">
+<meta property="og:description" content="Fill and stroke are persistent state, set before the shape that uses them. All three-argument color methods are interpreted through the current ColorMode — RGB (0–255) or HSB…">
+<meta property="og:url" content="https://buddhacodes.github.io/DanaProcessing/reference/color.html">
+<meta property="og:image" content="https://buddhacodes.github.io/DanaProcessing/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://buddhacodes.github.io/DanaProcessing/og-image.png">
+<meta name="theme-color" content="#13202A">
+<link rel="icon" type="image/png" href="../DanaProcessing.Ide/Theme/dana.png">
+<link rel="apple-touch-icon" href="../DanaProcessing.Ide/Theme/dana.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&amp;family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/search-index.js" defer></script>
+<script src="../assets/site.js" defer></script>
+</head>
+<body class="page-topic">
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="bar">
+    <a class="brand" href="../index.html"><svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><circle cx="15" cy="15" r="13" fill="none" stroke="currentColor" stroke-width="2"></circle><circle cx="15" cy="15" r="6" fill="#E7B66B"></circle><circle cx="23" cy="8" r="2.5" fill="#FF8A6B"></circle></svg><span>DanaProcessing</span></a>
+    <button type="button" class="menu-toggle" aria-expanded="false" aria-controls="site-menu">Menu</button>
+    <div class="site-menu" id="site-menu">
+      <nav class="main-nav" aria-label="Main">
+        <a href="../reference/tutorial.html">Learn</a>
+        <a href="../reference/a-z.html" aria-current="page">Reference</a>
+        <a href="../index.html#gallery">Examples</a>
+        <a href="../reference/ide.html">The IDE</a>
+      </nav>
+      <form class="search" role="search" action="../reference/a-z.html">
+        <label class="visually-hidden" for="site-search">Search the documentation</label>
+        <div class="search-box">
+          <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+          <input id="site-search" name="q" type="search" autocomplete="off" placeholder="Search — press /" aria-describedby="search-status" aria-controls="search-results">
+        </div>
+        <p id="search-status" class="visually-hidden" aria-live="polite"></p>
+        <ul id="search-results" class="search-results" hidden></ul>
+      </form>
+      <a class="support-link" href="../index.html#support"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M12 21s-7.5-4.6-9.6-9.4C1 8.2 3.1 4.5 6.8 4.5c2.2 0 3.7 1.3 5.2 3 1.5-1.7 3-3 5.2-3 3.7 0 5.8 3.7 4.4 7.1C19.5 16.4 12 21 12 21z"></path></svg><span>Support Dana</span></a>
+    </div>
+  </div>
+</header>
+<main id="main">
+<div class="topic-hero">
+  <div class="wrap">
+    <div class="topic-hero-text">
+      <nav class="breadcrumb" aria-label="Breadcrumb"><ol><li><a href="a-z.html">Reference</a></li><li>Drawing</li><li aria-current="page">Color</li></ol></nav>
+      <h1>Color</h1>
+      <p class="lede">Fill and stroke are persistent state, set before the shape that uses them. All three-argument color methods are interpreted through the current <code class="inline">ColorMode</code> — RGB (0–255) or HSB (hue 0–360, saturation/brightness 0–100).</p>
+      
+    </div>
+    <div class="topic-art" aria-hidden="true"><span style="background:#FF8A6B"></span><span></span><span></span><span></span><span></span></div>
+  </div>
+</div>
+<div class="wrap topic-layout">
+  <button type="button" class="topics-toggle" aria-expanded="false" aria-controls="topics">All topics</button>
+<nav class="topics" id="topics" aria-label="Reference topics">
+<div class="topic-group"><h2>Start here</h2><ul>
+<li><a href="intro.html">Overview</a></li>
+<li><a href="tutorial.html">30-minute tutorial</a></li>
+<li><a href="from-processing.html">From Processing / p5.js</a></li>
+</ul></div>
+<div class="topic-group"><h2>Basics</h2><ul>
+<li><a href="structure.html">Sketch structure</a></li>
+<li><a href="input.html">Input &amp; time</a></li>
+</ul></div>
+<div class="topic-group"><h2>Drawing</h2><ul>
+<li><a href="color.html" aria-current="page">Color</a>
+<ul class="on-this-page" aria-label="On this page">
+<li><a href="#colormode"><code>ColorMode</code></a></li>
+<li><a href="#color-function"><code>Color</code></a></li>
+<li><a href="#fill"><code>Fill · FillHSB · NoFill</code></a></li>
+<li><a href="#stroke"><code>Stroke · StrokeHSB · NoStroke</code></a></li>
+<li><a href="#strokeweight"><code>StrokeWeight · StrokeCap · StrokeJoin</code></a></li>
+<li><a href="#background"><code>Background · Clear</code></a></li>
+<li><a href="#tint"><code>Tint · NoTint</code></a></li>
+<li><a href="#color-channels">Red / Green / Blue / Alpha / Hue / Saturation / Brightness(Color c)</a></li>
+<li><a href="#lerpcolor"><code>LerpColor</code></a></li>
+<li><a href="#color-struct"><code>struct Color</code></a></li>
+<li><a href="#pushstyle"><code>PushStyle · PopStyle</code></a></li>
+<li><a href="#smooth"><code>Smooth · NoSmooth</code></a></li>
+<li><a href="#blendmode"><code>BlendMode</code></a></li>
+<li><a href="#color-example">Runnable example</a></li>
+</ul>
+</li>
+<li><a href="shape-primitives.html">2D Primitives</a></li>
+<li><a href="shape-custom.html">Custom shapes</a></li>
+<li><a href="typography.html">Typography</a></li>
+<li><a href="transform.html">Transformations</a></li>
+</ul></div>
+<div class="topic-group"><h2>Media</h2><ul>
+<li><a href="image.html">PImage</a></li>
+<li><a href="pgraphics.html">PGraphics</a></li>
+<li><a href="pshape.html">PShape</a></li>
+<li><a href="output.html">Saving output</a></li>
+<li><a href="pixels.html">Pixels</a></li>
+<li><a href="reels.html">Reels</a></li>
+</ul></div>
+<div class="topic-group"><h2>Data &amp; math</h2><ul>
+<li><a href="files-data.html">Files &amp; data</a></li>
+<li><a href="utilities.html">Conversion &amp; utilities</a></li>
+<li><a href="math.html">Math &amp; trig</a></li>
+<li><a href="pvector.html">PVector</a></li>
+<li><a href="random-noise.html">Random &amp; noise</a></li>
+<li><a href="collections.html">Collections</a></li>
+</ul></div>
+<div class="topic-group"><h2>3D</h2><ul>
+<li><a href="getting-started-3d.html">Getting started</a></li>
+<li><a href="shape-3d-primitives.html">3D Primitives</a></li>
+<li><a href="transform-3d.html">3D Transformations</a></li>
+<li><a href="camera-3d.html">Camera &amp; Projection</a></li>
+<li><a href="lights-3d.html">Lights</a></li>
+<li><a href="material-3d.html">Material properties</a></li>
+<li><a href="coordinates-3d.html">Coordinates</a></li>
+<li><a href="shape-3d-custom.html">Custom 3D shapes</a></li>
+<li><a href="pshader.html">PShader</a></li>
+</ul></div>
+<div class="topic-group"><h2>Sound</h2><ul>
+<li><a href="audio.html">Live loops &amp; timing</a></li>
+</ul></div>
+<div class="topic-group"><h2>Live &amp; generative</h2><ul>
+<li><a href="live.html">Playing live: MIDI, beat, mic</a></li>
+<li><a href="generative.html">Generative art: seeds, print</a></li>
+<li><a href="workflow.html">Day to day: F3, data/, rewind</a></li>
+</ul></div>
+<div class="topic-group"><h2>Tooling</h2><ul>
+<li><a href="ide.html">The IDE</a></li>
+<li><a href="hosting.html">Avalonia host</a></li>
+<li><a href="enums.html">Enumerations</a></li>
+</ul></div>
+<p class="topics-all"><a href="a-z.html">All topics &amp; A–Z index</a></p></nav>
+  <div class="topic-main">
+<details class="on-this-page-mobile"><summary>On this page · 14 entries</summary><ul><li><a href="#colormode"><code>ColorMode</code></a></li><li><a href="#color-function"><code>Color</code></a></li><li><a href="#fill"><code>Fill · FillHSB · NoFill</code></a></li><li><a href="#stroke"><code>Stroke · StrokeHSB · NoStroke</code></a></li><li><a href="#strokeweight"><code>StrokeWeight · StrokeCap · StrokeJoin</code></a></li><li><a href="#background"><code>Background · Clear</code></a></li><li><a href="#tint"><code>Tint · NoTint</code></a></li><li><a href="#color-channels">Red / Green / Blue / Alpha / Hue / Saturation / Brightness(Color c)</a></li><li><a href="#lerpcolor"><code>LerpColor</code></a></li><li><a href="#color-struct"><code>struct Color</code></a></li><li><a href="#pushstyle"><code>PushStyle · PopStyle</code></a></li><li><a href="#smooth"><code>Smooth · NoSmooth</code></a></li><li><a href="#blendmode"><code>BlendMode</code></a></li><li><a href="#color-example">Runnable example</a></li></ul></details>
+<div class="doc">
+<h2 class="entry-title api" id="colormode"><code>ColorMode</code></h2><ul class="sigs" aria-label="Signatures"><li><code>ColorMode(<span class="tp">ColorSpaceMode</span> mode)</code></li><li><code>ColorMode(mode, max)</code></li><li><code>ColorMode(mode, max1, max2, max3, maxA?)</code></li></ul>
+<p class="entry-desc">Chooses how <code class="inline">Fill</code>/<code class="inline">Stroke</code>/<code class="inline">Background</code>/<code class="inline">Color</code> interpret arguments. With no range given, both RGB and HSB default to 0–255 on every channel — <strong>same as Processing</strong>, HSB doesn't silently switch to 360/100/100 until you ask for it explicitly, e.g. <code class="inline">ColorMode(HSB, 360, 100, 100)</code>. The 3-max overload leaves alpha's range untouched.</p>
+
+<h2 class="entry-title api" id="color-function"><code>Color</code></h2><ul class="sigs" aria-label="Signatures"><li><code>Color(a1, a2, a3, alpha = 255)</code></li><li><code>Color(gray, alpha = 255) <span class="sig-return">→ Color</span></code></li></ul>
+<p class="entry-desc">Builds a <code class="inline">Color</code> value, interpreted through the current <code class="inline">ColorMode</code> — the direct equivalent of Processing's <code class="inline">color(...)</code> function. Different from <code class="inline">new Color(r, g, b)</code>, which is always plain 0–255 RGB no matter what <code class="inline">ColorMode</code> is set to.</p>
+<div class="note"><strong>Why both can coexist.</strong> <code class="inline">Color</code> the struct can't declare a same-named method on itself (C# error CS0542), so <code class="inline">new Color(r, g, b)</code> is the constructor form. <code class="inline">GraphicsContext.Color(...)</code> is a different type entirely, so it's free to use the name — and C# never confuses the two: <code class="inline">new Color(...)</code> always means the constructor, bare <code class="inline">Color(...)</code> always means this method.</div>
+
+<h2 class="entry-title api" id="fill"><code>Fill · FillHSB · NoFill</code></h2><ul class="sigs" aria-label="Signatures"><li><code>Fill(a1, a2, a3, alpha = 255)</code></li><li><code>Fill(gray, alpha = 255)</code></li><li><code>Fill(<span class="tp">Color</span> c)</code></li><li><code>FillHSB(...)</code></li><li><code>NoFill()</code></li></ul>
+<p class="entry-desc">Sets the fill color. <code class="inline">FillHSB(h, s, b, alpha = 255)</code> always reads as HSB (hue 0–360 and wrapping around, saturation and brightness 0–100) regardless of <code class="inline">ColorMode</code>: a shortcut for the most common case.</p>
+
+<h2 class="entry-title api" id="stroke"><code>Stroke · StrokeHSB · NoStroke</code></h2><ul class="sigs" aria-label="Signatures"><li><code>Stroke(a1, a2, a3, alpha = 255)</code></li><li><code>Stroke(gray, alpha = 255)</code></li><li><code>Stroke(<span class="tp">Color</span> c)</code></li><li><code>StrokeHSB(...)</code></li><li><code>NoStroke()</code></li></ul>
+<p class="entry-desc">Sets the stroke (outline) color.</p>
+
+<h2 class="entry-title api" id="strokeweight"><code>StrokeWeight · StrokeCap · StrokeJoin</code></h2><ul class="sigs" aria-label="Signatures"><li><code>StrokeWeight(<span class="tp">float</span> w)</code></li><li><code>StrokeCap(<span class="tp">StrokeCapKind</span>)</code></li><li><code>StrokeJoin(<span class="tp">StrokeJoinKind</span>)</code></li></ul>
+<p class="entry-desc">Line width, end-cap style, and corner style.</p>
+
+<div class="note"><strong>Naming collision.</strong> <code class="inline">StrokeCapKind.Square</code> maps to Skia's <em>Butt</em> (flush), and <code class="inline">StrokeCapKind.Project</code> maps to Skia's <em>Square</em> (extends past the endpoint).</div>
+
+<h2 class="entry-title api" id="background"><code>Background · Clear</code></h2><ul class="sigs" aria-label="Signatures"><li><code>Background(a1, a2, a3, alpha = 255)</code></li><li><code>Background(gray, alpha = 255)</code></li><li><code>Background(<span class="tp">Color</span> c)</code></li><li><code>Clear()</code></li></ul>
+<p class="entry-desc"><code class="inline">Background</code> fills the canvas with an opaque color. <code class="inline">Clear</code> wipes to transparent — useful on <code class="inline">PGraphics</code>.</p>
+
+<h2 class="entry-title api" id="tint"><code>Tint · NoTint</code></h2><ul class="sigs" aria-label="Signatures"><li><code>Tint(a1, a2, a3, alpha = 255)</code></li><li><code>Tint(<span class="tp">byte</span> alpha)</code></li><li><code>NoTint()</code></li></ul>
+<p class="entry-desc">Sets a color/alpha multiplier applied to images drawn via <code class="inline">Image()</code>.</p>
+
+<h2 class="entry-title" id="color-channels">Red / Green / Blue / Alpha / Hue / Saturation / Brightness(<span class="tp">Color</span> c)</h2>
+<p class="entry-desc">Extracts one channel from a <code class="inline">Color</code>.</p>
+
+<h2 class="entry-title api" id="lerpcolor"><code>LerpColor</code></h2><ul class="sigs" aria-label="Signatures"><li><code>LerpColor(<span class="tp">Color</span> c1, <span class="tp">Color</span> c2, <span class="tp">float</span> amt) <span class="sig-return">→ Color</span></code></li></ul>
+<p class="entry-desc">Interpolates two colors in RGB space.</p>
+
+<h2 class="entry-title api" id="color-struct"><code>struct Color</code></h2>
+<p class="entry-desc">An RGBA value — a real struct built with <code class="inline">new Color(r, g, b, a)</code> or <code class="inline">Color.FromHsb(h, s, br, a)</code>.</p>
+
+<h2 class="entry-title api" id="pushstyle"><code>PushStyle · PopStyle</code></h2><ul class="sigs" aria-label="Signatures"><li><code>PushStyle()</code></li><li><code>PopStyle()</code></li></ul>
+<p class="entry-desc">Saves/restores every drawing style this class tracks — fill/stroke colors, <code class="inline">ColorMode</code> ranges, <code class="inline">RectMode</code>/<code class="inline">EllipseMode</code>/<code class="inline">ShapeMode</code>/<code class="inline">ImageMode</code>, tint, stroke weight/cap/join, text size/align/leading, curve tightness, <code class="inline">Smooth</code>, and <code class="inline">BlendMode</code> — deliberately everything <code class="inline">PushMatrix</code>/<code class="inline">PopMatrix</code> doesn't already cover.</p>
+<div class="note"><strong>Not restored.</strong> A gradient set via <code class="inline">LinearGradientFill</code>/<code class="inline">RadialGradientFill</code> isn't tracked by <code class="inline">PushStyle</code> — call <code class="inline">Fill()</code> with a plain color afterward if you need to clear one.</div>
+
+<h2 class="entry-title api" id="smooth"><code>Smooth · NoSmooth</code></h2><ul class="sigs" aria-label="Signatures"><li><code>Smooth()</code></li><li><code>NoSmooth()</code></li></ul>
+<p class="entry-desc">Toggles antialiasing for shapes, lines, and text drawn from here on. On by default; <code class="inline">NoSmooth()</code> gives hard, pixelated edges — occasionally wanted for pixel-art-style sketches.</p>
+
+<h2 class="entry-title api" id="blendmode"><code>BlendMode</code></h2><ul class="sigs" aria-label="Signatures"><li><code>BlendMode(<span class="tp">BlendModeKind</span> mode)</code></li></ul>
+<p class="entry-desc">Sets the compositing mode for every drawing operation from here on — shapes, images, and text. See <a href="enums.html">BlendModeKind</a> for the full list, and <a href="pixels.html">Pixels</a> for <code class="inline">Blend()</code>, which takes a mode per call instead of setting it globally.</p>
+
+<h2 class="entry-title" id="color-example">Runnable example</h2>
+<p class="entry-desc">A complete sketch using this section. <strong>Test in Dana</strong> opens it in the IDE, or paste it into a new tab and press Run.</p>
+<div class="code-block"><div class="code-bar"><span class="code-label">C#</span><div class="code-actions"><button type="button" class="copy-btn" data-target="color-example-code">Copy code</button><button class="dana-test-btn" data-target="color-example-code" type="button"><svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M7 4l13 8-13 8z"></path></svg><span class="dana-test-label">Run in Dana</span></button></div></div><pre id="color-example-code" tabindex="0" aria-label="Code, scrollable"><span class="cm">// RGB, gray, alpha and HSB side by side. Move the mouse to change the hue.</span>
+<span class="kw">public</span> <span class="kw">class</span> Colors : <span class="tp">Sketch</span>
+{
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup() =&gt; Size(<span class="str">600</span>, <span class="str">300</span>);
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        Background(<span class="str">240</span>);
+        NoStroke();
+
+        Fill(<span class="str">230</span>, <span class="str">80</span>, <span class="str">60</span>);            Rect(<span class="str">20</span>, <span class="str">20</span>, <span class="str">120</span>, <span class="str">120</span>);   <span class="cm">// RGB</span>
+        Fill(<span class="str">90</span>);                     Rect(<span class="str">160</span>, <span class="str">20</span>, <span class="str">120</span>, <span class="str">120</span>);  <span class="cm">// gray</span>
+        Fill(<span class="str">40</span>, <span class="str">120</span>, <span class="str">220</span>, <span class="str">120</span>);      Rect(<span class="str">100</span>, <span class="str">80</span>, <span class="str">120</span>, <span class="str">120</span>);  <span class="cm">// RGB + alpha, overlapping</span>
+
+        <span class="cm">// FillHSB: hue 0..360, saturation and brightness 0..100.</span>
+        <span class="kw">float</span> hue = Map(MouseX, <span class="str">0</span>, Width, <span class="str">0</span>, <span class="str">360</span>);
+        <span class="kw">for</span> (<span class="kw">int</span> i = <span class="str">0</span>; i &lt; <span class="str">10</span>; i++)
+        {
+FillHSB(hue + i * <span class="str">12</span>, <span class="str">70</span>, <span class="str">95</span>);
+Rect(<span class="str">320</span> + i * <span class="str">26</span>, <span class="str">20</span>, <span class="str">24</span>, <span class="str">180</span>);
+        }
+
+        <span class="cm">// Colors are values: build them once, mix them with LerpColor.</span>
+        <span class="tp">Color</span> a = <span class="tp">Color</span>(<span class="str">255</span>, <span class="str">200</span>, <span class="str">0</span>), b = <span class="tp">Color</span>(<span class="str">120</span>, <span class="str">0</span>, <span class="str">200</span>);
+        <span class="kw">for</span> (<span class="kw">int</span> i = <span class="str">0</span>; i &lt; <span class="str">20</span>; i++)
+        {
+Fill(LerpColor(a, b, i / <span class="str">19f</span>));
+Rect(<span class="str">20</span> + i * <span class="str">28</span>, <span class="str">230</span>, <span class="str">26</span>, <span class="str">50</span>);
+        }
+    }
+}</pre></div>
+
+</div>
+<nav class="pager" aria-label="Previous and next topic"><a class="prev" href="input.html"><span>← Previous</span><strong>Mouse, keyboard &amp; time</strong></a><a class="next" href="shape-primitives.html"><span>Next →</span><strong>2D primitives</strong></a></nav>
+<aside class="support-aside" aria-label="Support the project">
+  <p><strong>Found this useful?</strong> Dana is free and built in spare time — a donation buys more time for docs like this one.</p>
+  <a class="btn btn-ink" href="https://paypal.me/CarlosFernandez934"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M12 21s-7.5-4.6-9.6-9.4C1 8.2 3.1 4.5 6.8 4.5c2.2 0 3.7 1.3 5.2 3 1.5-1.7 3-3 5.2-3 3.7 0 5.8 3.7 4.4 7.1C19.5 16.4 12 21 12 21z"></path></svg><span>Donate via PayPal</span></a>
+</aside>
+
+  </div>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap">
+    <p>DanaProcessing · v1.0 RC · MIT · stands on the shoulders of <a href="https://processing.org">Processing</a>, <a href="https://p5js.org">p5.js</a> and <a href="https://sonic-pi.net">Sonic Pi</a>.</p>
+    <nav aria-label="Footer">
+      <a href="../reference/a-z.html">All topics &amp; A–Z</a>
+      <a href="https://github.com/BuddhaCodes/DanaProcessing/releases/latest">Releases</a>
+      <a href="https://github.com/BuddhaCodes/DanaProcessing">GitHub</a>
+      <a href="../index.html#support">Support</a>
+    </nav>
+  </div>
+</footer>
+</body>
+</html>

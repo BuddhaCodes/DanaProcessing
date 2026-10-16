@@ -1,0 +1,86 @@
+<!--meta {"title": "Coming from Processing or p5.js", "nav": "From Processing / p5.js", "summary": "Most of what you know carries over: same functions, same order of thinking, Setup() once and Draw() every frame. The differences are mostly C# itself. These are the ones that…", "tags": []} -->
+<p class="section-intro">Most of what you know carries over: same functions, same order of thinking, <code class="inline">Setup()</code> once and <code class="inline">Draw()</code> every frame. The differences are mostly C# itself. These are the ones that trip people up in the first hour.</p>
+<h3 class="entry-title" id="from-processing-differences">The differences that matter</h3>
+<div class="table-wrap"><table>
+  <tr><th>In DanaProcessing</th><th>Why it matters</th></tr>
+  <tr><td>Names are PascalCase: <code class="inline">Fill</code>, <code class="inline">MouseX</code>, <code class="inline">FrameCount</code></td><td>C# convention. Lowercase <code class="inline">fill()</code> is a compile error with a clear message.</td></tr>
+  <tr><td>Your sketch is a class: <code class="inline">public class MySketch : Sketch</code></td><td>Processing hides that class from you; here you write it. Variables you keep between frames are fields of that class.</td></tr>
+  <tr><td><code class="inline">public override void Draw()</code></td><td>Setup, Draw and every event (MousePressed, KeyPressed…) are overrides. The editor completes them for you.</td></tr>
+  <tr><td>Decimal literals need <code class="inline">f</code>: <code class="inline">0.5f</code></td><td>Most of the API uses <code class="inline">float</code>, and C# reads <code class="inline">0.5</code> as <code class="inline">double</code>.</td></tr>
+  <tr><td><code class="inline">5 / 2</code> is <code class="inline">2</code></td><td>Integer division, like Java, unlike JavaScript. Write <code class="inline">5 / 2f</code> for 2.5.</td></tr>
+  <tr><td><code class="inline">Color</code> is a type, not an <code class="inline">int</code></td><td><code class="inline">Color c = Color(255, 0, 0)</code>; read channels with <code class="inline">c.R</code> or <code class="inline">Red(c)</code>.</td></tr>
+  <tr><td><code class="inline">PVector</code> is a value (a struct)</td><td>Copying it copies the numbers, so <code class="inline">var a = b; a.X = 5;</code> doesn't change <code class="inline">b</code>. It has <code class="inline">+ - * /</code> operators.</td></tr>
+  <tr><td><code class="inline">Rotate()</code> takes radians</td><td>As in Processing. <code class="inline">RotateDegrees()</code> is there when degrees read better.</td></tr>
+  <tr><td>Mouse state vs mouse events</td><td>Processing's <code class="inline">mousePressed</code> is both a variable and a function; here the variable is <code class="inline">IsMousePressed</code> and the event is <code class="inline">MousePressed()</code>. Same for keys.</td></tr>
+  <tr><td><code class="inline">List&lt;T&gt;</code>, LINQ, <code class="inline">$"..."</code>, NuGet</td><td>All of .NET is available: generic lists, string interpolation, async, and any NuGet package with a <code class="inline">// nuget:</code> line.</td></tr>
+</table></div>
+<h3 class="entry-title" id="from-processing-table">Equivalence table</h3>
+<div class="table-wrap"><table>
+  <tr><th>What</th><th>Processing (Java)</th><th>p5.js</th><th>DanaProcessing (C#)</th></tr>
+  <tr><td>Sketch structure</td><td><code class="inline">void setup() { } void draw() { }</code></td><td><code class="inline">function setup() { } function draw() { }</code></td><td><code class="inline">public class MySketch : Sketch { public override void Setup() { } public override void Draw() { } }</code></td></tr>
+  <tr><td>Canvas</td><td><code class="inline">size(600, 400);</code></td><td><code class="inline">createCanvas(600, 400);</code></td><td><code class="inline">Size(600, 400);</code></td></tr>
+  <tr><td>3D canvas</td><td><code class="inline">size(600, 400, P3D);</code></td><td><code class="inline">createCanvas(600, 400, WEBGL);</code></td><td><code class="inline">Size(600, 400, RendererKind.Renderer3D);</code></td></tr>
+  <tr><td>Colors</td><td><code class="inline">color c = color(255, 0, 0); fill(c);</code></td><td><code class="inline">let c = color(255, 0, 0); fill(c);</code></td><td><code class="inline">Color c = Color(255, 0, 0); Fill(c);</code></td></tr>
+  <tr><td>HSB</td><td><code class="inline">colorMode(HSB, 360, 100, 100); fill(h, s, b);</code></td><td><code class="inline">colorMode(HSB); fill(h, s, b);</code></td><td><code class="inline">FillHSB(h, s, b);  or  ColorMode(ColorSpaceMode.HSB, 360, 100, 100);</code></td></tr>
+  <tr><td>Shapes</td><td><code class="inline">ellipse(x, y, w, h); circle(x, y, d); rect(x, y, w, h);</code></td><td><code class="inline">ellipse(x, y, w, h); circle(x, y, d); rect(x, y, w, h);</code></td><td><code class="inline">Ellipse(x, y, w, h); Circle(x, y, d); Rect(x, y, w, h);</code></td></tr>
+  <tr><td>Rotation</td><td><code class="inline">rotate(radians(45));</code></td><td><code class="inline">rotate(radians(45));  (or angleMode(DEGREES))</code></td><td><code class="inline">Rotate(Radians(45));  or  RotateDegrees(45);</code></td></tr>
+  <tr><td>Transform stack</td><td><code class="inline">pushMatrix(); popMatrix(); push(); pop();</code></td><td><code class="inline">push(); pop();</code></td><td><code class="inline">PushMatrix(); PopMatrix(); PushStyle(); PopStyle();</code></td></tr>
+  <tr><td>Mouse position</td><td><code class="inline">mouseX, mouseY, pmouseX</code></td><td><code class="inline">mouseX, mouseY, pmouseX</code></td><td><code class="inline">MouseX, MouseY, PMouseX</code></td></tr>
+  <tr><td>Is the mouse down?</td><td><code class="inline">mousePressed  (boolean variable)</code></td><td><code class="inline">mouseIsPressed</code></td><td><code class="inline">IsMousePressed</code></td></tr>
+  <tr><td>Mouse event</td><td><code class="inline">void mousePressed() { }</code></td><td><code class="inline">function mousePressed() { }</code></td><td><code class="inline">public override void MousePressed() { }</code></td></tr>
+  <tr><td>Keys</td><td><code class="inline">key, keyCode, keyPressed, UP</code></td><td><code class="inline">key, keyCode, keyIsPressed, UP_ARROW</code></td><td><code class="inline">Key, KeyCode, IsKeyPressed, UP</code></td></tr>
+  <tr><td>Time</td><td><code class="inline">frameCount, millis(), frameRate(30)</code></td><td><code class="inline">frameCount, millis(), frameRate(30)</code></td><td><code class="inline">FrameCount, Millis(), FrameRate(30)</code></td></tr>
+  <tr><td>Math</td><td><code class="inline">map(), lerp(), constrain(), dist()</code></td><td><code class="inline">map(), lerp(), constrain(), dist()</code></td><td><code class="inline">Map(), Lerp(), Constrain(), Dist()</code></td></tr>
+  <tr><td>Random &amp; noise</td><td><code class="inline">random(10), random(5, 10), noise(t)</code></td><td><code class="inline">random(10), random(5, 10), noise(t)</code></td><td><code class="inline">Random(10), Random(5, 10), Noise(t)</code></td></tr>
+  <tr><td>Vectors</td><td><code class="inline">PVector v = new PVector(1, 2); v.add(w);</code></td><td><code class="inline">let v = createVector(1, 2); v.add(w);</code></td><td><code class="inline">var v = new PVector(1, 2); v += w;  (a value type)</code></td></tr>
+  <tr><td>Growable list</td><td><code class="inline">ArrayList&lt;Ball&gt; balls = new ArrayList&lt;Ball&gt;(); balls.add(b); balls.size()</code></td><td><code class="inline">let balls = []; balls.push(b); balls.length</code></td><td><code class="inline">var balls = new List&lt;Ball&gt;(); balls.Add(b); balls.Count</code></td></tr>
+  <tr><td>Arrays</td><td><code class="inline">int[] a = new int[10]; a.length</code></td><td><code class="inline">let a = new Array(10); a.length</code></td><td><code class="inline">int[] a = new int[10]; a.Length</code></td></tr>
+  <tr><td>Text</td><td><code class="inline">text("hi", x, y); textSize(20);</code></td><td><code class="inline">text("hi", x, y); textSize(20);</code></td><td><code class="inline">Text("hi", x, y); TextSize(20);</code></td></tr>
+  <tr><td>String formatting</td><td><code class="inline">nf(x, 2, 1), "x = " + x</code></td><td><code class="inline">nf(x, 2, 1), `x = ${x}`</code></td><td><code class="inline">Nf(x, 2, 1), $"x = {x:0.0}"</code></td></tr>
+  <tr><td>Images</td><td><code class="inline">PImage img = loadImage("a.png"); image(img, 0, 0);</code></td><td><code class="inline">let img = loadImage("a.png"); image(img, 0, 0);</code></td><td><code class="inline">PImage img = LoadImage("a.png"); Image(img, 0, 0);</code></td></tr>
+  <tr><td>Offscreen canvas</td><td><code class="inline">PGraphics pg = createGraphics(200, 200);</code></td><td><code class="inline">let pg = createGraphics(200, 200);</code></td><td><code class="inline">var pg = CreateGraphics(200, 200);</code></td></tr>
+  <tr><td>Pixels</td><td><code class="inline">loadPixels(); pixels[i] = color(0); updatePixels();</code></td><td><code class="inline">loadPixels(); pixels[i*4] = 0; updatePixels();</code></td><td><code class="inline">LoadPixels(); Pixels[i] = Color(0); UpdatePixels();</code></td></tr>
+  <tr><td>Saving</td><td><code class="inline">save("a.png"); saveFrame("f-####.png");</code></td><td><code class="inline">saveCanvas("a", "png");</code></td><td><code class="inline">Save("a.png"); SaveFrame("f-####.png");</code></td></tr>
+  <tr><td>Console</td><td><code class="inline">println(x);</code></td><td><code class="inline">console.log(x);</code></td><td><code class="inline">Println(x);</code></td></tr>
+  <tr><td>Data files</td><td><code class="inline">loadJSONObject("d.json"), loadTable("t.csv", "header")</code></td><td><code class="inline">loadJSON("d.json"), loadTable("t.csv", "csv", "header")</code></td><td><code class="inline">LoadJSONObject("d.json"), LoadTable("t.csv", "header")</code></td></tr>
+  <tr><td>Sound</td><td><code class="inline">Sound library: new SinOsc(this).play();</code></td><td><code class="inline">p5.sound: new p5.Oscillator().start();</code></td><td><code class="inline">Play(60);  and  [LiveLoop] async Task Beat() { ... await Sleep(1); }  (built in)</code></td></tr>
+</table></div>
+<h3 class="entry-title" id="from-processing-port">A sketch, ported</h3>
+<p class="entry-desc">Processing's classic bouncing ball, line for line. Left out: nothing.</p>
+<pre>// Processing                          // DanaProcessing
+float x = 100, vx = 3;                 // float x = 100, vx = 3;      (fields)
+void setup() {                         // public override void Setup() {
+  size(400, 200);                      //     Size(400, 200);
+}                                      // }
+void draw() {                          // public override void Draw() {
+  background(30);                      //     Background(30);
+  x += vx;                             //     x += vx;
+  if (x &lt; 20 || x &gt; width - 20)        //     if (x &lt; 20 || x &gt; Width - 20)
+    vx = -vx;                          //         vx = -vx;
+  ellipse(x, height / 2, 40, 40);      //     Ellipse(x, Height / 2, 40, 40);
+}                                      // }</pre>
+<div class="note"><strong>Run it:</strong> the same sketch, complete:</div>
+<div class="code-block">
+  <pre id="from-processing-code"><span class="kw">public</span> <span class="kw">class</span> Bounce : <span class="tp">Sketch</span>
+{
+    <span class="kw">float</span> x = <span class="str">100</span>, vx = <span class="str">3</span>;
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup()
+    {
+        Size(<span class="str">400</span>, <span class="str">200</span>);
+    }
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        Background(<span class="str">30</span>);
+        x += vx;
+        <span class="kw">if</span> (x &lt; <span class="str">20</span> || x &gt; Width - <span class="str">20</span>)
+vx = -vx;
+        Ellipse(x, Height / <span class="str">2</span>, <span class="str">40</span>, <span class="str">40</span>);
+    }
+}</pre>
+  <button class="dana-test-btn" data-target="from-processing-code" title="Run in DanaProcessing IDE">
+    <i class="ph-bold ph-play"></i>
+    <span class="dana-test-label">Test in Dana</span>
+  </button>
+</div>

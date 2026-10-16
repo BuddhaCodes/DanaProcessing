@@ -1,0 +1,57 @@
+<!--meta {"title": "PVector", "nav": "PVector", "summary": "A 3D vector struct for position, velocity, and acceleration — position, velocity, and acceleration in a particle system, steering, or plain 3D math for custom Vertex()/Normal()…", "tags": []} -->
+<p class="section-intro">A 3D vector struct for position, velocity, and acceleration — position, velocity, and acceleration in a particle system, steering, or plain 3D math for custom <a href="#shape-3d-custom"><code class="inline">Vertex()</code>/<code class="inline">Normal()</code></a> geometry. <code class="inline">Z</code> defaults to 0 via the 2-argument constructor, so 2D-only sketch code that only ever wrote <code class="inline">new PVector(x, y)</code> keeps working unchanged.</p>
+
+<div class="table-wrap">
+  <table>
+    <tr><th>instance (mutates)</th><th>static (pure)</th></tr>
+    <tr><td>Add / Sub / Mult / Div</td><td>Add / Sub / Mult / Div</td></tr>
+    <tr><td>Normalize / Limit(max) / SetMag(mag)</td><td>Dist(a, b) / Dot(a, b)</td></tr>
+    <tr><td>Rotate(rad)<sup>†</sup> / Set(x, y, z=0)</td><td>FromAngle(rad)<sup>†</sup></td></tr>
+    <tr><td>Lerp(v, amt)</td><td>Lerp(a, b, amt)</td></tr>
+    <tr><td>Cross(v)</td><td>Cross(a, b)</td></tr>
+    <tr><td>Mag() / MagSq() / Heading()<sup>†</sup> / Copy() / Array()</td><td>AngleBetween(a, b)</td></tr>
+  </table>
+</div>
+<p class="entry-desc" style="margin-top:10px;font-size:13.5px;"><sup>†</sup><code class="inline">Rotate()</code>/<code class="inline">FromAngle()</code>/<code class="inline">Heading()</code> only make sense for a vector lying in the XY plane and ignore <code class="inline">Z</code>, matching Processing's own documented 2D-only behavior for these three. For a genuine 3D rotation, rotate the point with <a href="#transform-3d"><code class="inline">RotateX/Y/Z()</code></a> instead.</p>
+
+<h3 class="entry-title" id="pvector-operators">Operators · Random2D() · Random3D()</h3>
+<p class="entry-desc"><code class="inline">a + b</code>, <code class="inline">a - b</code>, <code class="inline">v * 2</code>, <code class="inline">v / 2</code> and <code class="inline">-v</code> return a <strong>new</strong> vector and never change either side, so <code class="inline">pos += vel;</code> just works. <code class="inline">PVector.Random2D()</code> and <code class="inline">PVector.Random3D()</code> give a random direction of length 1, like Processing's <code class="inline">random2D()</code>/<code class="inline">random3D()</code>.</p>
+<div class="note"><strong>PVector is a struct.</strong> Copies are independent: <code class="inline">var p = list[i]; p.Add(v);</code> changes the copy, so write it back with <code class="inline">list[i] = p;</code>. Fields of a class (<code class="inline">particle.Pos.Add(v)</code>) are changed in place.</div>
+
+<h3 class="entry-title" id="pvector-cross">Cross(<span class="tp">PVector</span> v) <span class="sig-return">→ PVector</span></h3>
+<p class="entry-desc">The 3D cross product — perpendicular to both vectors, following the right-hand rule. Does <strong>not</strong> mutate <code class="inline">this</code> (unlike most other instance methods here), matching Processing's own <code class="inline">cross()</code>, which always returns a new <code class="inline">PVector</code>. For two vectors lying in the XY plane (<code class="inline">Z = 0</code>), the result points purely along <code class="inline">Z</code> — exactly what you want for a 2D face's "up" normal, as in the faceted-gem example under <a href="#shape-3d-custom">Custom 3D shapes</a>.</p>
+
+<h3 class="entry-title" id="pvector-example">Runnable example</h3>
+<p class="entry-desc">A complete sketch using this section. <strong>Test in Dana</strong> opens it in the IDE, or paste it into a new tab and press Run.</p>
+<div class="code-block">
+  <pre id="pvector-example-code"><span class="cm">// PVector: position, velocity and acceleration with operators.</span>
+<span class="kw">public</span> <span class="kw">class</span> Mover : <span class="tp">Sketch</span>
+{
+    <span class="tp">PVector</span> pos, vel;
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup()
+    {
+        Size(<span class="str">600</span>, <span class="str">400</span>);
+        pos = <span class="kw">new</span> <span class="tp">PVector</span>(<span class="str">300</span>, <span class="str">200</span>);
+        vel = <span class="kw">new</span> <span class="tp">PVector</span>(<span class="str">0</span>, <span class="str">0</span>);
+    }
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        Background(<span class="str">25</span>, <span class="str">30</span>, <span class="str">40</span>, <span class="str">40</span>);
+        <span class="kw">var</span> mouse = <span class="kw">new</span> <span class="tp">PVector</span>(MouseX, MouseY);
+        <span class="kw">var</span> acc = (mouse - pos).SetMag(<span class="str">0.4f</span>);   <span class="cm">// steer toward the mouse</span>
+        vel = (vel + acc).Limit(<span class="str">8</span>);
+        pos += vel;
+
+        NoStroke(); Fill(<span class="str">255</span>, <span class="str">190</span>, <span class="str">90</span>);
+        Circle(pos.X, pos.Y, <span class="str">24</span>);
+        Stroke(<span class="str">255</span>, <span class="str">120</span>);
+        Line(pos.X, pos.Y, pos.X + vel.X * <span class="str">6</span>, pos.Y + vel.Y * <span class="str">6</span>);
+    }
+}</pre>
+  <button class="dana-test-btn" data-target="pvector-example-code" title="Run in DanaProcessing IDE">
+    <i class="ph-bold ph-play"></i>
+    <span class="dana-test-label">Test in Dana</span>
+  </button>
+</div>

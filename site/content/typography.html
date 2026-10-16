@@ -1,0 +1,68 @@
+<!--meta {"title": "Typography", "nav": "Typography", "summary": "Typography", "tags": []} -->
+<h3 class="entry-title" id="textsize">TextSize(<span class="tp">float</span> size) · TextFont(<span class="tp">string?</span> path, <span class="tp">float?</span> size = null) · TextFont(<span class="tp">PFont</span> font, <span class="tp">float?</span> size = null)</h3>
+<p class="entry-desc"><code class="inline">TextFont(null)</code> resets to the default typeface. The <code class="inline">string</code> overload loads a font file directly; the <code class="inline">PFont</code> overload activates a font previously obtained via <code class="inline">CreateFont</code>/<code class="inline">LoadFont</code> and reuses its size unless you override it.</p>
+
+<h3 class="entry-title" id="createfont">CreateFont(<span class="tp">string</span> fontFamily, <span class="tp">float</span> size) <span class="sig-return">→ PFont</span></h3>
+<p class="entry-desc">Creates a font from an installed system font family, like Processing's <code class="inline">createFont(name, size)</code>. Unknown family names silently fall back to the system default rather than throwing.</p>
+
+<h3 class="entry-title" id="loadfont">LoadFont(<span class="tp">string</span> path, <span class="tp">float</span> size = 32) <span class="sig-return">→ PFont</span></h3>
+<p class="entry-desc">Loads a font file (.ttf/.otf/etc.) from disk.</p>
+<div class="note"><strong>Different from Processing's loadFont().</strong> Processing's own <code class="inline">loadFont()</code> loads a pre-baked <code class="inline">.vlw</code> bitmap font produced by the PDE's Tools&nbsp;&gt;&nbsp;Create&nbsp;Font. DanaProcessing has no equivalent pipeline, so this loads a real font file directly instead — same practical result, one less step.</div>
+
+<h3 class="entry-title" id="pfont">class PFont</h3>
+<p class="entry-desc">A loaded/created font. Get one from <code class="inline">CreateFont()</code>/<code class="inline">LoadFont()</code>, then activate it with <code class="inline">TextFont(font)</code>. Implements <code class="inline">IDisposable</code> — dispose it once nothing is drawing with it anymore.</p>
+
+<h3 class="entry-title" id="textalign">TextAlign(<span class="tp">TextAlignH</span> h, <span class="tp">TextAlignV</span> v = Baseline)</h3>
+<p class="entry-desc">Sets both axes of alignment.</p>
+
+<h3 class="entry-title" id="textmode">TextMode(<span class="tp">TextRenderMode</span> mode)</h3>
+<p class="entry-desc">Accepts <code class="inline">Model</code> — the only supported mode, regular text drawn straight to the canvas. <code class="inline">Shape</code> throws <code class="inline">NotSupportedException</code>, the same treatment as <code class="inline">Filter(Erode/Dilate)</code>.</p>
+
+<h3 class="entry-title" id="textleading">TextLeading(<span class="tp">float</span> leading)</h3>
+<p class="entry-desc">Line spacing for multi-line strings.</p>
+
+<h3 class="entry-title" id="textwidth">TextWidth(<span class="tp">string</span> text) · TextAscent() · TextDescent() <span class="sig-return">→ float</span></h3>
+<p class="entry-desc"><code class="inline">TextWidth</code> returns the widest line in a multi-line string.</p>
+
+<h3 class="entry-title" id="text">Text(<span class="tp">string</span> text, x, y)</h3>
+<p class="entry-desc">Draws text at (x, y) per the current alignment.</p>
+
+<h3 class="entry-title" id="typography-example">Runnable example</h3>
+<p class="entry-desc">A complete sketch using this section. <strong>Test in Dana</strong> opens it in the IDE, or paste it into a new tab and press Run.</p>
+<div class="code-block">
+  <pre id="typography-example-code"><span class="cm">// Text, TextSize, TextAlign, TextWidth and a font from the system.</span>
+<span class="kw">public</span> <span class="kw">class</span> Typo : <span class="tp">Sketch</span>
+{
+    <span class="tp">PFont</span> serif;
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup()
+    {
+        Size(<span class="str">600</span>, <span class="str">300</span>);
+        serif = CreateFont(<span class="str">"Georgia"</span>, <span class="str">48</span>);
+    }
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        Background(<span class="str">250</span>, <span class="str">245</span>, <span class="str">235</span>);
+        Fill(<span class="str">30</span>);
+
+        TextFont(serif);
+        TextAlign(<span class="tp">TextAlignH</span>.Center, <span class="tp">TextAlignV</span>.Center);
+        Text(<span class="str">"Hello, type"</span>, Width / <span class="str">2</span>, <span class="str">80</span>);
+
+        TextFont((<span class="kw">string</span>?)<span class="kw">null</span>);  <span class="cm">// back to the default font</span>
+        TextSize(<span class="str">16</span>);
+        <span class="kw">string</span> line = <span class="str">$"x = {MouseX:0}, y = {MouseY:0}"</span>;
+        <span class="kw">float</span> w = TextWidth(line);
+        TextAlign(<span class="tp">TextAlignH</span>.Left, <span class="tp">TextAlignV</span>.Baseline);
+        NoFill(); Stroke(<span class="str">200</span>, <span class="str">80</span>, <span class="str">60</span>);
+        Rect(MouseX - <span class="str">4</span>, MouseY - TextAscent() - <span class="str">4</span>, w + <span class="str">8</span>, TextAscent() + TextDescent() + <span class="str">8</span>);
+        NoStroke(); Fill(<span class="str">30</span>);
+        Text(line, MouseX, MouseY);
+    }
+}</pre>
+  <button class="dana-test-btn" data-target="typography-example-code" title="Run in DanaProcessing IDE">
+    <i class="ph-bold ph-play"></i>
+    <span class="dana-test-label">Test in Dana</span>
+  </button>
+</div>

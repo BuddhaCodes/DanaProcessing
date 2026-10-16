@@ -1,0 +1,9 @@
+<!--meta {"title": "Avalonia host", "nav": "Avalonia host", "summary": "Embeds a Sketch in a cross-platform Avalonia app.", "tags": []} -->
+<p class="section-intro">Embeds a <code class="inline">Sketch</code> in a cross-platform Avalonia app.</p>
+
+<h3 class="entry-title" id="avaloniasketchcanvas">AvaloniaSketchCanvas</h3>
+<p class="entry-desc">A <code class="inline">Control</code> that drives the sketch's <code class="inline">Setup()</code>/<code class="inline">Draw()</code> loop on a <code class="inline">DispatcherTimer</code>.</p>
+<div class="note"><strong>Why it keeps its own surface.</strong> Avalonia's Skia interop only leases an <code class="inline">SKCanvas</code>, never the <code class="inline">SKSurface</code> — so the control keeps its own offscreen <code class="inline">SKSurface</code> to make <code class="inline">Save()</code> work.</div>
+
+<h3 class="entry-title" id="avaloniasketchwindow">AvaloniaSketchWindow</h3>
+<p class="entry-desc">A thin standalone <code class="inline">Window</code> wrapper around <code class="inline">AvaloniaSketchCanvas</code>.</p>

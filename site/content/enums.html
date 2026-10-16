@@ -1,0 +1,111 @@
+<!--meta {"title": "Enumerations", "nav": "Enumerations", "summary": "Shared between Sketch and PGraphics.", "tags": []} -->
+<p class="section-intro">Shared between <code class="inline">Sketch</code> and <code class="inline">PGraphics</code>.</p>
+
+<table class="enum-table">
+  <caption>RendererKind</caption>
+  <tr><td>Renderer2D</td><td>Skia software rasterizer — the default. Everything under <a href="#shape-primitives">Drawing</a>.</td></tr>
+  <tr><td>Renderer3D</td><td>Offscreen OpenGL 3.3. Set once via <code class="inline">Size()</code>/<code class="inline">CreateGraphics()</code> and locked for that context's lifetime. See <a href="#getting-started-3d">3D — Getting started</a>.</td></tr>
+</table>
+
+
+<table class="enum-table">
+  <caption>ColorSpaceMode</caption>
+  <tr><td>RGB</td><td>Each argument 0–255 (default).</td></tr>
+  <tr><td>HSB</td><td>Hue 0–360, saturation/brightness 0–100.</td></tr>
+</table>
+
+<table class="enum-table">
+  <caption>ShapeAlignMode</caption>
+  <tr><td>Corner</td><td>x, y, width, height (default for rect/shape).</td></tr>
+  <tr><td>Corners</td><td>Two opposite corners.</td></tr>
+  <tr><td>Center</td><td>Center point, width, height (default for ellipse).</td></tr>
+  <tr><td>Radius</td><td>Center point, x-radius, y-radius.</td></tr>
+</table>
+
+<table class="enum-table">
+  <caption>ArcMode</caption>
+  <tr><td>Open</td><td>Unconnected arc.</td></tr>
+  <tr><td>Chord</td><td>Closed with a straight line between ends.</td></tr>
+  <tr><td>Pie</td><td>Closed through the center.</td></tr>
+</table>
+
+<table class="enum-table">
+  <caption>StrokeCapKind</caption>
+  <tr><td>Round</td><td>Rounded line end.</td></tr>
+  <tr><td>Square</td><td>Flush end (Skia's "Butt").</td></tr>
+  <tr><td>Project</td><td>Extends past the endpoint (Skia's "Square").</td></tr>
+</table>
+
+<table class="enum-table">
+  <caption>StrokeJoinKind</caption>
+  <tr><td>Miter</td><td>Sharp corner.</td></tr>
+  <tr><td>Bevel</td><td>Flattened corner.</td></tr>
+  <tr><td>Round</td><td>Rounded corner.</td></tr>
+</table>
+
+<table class="enum-table">
+  <caption>ShapeKind</caption>
+  <tr><td>Polygon</td><td>Default — supports curved segments.</td></tr>
+  <tr><td>Points</td><td>Each vertex drawn as a point.</td></tr>
+  <tr><td>Lines</td><td>Vertices grouped in pairs.</td></tr>
+  <tr><td>Triangles</td><td>Grouped in threes; supports mesh rendering.</td></tr>
+  <tr><td>TriangleFan / TriangleStrip</td><td>Shared-vertex triangles.</td></tr>
+  <tr><td>Quads / QuadStrip</td><td>Grouped or shared-vertex quads.</td></tr>
+</table>
+<div class="note"><strong>Under Renderer3D:</strong> <code class="inline">Triangles</code>/<code class="inline">TriangleFan</code>/<code class="inline">TriangleStrip</code>/<code class="inline">Quads</code>/<code class="inline">QuadStrip</code>/<code class="inline">Polygon</code> (triangulated as a fan) build and draw a real GPU mesh. <code class="inline">Points</code>/<code class="inline">Lines</code> aren't supported there — no meaningful normal to light them with — and throw <code class="inline">NotSupportedException</code>. See <a href="#shape-3d-custom">Custom 3D shapes</a>.</div>
+
+<table class="enum-table">
+  <caption>PShapeType</caption>
+  <tr><td>Rect / Ellipse / Line / Triangle / Quad</td><td>Used with <a href="#createshape"><code class="inline">CreateShape(type, ...)</code></a> to build a 2D primitive shape from raw coordinates.</td></tr>
+</table>
+
+<table class="enum-table">
+  <caption>TextAlignH / TextAlignV</caption>
+  <tr><td>Left, Center, Right</td><td>Horizontal.</td></tr>
+  <tr><td>Baseline, Top, Center, Bottom</td><td>Vertical.</td></tr>
+</table>
+
+<table class="enum-table">
+  <caption>MouseButtonKind / CursorKind</caption>
+  <tr><td>None, Left, Right, Center</td><td>Mouse buttons.</td></tr>
+  <tr><td>Arrow, Cross, Hand, Move, Text, Wait</td><td>Cursor shapes.</td></tr>
+</table>
+
+<table class="enum-table">
+  <caption>BlendModeKind</caption>
+  <tr><td>Blend</td><td>Normal alpha compositing (default).</td></tr>
+  <tr><td>Add</td><td>Additive.</td></tr>
+  <tr><td>Darkest / Lightest</td><td>Per-channel min / max.</td></tr>
+  <tr><td>Difference / Exclusion</td><td>Absolute difference, with/without a flattened midtone.</td></tr>
+  <tr><td>Multiply / Screen</td><td>Darkens / lightens by multiplying.</td></tr>
+  <tr><td>Overlay / HardLight / SoftLight</td><td>Contrast-boosting blends.</td></tr>
+  <tr><td>Dodge / Burn</td><td>Lightens / darkens the base by the blend color.</td></tr>
+</table>
+<div class="note"><strong>No SUBTRACT.</strong> Processing's <code class="inline">SUBTRACT</code> has no direct Skia blend-mode equivalent (it isn't a true channel subtraction in Skia's set), so it's deliberately left out rather than approximated poorly.</div>
+
+<table class="enum-table">
+  <caption>FilterKind</caption>
+  <tr><td>Gray / Invert / Opaque</td><td>Grayscale, invert RGB, force alpha to 255.</td></tr>
+  <tr><td>Threshold</td><td>Black/white split at <code class="inline">param</code> (0–1, default 0.5).</td></tr>
+  <tr><td>Posterize</td><td>Reduces to <code class="inline">param</code> levels per channel.</td></tr>
+  <tr><td>Blur</td><td><code class="inline">param</code> is the pixel radius.</td></tr>
+  <tr><td>Erode / Dilate</td><td>Not implemented — throws <code class="inline">NotSupportedException</code>.</td></tr>
+</table>
+
+<table class="enum-table">
+  <caption>TextureModeKind</caption>
+  <tr><td>Image</td><td><code class="inline">Vertex(x, y, u, v)</code>'s u/v are pixel coordinates into the texture (Processing's own default).</td></tr>
+  <tr><td>Normal</td><td>u/v are already 0–1 — DanaProcessing's default; see the note under <a href="#shape-custom">Custom shapes</a>.</td></tr>
+</table>
+
+<table class="enum-table">
+  <caption>TextureWrapKind</caption>
+  <tr><td>Clamp</td><td>Repeats the edge pixel outside the 0–1 range (default).</td></tr>
+  <tr><td>Repeat</td><td>Tiles the texture.</td></tr>
+</table>
+
+<table class="enum-table">
+  <caption>TextRenderMode</caption>
+  <tr><td>Model</td><td>Regular text drawn straight to the canvas (default, and the only mode implemented).</td></tr>
+  <tr><td>Shape</td><td>Not implemented — throws <code class="inline">NotSupportedException</code>.</td></tr>
+</table>

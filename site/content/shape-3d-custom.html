@@ -1,0 +1,53 @@
+<!--meta {"title": "Custom 3D shapes", "nav": "Custom 3D shapes", "summary": "BeginShape()/Vertex()/EndShape() (from Custom shapes) work under Renderer3D too — they build and draw a real triangle mesh instead of an SKPath. Triangulation happens on the…", "tags": ["3D renderer"]} -->
+<p class="section-intro"><code class="inline">BeginShape()</code>/<code class="inline">Vertex()</code>/<code class="inline">EndShape()</code> (from <a href="#shape-custom">Custom shapes</a>) work under Renderer3D too — they build and draw a real triangle mesh instead of an <code class="inline">SKPath</code>. Triangulation happens on the CPU; the result uploads as one <code class="inline">GL_TRIANGLES</code> draw call, the same way <code class="inline">Box()</code>/<code class="inline">Sphere()</code> already work.</p>
+
+<h3 class="entry-title" id="normal">Normal(<span class="tp">float</span> nx, ny, nz)</h3>
+<p class="entry-desc">Sets the current normal vector. Affects vertices added <em>after</em> this call — call it once per face, before that face's vertices, for flat shading (the faceted-gem example below), or share one normal across several vertices for smooth shading. Default before any call: <code class="inline">(0, 0, 1)</code>.</p>
+
+<h3 class="entry-title" id="vertex-3d">Vertex(x, y, <span class="tp">float</span> z) · Vertex(x, y, z, u, v)</h3>
+<p class="entry-desc">3D vertex overloads of <a href="#vertex"><code class="inline">Vertex()</code></a>, only valid inside <code class="inline">BeginShape()</code>/<code class="inline">EndShape()</code> while running under Renderer3D — the plain <code class="inline">Vertex(x, y)</code> also works there, treated as <code class="inline">z = 0</code>. The 5-argument overload adds texture coordinates <code class="inline">(u, v)</code> in 0–1, looked up in whatever image <code class="inline">Texture()</code> set for this shape — the same <code class="inline">Texture()</code>/<code class="inline">NoTexture()</code> the 2D mesh path already uses.</p>
+
+<div class="table-wrap">
+  <table>
+    <tr><th>ShapeKind under Renderer3D</th><th>triangulation</th></tr>
+    <tr><td>Triangles</td><td>Consecutive groups of 3.</td></tr>
+    <tr><td>TriangleStrip</td><td>Shared-edge strip, winding alternates by parity.</td></tr>
+    <tr><td>TriangleFan</td><td>All triangles share vertex 0.</td></tr>
+    <tr><td>Quads</td><td>Groups of 4, split into 2 triangles each.</td></tr>
+    <tr><td>QuadStrip</td><td>Shared-edge quad strip, split into 2 triangles each.</td></tr>
+    <tr><td>Polygon</td><td>Fan-triangulated from vertex 0 — correct for convex shapes, same limitation Processing itself documents for concave ones under P3D.</td></tr>
+    <tr><td>Points / Lines</td><td><strong>Not supported</strong> — no meaningful normal to light them with. Throws <code class="inline">NotSupportedException</code>.</td></tr>
+  </table>
+</div>
+
+<div class="code-block">
+<pre><span class="cm">// Faceted octahedron -- each face calls Normal() (via PVector.Cross()</span>
+<span class="cm">// between two edges) before its 3 Vertex() calls, for flat shading.</span>
+BeginShape(<span class="tp">ShapeKind</span>.Triangles);
+<span class="kw">var</span> faceNormal = <span class="tp">PVector</span>.Cross(<span class="tp">PVector</span>.Sub(b, a), <span class="tp">PVector</span>.Sub(c, a)).Normalize();
+Normal(faceNormal.X, faceNormal.Y, faceNormal.Z);
+Vertex(a.X, a.Y, a.Z);
+Vertex(b.X, b.Y, b.Z);
+Vertex(c.X, c.Y, c.Z);
+<span class="cm">// ... repeat per face ...</span>
+EndShape();</pre>
+</div>
+
+<h3 class="entry-title" id="createshape3d">CreateShape3D(<span class="tp">ShapeKind</span> kind, <span class="tp">Action</span> buildVertices) <span class="sig-return">→ PShape</span></h3>
+<p class="entry-desc">Builds a reusable 3D <code class="inline">PShape</code> once — like combining Processing's <code class="inline">createShape()</code> with its own <code class="inline">beginShape()</code>/<code class="inline">endShape()</code>. Call the <strong>same</strong> <code class="inline">Vertex()</code>/<code class="inline">Normal()</code> calls you'd use with immediate-mode <code class="inline">BeginShape()</code>/<code class="inline">EndShape()</code> inside <code class="inline">buildVertices</code> — don't call <code class="inline">BeginShape()</code>/<code class="inline">EndShape()</code> yourself in there, <code class="inline">CreateShape3D()</code> wraps both. The mesh uploads to the GPU exactly <strong>once</strong> (<code class="inline">StaticDraw</code>); draw it as many times as you want afterward with <a href="#shape"><code class="inline">Shape(shape, x, y)</code></a> instead of re-recording and re-uploading the same geometry every frame the way a bare <code class="inline">BeginShape()</code>/<code class="inline">EndShape()</code> call would.</p>
+<div class="note"><strong>No BeginDraw()/EndDraw() needed.</strong> This claims and releases the GL context on its own — call it loose, typically once in <code class="inline">Setup()</code>.</div>
+<div class="note"><strong>Texture() goes inside the callback.</strong> <code class="inline">BeginShape()</code> (called internally by <code class="inline">CreateShape3D()</code>, before <code class="inline">buildVertices</code> runs) resets the shape's texture — so call <code class="inline">Texture(img)</code> as the <em>first line inside</em> <code class="inline">buildVertices</code>, not before <code class="inline">CreateShape3D()</code>.</div>
+
+<div class="code-block">
+<pre>_gemShape = CreateShape3D(<span class="tp">ShapeKind</span>.Triangles, () =&gt;
+{
+    <span class="cm">// ... Normal()/Vertex() per face, as above ...</span>
+});
+
+<span class="cm">// every frame, in Draw():</span>
+PushMatrix();
+Translate(x, y, z);
+Shape(_gemShape, <span class="str">0</span>, <span class="str">0</span>);   <span class="cm">// no re-triangulating or re-uploading anything</span>
+PopMatrix();</pre>
+</div>
+<div class="note"><strong>Scaling.</strong> Unlike the 2D <code class="inline">Shape()</code> overload, <code class="inline">w</code>/<code class="inline">h</code> scaling isn't supported for a 3D mesh — a baked mesh's own coordinates already define its size. Wrap the call in your own <code class="inline">PushMatrix()</code>/<code class="inline">Scale()</code>/<code class="inline">Rotate()</code>/<code class="inline">PopMatrix()</code> instead.</div>

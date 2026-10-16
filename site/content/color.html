@@ -1,0 +1,85 @@
+<!--meta {"title": "Color", "nav": "Color", "summary": "Fill and stroke are persistent state, set before the shape that uses them. All three-argument color methods are interpreted through the current ColorMode — RGB (0–255) or HSB…", "tags": []} -->
+<p class="section-intro">Fill and stroke are persistent state, set before the shape that uses them. All three-argument color methods are interpreted through the current <code class="inline">ColorMode</code> — RGB (0–255) or HSB (hue 0–360, saturation/brightness 0–100).</p>
+
+<h3 class="entry-title" id="colormode">ColorMode(<span class="tp">ColorSpaceMode</span> mode) · ColorMode(mode, max) · ColorMode(mode, max1, max2, max3, maxA?)</h3>
+<p class="entry-desc">Chooses how <code class="inline">Fill</code>/<code class="inline">Stroke</code>/<code class="inline">Background</code>/<code class="inline">Color</code> interpret arguments. With no range given, both RGB and HSB default to 0–255 on every channel — <strong>same as Processing</strong>, HSB doesn't silently switch to 360/100/100 until you ask for it explicitly, e.g. <code class="inline">ColorMode(HSB, 360, 100, 100)</code>. The 3-max overload leaves alpha's range untouched.</p>
+
+<h3 class="entry-title" id="color-function">Color(a1, a2, a3, alpha = 255) · Color(gray, alpha = 255) <span class="sig-return">→ Color</span></h3>
+<p class="entry-desc">Builds a <code class="inline">Color</code> value, interpreted through the current <code class="inline">ColorMode</code> — the direct equivalent of Processing's <code class="inline">color(...)</code> function. Different from <code class="inline">new Color(r, g, b)</code>, which is always plain 0–255 RGB no matter what <code class="inline">ColorMode</code> is set to.</p>
+<div class="note"><strong>Why both can coexist.</strong> <code class="inline">Color</code> the struct can't declare a same-named method on itself (C# error CS0542), so <code class="inline">new Color(r, g, b)</code> is the constructor form. <code class="inline">GraphicsContext.Color(...)</code> is a different type entirely, so it's free to use the name — and C# never confuses the two: <code class="inline">new Color(...)</code> always means the constructor, bare <code class="inline">Color(...)</code> always means this method.</div>
+
+<h3 class="entry-title" id="fill">Fill(a1, a2, a3, alpha = 255) · Fill(gray, alpha = 255) · Fill(<span class="tp">Color</span> c) · FillHSB(...) · NoFill()</h3>
+<p class="entry-desc">Sets the fill color. <code class="inline">FillHSB(h, s, b, alpha = 255)</code> always reads as HSB (hue 0–360 and wrapping around, saturation and brightness 0–100) regardless of <code class="inline">ColorMode</code>: a shortcut for the most common case.</p>
+
+<h3 class="entry-title" id="stroke">Stroke(a1, a2, a3, alpha = 255) · Stroke(gray, alpha = 255) · Stroke(<span class="tp">Color</span> c) · StrokeHSB(...) · NoStroke()</h3>
+<p class="entry-desc">Sets the stroke (outline) color.</p>
+
+<h3 class="entry-title" id="strokeweight">StrokeWeight(<span class="tp">float</span> w) · StrokeCap(<span class="tp">StrokeCapKind</span>) · StrokeJoin(<span class="tp">StrokeJoinKind</span>)</h3>
+<p class="entry-desc">Line width, end-cap style, and corner style.</p>
+
+<div class="note"><strong>Naming collision.</strong> <code class="inline">StrokeCapKind.Square</code> maps to Skia's <em>Butt</em> (flush), and <code class="inline">StrokeCapKind.Project</code> maps to Skia's <em>Square</em> (extends past the endpoint).</div>
+
+<h3 class="entry-title" id="background">Background(a1, a2, a3, alpha = 255) · Background(gray, alpha = 255) · Background(<span class="tp">Color</span> c) · Clear()</h3>
+<p class="entry-desc"><code class="inline">Background</code> fills the canvas with an opaque color. <code class="inline">Clear</code> wipes to transparent — useful on <code class="inline">PGraphics</code>.</p>
+
+<h3 class="entry-title" id="tint">Tint(a1, a2, a3, alpha = 255) · Tint(<span class="tp">byte</span> alpha) · NoTint()</h3>
+<p class="entry-desc">Sets a color/alpha multiplier applied to images drawn via <code class="inline">Image()</code>.</p>
+
+<h3 class="entry-title" id="color-channels">Red / Green / Blue / Alpha / Hue / Saturation / Brightness(<span class="tp">Color</span> c)</h3>
+<p class="entry-desc">Extracts one channel from a <code class="inline">Color</code>.</p>
+
+<h3 class="entry-title" id="lerpcolor">LerpColor(<span class="tp">Color</span> c1, <span class="tp">Color</span> c2, <span class="tp">float</span> amt) <span class="sig-return">→ Color</span></h3>
+<p class="entry-desc">Interpolates two colors in RGB space.</p>
+
+<h3 class="entry-title" id="color-struct">struct Color</h3>
+<p class="entry-desc">An RGBA value — a real struct built with <code class="inline">new Color(r, g, b, a)</code> or <code class="inline">Color.FromHsb(h, s, br, a)</code>.</p>
+
+<h3 class="entry-title" id="pushstyle">PushStyle() · PopStyle()</h3>
+<p class="entry-desc">Saves/restores every drawing style this class tracks — fill/stroke colors, <code class="inline">ColorMode</code> ranges, <code class="inline">RectMode</code>/<code class="inline">EllipseMode</code>/<code class="inline">ShapeMode</code>/<code class="inline">ImageMode</code>, tint, stroke weight/cap/join, text size/align/leading, curve tightness, <code class="inline">Smooth</code>, and <code class="inline">BlendMode</code> — deliberately everything <code class="inline">PushMatrix</code>/<code class="inline">PopMatrix</code> doesn't already cover.</p>
+<div class="note"><strong>Not restored.</strong> A gradient set via <code class="inline">LinearGradientFill</code>/<code class="inline">RadialGradientFill</code> isn't tracked by <code class="inline">PushStyle</code> — call <code class="inline">Fill()</code> with a plain color afterward if you need to clear one.</div>
+
+<h3 class="entry-title" id="smooth">Smooth() · NoSmooth()</h3>
+<p class="entry-desc">Toggles antialiasing for shapes, lines, and text drawn from here on. On by default; <code class="inline">NoSmooth()</code> gives hard, pixelated edges — occasionally wanted for pixel-art-style sketches.</p>
+
+<h3 class="entry-title" id="blendmode">BlendMode(<span class="tp">BlendModeKind</span> mode)</h3>
+<p class="entry-desc">Sets the compositing mode for every drawing operation from here on — shapes, images, and text. See <a href="#enums">BlendModeKind</a> for the full list, and <a href="#pixels">Pixels</a> for <code class="inline">Blend()</code>, which takes a mode per call instead of setting it globally.</p>
+
+<h3 class="entry-title" id="color-example">Runnable example</h3>
+<p class="entry-desc">A complete sketch using this section. <strong>Test in Dana</strong> opens it in the IDE, or paste it into a new tab and press Run.</p>
+<div class="code-block">
+  <pre id="color-example-code"><span class="cm">// RGB, gray, alpha and HSB side by side. Move the mouse to change the hue.</span>
+<span class="kw">public</span> <span class="kw">class</span> Colors : <span class="tp">Sketch</span>
+{
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup() =&gt; Size(<span class="str">600</span>, <span class="str">300</span>);
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        Background(<span class="str">240</span>);
+        NoStroke();
+
+        Fill(<span class="str">230</span>, <span class="str">80</span>, <span class="str">60</span>);            Rect(<span class="str">20</span>, <span class="str">20</span>, <span class="str">120</span>, <span class="str">120</span>);   <span class="cm">// RGB</span>
+        Fill(<span class="str">90</span>);                     Rect(<span class="str">160</span>, <span class="str">20</span>, <span class="str">120</span>, <span class="str">120</span>);  <span class="cm">// gray</span>
+        Fill(<span class="str">40</span>, <span class="str">120</span>, <span class="str">220</span>, <span class="str">120</span>);      Rect(<span class="str">100</span>, <span class="str">80</span>, <span class="str">120</span>, <span class="str">120</span>);  <span class="cm">// RGB + alpha, overlapping</span>
+
+        <span class="cm">// FillHSB: hue 0..360, saturation and brightness 0..100.</span>
+        <span class="kw">float</span> hue = Map(MouseX, <span class="str">0</span>, Width, <span class="str">0</span>, <span class="str">360</span>);
+        <span class="kw">for</span> (<span class="kw">int</span> i = <span class="str">0</span>; i &lt; <span class="str">10</span>; i++)
+        {
+FillHSB(hue + i * <span class="str">12</span>, <span class="str">70</span>, <span class="str">95</span>);
+Rect(<span class="str">320</span> + i * <span class="str">26</span>, <span class="str">20</span>, <span class="str">24</span>, <span class="str">180</span>);
+        }
+
+        <span class="cm">// Colors are values: build them once, mix them with LerpColor.</span>
+        <span class="tp">Color</span> a = <span class="tp">Color</span>(<span class="str">255</span>, <span class="str">200</span>, <span class="str">0</span>), b = <span class="tp">Color</span>(<span class="str">120</span>, <span class="str">0</span>, <span class="str">200</span>);
+        <span class="kw">for</span> (<span class="kw">int</span> i = <span class="str">0</span>; i &lt; <span class="str">20</span>; i++)
+        {
+Fill(LerpColor(a, b, i / <span class="str">19f</span>));
+Rect(<span class="str">20</span> + i * <span class="str">28</span>, <span class="str">230</span>, <span class="str">26</span>, <span class="str">50</span>);
+        }
+    }
+}</pre>
+  <button class="dana-test-btn" data-target="color-example-code" title="Run in DanaProcessing IDE">
+    <i class="ph-bold ph-play"></i>
+    <span class="dana-test-label">Test in Dana</span>
+  </button>
+</div>

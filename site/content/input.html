@@ -1,0 +1,77 @@
+<!--meta {"title": "Mouse, keyboard & time", "nav": "Input & time", "summary": "Position and key state are plain properties; press/release/move are virtual methods.", "tags": []} -->
+<p class="section-intro">Position and key state are plain properties; press/release/move are virtual methods.</p>
+
+<div class="table-wrap">
+  <table>
+    <tr><th>mouse</th><th>keyboard</th></tr>
+    <tr><td>MouseX / MouseY / PMouseX / PMouseY</td><td>Key / KeyCode / IsKeyPressed</td></tr>
+    <tr><td>IsMousePressed / MouseButton</td><td>CODED, BACKSPACE, TAB, ENTER, RETURN, ESC, DELETE</td></tr>
+    <tr><td>MousePressed() / MouseReleased() / MouseClicked()</td><td>UP, DOWN, LEFT, RIGHT, ALT, CONTROL, SHIFT</td></tr>
+    <tr><td>MouseDragged() / MouseMoved() / MouseWheel(delta)</td><td>KeyPressed() / KeyReleased()</td></tr>
+    <tr><td>Focused</td><td>KeyTyped()</td></tr>
+  </table>
+</div>
+
+<h3 class="entry-title" id="keytyped">KeyTyped() <span class="sig-return">→ void</span> · virtual</h3>
+<p class="entry-desc">Fires for printable keys only (<code class="inline">Key != CODED</code>) — a companion to <code class="inline">KeyPressed()</code>/<code class="inline">KeyReleased()</code>, which fire for every key including arrows and modifiers.</p>
+
+<h3 class="entry-title" id="focused">Focused <span class="sig-return">→ bool</span></h3>
+<p class="entry-desc">Whether the sketch's window currently has input focus. Defaults to true; a host that embeds the sketch updates it as its window gains/loses focus.</p>
+
+<h3 class="entry-title" id="millis">Millis() <span class="sig-return">→ long</span> · NanoTime() <span class="sig-return">→ long</span></h3>
+<p class="entry-desc"><code class="inline">Millis()</code> is milliseconds since the sketch started. <code class="inline">NanoTime()</code> is the same idea at nanosecond resolution — limited in practice by whatever precision the OS timer actually offers.</p>
+
+<h3 class="entry-title" id="day">Day() · Month() · Year() · Hour() · Minute() · Second() <span class="sig-return">→ int</span></h3>
+<p class="entry-desc">Reads the local system clock at call time — unlike <code class="inline">Millis()</code>, which is relative to sketch start.</p>
+
+<h3 class="entry-title" id="cursor">Cursor(<span class="tp">CursorKind</span> kind) · NoCursor()</h3>
+<p class="entry-desc">Raises the <code class="inline">CursorRequested</code> event.</p>
+
+<h3 class="entry-title" id="selectinput">SelectInput(prompt, callback) · SelectOutput(prompt, callback) · SelectFolder(prompt, callback)</h3>
+<p class="entry-desc">Raises the <code class="inline">SelectFileRequested</code> event with a <code class="inline">SelectFileRequest</code> describing which native dialog to show. DanaProcessing doesn't own a window, so — like <code class="inline">Cursor()</code>/<code class="inline">NoCursor()</code> — this can't pop a dialog itself; the host shows its own native dialog and calls <code class="inline">Respond(path)</code> (or <code class="inline">Respond(null)</code> on cancel) once the user answers.</p>
+
+<h3 class="entry-title" id="launch">Launch(<span class="tp">string</span> path)</h3>
+<p class="entry-desc">Opens a file, folder, URL, or application with the OS's default handler, like Processing's <code class="inline">launch()</code>. Fire-and-forget — returns as soon as the OS has been asked to open it. Unlike <code class="inline">SelectInput</code>/<code class="inline">Cursor</code>, this doesn't need a host at all: it goes straight to <code class="inline">Process.Start</code>.</p>
+
+<h3 class="entry-title" id="input-example">Runnable example</h3>
+<p class="entry-desc">A complete sketch using this section. <strong>Test in Dana</strong> opens it in the IDE, or paste it into a new tab and press Run.</p>
+<div class="code-block">
+  <pre id="input-example-code"><span class="cm">// Mouse and keyboard: events and the state you can read any time.</span>
+<span class="kw">public</span> <span class="kw">class</span> Input : <span class="tp">Sketch</span>
+{
+    <span class="kw">readonly</span> <span class="tp">List</span>&lt;<span class="tp">PVector</span>&gt; dots = <span class="kw">new</span>();
+    <span class="kw">string</span> lastKey = <span class="str">"none"</span>;
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup() =&gt; Size(<span class="str">600</span>, <span class="str">400</span>);
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        Background(IsMousePressed ? <span class="str">60</span> : <span class="str">30</span>);
+        Fill(<span class="str">255</span>, <span class="str">200</span>, <span class="str">80</span>); NoStroke();
+        <span class="kw">foreach</span> (<span class="kw">var</span> d <span class="kw">in</span> dots) Circle(d.X, d.Y, <span class="str">12</span>);
+
+        Stroke(<span class="str">255</span>); StrokeWeight(<span class="str">2</span>);
+        Line(PMouseX, PMouseY, MouseX, MouseY);   <span class="cm">// last frame's mouse to this one's</span>
+
+        NoStroke(); Fill(<span class="str">255</span>);
+        Text(<span class="str">$"mouse {MouseX:0},{MouseY:0} · button {MouseButton} · last key {lastKey} · time {Millis() / 1000}s"</span>, <span class="str">10</span>, <span class="str">20</span>);
+        Text(<span class="str">"click: dot · drag: many dots · C: clear · arrows: move all"</span>, <span class="str">10</span>, <span class="str">390</span>);
+    }
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> MousePressed() =&gt; dots.Add(<span class="kw">new</span> <span class="tp">PVector</span>(MouseX, MouseY));
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> MouseDragged() =&gt; dots.Add(<span class="kw">new</span> <span class="tp">PVector</span>(MouseX, MouseY));
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> KeyPressed()
+    {
+        lastKey = Key == CODED ? <span class="str">$"code {KeyCode}"</span> : Key.ToString();
+        <span class="kw">if</span> (Key == <span class="str">'c'</span>) dots.Clear();
+        <span class="kw">var</span> step = KeyCode == LEFT ? <span class="kw">new</span> <span class="tp">PVector</span>(-<span class="str">10</span>, <span class="str">0</span>) : KeyCode == RIGHT ? <span class="kw">new</span> <span class="tp">PVector</span>(<span class="str">10</span>, <span class="str">0</span>)
+     : KeyCode == UP ? <span class="kw">new</span> <span class="tp">PVector</span>(<span class="str">0</span>, -<span class="str">10</span>) : KeyCode == DOWN ? <span class="kw">new</span> <span class="tp">PVector</span>(<span class="str">0</span>, <span class="str">10</span>) : <span class="kw">new</span> <span class="tp">PVector</span>(<span class="str">0</span>, <span class="str">0</span>);
+        <span class="kw">for</span> (<span class="kw">int</span> i = <span class="str">0</span>; i &lt; dots.Count; i++) dots[i] += step;
+    }
+}</pre>
+  <button class="dana-test-btn" data-target="input-example-code" title="Run in DanaProcessing IDE">
+    <i class="ph-bold ph-play"></i>
+    <span class="dana-test-label">Test in Dana</span>
+  </button>
+</div>

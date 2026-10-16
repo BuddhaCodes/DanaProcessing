@@ -1,0 +1,31 @@
+<!--meta {"title": "What DanaProcessing is", "nav": "Overview", "summary": "DanaProcessing ports the shape and feel of the Processing language to C#. Instead of Java's color() function and bit-packed ints, colors are a real Color struct. Instead of a…", "tags": []} -->
+<p class="section-intro">DanaProcessing ports the shape and feel of the Processing language to C#. Instead of Java's <code class="inline">color()</code> function and bit-packed ints, colors are a real <code class="inline">Color</code> struct. Instead of a fixed window, a <code class="inline">Sketch</code> can be hosted inside Avalonia or the bundled IDE. Everything else — the mental model of <code class="inline">Setup()</code> once and <code class="inline">Draw()</code> every frame, fill/stroke state, <code class="inline">beginShape()</code>/<code class="inline">endShape()</code>, <code class="inline">noise()</code> — is carried over on purpose.</p>
+
+<p class="section-intro">The same <code class="inline">Sketch</code> has a second renderer built in: pass <code class="inline">RendererKind.Renderer3D</code> to <code class="inline">Size()</code> and the exact same <code class="inline">Setup()</code>/<code class="inline">Draw()</code> model gets you real OpenGL geometry — <code class="inline">Box()</code>/<code class="inline">Sphere()</code>, lights, cameras, materials, custom shaders — no separate engine, no second API to learn (see <a href="#getting-started-3d">Getting started in 3D</a>). All of it runs inside a desktop IDE built specifically for this workflow: diagnostics underline mistakes as you type, a <code class="inline">// nuget:</code> comment resolves a package before you hit Run, and Run itself compiles in memory and swaps the canvas in well under a second (see <a href="#ide">The IDE</a>).</p>
+
+<div class="note"><strong>Where things live.</strong> Drawing state and operations are defined once on <code class="inline">GraphicsContext</code>, inherited by both <code class="inline">Sketch</code> and <code class="inline">PGraphics</code>. Sketch adds lifecycle, input, time, and randomness — things an offscreen buffer doesn't need.</div>
+
+<h3 class="entry-title" id="minimal-sketch">Minimal sketch</h3>
+<p class="entry-desc">The smallest complete sketch: <code class="inline">Setup()</code> sets the canvas size once, <code class="inline">Draw()</code> runs every frame and paints a circle that follows the mouse.</p>
+           <div class="code-block">
+  <pre id="minimal-sketch-code"><span class="kw">public class</span> <span class="tp">MySketch</span> : <span class="tp">Sketch</span>
+{
+    <span class="kw">public override void</span> Setup()
+    {
+        Size(<span class="str">600</span>, <span class="str">400</span>);
+    }
+
+    <span class="kw">public override void</span> Draw()
+    {
+        Background(<span class="str">20</span>, <span class="str">20</span>, <span class="str">30</span>);
+        NoStroke();
+        Fill(<span class="str">100</span>, <span class="str">200</span>, <span class="str">255</span>);
+        Ellipse(MouseX, MouseY, <span class="str">60</span>, <span class="str">60</span>);
+    }
+}</pre>
+  <button class="dana-test-btn" data-target="minimal-sketch-code" title="Run in DanaProcessing IDE">
+    <i class="ph-bold ph-play"></i>
+    <span class="dana-test-label">Test in Dana</span>
+  </button>
+</div>
+<p>Save this in the IDE and press <strong>Run</strong> — <code class="inline">SketchCompiler</code> compiles it in memory with Roslyn and swaps it straight into the canvas.</p>

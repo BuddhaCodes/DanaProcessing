@@ -1,0 +1,61 @@
+<!--meta {"title": "Getting started with 3D", "nav": "Getting started", "summary": "An entirely separate rendering pipeline — offscreen OpenGL 3.3 (core profile) via Silk.NET, rendered into a hidden window's framebuffer and read back as a normal PGraphics.…", "tags": ["3D renderer"]} -->
+<p class="section-intro">An entirely separate rendering pipeline — offscreen OpenGL 3.3 (core profile) via Silk.NET, rendered into a hidden window's framebuffer and read back as a normal <code class="inline">PGraphics</code>. Everything under this "3D" nav group requires <code class="inline">RendererKind.Renderer3D</code> and throws <code class="inline">InvalidOperationException</code> otherwise — the same way Processing itself errors when <code class="inline">box()</code>/<code class="inline">rotateZ()</code>/etc. are called under the default 2D renderer.</p>
+
+<h3 class="entry-title" id="renderer3d-setup">Size(w, h, RendererKind.Renderer3D) · CreateGraphics(w, h, RendererKind.Renderer3D)</h3>
+<p class="entry-desc">Requests the 3D pipeline for the main sketch canvas, or for an offscreen buffer. The renderer is fixed for that context's entire lifetime — calling either again with a different <code class="inline">RendererKind</code> later throws, matching Processing's own restriction that <code class="inline">size(w, h, renderer)</code> can't switch renderers mid-sketch.</p>
+<div class="note"><strong>Set it directly on the main canvas — compositing is automatic.</strong> Pass <code class="inline">RendererKind.Renderer3D</code> straight to the sketch's own <code class="inline">Size()</code> in <code class="inline">Setup()</code>. <code class="inline">Sketch.RenderFrame()</code> already runs your 3D draw calls against the GPU backend and composites the result with any 2D overlay — <code class="inline">Fill()</code>/<code class="inline">Text()</code> calls after your 3D geometry — automatically, every frame. Every built-in 3D example uses this direct form; a separate offscreen 3D <code class="inline">PGraphics</code> via <code class="inline">CreateGraphics()</code> is still there for when you actually want one (a texture rendered once in <code class="inline">Setup()</code>, say), just not as the default.</div>
+
+<h3 class="entry-title" id="renderer3d-frame">BeginDraw() / EndDraw()</h3>
+<p class="entry-desc">Only needed for an <em>offscreen</em> 3D <code class="inline">PGraphics</code> (from <code class="inline">CreateGraphics()</code>) — the main sketch canvas never needs them, since <code class="inline">RenderFrame()</code> calls the GPU backend's begin/end for you. An offscreen 3D buffer only accepts drawing calls between these two — <code class="inline">Box()</code>, <code class="inline">Sphere()</code>, <code class="inline">Lights()</code>, custom <code class="inline">Vertex()</code>/<code class="inline">EndShape()</code>, all of it — and throws <code class="inline">InvalidOperationException</code> outside the bracket.</p>
+<div class="note"><strong>Exception: CreateShape3D().</strong> Building a reusable mesh doesn't need the bracket — it claims and releases the GL context on its own, so it's safe to call once, loose, in <code class="inline">Setup()</code>. See <a href="#createshape3d">Custom 3D shapes</a>.</div>
+
+<div class="code-block">
+<pre><span class="kw">public class</span> <span class="tp">MySketch</span> : <span class="tp">Sketch</span>
+{
+    <span class="kw">public override void</span> Setup() =&gt; Size(<span class="str">700</span>, <span class="str">500</span>, <span class="tp">RendererKind</span>.Renderer3D);
+
+    <span class="kw">public override void</span> Draw()
+    {
+        Background(<span class="str">20</span>);
+        Lights();                              <span class="cm">// every frame — see Lights()</span>
+        Fill(<span class="str">160</span>, <span class="str">200</span>, <span class="str">255</span>);
+        PushMatrix();
+        Translate(Width / <span class="str">2f</span>, Height / <span class="str">2f</span>, <span class="str">0</span>);
+        RotateY(FrameCount / <span class="str">60f</span>);
+        Box(<span class="str">160</span>);
+        PopMatrix();
+    }
+}</pre>
+</div>
+
+<h3 class="entry-title" id="getting-started-3d-example">Runnable example</h3>
+<p class="entry-desc">A complete sketch using this section. <strong>Test in Dana</strong> opens it in the IDE, or paste it into a new tab and press Run.</p>
+<div class="code-block">
+  <pre id="getting-started-3d-example-code"><span class="cm">// Size(w, h, RendererKind.Renderer3D) turns on 3D: lights, boxes, spheres.</span>
+<span class="kw">public</span> <span class="kw">class</span> Hello3D : <span class="tp">Sketch</span>
+{
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup() =&gt; Size(<span class="str">600</span>, <span class="str">400</span>, <span class="tp">RendererKind</span>.Renderer3D);
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        Background(<span class="str">25</span>, <span class="str">28</span>, <span class="str">40</span>);
+        Lights();
+        NoStroke();
+
+        Translate(Width / <span class="str">2</span>, Height / <span class="str">2</span>, <span class="str">0</span>);
+        RotateY(FrameCount * <span class="str">0.01f</span>);
+        RotateX(Map(MouseY, <span class="str">0</span>, Height, -<span class="str">1</span>, <span class="str">1</span>));
+
+        Fill(<span class="str">255</span>, <span class="str">150</span>, <span class="str">100</span>);
+        Box(<span class="str">140</span>);
+
+        Translate(<span class="str">200</span>, <span class="str">0</span>, <span class="str">0</span>);
+        Fill(<span class="str">120</span>, <span class="str">190</span>, <span class="str">255</span>);
+        Sphere(<span class="str">50</span>);
+    }
+}</pre>
+  <button class="dana-test-btn" data-target="getting-started-3d-example-code" title="Run in DanaProcessing IDE">
+    <i class="ph-bold ph-play"></i>
+    <span class="dana-test-label">Test in Dana</span>
+  </button>
+</div>

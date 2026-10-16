@@ -1,0 +1,2052 @@
+[
+ {
+  "name": "OnMidi",
+  "kind": "method",
+  "target": "midi"
+ },
+ {
+  "name": "MidiCC",
+  "kind": "method",
+  "target": "midi"
+ },
+ {
+  "name": "MidiNoteDown",
+  "kind": "method",
+  "target": "midi"
+ },
+ {
+  "name": "MidiNoteVelocity",
+  "kind": "method",
+  "target": "midi"
+ },
+ {
+  "name": "MapMidi",
+  "kind": "method",
+  "target": "midi"
+ },
+ {
+  "name": "MapMidiNote",
+  "kind": "method",
+  "target": "midi"
+ },
+ {
+  "name": "MidiInputs",
+  "kind": "method",
+  "target": "midi"
+ },
+ {
+  "name": "RefreshMidi",
+  "kind": "method",
+  "target": "midi"
+ },
+ {
+  "name": "MidiMessage",
+  "kind": "struct",
+  "target": "midi"
+ },
+ {
+  "name": "MidiKind",
+  "kind": "enum",
+  "target": "midi"
+ },
+ {
+  "name": "Beat",
+  "kind": "method",
+  "target": "beat"
+ },
+ {
+  "name": "Bar",
+  "kind": "method",
+  "target": "beat"
+ },
+ {
+  "name": "Phase",
+  "kind": "method",
+  "target": "beat"
+ },
+ {
+  "name": "Pulse",
+  "kind": "method",
+  "target": "beat"
+ },
+ {
+  "name": "PingPong",
+  "kind": "method",
+  "target": "beat"
+ },
+ {
+  "name": "OnBeat",
+  "kind": "method",
+  "target": "beat"
+ },
+ {
+  "name": "BeatEase",
+  "kind": "method",
+  "target": "beat"
+ },
+ {
+  "name": "BeatTween",
+  "kind": "method",
+  "target": "beat"
+ },
+ {
+  "name": "Ease",
+  "kind": "enum",
+  "target": "beat"
+ },
+ {
+  "name": "Easing",
+  "kind": "class",
+  "target": "beat"
+ },
+ {
+  "name": "ListenTo",
+  "kind": "method",
+  "target": "listento"
+ },
+ {
+  "name": "AudioSource",
+  "kind": "enum",
+  "target": "listento"
+ },
+ {
+  "name": "MicLevel",
+  "kind": "property",
+  "target": "listento"
+ },
+ {
+  "name": "MicGain",
+  "kind": "property",
+  "target": "listento"
+ },
+ {
+  "name": "MicStatus",
+  "kind": "property",
+  "target": "listento"
+ },
+ {
+  "name": "Seed",
+  "kind": "property",
+  "target": "seed"
+ },
+ {
+  "name": "VariationRenderer",
+  "kind": "class",
+  "target": "variations"
+ },
+ {
+  "name": "PrintExport",
+  "kind": "class",
+  "target": "print-export"
+ },
+ {
+  "name": "PlotterSvg",
+  "kind": "class",
+  "target": "print-export"
+ },
+ {
+  "name": "ShowStats",
+  "kind": "method",
+  "target": "stats"
+ },
+ {
+  "name": "HideStats",
+  "kind": "method",
+  "target": "stats"
+ },
+ {
+  "name": "DrawTime",
+  "kind": "property",
+  "target": "stats"
+ },
+ {
+  "name": "ActualFrameRate",
+  "kind": "property",
+  "target": "stats"
+ },
+ {
+  "name": "DataPath",
+  "kind": "method",
+  "target": "data-folder"
+ },
+ {
+  "name": "SketchPath",
+  "kind": "method",
+  "target": "data-folder"
+ },
+ {
+  "name": "SketchFolder",
+  "kind": "property",
+  "target": "data-folder"
+ },
+ {
+  "name": "DataFolder",
+  "kind": "property",
+  "target": "data-folder"
+ },
+ {
+  "name": "Sketch",
+  "kind": "class",
+  "target": "minimal-sketch"
+ },
+ {
+  "name": "PGraphics",
+  "kind": "class",
+  "target": "pgraphics"
+ },
+ {
+  "name": "GraphicsContext",
+  "kind": "abstract class",
+  "target": "intro"
+ },
+ {
+  "name": "Setup",
+  "kind": "method",
+  "target": "setup"
+ },
+ {
+  "name": "Draw",
+  "kind": "method",
+  "target": "draw"
+ },
+ {
+  "name": "Size",
+  "kind": "method",
+  "target": "size"
+ },
+ {
+  "name": "FrameRate",
+  "kind": "method",
+  "target": "framerate"
+ },
+ {
+  "name": "NoLoop",
+  "kind": "method",
+  "target": "noloop-loop"
+ },
+ {
+  "name": "Loop",
+  "kind": "method",
+  "target": "noloop-loop"
+ },
+ {
+  "name": "WindowResized",
+  "kind": "method",
+  "target": "windowresized"
+ },
+ {
+  "name": "FrameCount",
+  "kind": "property",
+  "target": "structure"
+ },
+ {
+  "name": "Width",
+  "kind": "property",
+  "target": "structure"
+ },
+ {
+  "name": "Height",
+  "kind": "property",
+  "target": "structure"
+ },
+ {
+  "name": "TargetFrameRate",
+  "kind": "property",
+  "target": "structure"
+ },
+ {
+  "name": "IsLooping",
+  "kind": "property",
+  "target": "structure"
+ },
+ {
+  "name": "ColorMode",
+  "kind": "method",
+  "target": "colormode"
+ },
+ {
+  "name": "ColorSpaceMode",
+  "kind": "enum",
+  "target": "enums"
+ },
+ {
+  "name": "Fill",
+  "kind": "method",
+  "target": "fill"
+ },
+ {
+  "name": "FillHSB",
+  "kind": "method",
+  "target": "fill"
+ },
+ {
+  "name": "NoFill",
+  "kind": "method",
+  "target": "fill"
+ },
+ {
+  "name": "Stroke",
+  "kind": "method",
+  "target": "stroke"
+ },
+ {
+  "name": "StrokeHSB",
+  "kind": "method",
+  "target": "stroke"
+ },
+ {
+  "name": "NoStroke",
+  "kind": "method",
+  "target": "stroke"
+ },
+ {
+  "name": "StrokeWeight",
+  "kind": "method",
+  "target": "strokeweight"
+ },
+ {
+  "name": "StrokeCap",
+  "kind": "method",
+  "target": "strokeweight"
+ },
+ {
+  "name": "StrokeCapKind",
+  "kind": "enum",
+  "target": "enums"
+ },
+ {
+  "name": "StrokeJoin",
+  "kind": "method",
+  "target": "strokeweight"
+ },
+ {
+  "name": "StrokeJoinKind",
+  "kind": "enum",
+  "target": "enums"
+ },
+ {
+  "name": "Background",
+  "kind": "method",
+  "target": "background"
+ },
+ {
+  "name": "Clear",
+  "kind": "method",
+  "target": "background"
+ },
+ {
+  "name": "Tint",
+  "kind": "method",
+  "target": "tint"
+ },
+ {
+  "name": "NoTint",
+  "kind": "method",
+  "target": "tint"
+ },
+ {
+  "name": "Red",
+  "kind": "method",
+  "target": "color-channels"
+ },
+ {
+  "name": "Green",
+  "kind": "method",
+  "target": "color-channels"
+ },
+ {
+  "name": "Blue",
+  "kind": "method",
+  "target": "color-channels"
+ },
+ {
+  "name": "Alpha",
+  "kind": "method",
+  "target": "color-channels"
+ },
+ {
+  "name": "Hue",
+  "kind": "method",
+  "target": "color-channels"
+ },
+ {
+  "name": "Saturation",
+  "kind": "method",
+  "target": "color-channels"
+ },
+ {
+  "name": "Brightness",
+  "kind": "method",
+  "target": "color-channels"
+ },
+ {
+  "name": "LerpColor",
+  "kind": "method",
+  "target": "lerpcolor"
+ },
+ {
+  "name": "Color",
+  "kind": "struct",
+  "target": "color-struct"
+ },
+ {
+  "name": "Color.FromHsb",
+  "kind": "static method",
+  "target": "color-struct"
+ },
+ {
+  "name": "RectMode",
+  "kind": "method",
+  "target": "rectmode"
+ },
+ {
+  "name": "EllipseMode",
+  "kind": "method",
+  "target": "rectmode"
+ },
+ {
+  "name": "ShapeMode",
+  "kind": "method",
+  "target": "rectmode"
+ },
+ {
+  "name": "ShapeAlignMode",
+  "kind": "enum",
+  "target": "enums"
+ },
+ {
+  "name": "Rect",
+  "kind": "method",
+  "target": "rect"
+ },
+ {
+  "name": "Ellipse",
+  "kind": "method",
+  "target": "rect"
+ },
+ {
+  "name": "Line",
+  "kind": "method",
+  "target": "line"
+ },
+ {
+  "name": "Point",
+  "kind": "method",
+  "target": "line"
+ },
+ {
+  "name": "Triangle",
+  "kind": "method",
+  "target": "triangle"
+ },
+ {
+  "name": "Polygon",
+  "kind": "method",
+  "target": "triangle"
+ },
+ {
+  "name": "Quad",
+  "kind": "method",
+  "target": "triangle"
+ },
+ {
+  "name": "Arc",
+  "kind": "method",
+  "target": "arc"
+ },
+ {
+  "name": "ArcMode",
+  "kind": "enum",
+  "target": "enums"
+ },
+ {
+  "name": "Bezier",
+  "kind": "method",
+  "target": "bezier"
+ },
+ {
+  "name": "BezierPoint",
+  "kind": "method",
+  "target": "bezierpoint"
+ },
+ {
+  "name": "BezierTangent",
+  "kind": "method",
+  "target": "bezierpoint"
+ },
+ {
+  "name": "Curve",
+  "kind": "method",
+  "target": "curve"
+ },
+ {
+  "name": "CurveTightness",
+  "kind": "method",
+  "target": "curve"
+ },
+ {
+  "name": "BeginShape",
+  "kind": "method",
+  "target": "beginshape"
+ },
+ {
+  "name": "EndShape",
+  "kind": "method",
+  "target": "endshape"
+ },
+ {
+  "name": "ShapeKind",
+  "kind": "enum",
+  "target": "enums"
+ },
+ {
+  "name": "Vertex",
+  "kind": "method",
+  "target": "vertex"
+ },
+ {
+  "name": "BezierVertex",
+  "kind": "method",
+  "target": "beziervertex"
+ },
+ {
+  "name": "QuadraticVertex",
+  "kind": "method",
+  "target": "beziervertex"
+ },
+ {
+  "name": "Texture",
+  "kind": "method",
+  "target": "texture"
+ },
+ {
+  "name": "NoTexture",
+  "kind": "method",
+  "target": "texture"
+ },
+ {
+  "name": "TextSize",
+  "kind": "method",
+  "target": "textsize"
+ },
+ {
+  "name": "TextFont",
+  "kind": "method",
+  "target": "textsize"
+ },
+ {
+  "name": "TextAlign",
+  "kind": "method",
+  "target": "textalign"
+ },
+ {
+  "name": "TextAlignH",
+  "kind": "enum",
+  "target": "enums"
+ },
+ {
+  "name": "TextAlignV",
+  "kind": "enum",
+  "target": "enums"
+ },
+ {
+  "name": "TextLeading",
+  "kind": "method",
+  "target": "textleading"
+ },
+ {
+  "name": "TextWidth",
+  "kind": "method",
+  "target": "textwidth"
+ },
+ {
+  "name": "TextAscent",
+  "kind": "method",
+  "target": "textwidth"
+ },
+ {
+  "name": "TextDescent",
+  "kind": "method",
+  "target": "textwidth"
+ },
+ {
+  "name": "Text",
+  "kind": "method",
+  "target": "text"
+ },
+ {
+  "name": "PushMatrix",
+  "kind": "method",
+  "target": "pushmatrix"
+ },
+ {
+  "name": "PopMatrix",
+  "kind": "method",
+  "target": "pushmatrix"
+ },
+ {
+  "name": "Translate",
+  "kind": "method",
+  "target": "translate"
+ },
+ {
+  "name": "Rotate",
+  "kind": "method",
+  "target": "rotate"
+ },
+ {
+  "name": "RotateDegrees",
+  "kind": "method",
+  "target": "rotate"
+ },
+ {
+  "name": "Scale",
+  "kind": "method",
+  "target": "scale"
+ },
+ {
+  "name": "PImage",
+  "kind": "class",
+  "target": "image"
+ },
+ {
+  "name": "LoadImage",
+  "kind": "method",
+  "target": "loadimage"
+ },
+ {
+  "name": "Image",
+  "kind": "method",
+  "target": "image"
+ },
+ {
+  "name": "Mask",
+  "kind": "method",
+  "target": "mask"
+ },
+ {
+  "name": "CreateGraphics",
+  "kind": "method",
+  "target": "creategraphics"
+ },
+ {
+  "name": "BeginDraw",
+  "kind": "method",
+  "target": "begindraw"
+ },
+ {
+  "name": "EndDraw",
+  "kind": "method",
+  "target": "begindraw"
+ },
+ {
+  "name": "Get",
+  "kind": "method",
+  "target": "pgraphics-get"
+ },
+ {
+  "name": "PShape",
+  "kind": "class",
+  "target": "pshape"
+ },
+ {
+  "name": "LoadShape",
+  "kind": "method",
+  "target": "loadshape"
+ },
+ {
+  "name": "Shape",
+  "kind": "method",
+  "target": "shape"
+ },
+ {
+  "name": "Save",
+  "kind": "method",
+  "target": "save"
+ },
+ {
+  "name": "SaveFrame",
+  "kind": "method",
+  "target": "saveframe"
+ },
+ {
+  "name": "PI",
+  "kind": "constant",
+  "target": "math"
+ },
+ {
+  "name": "TWO_PI",
+  "kind": "constant",
+  "target": "math"
+ },
+ {
+  "name": "TAU",
+  "kind": "constant",
+  "target": "math"
+ },
+ {
+  "name": "HALF_PI",
+  "kind": "constant",
+  "target": "math"
+ },
+ {
+  "name": "QUARTER_PI",
+  "kind": "constant",
+  "target": "math"
+ },
+ {
+  "name": "Sin",
+  "kind": "method",
+  "target": "math"
+ },
+ {
+  "name": "Cos",
+  "kind": "method",
+  "target": "math"
+ },
+ {
+  "name": "Tan",
+  "kind": "method",
+  "target": "math"
+ },
+ {
+  "name": "Asin",
+  "kind": "method",
+  "target": "math"
+ },
+ {
+  "name": "Acos",
+  "kind": "method",
+  "target": "math"
+ },
+ {
+  "name": "Atan",
+  "kind": "method",
+  "target": "math"
+ },
+ {
+  "name": "Atan2",
+  "kind": "method",
+  "target": "math"
+ },
+ {
+  "name": "Degrees",
+  "kind": "method",
+  "target": "math"
+ },
+ {
+  "name": "Radians",
+  "kind": "method",
+  "target": "math"
+ },
+ {
+  "name": "Constrain",
+  "kind": "method",
+  "target": "math"
+ },
+ {
+  "name": "Dist",
+  "kind": "method",
+  "target": "math"
+ },
+ {
+  "name": "Lerp",
+  "kind": "method",
+  "target": "math"
+ },
+ {
+  "name": "Norm",
+  "kind": "method",
+  "target": "math"
+ },
+ {
+  "name": "Map",
+  "kind": "method",
+  "target": "math"
+ },
+ {
+  "name": "Sq",
+  "kind": "method",
+  "target": "math"
+ },
+ {
+  "name": "Sqrt",
+  "kind": "method",
+  "target": "math"
+ },
+ {
+  "name": "Abs",
+  "kind": "method",
+  "target": "math"
+ },
+ {
+  "name": "Ceil",
+  "kind": "method",
+  "target": "math"
+ },
+ {
+  "name": "Floor",
+  "kind": "method",
+  "target": "math"
+ },
+ {
+  "name": "Round",
+  "kind": "method",
+  "target": "math"
+ },
+ {
+  "name": "Pow",
+  "kind": "method",
+  "target": "math"
+ },
+ {
+  "name": "Log",
+  "kind": "method",
+  "target": "math"
+ },
+ {
+  "name": "Exp",
+  "kind": "method",
+  "target": "math"
+ },
+ {
+  "name": "Max",
+  "kind": "method",
+  "target": "math"
+ },
+ {
+  "name": "Min",
+  "kind": "method",
+  "target": "math"
+ },
+ {
+  "name": "PVector",
+  "kind": "struct",
+  "target": "pvector"
+ },
+ {
+  "name": "PVector.Add",
+  "kind": "method",
+  "target": "pvector"
+ },
+ {
+  "name": "PVector.Sub",
+  "kind": "method",
+  "target": "pvector"
+ },
+ {
+  "name": "PVector.Mult",
+  "kind": "method",
+  "target": "pvector"
+ },
+ {
+  "name": "PVector.Div",
+  "kind": "method",
+  "target": "pvector"
+ },
+ {
+  "name": "PVector.Mag",
+  "kind": "method",
+  "target": "pvector"
+ },
+ {
+  "name": "PVector.MagSq",
+  "kind": "method",
+  "target": "pvector"
+ },
+ {
+  "name": "PVector.Normalize",
+  "kind": "method",
+  "target": "pvector"
+ },
+ {
+  "name": "PVector.Limit",
+  "kind": "method",
+  "target": "pvector"
+ },
+ {
+  "name": "PVector.SetMag",
+  "kind": "method",
+  "target": "pvector"
+ },
+ {
+  "name": "PVector.Rotate",
+  "kind": "method",
+  "target": "pvector"
+ },
+ {
+  "name": "PVector.Set",
+  "kind": "method",
+  "target": "pvector"
+ },
+ {
+  "name": "PVector.Lerp",
+  "kind": "method",
+  "target": "pvector"
+ },
+ {
+  "name": "PVector.Heading",
+  "kind": "method",
+  "target": "pvector"
+ },
+ {
+  "name": "PVector.Copy",
+  "kind": "method",
+  "target": "pvector"
+ },
+ {
+  "name": "PVector.Array",
+  "kind": "method",
+  "target": "pvector"
+ },
+ {
+  "name": "PVector.Dist",
+  "kind": "static method",
+  "target": "pvector"
+ },
+ {
+  "name": "PVector.Dot",
+  "kind": "static method",
+  "target": "pvector"
+ },
+ {
+  "name": "PVector.FromAngle",
+  "kind": "static method",
+  "target": "pvector"
+ },
+ {
+  "name": "PVector.AngleBetween",
+  "kind": "static method",
+  "target": "pvector"
+ },
+ {
+  "name": "Random",
+  "kind": "method",
+  "target": "random"
+ },
+ {
+  "name": "RandomGaussian",
+  "kind": "method",
+  "target": "randomgaussian"
+ },
+ {
+  "name": "RandomSeed",
+  "kind": "method",
+  "target": "randomseed"
+ },
+ {
+  "name": "Noise",
+  "kind": "method",
+  "target": "noise"
+ },
+ {
+  "name": "NoiseSeed",
+  "kind": "method",
+  "target": "noiseseed"
+ },
+ {
+  "name": "NoiseDetail",
+  "kind": "method",
+  "target": "noiseseed"
+ },
+ {
+  "name": "MouseX",
+  "kind": "property",
+  "target": "input"
+ },
+ {
+  "name": "MouseY",
+  "kind": "property",
+  "target": "input"
+ },
+ {
+  "name": "PMouseX",
+  "kind": "property",
+  "target": "input"
+ },
+ {
+  "name": "PMouseY",
+  "kind": "property",
+  "target": "input"
+ },
+ {
+  "name": "IsMousePressed",
+  "kind": "property",
+  "target": "input"
+ },
+ {
+  "name": "MouseButton",
+  "kind": "property",
+  "target": "input"
+ },
+ {
+  "name": "MouseButtonKind",
+  "kind": "enum",
+  "target": "enums"
+ },
+ {
+  "name": "MousePressed",
+  "kind": "method",
+  "target": "input"
+ },
+ {
+  "name": "MouseReleased",
+  "kind": "method",
+  "target": "input"
+ },
+ {
+  "name": "MouseClicked",
+  "kind": "method",
+  "target": "input"
+ },
+ {
+  "name": "MouseDragged",
+  "kind": "method",
+  "target": "input"
+ },
+ {
+  "name": "MouseMoved",
+  "kind": "method",
+  "target": "input"
+ },
+ {
+  "name": "MouseWheel",
+  "kind": "method",
+  "target": "input"
+ },
+ {
+  "name": "Key",
+  "kind": "property",
+  "target": "input"
+ },
+ {
+  "name": "KeyCode",
+  "kind": "property",
+  "target": "input"
+ },
+ {
+  "name": "IsKeyPressed",
+  "kind": "property",
+  "target": "input"
+ },
+ {
+  "name": "KeyPressed",
+  "kind": "method",
+  "target": "input"
+ },
+ {
+  "name": "KeyReleased",
+  "kind": "method",
+  "target": "input"
+ },
+ {
+  "name": "Millis",
+  "kind": "method",
+  "target": "millis"
+ },
+ {
+  "name": "Cursor",
+  "kind": "method",
+  "target": "cursor"
+ },
+ {
+  "name": "NoCursor",
+  "kind": "method",
+  "target": "cursor"
+ },
+ {
+  "name": "CursorKind",
+  "kind": "enum",
+  "target": "enums"
+ },
+ {
+  "name": "AvaloniaSketchCanvas",
+  "kind": "class",
+  "target": "avaloniasketchcanvas"
+ },
+ {
+  "name": "AvaloniaSketchWindow",
+  "kind": "class",
+  "target": "avaloniasketchwindow"
+ },
+ {
+  "name": "SetCanvas",
+  "kind": "method",
+  "target": "avaloniasketchcanvas"
+ },
+ {
+  "name": "SketchCompiler",
+  "kind": "static class",
+  "target": "sketchcompiler-compile"
+ },
+ {
+  "name": "CompileResult",
+  "kind": "record",
+  "target": "sketchcompiler-compile"
+ },
+ {
+  "name": "SketchEditorView",
+  "kind": "class",
+  "target": "sketcheditorview"
+ },
+ {
+  "name": "RoslynCompletionEngine",
+  "kind": "class",
+  "target": "code-navigation"
+ },
+ {
+  "name": "AgentTools",
+  "kind": "static class",
+  "target": "agent-mode"
+ },
+ {
+  "name": "SketchHotReload",
+  "kind": "static class",
+  "target": "hot-reload"
+ },
+ {
+  "name": "MainWindow",
+  "kind": "class",
+  "target": "mainwindow"
+ },
+ {
+  "name": "ClayTheme",
+  "kind": "static class",
+  "target": "claytheme"
+ },
+ {
+  "name": "Redraw",
+  "kind": "method",
+  "target": "redraw"
+ },
+ {
+  "name": "Exit",
+  "kind": "method",
+  "target": "exit"
+ },
+ {
+  "name": "DisplayWidth",
+  "kind": "property",
+  "target": "structure"
+ },
+ {
+  "name": "DisplayHeight",
+  "kind": "property",
+  "target": "structure"
+ },
+ {
+  "name": "Print",
+  "kind": "method",
+  "target": "print"
+ },
+ {
+  "name": "Println",
+  "kind": "method",
+  "target": "print"
+ },
+ {
+  "name": "LogWarning",
+  "kind": "method",
+  "target": "print"
+ },
+ {
+  "name": "LogError",
+  "kind": "method",
+  "target": "print"
+ },
+ {
+  "name": "Color(...)",
+  "kind": "method",
+  "target": "color-function"
+ },
+ {
+  "name": "PushStyle",
+  "kind": "method",
+  "target": "pushstyle"
+ },
+ {
+  "name": "PopStyle",
+  "kind": "method",
+  "target": "pushstyle"
+ },
+ {
+  "name": "Smooth",
+  "kind": "method",
+  "target": "smooth"
+ },
+ {
+  "name": "NoSmooth",
+  "kind": "method",
+  "target": "smooth"
+ },
+ {
+  "name": "BlendMode",
+  "kind": "method",
+  "target": "blendmode"
+ },
+ {
+  "name": "BlendModeKind",
+  "kind": "enum",
+  "target": "enums"
+ },
+ {
+  "name": "CurvePoint",
+  "kind": "method",
+  "target": "curvepoint"
+ },
+ {
+  "name": "CurveTangent",
+  "kind": "method",
+  "target": "curvepoint"
+ },
+ {
+  "name": "CurveVertex",
+  "kind": "method",
+  "target": "curvevertex"
+ },
+ {
+  "name": "PFont",
+  "kind": "class",
+  "target": "pfont"
+ },
+ {
+  "name": "CreateFont",
+  "kind": "method",
+  "target": "createfont"
+ },
+ {
+  "name": "LoadFont",
+  "kind": "method",
+  "target": "loadfont"
+ },
+ {
+  "name": "ShearX",
+  "kind": "method",
+  "target": "shearx"
+ },
+ {
+  "name": "ShearY",
+  "kind": "method",
+  "target": "shearx"
+ },
+ {
+  "name": "ResetMatrix",
+  "kind": "method",
+  "target": "resetmatrix"
+ },
+ {
+  "name": "ApplyMatrix",
+  "kind": "method",
+  "target": "applymatrix"
+ },
+ {
+  "name": "PrintMatrix",
+  "kind": "method",
+  "target": "printmatrix"
+ },
+ {
+  "name": "ImageMode",
+  "kind": "method",
+  "target": "imagemode"
+ },
+ {
+  "name": "LoadPixels",
+  "kind": "method",
+  "target": "loadpixels"
+ },
+ {
+  "name": "Pixels",
+  "kind": "property",
+  "target": "loadpixels"
+ },
+ {
+  "name": "UpdatePixels",
+  "kind": "method",
+  "target": "loadpixels"
+ },
+ {
+  "name": "Set",
+  "kind": "method",
+  "target": "pixels-set"
+ },
+ {
+  "name": "Copy",
+  "kind": "method",
+  "target": "copy"
+ },
+ {
+  "name": "Blend",
+  "kind": "method",
+  "target": "blend-pixels"
+ },
+ {
+  "name": "Filter",
+  "kind": "method",
+  "target": "filter"
+ },
+ {
+  "name": "FilterKind",
+  "kind": "enum",
+  "target": "enums"
+ },
+ {
+  "name": "LoadStrings",
+  "kind": "method",
+  "target": "loadstrings"
+ },
+ {
+  "name": "SaveStrings",
+  "kind": "method",
+  "target": "loadstrings"
+ },
+ {
+  "name": "LoadBytes",
+  "kind": "method",
+  "target": "loadbytes"
+ },
+ {
+  "name": "SaveBytes",
+  "kind": "method",
+  "target": "loadbytes"
+ },
+ {
+  "name": "LoadJSONObject",
+  "kind": "method",
+  "target": "loadjsonobject"
+ },
+ {
+  "name": "SaveJSONObject",
+  "kind": "method",
+  "target": "loadjsonobject"
+ },
+ {
+  "name": "LoadJSONArray",
+  "kind": "method",
+  "target": "loadjsonobject"
+ },
+ {
+  "name": "SaveJSONArray",
+  "kind": "method",
+  "target": "loadjsonobject"
+ },
+ {
+  "name": "JSONObject",
+  "kind": "class",
+  "target": "loadjsonobject"
+ },
+ {
+  "name": "JSONArray",
+  "kind": "class",
+  "target": "loadjsonobject"
+ },
+ {
+  "name": "LoadXML",
+  "kind": "method",
+  "target": "loadxml"
+ },
+ {
+  "name": "SaveXML",
+  "kind": "method",
+  "target": "loadxml"
+ },
+ {
+  "name": "XML",
+  "kind": "class",
+  "target": "loadxml"
+ },
+ {
+  "name": "LoadTable",
+  "kind": "method",
+  "target": "loadtable"
+ },
+ {
+  "name": "SaveTable",
+  "kind": "method",
+  "target": "loadtable"
+ },
+ {
+  "name": "Table",
+  "kind": "class",
+  "target": "loadtable"
+ },
+ {
+  "name": "TableRow",
+  "kind": "class",
+  "target": "loadtable"
+ },
+ {
+  "name": "Mag",
+  "kind": "method",
+  "target": "math"
+ },
+ {
+  "name": "Day",
+  "kind": "method",
+  "target": "day"
+ },
+ {
+  "name": "Month",
+  "kind": "method",
+  "target": "day"
+ },
+ {
+  "name": "Year",
+  "kind": "method",
+  "target": "day"
+ },
+ {
+  "name": "Hour",
+  "kind": "method",
+  "target": "day"
+ },
+ {
+  "name": "Minute",
+  "kind": "method",
+  "target": "day"
+ },
+ {
+  "name": "Second",
+  "kind": "method",
+  "target": "day"
+ },
+ {
+  "name": "Int",
+  "kind": "method",
+  "target": "int"
+ },
+ {
+  "name": "Float",
+  "kind": "method",
+  "target": "float-fn"
+ },
+ {
+  "name": "Boolean",
+  "kind": "method",
+  "target": "boolean-fn"
+ },
+ {
+  "name": "Byte",
+  "kind": "method",
+  "target": "byte-fn"
+ },
+ {
+  "name": "Char",
+  "kind": "method",
+  "target": "char-fn"
+ },
+ {
+  "name": "Str",
+  "kind": "method",
+  "target": "str-fn"
+ },
+ {
+  "name": "Hex",
+  "kind": "method",
+  "target": "hex-fn"
+ },
+ {
+  "name": "Unhex",
+  "kind": "method",
+  "target": "unhex"
+ },
+ {
+  "name": "Append",
+  "kind": "method",
+  "target": "append"
+ },
+ {
+  "name": "Concat",
+  "kind": "method",
+  "target": "append"
+ },
+ {
+  "name": "Expand",
+  "kind": "method",
+  "target": "append"
+ },
+ {
+  "name": "Reverse",
+  "kind": "method",
+  "target": "reverse"
+ },
+ {
+  "name": "Shorten",
+  "kind": "method",
+  "target": "reverse"
+ },
+ {
+  "name": "Subset",
+  "kind": "method",
+  "target": "reverse"
+ },
+ {
+  "name": "Sort",
+  "kind": "method",
+  "target": "sort"
+ },
+ {
+  "name": "Splice",
+  "kind": "method",
+  "target": "splice"
+ },
+ {
+  "name": "ArrayCopy",
+  "kind": "method",
+  "target": "arraycopy"
+ },
+ {
+  "name": "Join",
+  "kind": "method",
+  "target": "join"
+ },
+ {
+  "name": "Split",
+  "kind": "method",
+  "target": "join"
+ },
+ {
+  "name": "SplitTokens",
+  "kind": "method",
+  "target": "splittokens"
+ },
+ {
+  "name": "Trim",
+  "kind": "method",
+  "target": "trim-fn"
+ },
+ {
+  "name": "Match",
+  "kind": "method",
+  "target": "match"
+ },
+ {
+  "name": "MatchAll",
+  "kind": "method",
+  "target": "match"
+ },
+ {
+  "name": "Nf",
+  "kind": "method",
+  "target": "nf"
+ },
+ {
+  "name": "Nfc",
+  "kind": "method",
+  "target": "nfc"
+ },
+ {
+  "name": "Nfp",
+  "kind": "method",
+  "target": "nfp"
+ },
+ {
+  "name": "Nfs",
+  "kind": "method",
+  "target": "nfs"
+ },
+ {
+  "name": "CreateWriter",
+  "kind": "method",
+  "target": "createwriter"
+ },
+ {
+  "name": "CreateReader",
+  "kind": "method",
+  "target": "createwriter"
+ },
+ {
+  "name": "CreateOutput",
+  "kind": "method",
+  "target": "createoutput"
+ },
+ {
+  "name": "CreateInput",
+  "kind": "method",
+  "target": "createoutput"
+ },
+ {
+  "name": "PrintWriter",
+  "kind": "class",
+  "target": "printwriter"
+ },
+ {
+  "name": "BufferedReader",
+  "kind": "class",
+  "target": "printwriter"
+ },
+ {
+  "name": "PrintArray",
+  "kind": "method",
+  "target": "printarray"
+ },
+ {
+  "name": "DisplayDensity",
+  "kind": "method",
+  "target": "displaydensity"
+ },
+ {
+  "name": "PixelDensity",
+  "kind": "method",
+  "target": "displaydensity"
+ },
+ {
+  "name": "Square",
+  "kind": "method",
+  "target": "square"
+ },
+ {
+  "name": "BezierDetail",
+  "kind": "method",
+  "target": "bezierdetail"
+ },
+ {
+  "name": "CurveDetail",
+  "kind": "method",
+  "target": "bezierdetail"
+ },
+ {
+  "name": "BeginContour",
+  "kind": "method",
+  "target": "begincontour"
+ },
+ {
+  "name": "EndContour",
+  "kind": "method",
+  "target": "begincontour"
+ },
+ {
+  "name": "TextureMode",
+  "kind": "method",
+  "target": "texturemode"
+ },
+ {
+  "name": "TextureWrap",
+  "kind": "method",
+  "target": "texturemode"
+ },
+ {
+  "name": "TextureModeKind",
+  "kind": "enum",
+  "target": "enums"
+ },
+ {
+  "name": "TextureWrapKind",
+  "kind": "enum",
+  "target": "enums"
+ },
+ {
+  "name": "TextMode",
+  "kind": "method",
+  "target": "textmode"
+ },
+ {
+  "name": "TextRenderMode",
+  "kind": "enum",
+  "target": "enums"
+ },
+ {
+  "name": "Clip",
+  "kind": "method",
+  "target": "clip"
+ },
+ {
+  "name": "NoClip",
+  "kind": "method",
+  "target": "clip"
+ },
+ {
+  "name": "Hint",
+  "kind": "method",
+  "target": "hint"
+ },
+ {
+  "name": "RequestImage",
+  "kind": "method",
+  "target": "requestimage"
+ },
+ {
+  "name": "KeyTyped",
+  "kind": "method",
+  "target": "keytyped"
+ },
+ {
+  "name": "Focused",
+  "kind": "property",
+  "target": "focused"
+ },
+ {
+  "name": "NanoTime",
+  "kind": "method",
+  "target": "millis"
+ },
+ {
+  "name": "SelectInput",
+  "kind": "method",
+  "target": "selectinput"
+ },
+ {
+  "name": "SelectOutput",
+  "kind": "method",
+  "target": "selectinput"
+ },
+ {
+  "name": "SelectFolder",
+  "kind": "method",
+  "target": "selectinput"
+ },
+ {
+  "name": "SelectFileRequest",
+  "kind": "class",
+  "target": "selectinput"
+ },
+ {
+  "name": "Circle",
+  "kind": "method",
+  "target": "circle"
+ },
+ {
+  "name": "CreateShape",
+  "kind": "method",
+  "target": "createshape"
+ },
+ {
+  "name": "PShapeType",
+  "kind": "enum",
+  "target": "enums"
+ },
+ {
+  "name": "FloatList",
+  "kind": "class",
+  "target": "floatlist"
+ },
+ {
+  "name": "IntList",
+  "kind": "class",
+  "target": "floatlist"
+ },
+ {
+  "name": "StringList",
+  "kind": "class",
+  "target": "floatlist"
+ },
+ {
+  "name": "Binary",
+  "kind": "method",
+  "target": "binary-fn"
+ },
+ {
+  "name": "Unbinary",
+  "kind": "method",
+  "target": "unbinary"
+ },
+ {
+  "name": "Launch",
+  "kind": "method",
+  "target": "launch"
+ },
+ {
+  "name": "ParseJSONObject",
+  "kind": "method",
+  "target": "parsejsonobject"
+ },
+ {
+  "name": "ParseJSONArray",
+  "kind": "method",
+  "target": "parsejsonobject"
+ },
+ {
+  "name": "ParseXML",
+  "kind": "method",
+  "target": "parsejsonobject"
+ },
+ {
+  "name": "SaveStream",
+  "kind": "method",
+  "target": "savestream"
+ },
+ {
+  "name": "BeginRaw",
+  "kind": "method",
+  "target": "beginraw"
+ },
+ {
+  "name": "EndRaw",
+  "kind": "method",
+  "target": "beginraw"
+ },
+ {
+  "name": "BeginRecord",
+  "kind": "method",
+  "target": "beginraw"
+ },
+ {
+  "name": "EndRecord",
+  "kind": "method",
+  "target": "beginraw"
+ },
+ {
+  "name": "Delay",
+  "kind": "method",
+  "target": "delay"
+ },
+ {
+  "name": "Thread",
+  "kind": "method",
+  "target": "thread"
+ },
+ {
+  "name": "Settings",
+  "kind": "method",
+  "target": "settings"
+ },
+ {
+  "name": "PixelWidth",
+  "kind": "property",
+  "target": "pixelwidth"
+ },
+ {
+  "name": "PixelHeight",
+  "kind": "property",
+  "target": "pixelwidth"
+ },
+ {
+  "name": "FullScreen",
+  "kind": "method",
+  "target": "window-management"
+ },
+ {
+  "name": "WindowMove",
+  "kind": "method",
+  "target": "window-management"
+ },
+ {
+  "name": "WindowResize",
+  "kind": "method",
+  "target": "window-management"
+ },
+ {
+  "name": "WindowResizable",
+  "kind": "method",
+  "target": "window-management"
+ },
+ {
+  "name": "WindowTitle",
+  "kind": "method",
+  "target": "window-management"
+ },
+ {
+  "name": "WindowRatio",
+  "kind": "method",
+  "target": "window-management"
+ },
+ {
+  "name": "SetLocation",
+  "kind": "method",
+  "target": "window-management"
+ },
+ {
+  "name": "SetResizable",
+  "kind": "method",
+  "target": "window-management"
+ },
+ {
+  "name": "SetTitle",
+  "kind": "method",
+  "target": "window-management"
+ },
+ {
+  "name": "RendererKind",
+  "kind": "enum",
+  "target": "enums"
+ },
+ {
+  "name": "Box",
+  "kind": "method",
+  "target": "box"
+ },
+ {
+  "name": "Sphere",
+  "kind": "method",
+  "target": "sphere"
+ },
+ {
+  "name": "SphereDetail",
+  "kind": "method",
+  "target": "spheredetail"
+ },
+ {
+  "name": "Camera",
+  "kind": "method",
+  "target": "camera"
+ },
+ {
+  "name": "Perspective",
+  "kind": "method",
+  "target": "perspective"
+ },
+ {
+  "name": "Ortho",
+  "kind": "method",
+  "target": "ortho"
+ },
+ {
+  "name": "Frustum",
+  "kind": "method",
+  "target": "frustum"
+ },
+ {
+  "name": "BeginCamera",
+  "kind": "method",
+  "target": "begincamera"
+ },
+ {
+  "name": "EndCamera",
+  "kind": "method",
+  "target": "begincamera"
+ },
+ {
+  "name": "PrintCamera",
+  "kind": "method",
+  "target": "printcamera"
+ },
+ {
+  "name": "PrintProjection",
+  "kind": "method",
+  "target": "printcamera"
+ },
+ {
+  "name": "Lights",
+  "kind": "method",
+  "target": "lights"
+ },
+ {
+  "name": "NoLights",
+  "kind": "method",
+  "target": "lights"
+ },
+ {
+  "name": "AmbientLight",
+  "kind": "method",
+  "target": "ambientlight"
+ },
+ {
+  "name": "DirectionalLight",
+  "kind": "method",
+  "target": "directionallight"
+ },
+ {
+  "name": "PointLight",
+  "kind": "method",
+  "target": "pointlight"
+ },
+ {
+  "name": "SpotLight",
+  "kind": "method",
+  "target": "spotlight"
+ },
+ {
+  "name": "LightFalloff",
+  "kind": "method",
+  "target": "lightfalloff"
+ },
+ {
+  "name": "LightSpecular",
+  "kind": "method",
+  "target": "lightfalloff"
+ },
+ {
+  "name": "Ambient",
+  "kind": "method",
+  "target": "ambient-material"
+ },
+ {
+  "name": "Specular",
+  "kind": "method",
+  "target": "specular-material"
+ },
+ {
+  "name": "Emissive",
+  "kind": "method",
+  "target": "emissive"
+ },
+ {
+  "name": "Shininess",
+  "kind": "method",
+  "target": "shininess"
+ },
+ {
+  "name": "ModelX",
+  "kind": "method",
+  "target": "modelxyz"
+ },
+ {
+  "name": "ModelY",
+  "kind": "method",
+  "target": "modelxyz"
+ },
+ {
+  "name": "ModelZ",
+  "kind": "method",
+  "target": "modelxyz"
+ },
+ {
+  "name": "ScreenX",
+  "kind": "method",
+  "target": "screenxyz"
+ },
+ {
+  "name": "ScreenY",
+  "kind": "method",
+  "target": "screenxyz"
+ },
+ {
+  "name": "ScreenZ",
+  "kind": "method",
+  "target": "screenxyz"
+ },
+ {
+  "name": "Normal",
+  "kind": "method",
+  "target": "normal"
+ },
+ {
+  "name": "CreateShape3D",
+  "kind": "method",
+  "target": "createshape3d"
+ },
+ {
+  "name": "LoadShader",
+  "kind": "method",
+  "target": "loadshader"
+ },
+ {
+  "name": "Shader",
+  "kind": "method",
+  "target": "shader"
+ },
+ {
+  "name": "ResetShader",
+  "kind": "method",
+  "target": "shader"
+ },
+ {
+  "name": "PShader",
+  "kind": "class",
+  "target": "loadshader"
+ },
+ {
+  "name": "RotateX",
+  "kind": "method",
+  "target": "rotatexyz"
+ },
+ {
+  "name": "RotateY",
+  "kind": "method",
+  "target": "rotatexyz"
+ },
+ {
+  "name": "RotateZ",
+  "kind": "method",
+  "target": "rotatexyz"
+ }
+]

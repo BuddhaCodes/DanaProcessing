@@ -1,0 +1,54 @@
+<!--meta {"title": "Pixels", "nav": "Pixels", "summary": "Direct pixel access and per-pixel operations. Reading pixels back (LoadPixels, Get, and everything built on them) requires a CPU-readable Surface — the same requirement Save() has.", "tags": []} -->
+<p class="section-intro">Direct pixel access and per-pixel operations. Reading pixels back (<code class="inline">LoadPixels</code>, <code class="inline">Get</code>, and everything built on them) requires a CPU-readable <code class="inline">Surface</code> — the same requirement <code class="inline">Save()</code> has.</p>
+
+<h3 class="entry-title" id="loadpixels">LoadPixels() · Pixels <span class="sig-return">→ Color[]</span> · UpdatePixels()</h3>
+<p class="entry-desc"><code class="inline">LoadPixels()</code> snapshots the canvas into the <code class="inline">Pixels</code> array (row-major, index = <code class="inline">y * Width + x</code>) for reading or editing. <code class="inline">UpdatePixels()</code> writes it back — verbatim, no blending with what was there. <code class="inline">Pixels</code> throws if <code class="inline">LoadPixels()</code> hasn't been called; it deliberately doesn't auto-load, so it's always clear whether you're looking at a fresh read.</p>
+
+<h3 class="entry-title" id="pixels-get">Get(x, y) <span class="sig-return">→ Color</span> · Get(x, y, w, h) <span class="sig-return">→ PImage</span> · Get() <span class="sig-return">→ PImage</span></h3>
+<p class="entry-desc">Reads pixels straight from the canvas — no <code class="inline">LoadPixels()</code> needed. Out-of-bounds coordinates come back transparent rather than throwing.</p>
+
+<h3 class="entry-title" id="pixels-set">Set(x, y, <span class="tp">Color</span> c) · Set(x, y, <span class="tp">PImage</span> img)</h3>
+<p class="entry-desc">Writes a single pixel or draws an image with pixels copied verbatim — no tint, no blending. Out-of-bounds coordinates are silently ignored.</p>
+
+<h3 class="entry-title" id="copy">Copy(sx,sy,sw,sh, dx,dy,dw,dh) · Copy(<span class="tp">PImage</span> src, sx,sy,sw,sh, dx,dy,dw,dh)</h3>
+<p class="entry-desc">Copies a region (scaling if source/destination sizes differ) — verbatim, no blending. Without a source image, copies from this same canvas onto itself.</p>
+
+<h3 class="entry-title" id="blend-pixels">Blend(sx,sy,sw,sh, dx,dy,dw,dh, <span class="tp">BlendModeKind</span> mode) · Blend(<span class="tp">PImage</span> src, ...)</h3>
+<p class="entry-desc">Same as <code class="inline">Copy()</code>, but composites through the given blend mode instead of overwriting. See <a href="#enums">BlendModeKind</a>.</p>
+
+<h3 class="entry-title" id="filter">Filter(<span class="tp">FilterKind</span> kind, <span class="tp">float</span> param = 0.5f)</h3>
+<p class="entry-desc">Applies a per-pixel filter to the whole canvas in place. <code class="inline">param</code> means different things per kind: the cutoff for <code class="inline">Threshold</code> (0–1), the levels per channel for <code class="inline">Posterize</code>, the pixel radius for <code class="inline">Blur</code>; ignored otherwise. See <a href="#enums">FilterKind</a>.</p>
+<div class="note"><strong>Not implemented.</strong> <code class="inline">Erode</code>/<code class="inline">Dilate</code> need neighbor-pixel sampling rather than a per-pixel transform and throw <code class="inline">NotSupportedException</code> for now.</div>
+
+<h3 class="entry-title" id="pixels-example">Runnable example</h3>
+<p class="entry-desc">A complete sketch using this section. <strong>Test in Dana</strong> opens it in the IDE, or paste it into a new tab and press Run.</p>
+<div class="code-block">
+  <pre id="pixels-example-code"><span class="cm">// LoadPixels / Pixels[] / UpdatePixels: read and rewrite every pixel.</span>
+<span class="kw">public</span> <span class="kw">class</span> PixelWave : <span class="tp">Sketch</span>
+{
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup() =&gt; Size(<span class="str">320</span>, <span class="str">240</span>);
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        LoadPixels();
+        <span class="kw">float</span> t = FrameCount * <span class="str">0.05f</span>;
+        <span class="kw">for</span> (<span class="kw">int</span> y = <span class="str">0</span>; y &lt; Height; y++)
+<span class="kw">for</span> (<span class="kw">int</span> x = <span class="str">0</span>; x &lt; Width; x++)
+{
+    <span class="kw">float</span> d = Dist(x, y, MouseX, MouseY);
+    <span class="kw">byte</span> v = (<span class="kw">byte</span>)(<span class="str">128</span> + <span class="str">127</span> * Sin(d * <span class="str">0.08f</span> - t));
+    Pixels[y * Width + x] = <span class="kw">new</span> <span class="tp">Color</span>(v, (<span class="kw">byte</span>)(x * <span class="str">255</span> / Width), (<span class="kw">byte</span>)(<span class="str">255</span> - v), <span class="str">255</span>);
+}
+        UpdatePixels();
+
+        <span class="cm">// Get(x, y) reads one pixel straight from the canvas.</span>
+        <span class="kw">var</span> c = Get((<span class="kw">int</span>)MouseX, (<span class="kw">int</span>)MouseY);
+        Fill(c); Stroke(<span class="str">255</span>);
+        Rect(<span class="str">10</span>, <span class="str">10</span>, <span class="str">40</span>, <span class="str">40</span>);
+    }
+}</pre>
+  <button class="dana-test-btn" data-target="pixels-example-code" title="Run in DanaProcessing IDE">
+    <i class="ph-bold ph-play"></i>
+    <span class="dana-test-label">Test in Dana</span>
+  </button>
+</div>

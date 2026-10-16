@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en" data-root="../">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-N4ZWC7GN1B"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-N4ZWC7GN1B');
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sketch structure — DanaProcessing reference</title>
+<meta name="description" content="Every sketch inherits from Sketch and implements Draw(). A host calls Setup() once, then Draw() on every frame, at the rate set by FrameRate().">
+<link rel="canonical" href="https://buddhacodes.github.io/DanaProcessing/reference/structure.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="DanaProcessing">
+<meta property="og:title" content="Sketch structure — DanaProcessing reference">
+<meta property="og:description" content="Every sketch inherits from Sketch and implements Draw(). A host calls Setup() once, then Draw() on every frame, at the rate set by FrameRate().">
+<meta property="og:url" content="https://buddhacodes.github.io/DanaProcessing/reference/structure.html">
+<meta property="og:image" content="https://buddhacodes.github.io/DanaProcessing/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://buddhacodes.github.io/DanaProcessing/og-image.png">
+<meta name="theme-color" content="#13202A">
+<link rel="icon" type="image/png" href="../DanaProcessing.Ide/Theme/dana.png">
+<link rel="apple-touch-icon" href="../DanaProcessing.Ide/Theme/dana.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&amp;family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/search-index.js" defer></script>
+<script src="../assets/site.js" defer></script>
+</head>
+<body class="page-topic">
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="bar">
+    <a class="brand" href="../index.html"><svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><circle cx="15" cy="15" r="13" fill="none" stroke="currentColor" stroke-width="2"></circle><circle cx="15" cy="15" r="6" fill="#E7B66B"></circle><circle cx="23" cy="8" r="2.5" fill="#FF8A6B"></circle></svg><span>DanaProcessing</span></a>
+    <button type="button" class="menu-toggle" aria-expanded="false" aria-controls="site-menu">Menu</button>
+    <div class="site-menu" id="site-menu">
+      <nav class="main-nav" aria-label="Main">
+        <a href="../reference/tutorial.html">Learn</a>
+        <a href="../reference/a-z.html" aria-current="page">Reference</a>
+        <a href="../index.html#gallery">Examples</a>
+        <a href="../reference/ide.html">The IDE</a>
+      </nav>
+      <form class="search" role="search" action="../reference/a-z.html">
+        <label class="visually-hidden" for="site-search">Search the documentation</label>
+        <div class="search-box">
+          <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+          <input id="site-search" name="q" type="search" autocomplete="off" placeholder="Search — press /" aria-describedby="search-status" aria-controls="search-results">
+        </div>
+        <p id="search-status" class="visually-hidden" aria-live="polite"></p>
+        <ul id="search-results" class="search-results" hidden></ul>
+      </form>
+      <a class="support-link" href="../index.html#support"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M12 21s-7.5-4.6-9.6-9.4C1 8.2 3.1 4.5 6.8 4.5c2.2 0 3.7 1.3 5.2 3 1.5-1.7 3-3 5.2-3 3.7 0 5.8 3.7 4.4 7.1C19.5 16.4 12 21 12 21z"></path></svg><span>Support Dana</span></a>
+    </div>
+  </div>
+</header>
+<main id="main">
+<div class="topic-hero">
+  <div class="wrap">
+    <div class="topic-hero-text">
+      <nav class="breadcrumb" aria-label="Breadcrumb"><ol><li><a href="a-z.html">Reference</a></li><li>Basics</li><li aria-current="page">Sketch structure</li></ol></nav>
+      <h1>Sketch structure</h1>
+      <p class="lede">Every sketch inherits from <code class="inline">Sketch</code> and implements <code class="inline">Draw()</code>. A host calls <code class="inline">Setup()</code> once, then <code class="inline">Draw()</code> on every frame, at the rate set by <code class="inline">FrameRate()</code>.</p>
+      
+    </div>
+    <div class="topic-art" aria-hidden="true"><span style="background:#E7B66B"></span><span></span><span></span><span></span><span></span></div>
+  </div>
+</div>
+<div class="wrap topic-layout">
+  <button type="button" class="topics-toggle" aria-expanded="false" aria-controls="topics">All topics</button>
+<nav class="topics" id="topics" aria-label="Reference topics">
+<div class="topic-group"><h2>Start here</h2><ul>
+<li><a href="intro.html">Overview</a></li>
+<li><a href="tutorial.html">30-minute tutorial</a></li>
+<li><a href="from-processing.html">From Processing / p5.js</a></li>
+</ul></div>
+<div class="topic-group"><h2>Basics</h2><ul>
+<li><a href="structure.html" aria-current="page">Sketch structure</a>
+<ul class="on-this-page" aria-label="On this page">
+<li><a href="#setup"><code>Setup</code></a></li>
+<li><a href="#draw"><code>Draw</code></a></li>
+<li><a href="#size"><code>Size</code></a></li>
+<li><a href="#framerate"><code>FrameRate</code></a></li>
+<li><a href="#noloop-loop"><code>NoLoop</code></a></li>
+<li><a href="#delay"><code>Delay</code></a></li>
+<li><a href="#thread"><code>Thread</code></a></li>
+<li><a href="#tweak"><code>[Tweak] · [Tweak(float min, float max)] · ShowTweaks · HideTweaks</code></a></li>
+<li><a href="#onstop"><code>OnStop</code></a></li>
+<li><a href="#shade"><code>Shade · CreateShader2D · LoadShader2D</code></a></li>
+<li><a href="#windowresized"><code>WindowResized</code></a></li>
+<li><a href="#displaydensity"><code>DisplayDensity · PixelDensity</code></a></li>
+<li><a href="#pixelwidth"><code>PixelWidth · PixelHeight</code></a></li>
+<li><a href="#settings"><code>Settings</code></a></li>
+<li><a href="#window-management"><code>FullScreen · WindowMove · WindowResize · WindowResizable · WindowTitle · WindowRatio</code></a></li>
+<li><a href="#redraw"><code>Redraw</code></a></li>
+<li><a href="#exit"><code>Exit</code></a></li>
+<li><a href="#print"><code>Print · Println · LogWarning · LogError</code></a></li>
+<li><a href="#structure-example">Runnable example</a></li>
+</ul>
+</li>
+<li><a href="input.html">Input &amp; time</a></li>
+</ul></div>
+<div class="topic-group"><h2>Drawing</h2><ul>
+<li><a href="color.html">Color</a></li>
+<li><a href="shape-primitives.html">2D Primitives</a></li>
+<li><a href="shape-custom.html">Custom shapes</a></li>
+<li><a href="typography.html">Typography</a></li>
+<li><a href="transform.html">Transformations</a></li>
+</ul></div>
+<div class="topic-group"><h2>Media</h2><ul>
+<li><a href="image.html">PImage</a></li>
+<li><a href="pgraphics.html">PGraphics</a></li>
+<li><a href="pshape.html">PShape</a></li>
+<li><a href="output.html">Saving output</a></li>
+<li><a href="pixels.html">Pixels</a></li>
+<li><a href="reels.html">Reels</a></li>
+</ul></div>
+<div class="topic-group"><h2>Data &amp; math</h2><ul>
+<li><a href="files-data.html">Files &amp; data</a></li>
+<li><a href="utilities.html">Conversion &amp; utilities</a></li>
+<li><a href="math.html">Math &amp; trig</a></li>
+<li><a href="pvector.html">PVector</a></li>
+<li><a href="random-noise.html">Random &amp; noise</a></li>
+<li><a href="collections.html">Collections</a></li>
+</ul></div>
+<div class="topic-group"><h2>3D</h2><ul>
+<li><a href="getting-started-3d.html">Getting started</a></li>
+<li><a href="shape-3d-primitives.html">3D Primitives</a></li>
+<li><a href="transform-3d.html">3D Transformations</a></li>
+<li><a href="camera-3d.html">Camera &amp; Projection</a></li>
+<li><a href="lights-3d.html">Lights</a></li>
+<li><a href="material-3d.html">Material properties</a></li>
+<li><a href="coordinates-3d.html">Coordinates</a></li>
+<li><a href="shape-3d-custom.html">Custom 3D shapes</a></li>
+<li><a href="pshader.html">PShader</a></li>
+</ul></div>
+<div class="topic-group"><h2>Sound</h2><ul>
+<li><a href="audio.html">Live loops &amp; timing</a></li>
+</ul></div>
+<div class="topic-group"><h2>Live &amp; generative</h2><ul>
+<li><a href="live.html">Playing live: MIDI, beat, mic</a></li>
+<li><a href="generative.html">Generative art: seeds, print</a></li>
+<li><a href="workflow.html">Day to day: F3, data/, rewind</a></li>
+</ul></div>
+<div class="topic-group"><h2>Tooling</h2><ul>
+<li><a href="ide.html">The IDE</a></li>
+<li><a href="hosting.html">Avalonia host</a></li>
+<li><a href="enums.html">Enumerations</a></li>
+</ul></div>
+<p class="topics-all"><a href="a-z.html">All topics &amp; A–Z index</a></p></nav>
+  <div class="topic-main">
+<details class="on-this-page-mobile"><summary>On this page · 19 entries</summary><ul><li><a href="#setup"><code>Setup</code></a></li><li><a href="#draw"><code>Draw</code></a></li><li><a href="#size"><code>Size</code></a></li><li><a href="#framerate"><code>FrameRate</code></a></li><li><a href="#noloop-loop"><code>NoLoop</code></a></li><li><a href="#delay"><code>Delay</code></a></li><li><a href="#thread"><code>Thread</code></a></li><li><a href="#tweak"><code>[Tweak] · [Tweak(float min, float max)] · ShowTweaks · HideTweaks</code></a></li><li><a href="#onstop"><code>OnStop</code></a></li><li><a href="#shade"><code>Shade · CreateShader2D · LoadShader2D</code></a></li><li><a href="#windowresized"><code>WindowResized</code></a></li><li><a href="#displaydensity"><code>DisplayDensity · PixelDensity</code></a></li><li><a href="#pixelwidth"><code>PixelWidth · PixelHeight</code></a></li><li><a href="#settings"><code>Settings</code></a></li><li><a href="#window-management"><code>FullScreen · WindowMove · WindowResize · WindowResizable · WindowTitle · WindowRatio</code></a></li><li><a href="#redraw"><code>Redraw</code></a></li><li><a href="#exit"><code>Exit</code></a></li><li><a href="#print"><code>Print · Println · LogWarning · LogError</code></a></li><li><a href="#structure-example">Runnable example</a></li></ul></details>
+<div class="doc">
+<h2 class="entry-title api" id="setup"><code>Setup</code></h2><ul class="sigs" aria-label="Signatures"><li><code>Setup() <span class="sig-return">→ void</span></code></li></ul>
+<p class="entry-desc">Runs once before the first frame. Use it to set the canvas size and any one-time state.</p>
+
+<h2 class="entry-title api" id="draw"><code>Draw</code><span class="badge">abstract</span></h2><ul class="sigs" aria-label="Signatures"><li><code>Draw() <span class="sig-return">→ void</span></code></li></ul>
+<p class="entry-desc">Runs once per frame while <code class="inline">IsLooping</code> is true. The only member every sketch must implement.</p>
+
+<h2 class="entry-title api" id="size"><code>Size</code></h2><ul class="sigs" aria-label="Signatures"><li><code>Size(<span class="tp">int</span> w, <span class="tp">int</span> h)</code></li></ul>
+<p class="entry-desc">Sets the canvas dimensions. Call from <code class="inline">Setup()</code>.</p>
+
+<h2 class="entry-title api" id="framerate"><code>FrameRate</code></h2><ul class="sigs" aria-label="Signatures"><li><code>FrameRate(<span class="tp">int</span> fps)</code></li></ul>
+<p class="entry-desc">Sets the target frame rate. Minimum 1.</p>
+
+<h2 class="entry-title api" id="noloop-loop"><code>NoLoop</code></h2><ul class="sigs" aria-label="Signatures"><li><code>NoLoop() / Loop()</code></li></ul>
+<p class="entry-desc">Stops or resumes automatic per-frame redraw via <code class="inline">IsLooping</code>.</p>
+
+<h2 class="entry-title api" id="delay"><code>Delay</code></h2><ul class="sigs" aria-label="Signatures"><li><code>Delay(<span class="tp">int</span> ms)</code></li></ul>
+<p class="entry-desc">Halts the calling thread for <code class="inline">ms</code> milliseconds. Since <code class="inline">Draw()</code> runs on whatever thread the host pumps its render loop on, a long <code class="inline">Delay()</code> blocks that same thread/frame — exactly like Processing blocking its own animation thread.</p>
+<div class="note"><strong>Not for animation pacing.</strong> Use <code class="inline">FrameRate()</code> for smooth motion. <code class="inline">Delay()</code> is meant for sketches that only need to redraw occasionally and would rather sit idle than burn CPU on frames nobody will see change — a slow-updating clock, a sensor readout, an ambient display.</div>
+
+<h2 class="entry-title api" id="thread"><code>Thread</code></h2><ul class="sigs" aria-label="Signatures"><li><code>Thread(<span class="tp">string</span> methodName)</code></li></ul>
+<p class="entry-desc">Runs a no-argument method of this sketch on a background thread and returns immediately, like Processing's <code class="inline">thread(functionName)</code>. Looks the method up by name via reflection (public or private, instance method) — same string-based API as Processing's own.</p>
+<div class="note"><strong>No automatic locking.</strong> Write results to a field the background method owns, and have <code class="inline">Draw()</code> just read that field each frame. Keep the handoff to something simple (a single field write/read, or your own lock) to avoid tearing.</div>
+
+<h2 class="entry-title api" id="tweak"><code>[Tweak] · [Tweak(float min, float max)] · ShowTweaks · HideTweaks</code></h2><ul class="sigs" aria-label="Signatures"><li><code>[Tweak]</code></li><li><code>[Tweak(<span class="tp">float</span> min, <span class="tp">float</span> max)]</code></li><li><code>ShowTweaks()</code></li><li><code>HideTweaks()</code></li></ul>
+<p class="entry-desc">Put <code class="inline">[Tweak]</code> above a <code class="inline">float</code>, <code class="inline">double</code>, <code class="inline">int</code>, <code class="inline">bool</code> or <code class="inline">Color</code> field and it gets a live control in a panel over the running sketch: a slider (a checkbox for <code class="inline">bool</code>, three R/G/B sliders for <code class="inline">Color</code>). Drag it and the field changes while the sketch keeps running — no Run, no restart. <code class="inline">[Tweak(0, 20)]</code> sets the range; plain <code class="inline">[Tweak]</code> goes from 0 to twice the starting value. <code class="inline">Label = "..."</code> changes the text. Click the panel's header to fold it; <code class="inline">HideTweaks()</code> hides it (before <code class="inline">SaveFrame()</code>, say) and <code class="inline">ShowTweaks()</code> brings it back.</p>
+<div class="note"><strong>The panel takes the mouse first.</strong> A press on the panel, the drag that follows and its click never reach <code class="inline">MousePressed()</code>/<code class="inline">MouseClicked()</code>, so dragging a slider doesn't also paint on your canvas. The values live in your own fields, so ⚡ Hot Reload keeps whatever you tuned.</div>
+<div class="note"><strong>Put it back in the code.</strong> In the IDE, <em>Sketch → Apply tweaks to code</em> (also under the ▾ next to Run) writes the values you moved into those fields' initializers — only the sliders you actually touched, in one step, so a single Ctrl+Z undoes it. From code, <code class="inline">GetTweakValues()</code> returns each [Tweak] field's current value already written as C#.</div>
+
+<h2 class="entry-title api" id="onstop"><code>OnStop</code><span class="badge">virtual</span></h2><ul class="sigs" aria-label="Signatures"><li><code>OnStop() <span class="sig-return">→ void</span></code></li></ul>
+<p class="entry-desc">Override to let go of anything the sketch opened outside the engine — a camera, a serial port, a MIDI or audio device, a socket — like Processing's <code class="inline">dispose()</code>. Called once, when the sketch stops for good: <strong>■ Stop</strong> (the Run switch) in the IDE, another Run replaces it, or its window closes. Not called on ⚡ Hot Reload, where those same objects carry over to the new code. Without it, a device opened by the previous Run stays busy until the IDE closes.</p>
+
+<h2 class="entry-title api" id="shade"><code>Shade · CreateShader2D · LoadShader2D</code></h2><ul class="sigs" aria-label="Signatures"><li><code>Shade(<span class="tp">string</span> sksl)</code></li><li><code>Shade(<span class="tp">PShader2D</span> shader, x?, y?, w?, h?)</code></li><li><code>CreateShader2D(sksl)</code></li><li><code>LoadShader2D(path)</code></li></ul>
+<p class="entry-desc">Fills the canvas (or a rectangle) with a fragment shader written in SkSL — Skia's shading language: GLSL with <code class="inline">half4</code>/<code class="inline">float2</code> instead of <code class="inline">vec4</code>/<code class="inline">vec2</code> and a <code class="inline">half4 main(float2 fragCoord)</code>. Runs in the plain 2D renderer on every OS. When declared, these uniforms are filled in for you: <code class="inline">iTime</code>, <code class="inline">iResolution</code>, <code class="inline">iMouse</code> (x, y, pressed), <code class="inline">iFrame</code>, <code class="inline">iAmplitude</code> and <code class="inline">iSpectrum[8|16|32|64]</code>; set your own with <code class="inline">shader.Set("name", ...)</code>. fragCoord is in sketch pixels with y pointing down.</p>
+<div class="note"><strong>Live editing.</strong> <code class="inline">Shade(source)</code> compiles once and caches by the text, so editing the shader and pressing ⚡ Hot Reload swaps it in without restarting time or music. If the new code doesn't compile, the last good shader keeps running and the error shows bottom-left. It runs on the CPU: keep the canvas modest.</div>
+
+<h2 class="entry-title api" id="windowresized"><code>WindowResized</code><span class="badge">virtual</span></h2><ul class="sigs" aria-label="Signatures"><li><code>WindowResized() <span class="sig-return">→ void</span></code></li></ul>
+<p class="entry-desc">Called when the canvas size changes after the first frame.</p>
+
+<h2 class="entry-title api" id="displaydensity"><code>DisplayDensity · PixelDensity</code></h2><ul class="sigs" aria-label="Signatures"><li><code>DisplayDensity() <span class="sig-return">→ int</span></code></li><li><code>PixelDensity(<span class="tp">int</span> density)</code></li></ul>
+<p class="entry-desc">HiDPI helpers kept for API parity. <code class="inline">DisplayDensity()</code> always returns 1 — DanaProcessing draws everything at logical-pixel resolution and leaves any HiDPI scaling to the host. <code class="inline">PixelDensity()</code> only validates its argument (1 or 2, like Processing) and otherwise has no effect.</p>
+
+<h2 class="entry-title api" id="pixelwidth"><code>PixelWidth · PixelHeight</code></h2><ul class="sigs" aria-label="Signatures"><li><code>PixelWidth</code></li><li><code>PixelHeight <span class="sig-return">→ int</span></code></li></ul>
+<p class="entry-desc">Width/height of the sketch's backing buffer in actual pixels, like Processing's <code class="inline">pixelWidth</code>/<code class="inline">pixelHeight</code>. Since DanaProcessing always draws at 1:1 (see <code class="inline">PixelDensity()</code> above), these are always equal to <code class="inline">Width</code>/<code class="inline">Height</code> — kept so sketches ported from Processing that read them directly (e.g. when indexing <code class="inline">LoadPixels()</code>'s array by hand) keep working unchanged.</p>
+
+<h2 class="entry-title api" id="settings"><code>Settings</code><span class="badge">virtual</span></h2><ul class="sigs" aria-label="Signatures"><li><code>Settings() <span class="sig-return">→ void</span></code></li></ul>
+<p class="entry-desc">Runs once, before <code class="inline">Setup()</code>, like Processing's <code class="inline">settings()</code>. The host is responsible for calling it immediately before <code class="inline">Setup()</code>.</p>
+<div class="note"><strong>Optional in C#.</strong> Real Processing needs this only because <code class="inline">size()</code> is special-cased by the preprocessor and can't take a variable inside <code class="inline">setup()</code>. Plain C# has no such restriction — <code class="inline">Size()</code> works fine called directly inside <code class="inline">Setup()</code> too. Overriding <code class="inline">Settings()</code> is provided purely so sketches ported from Processing that rely on the setup-order guarantee (<code class="inline">settings()</code> strictly before <code class="inline">setup()</code>) keep behaving the same way.</div>
+
+<h2 class="entry-title api" id="window-management"><code>FullScreen · WindowMove · WindowResize · WindowResizable · WindowTitle · WindowRatio</code></h2><ul class="sigs" aria-label="Signatures"><li><code>FullScreen(<span class="tp">bool</span> fullScreen = true)</code></li><li><code>WindowMove(x, y)</code></li><li><code>WindowResize(w, h)</code></li><li><code>WindowResizable(<span class="tp">bool</span>)</code></li><li><code>WindowTitle(<span class="tp">string</span>)</code></li><li><code>WindowRatio(w, h)</code></li></ul>
+<p class="entry-desc">Window-management requests, each backed by an event a host can subscribe to and act on — the same pattern <code class="inline">RedrawRequested</code>/<code class="inline">ExitRequested</code> already use. <code class="inline">SetLocation()</code>, <code class="inline">SetResizable()</code>, and <code class="inline">SetTitle()</code> are classic-API aliases for <code class="inline">WindowMove()</code>, <code class="inline">WindowResizable()</code>, and <code class="inline">WindowTitle()</code> respectively.</p>
+<div class="table-wrap" role="region" tabindex="0" aria-label="Table: call, event raised, readable state">
+  <table>
+    <tr><th>call</th><th>event raised</th><th>readable state</th></tr>
+    <tr><td>FullScreen(bool)</td><td>FullScreenRequested</td><td>IsFullScreen</td></tr>
+    <tr><td>WindowMove(x, y)</td><td>WindowMoveRequested</td><td>—</td></tr>
+    <tr><td>WindowResize(w, h)</td><td>WindowResizeRequested</td><td>—</td></tr>
+    <tr><td>WindowResizable(bool)</td><td>WindowResizableChanged</td><td>IsWindowResizable</td></tr>
+    <tr><td>WindowTitle(string)</td><td>WindowTitleChanged</td><td>WindowTitleText</td></tr>
+    <tr><td>WindowRatio(w, h)</td><td>WindowRatioRequested</td><td>—</td></tr>
+  </table>
+</div>
+<div class="note"><strong>Host-dependent.</strong> Calling any of these always updates the readable state and raises its event — that part works regardless of host. Whether the actual OS window visibly moves/resizes/retitles depends entirely on whether the host you're running in (the bundled IDE, a custom Avalonia/WPF shell) subscribes to that event and acts on it. A host that doesn't wire these up yet will accept the calls silently rather than throwing.</div>
+
+<h2 class="entry-title api" id="redraw"><code>Redraw</code></h2><ul class="sigs" aria-label="Signatures"><li><code>Redraw() <span class="sig-return">→ void</span></code></li></ul>
+<p class="entry-desc">Requests a single extra frame while <code class="inline">NoLoop()</code> is in effect, raising the <code class="inline">RedrawRequested</code> event. Looping sketches don't need this — they're already rendering continuously.</p>
+
+<h2 class="entry-title api" id="exit"><code>Exit</code></h2><ul class="sigs" aria-label="Signatures"><li><code>Exit() <span class="sig-return">→ void</span></code></li></ul>
+<p class="entry-desc">Raises the <code class="inline">ExitRequested</code> event. DanaProcessing doesn't own a process to terminate — whatever hosts the sketch (a window, a canvas control) should subscribe and close/stop accordingly.</p>
+
+<h2 class="entry-title api" id="print"><code>Print · Println · LogWarning · LogError</code></h2><ul class="sigs" aria-label="Signatures"><li><code>Print(<span class="tp">object</span> message)</code></li><li><code>Println(message)</code></li><li><code>LogWarning(message)</code></li><li><code>LogError(message)</code></li></ul>
+<p class="entry-desc"><code class="inline">Print</code> writes with no trailing newline and no timestamp/coloring — meant for building a line piece by piece across calls, finished off with a <code class="inline">Println</code>. <code class="inline">Println</code>/<code class="inline">LogWarning</code>/<code class="inline">LogError</code> go through <code class="inline">DanaLogger</code>, timestamped and color-coded by level.</p>
+
+<div class="table-wrap" role="region" tabindex="0" aria-label="Table: property, type, meaning">
+  <table>
+    <tr><th>property</th><th>type</th><th>meaning</th></tr>
+    <tr><td>FrameCount</td><td class="ptype">int</td><td>Frames drawn so far.</td></tr>
+    <tr><td>Width / Height</td><td class="ptype">int</td><td>Current canvas size.</td></tr>
+    <tr><td>TargetFrameRate</td><td class="ptype">int</td><td>Set via <code class="inline">FrameRate()</code>.</td></tr>
+    <tr><td>IsLooping</td><td class="ptype">bool</td><td>Whether the host should keep calling <code class="inline">Draw()</code>.</td></tr>
+    <tr><td>DisplayWidth / DisplayHeight</td><td class="ptype">int</td><td>Size of the screen the sketch runs on. 0 until the host sets it.</td></tr>
+  </table>
+</div>
+
+<h2 class="entry-title" id="structure-example">Runnable example</h2>
+<p class="entry-desc">A complete sketch using this section. <strong>Test in Dana</strong> opens it in the IDE, or paste it into a new tab and press Run.</p>
+<div class="code-block"><div class="code-bar"><span class="code-label">C#</span><div class="code-actions"><button type="button" class="copy-btn" data-target="structure-example-code">Copy code</button><button class="dana-test-btn" data-target="structure-example-code" type="button"><svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M7 4l13 8-13 8z"></path></svg><span class="dana-test-label">Run in Dana</span></button></div></div><pre id="structure-example-code" tabindex="0" aria-label="Code, scrollable"><span class="cm">// Setup() runs once, Draw() every frame. NoLoop()/Loop() pause and resume.</span>
+<span class="kw">public</span> <span class="kw">class</span> Structure : <span class="tp">Sketch</span>
+{
+    <span class="kw">float</span> angle;
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup()
+    {
+        Size(<span class="str">500</span>, <span class="str">300</span>);
+        FrameRate(<span class="str">60</span>);
+    }
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        Background(<span class="str">30</span>, <span class="str">32</span>, <span class="str">40</span>);
+        angle += <span class="str">0.05f</span>;
+        Fill(<span class="str">255</span>, <span class="str">180</span>, <span class="str">120</span>);
+        NoStroke();
+        Circle(Width / <span class="str">2</span> + Cos(angle) * <span class="str">150</span>, Height / <span class="str">2</span>, <span class="str">40</span>);
+
+        Fill(<span class="str">255</span>);
+        Text(<span class="str">$"frame {FrameCount} · click to {(IsLooping ? "</span>pause<span class="str">" : "</span>resume<span class="str">")}"</span>, <span class="str">12</span>, <span class="str">20</span>);
+    }
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> MousePressed()
+    {
+        <span class="kw">if</span> (IsLooping) NoLoop(); <span class="kw">else</span> Loop();
+    }
+}</pre></div>
+
+</div>
+<nav class="pager" aria-label="Previous and next topic"><a class="prev" href="from-processing.html"><span>← Previous</span><strong>Coming from Processing or p5.js</strong></a><a class="next" href="input.html"><span>Next →</span><strong>Mouse, keyboard &amp; time</strong></a></nav>
+<aside class="support-aside" aria-label="Support the project">
+  <p><strong>Found this useful?</strong> Dana is free and built in spare time — a donation buys more time for docs like this one.</p>
+  <a class="btn btn-ink" href="https://paypal.me/CarlosFernandez934"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M12 21s-7.5-4.6-9.6-9.4C1 8.2 3.1 4.5 6.8 4.5c2.2 0 3.7 1.3 5.2 3 1.5-1.7 3-3 5.2-3 3.7 0 5.8 3.7 4.4 7.1C19.5 16.4 12 21 12 21z"></path></svg><span>Donate via PayPal</span></a>
+</aside>
+
+  </div>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap">
+    <p>DanaProcessing · v1.0 RC · MIT · stands on the shoulders of <a href="https://processing.org">Processing</a>, <a href="https://p5js.org">p5.js</a> and <a href="https://sonic-pi.net">Sonic Pi</a>.</p>
+    <nav aria-label="Footer">
+      <a href="../reference/a-z.html">All topics &amp; A–Z</a>
+      <a href="https://github.com/BuddhaCodes/DanaProcessing/releases/latest">Releases</a>
+      <a href="https://github.com/BuddhaCodes/DanaProcessing">GitHub</a>
+      <a href="../index.html#support">Support</a>
+    </nav>
+  </div>
+</footer>
+</body>
+</html>

@@ -1,0 +1,86 @@
+<!--meta {"title": "Reels: turn a sketch into a video", "nav": "Reels", "summary": "Mark up your sketch with // @reel comments and the IDE turns it into a short video for Reels, Shorts or TikTok. You get a title card, the code typing itself scene by scene with…", "tags": []} -->
+<p class="section-intro">Mark up your sketch with <code class="inline">// @reel</code> comments and the IDE turns it into a short video for Reels, Shorts or TikTok. You get a title card, the code typing itself scene by scene with captions and highlighted lines, then the sketch running live, even driven by a simulated user if it reacts to the mouse or keyboard. Open it from <strong>Sketch → Create reel...</strong></p>
+
+<div class="code-block">
+<pre><span class="kw">using</span> DanaProcessing.Reels;   <span class="cm">// opt in: hidden from the video</span>
+
+<span class="cm">// @reel title: Particles that chase your mouse</span>
+<span class="cm">// @reel format: vertical</span>
+<span class="cm">// @reel result: 8 caption="Move to steer · click to burst"</span>
+
+<span class="cm">// @reel scene "Every frame, each one steers toward the mouse" effect=type</span>
+<span class="kw">public override void</span> Draw()
+{
+    <span class="cm">// @reel pause 0.4</span>
+    pull.SetMag(<span class="str">0.35f</span>);   <span class="cm">// @mark  (highlighted once typed)</span>
+    <span class="cm">// @reel hide</span>
+    ...bookkeeping you don't want on screen
+    <span class="cm">// @reel show</span>
+}
+
+<span class="cm">// @reel drag 100,100 -&gt; 500,400 at=2 dur=1.5</span></pre>
+</div>
+
+<h3 class="entry-title" id="reel-header">Reel settings <span class="sig-return">→ // @reel key: value</span></h3>
+<p class="entry-desc">Put these anywhere, usually at the top. All are optional.</p>
+<div class="table-wrap">
+  <table>
+    <tr><th>marker</th><th>what it does</th></tr>
+    <tr><td>title: … / subtitle: …</td><td>Opening title card, also shown as a header over the code cards</td></tr>
+    <tr><td>format: vertical | square | landscape</td><td>1080×1920 (default), 1080×1080 or 1920×1080</td></tr>
+    <tr><td>theme: clay | dark | light</td><td>Clay is the IDE's own look (default)</td></tr>
+    <tr><td>speed: 55 | slow | normal | fast | turbo</td><td>Typing speed in characters per second. If you don't set it, long scenes speed up to stay reel-sized</td></tr>
+    <tr><td>result: 8 caption="…" transition=zoom</td><td>Seconds of live sketch at the end; <code class="inline">result off</code> skips it</td></tr>
+    <tr><td>outro: … | off</td><td>Closing card text, or none</td></tr>
+    <tr><td>fps: 30 · lang: en | es · file: Sketch.cs</td><td>Frame rate, language of the reel's own labels, file name on the code card</td></tr>
+    <tr><td>progress: off · linenumbers: off · mouse: off</td><td>Hide the story-style progress bar, the line numbers, or the simulated mouse</td></tr>
+    <tr><td>typos: on | 10% | off</td><td>Typing now and then hits a neighbouring key, notices and backspaces, like a person. <code class="inline">on</code> is about one word in twelve. Off by default; per scene with <code class="inline">typos=</code></td></tr>
+    <tr><td>zoom: off</td><td>Lines marked with <code class="inline">// @mark</code> get a gentle zoom while they're highlighted (default on); <code class="inline">off</code> keeps the card still</td></tr>
+    <tr><td>audio: on | off</td><td>Record the sketch's sound (live loops, <code class="inline">Play()</code>, samples) into the MP4. On by itself when the code makes sound</td></tr>
+  </table>
+</div>
+
+<h3 class="entry-title" id="reel-scene">// @reel scene "caption" <span class="sig-return">→ a code card</span></h3>
+<p class="entry-desc">The code from this marker to the next one is one card, with its caption underneath. Options: <code class="inline">effect=type|lines|fade|instant</code> (typed with a caret, line by line, all at once with a fade, or already there), <code class="inline">transition=slide|fade|zoom|wipe|none</code>, <code class="inline">speed=</code>, <code class="inline">hold=</code> (seconds the finished card stays), <code class="inline">typos=</code> (this card's own typo rate), and the word <code class="inline">keep</code> to continue the previous card instead of starting a new one. A scene with a caption and no code becomes a full-screen statement card. Indentation is normalized per card. A line too long for the card wraps onto extra rows (shown with a dot instead of a line number), the way an editor soft-wraps, instead of shrinking the code until a phone can't read it.</p>
+
+<h3 class="entry-title" id="reel-inside">Inside a scene <span class="sig-return">→ pause · caption · @mark · hide/show</span></h3>
+<p class="entry-desc"><code class="inline">// @reel pause 0.5</code> stops typing for a moment before the next line. <code class="inline">// @reel caption: …</code> changes the caption when the next line starts appearing. Ending a code line with <code class="inline">// @mark</code> highlights it once the scene is shown and dims the rest. Lines between <code class="inline">// @reel hide</code> and <code class="inline">// @reel show</code> still compile and run, but never appear in the video.</p>
+
+<h3 class="entry-title" id="reel-input">Simulated interaction <span class="sig-return">→ move · drag · click · key</span></h3>
+<p class="entry-desc">During the result part the sketch receives real input events (<code class="inline">MousePressed()</code>, <code class="inline">MouseDragged()</code>, <code class="inline">KeyPressed()</code>…), and the video draws the cursor, click ripples and a keycap. Points are in sketch pixels and times in seconds since the result started: <code class="inline">// @reel move 10,10 -&gt; 200,200 -&gt; 300,50 at=1 dur=2</code>, <code class="inline">// @reel drag 100,100 -&gt; 400,300 at 3s over 1.5s</code>, <code class="inline">// @reel click 300,200 at=2</code>, <code class="inline">// @reel key space at=4</code> (also <code class="inline">enter</code>, arrow keys, or any single character). With no scripted mouse, a sketch that reads the mouse gets a natural-looking path automatically, plus clicks and a drag if it overrides those methods.</p>
+
+<h3 class="entry-title" id="reel-export">Export <span class="sig-return">→ MP4 · GIF · PNG</span></h3>
+<p class="entry-desc">The preview window plays the reel and lets you scrub and jump to any part. Export renders frame by frame in video time, not real time, so a heavy sketch still comes out smooth, and <code class="inline">Millis()</code> follows video time. <strong>MP4</strong> (H.264, full resolution) needs <a href="https://www.gyan.dev/ffmpeg/builds/" target="_blank" rel="noopener">ffmpeg</a>; the window finds it or lets you pick it. <strong>GIF</strong> uses DanaProcessing's own encoder and needs nothing else. <strong>PNG</strong> writes one image per frame for your own editor. If the sketch makes sound, it's recorded in step with the video: live loops run in video time, so every beat lands on the same frame as in the preview, and the MP4 gets an AAC track (PNG export drops an <code class="inline">audio.wav</code> next to the frames; GIF has no sound). <strong>YouTube thumbnail…</strong> saves a 1280×720 PNG with the reel's title, a frame of the running sketch and the reel's theme, so the video and its thumbnail match.</p>
+
+<h3 class="entry-title" id="reel-api">Reel.IsActive <span class="sig-return">→ bool</span> · Reel.IsExporting <span class="sig-return">→ bool</span></h3>
+<p class="entry-desc">True while your sketch's code is running inside a reel (preview or export), or while a reel is being written to a file. Use them to skip a slow intro or hide debug text in the video. <code class="inline">Reel.Parse(source)</code> returns the parsed <code class="inline">ReelScript</code> (scenes, inputs, warnings) if you want to build tooling on top.</p>
+<div class="note"><strong>Try it:</strong> <strong>Sketch → Examples</strong>, tag <em>Reels / video</em>: "Reel: particles that chase your mouse" (vertical, auto-simulated mouse) and "Reel: a paint app in 25 lines" (square, dark theme, scripted drags and a key press), "Reel: typing with mistakes and backspace" (<code class="inline">typos</code> for the reel and per scene) and "Reel: zoom on marked lines" (<code class="inline">// @mark</code> with <code class="inline">zoom</code>).</div>
+
+<h3 class="entry-title" id="reels-example">Runnable example</h3>
+<p class="entry-desc">A complete sketch using this section. <strong>Test in Dana</strong> opens it in the IDE, or paste it into a new tab and press Run.</p>
+<div class="code-block">
+  <pre id="reels-example-code"><span class="cm">// @reel title: A circle that follows you</span>
+<span class="cm">// @reel format: vertical</span>
+<span class="cm">// @reel result: 6 caption="Move the mouse"</span>
+<span class="cm">// @reel scene "Every frame, ease toward the mouse" effect=type</span>
+<span class="kw">public</span> <span class="kw">class</span> FollowReel : <span class="tp">Sketch</span>
+{
+    <span class="kw">float</span> x = <span class="str">200</span>, y = <span class="str">200</span>;
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup() =&gt; Size(<span class="str">400</span>, <span class="str">400</span>);
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        Background(<span class="str">25</span>, <span class="str">28</span>, <span class="str">40</span>);
+        x = Lerp(x, MouseX, <span class="str">0.1f</span>);   <span class="cm">// @mark</span>
+        y = Lerp(y, MouseY, <span class="str">0.1f</span>);   <span class="cm">// @mark</span>
+        Fill(<span class="str">255</span>, <span class="str">180</span>, <span class="str">120</span>); NoStroke();
+        Circle(x, y, <span class="str">60</span>);
+    }
+}
+<span class="cm">// Open it, then Sketch &gt; Create reel... to preview and export the video.</span></pre>
+  <button class="dana-test-btn" data-target="reels-example-code" title="Run in DanaProcessing IDE">
+    <i class="ph-bold ph-play"></i>
+    <span class="dana-test-label">Test in Dana</span>
+  </button>
+</div>

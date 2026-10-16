@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en" data-root="../">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-N4ZWC7GN1B"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-N4ZWC7GN1B');
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lights — DanaProcessing reference</title>
+<meta name="description" content="Up to 8 lights — Processing&#x27;s own cap — combined with a Blinn-Phong shading model. Without any light call, Box()/Sphere() and custom 3D meshes draw flat and fully unlit,…">
+<link rel="canonical" href="https://buddhacodes.github.io/DanaProcessing/reference/lights-3d.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="DanaProcessing">
+<meta property="og:title" content="Lights — DanaProcessing reference">
+<meta property="og:description" content="Up to 8 lights — Processing&#x27;s own cap — combined with a Blinn-Phong shading model. Without any light call, Box()/Sphere() and custom 3D meshes draw flat and fully unlit,…">
+<meta property="og:url" content="https://buddhacodes.github.io/DanaProcessing/reference/lights-3d.html">
+<meta property="og:image" content="https://buddhacodes.github.io/DanaProcessing/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://buddhacodes.github.io/DanaProcessing/og-image.png">
+<meta name="theme-color" content="#13202A">
+<link rel="icon" type="image/png" href="../DanaProcessing.Ide/Theme/dana.png">
+<link rel="apple-touch-icon" href="../DanaProcessing.Ide/Theme/dana.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&amp;family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/search-index.js" defer></script>
+<script src="../assets/site.js" defer></script>
+</head>
+<body class="page-topic">
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="bar">
+    <a class="brand" href="../index.html"><svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><circle cx="15" cy="15" r="13" fill="none" stroke="currentColor" stroke-width="2"></circle><circle cx="15" cy="15" r="6" fill="#E7B66B"></circle><circle cx="23" cy="8" r="2.5" fill="#FF8A6B"></circle></svg><span>DanaProcessing</span></a>
+    <button type="button" class="menu-toggle" aria-expanded="false" aria-controls="site-menu">Menu</button>
+    <div class="site-menu" id="site-menu">
+      <nav class="main-nav" aria-label="Main">
+        <a href="../reference/tutorial.html">Learn</a>
+        <a href="../reference/a-z.html" aria-current="page">Reference</a>
+        <a href="../index.html#gallery">Examples</a>
+        <a href="../reference/ide.html">The IDE</a>
+      </nav>
+      <form class="search" role="search" action="../reference/a-z.html">
+        <label class="visually-hidden" for="site-search">Search the documentation</label>
+        <div class="search-box">
+          <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+          <input id="site-search" name="q" type="search" autocomplete="off" placeholder="Search — press /" aria-describedby="search-status" aria-controls="search-results">
+        </div>
+        <p id="search-status" class="visually-hidden" aria-live="polite"></p>
+        <ul id="search-results" class="search-results" hidden></ul>
+      </form>
+      <a class="support-link" href="../index.html#support"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M12 21s-7.5-4.6-9.6-9.4C1 8.2 3.1 4.5 6.8 4.5c2.2 0 3.7 1.3 5.2 3 1.5-1.7 3-3 5.2-3 3.7 0 5.8 3.7 4.4 7.1C19.5 16.4 12 21 12 21z"></path></svg><span>Support Dana</span></a>
+    </div>
+  </div>
+</header>
+<main id="main">
+<div class="topic-hero">
+  <div class="wrap">
+    <div class="topic-hero-text">
+      <nav class="breadcrumb" aria-label="Breadcrumb"><ol><li><a href="a-z.html">Reference</a></li><li>3D</li><li aria-current="page">Lights</li></ol></nav>
+      <h1>Lights</h1>
+      <p class="lede">Up to 8 lights — Processing's own cap — combined with a Blinn-Phong shading model. Without any light call, <code class="inline">Box()</code>/<code class="inline">Sphere()</code> and custom 3D meshes draw flat and fully unlit, ignoring normals entirely, which is Processing's own documented default too.</p>
+      <p class="tags"><span class="tag">3D renderer</span></p>
+    </div>
+    <div class="topic-art" aria-hidden="true"><span style="background:#9DB8F2"></span><span></span><span></span><span></span><span></span></div>
+  </div>
+</div>
+<div class="wrap topic-layout">
+  <button type="button" class="topics-toggle" aria-expanded="false" aria-controls="topics">All topics</button>
+<nav class="topics" id="topics" aria-label="Reference topics">
+<div class="topic-group"><h2>Start here</h2><ul>
+<li><a href="intro.html">Overview</a></li>
+<li><a href="tutorial.html">30-minute tutorial</a></li>
+<li><a href="from-processing.html">From Processing / p5.js</a></li>
+</ul></div>
+<div class="topic-group"><h2>Basics</h2><ul>
+<li><a href="structure.html">Sketch structure</a></li>
+<li><a href="input.html">Input &amp; time</a></li>
+</ul></div>
+<div class="topic-group"><h2>Drawing</h2><ul>
+<li><a href="color.html">Color</a></li>
+<li><a href="shape-primitives.html">2D Primitives</a></li>
+<li><a href="shape-custom.html">Custom shapes</a></li>
+<li><a href="typography.html">Typography</a></li>
+<li><a href="transform.html">Transformations</a></li>
+</ul></div>
+<div class="topic-group"><h2>Media</h2><ul>
+<li><a href="image.html">PImage</a></li>
+<li><a href="pgraphics.html">PGraphics</a></li>
+<li><a href="pshape.html">PShape</a></li>
+<li><a href="output.html">Saving output</a></li>
+<li><a href="pixels.html">Pixels</a></li>
+<li><a href="reels.html">Reels</a></li>
+</ul></div>
+<div class="topic-group"><h2>Data &amp; math</h2><ul>
+<li><a href="files-data.html">Files &amp; data</a></li>
+<li><a href="utilities.html">Conversion &amp; utilities</a></li>
+<li><a href="math.html">Math &amp; trig</a></li>
+<li><a href="pvector.html">PVector</a></li>
+<li><a href="random-noise.html">Random &amp; noise</a></li>
+<li><a href="collections.html">Collections</a></li>
+</ul></div>
+<div class="topic-group"><h2>3D</h2><ul>
+<li><a href="getting-started-3d.html">Getting started</a></li>
+<li><a href="shape-3d-primitives.html">3D Primitives</a></li>
+<li><a href="transform-3d.html">3D Transformations</a></li>
+<li><a href="camera-3d.html">Camera &amp; Projection</a></li>
+<li><a href="lights-3d.html" aria-current="page">Lights</a>
+<ul class="on-this-page" aria-label="On this page">
+<li><a href="#lights"><code>Lights · NoLights</code></a></li>
+<li><a href="#ambientlight"><code>AmbientLight</code></a></li>
+<li><a href="#directionallight"><code>DirectionalLight</code></a></li>
+<li><a href="#pointlight"><code>PointLight</code></a></li>
+<li><a href="#spotlight"><code>SpotLight</code></a></li>
+<li><a href="#lightfalloff"><code>LightFalloff · LightSpecular</code></a></li>
+</ul>
+</li>
+<li><a href="material-3d.html">Material properties</a></li>
+<li><a href="coordinates-3d.html">Coordinates</a></li>
+<li><a href="shape-3d-custom.html">Custom 3D shapes</a></li>
+<li><a href="pshader.html">PShader</a></li>
+</ul></div>
+<div class="topic-group"><h2>Sound</h2><ul>
+<li><a href="audio.html">Live loops &amp; timing</a></li>
+</ul></div>
+<div class="topic-group"><h2>Live &amp; generative</h2><ul>
+<li><a href="live.html">Playing live: MIDI, beat, mic</a></li>
+<li><a href="generative.html">Generative art: seeds, print</a></li>
+<li><a href="workflow.html">Day to day: F3, data/, rewind</a></li>
+</ul></div>
+<div class="topic-group"><h2>Tooling</h2><ul>
+<li><a href="ide.html">The IDE</a></li>
+<li><a href="hosting.html">Avalonia host</a></li>
+<li><a href="enums.html">Enumerations</a></li>
+</ul></div>
+<p class="topics-all"><a href="a-z.html">All topics &amp; A–Z index</a></p></nav>
+  <div class="topic-main">
+<details class="on-this-page-mobile"><summary>On this page · 6 entries</summary><ul><li><a href="#lights"><code>Lights · NoLights</code></a></li><li><a href="#ambientlight"><code>AmbientLight</code></a></li><li><a href="#directionallight"><code>DirectionalLight</code></a></li><li><a href="#pointlight"><code>PointLight</code></a></li><li><a href="#spotlight"><code>SpotLight</code></a></li><li><a href="#lightfalloff"><code>LightFalloff · LightSpecular</code></a></li></ul></details>
+<div class="doc">
+<div class="note"><strong>The light list resets every frame.</strong> <code class="inline">BeginDraw()</code> clears all active lights, so <code class="inline">Lights()</code>/<code class="inline">PointLight()</code>/etc. need to be called again every <code class="inline">Draw()</code> to stay active — not just once in <code class="inline">Setup()</code>. This matches Processing's own documented requirement exactly. Lights past the 8-light cap are silently ignored, not an error.</div>
+
+<h2 class="entry-title api" id="lights"><code>Lights · NoLights</code></h2><ul class="sigs" aria-label="Signatures"><li><code>Lights()</code></li><li><code>NoLights()</code></li></ul>
+<p class="entry-desc"><code class="inline">Lights()</code> turns on Processing's default rig — a mid-gray ambient light plus a mid-gray directional light shining straight along -Z — with <code class="inline">LightFalloff(1,0,0)</code> (no falloff) and <code class="inline">LightSpecular(0,0,0)</code> (no specular contribution). <code class="inline">NoLights()</code> clears everything back to flat/unlit.</p>
+
+<h2 class="entry-title api" id="ambientlight"><code>AmbientLight</code></h2><ul class="sigs" aria-label="Signatures"><li><code>AmbientLight(r, g, b)</code></li><li><code>AmbientLight(r, g, b, x, y, z)</code></li></ul>
+<p class="entry-desc">Uniform light that lights every surface regardless of orientation. The no-position overload is infinite and unattenuated; the positioned overload falls off with distance according to the current <code class="inline">LightFalloff()</code>.</p>
+
+<h2 class="entry-title api" id="directionallight"><code>DirectionalLight</code></h2><ul class="sigs" aria-label="Signatures"><li><code>DirectionalLight(r, g, b, nx, ny, nz)</code></li></ul>
+<p class="entry-desc">Shines from a fixed direction with no position and no distance falloff — think sunlight. <code class="inline">(nx, ny, nz)</code> is the direction the light travels <em>from</em>, matching Processing's own convention.</p>
+
+<h2 class="entry-title api" id="pointlight"><code>PointLight</code></h2><ul class="sigs" aria-label="Signatures"><li><code>PointLight(r, g, b, x, y, z)</code></li></ul>
+<p class="entry-desc">Radiates equally in all directions from a position, attenuated by the current <code class="inline">LightFalloff()</code> with distance.</p>
+
+<h2 class="entry-title api" id="spotlight"><code>SpotLight</code></h2><ul class="sigs" aria-label="Signatures"><li><code>SpotLight(r, g, b, x, y, z, nx, ny, nz, angle, concentration)</code></li></ul>
+<p class="entry-desc">A cone of light at <code class="inline">(x, y, z)</code>, aimed along <code class="inline">(nx, ny, nz)</code>. <code class="inline">angle</code> (radians) is the half-angle of the cone; <code class="inline">concentration</code> controls how sharply intensity falls off toward the cone's edge (higher = tighter hotspot). Also attenuated by <code class="inline">LightFalloff()</code> with distance.</p>
+
+<h2 class="entry-title api" id="lightfalloff"><code>LightFalloff · LightSpecular</code></h2><ul class="sigs" aria-label="Signatures"><li><code>LightFalloff(constant, linear, quadratic)</code></li><li><code>LightSpecular(r, g, b)</code></li></ul>
+<p class="entry-desc">Style state affecting lights added <em>after</em> the call — like <code class="inline">Fill()</code>/<code class="inline">Stroke()</code>, not retroactive. <code class="inline">LightFalloff()</code> sets the distance-attenuation coefficients for point/spot/positional-ambient lights (Processing's own default: <code class="inline">(1, 0, 0)</code> — no falloff at all). <code class="inline">LightSpecular()</code> sets the color used for specular highlights and has no visible effect until <code class="inline">Shininess()</code> is above 0 — see <a href="material-3d.html">Material properties</a>.</p>
+
+</div>
+<nav class="pager" aria-label="Previous and next topic"><a class="prev" href="camera-3d.html"><span>← Previous</span><strong>Camera &amp; Projection</strong></a><a class="next" href="material-3d.html"><span>Next →</span><strong>Material properties</strong></a></nav>
+<aside class="support-aside" aria-label="Support the project">
+  <p><strong>Found this useful?</strong> Dana is free and built in spare time — a donation buys more time for docs like this one.</p>
+  <a class="btn btn-ink" href="https://paypal.me/CarlosFernandez934"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M12 21s-7.5-4.6-9.6-9.4C1 8.2 3.1 4.5 6.8 4.5c2.2 0 3.7 1.3 5.2 3 1.5-1.7 3-3 5.2-3 3.7 0 5.8 3.7 4.4 7.1C19.5 16.4 12 21 12 21z"></path></svg><span>Donate via PayPal</span></a>
+</aside>
+
+  </div>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap">
+    <p>DanaProcessing · v1.0 RC · MIT · stands on the shoulders of <a href="https://processing.org">Processing</a>, <a href="https://p5js.org">p5.js</a> and <a href="https://sonic-pi.net">Sonic Pi</a>.</p>
+    <nav aria-label="Footer">
+      <a href="../reference/a-z.html">All topics &amp; A–Z</a>
+      <a href="https://github.com/BuddhaCodes/DanaProcessing/releases/latest">Releases</a>
+      <a href="https://github.com/BuddhaCodes/DanaProcessing">GitHub</a>
+      <a href="../index.html#support">Support</a>
+    </nav>
+  </div>
+</footer>
+</body>
+</html>

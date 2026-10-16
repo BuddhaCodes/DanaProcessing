@@ -1,0 +1,15 @@
+<!--meta {"title": "3D Transformations", "nav": "3D Transformations", "summary": "PushMatrix()/PopMatrix() (from Transformations) work exactly as before, and now also save/restore the 3D model matrix alongside the 2D one. Everything below composes the usual…", "tags": ["3D renderer"]} -->
+<p class="section-intro"><code class="inline">PushMatrix()</code>/<code class="inline">PopMatrix()</code> (from <a href="#transform">Transformations</a>) work exactly as before, and now also save/restore the 3D model matrix alongside the 2D one. Everything below composes the usual way: each call prepends to the current matrix, so <code class="inline">Translate()</code> then <code class="inline">RotateX()</code> rotates around the already-translated origin, not the world origin.</p>
+
+<h3 class="entry-title" id="translate-3d">Translate(x, y, <span class="tp">float</span> z)</h3>
+<p class="entry-desc">3D translate. The 2D <code class="inline">Translate(x, y)</code> overload still works under Renderer3D too — <code class="inline">z</code> is implicitly 0, matching Processing.</p>
+
+<h3 class="entry-title" id="rotatexyz">RotateX(radians) · RotateY(radians) · RotateZ(radians)</h3>
+<p class="entry-desc">Rotates around each axis. Like every angle in DanaProcessing, these take <strong>radians</strong>. Under Renderer3D both exist and compose: <code class="inline">Rotate()</code> rotates the Skia 2D overlay, <code class="inline">RotateZ()</code> rotates 3D geometry — they're genuinely different operations.</p>
+
+<h3 class="entry-title" id="scale-3d">Scale(x, y, <span class="tp">float</span> z)</h3>
+<p class="entry-desc">3D scale.</p>
+
+<h3 class="entry-title" id="rotate-axis">Rotate(<span class="tp">float</span> angleRadians, x, y, z)</h3>
+<p class="entry-desc">Rotates by <code class="inline">angleRadians</code> around the arbitrary axis <code class="inline">(x, y, z)</code> — the P3D-only overload of <code class="inline">rotate()</code>. Takes radians, like <code class="inline">RotateX/Y/Z()</code> and the 2D <code class="inline">Rotate()</code>. The axis doesn't need to be pre-normalized; a zero-length axis is a no-op.</p>
+<div class="note"><strong>One combined rotation beats three stacked ones.</strong> <code class="inline">RotateX()</code>+<code class="inline">RotateY()</code>+<code class="inline">RotateZ()</code> compose differently depending on call order, and can twist in unexpected ways once an object is no longer near its rest orientation (the classic gimbal-lock feel). A single axis-angle <code class="inline">Rotate()</code> — typically derived from an accumulated quaternion for a trackball-style drag — sidesteps that entirely. See the "Gema facetada" sample's <code class="inline">ApplySpin()</code> helper for the pattern.</div>

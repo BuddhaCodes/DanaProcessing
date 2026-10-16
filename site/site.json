@@ -1,0 +1,87 @@
+{
+  "groups": [
+    {
+      "title": "Start here",
+      "pages": [
+        "intro",
+        "tutorial",
+        "from-processing"
+      ]
+    },
+    {
+      "title": "Basics",
+      "pages": [
+        "structure",
+        "input"
+      ]
+    },
+    {
+      "title": "Drawing",
+      "pages": [
+        "color",
+        "shape-primitives",
+        "shape-custom",
+        "typography",
+        "transform"
+      ]
+    },
+    {
+      "title": "Media",
+      "pages": [
+        "image",
+        "pgraphics",
+        "pshape",
+        "output",
+        "pixels",
+        "reels"
+      ]
+    },
+    {
+      "title": "Data & math",
+      "pages": [
+        "files-data",
+        "utilities",
+        "math",
+        "pvector",
+        "random-noise",
+        "collections"
+      ]
+    },
+    {
+      "title": "3D",
+      "pages": [
+        "getting-started-3d",
+        "shape-3d-primitives",
+        "transform-3d",
+        "camera-3d",
+        "lights-3d",
+        "material-3d",
+        "coordinates-3d",
+        "shape-3d-custom",
+        "pshader"
+      ]
+    },
+    {
+      "title": "Sound",
+      "pages": [
+        "audio"
+      ]
+    },
+    {
+      "title": "Live & generative",
+      "pages": [
+        "live",
+        "generative",
+        "workflow"
+      ]
+    },
+    {
+      "title": "Tooling",
+      "pages": [
+        "ide",
+        "hosting",
+        "enums"
+      ]
+    }
+  ]
+}

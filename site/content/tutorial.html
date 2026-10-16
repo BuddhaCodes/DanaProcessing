@@ -1,0 +1,393 @@
+<!--meta {"title": "Your first 30 minutes", "nav": "30-minute tutorial", "summary": "From an empty tab to a night full of fireflies that react to the mouse, make sound and turn into a video. Six steps, each a complete sketch you can run: open the IDE, press…", "tags": []} -->
+<p class="section-intro">From an empty tab to a night full of fireflies that react to the mouse, make sound and turn into a video. Six steps, each a complete sketch you can run: open the IDE, press <strong>Test in Dana</strong> (or paste the code into a new tab and press <strong>Run</strong>), then try the small change suggested under it. No C# knowledge needed; it comes along the way.</p>
+<h3 class="entry-title" id="tutorial-1">1. A canvas and a circle <span class="sig-return">3 min</span></h3>
+<p class="entry-desc">Every sketch is a class that inherits from <code class="inline">Sketch</code>. <code class="inline">Setup()</code> runs once: give the canvas a size. <code class="inline">Draw()</code> runs about 60 times a second: clear the background and draw. <code class="inline">MouseX</code> and <code class="inline">MouseY</code> are always where the mouse is, so the circle follows it.</p>
+<div class="code-block">
+  <pre id="tutorial-1-code"><span class="kw">public</span> <span class="kw">class</span> Fireflies : <span class="tp">Sketch</span>
+{
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup()
+    {
+        Size(<span class="str">800</span>, <span class="str">500</span>);
+    }
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        Background(<span class="str">15</span>, <span class="str">20</span>, <span class="str">40</span>);
+        Fill(<span class="str">255</span>, <span class="str">230</span>, <span class="str">120</span>);
+        NoStroke();
+        Circle(MouseX, MouseY, <span class="str">20</span>);
+    }
+}</pre>
+  <button class="dana-test-btn" data-target="tutorial-1-code" title="Run in DanaProcessing IDE">
+    <i class="ph-bold ph-play"></i>
+    <span class="dana-test-label">Test in Dana</span>
+  </button>
+</div>
+<div class="note"><strong>Try:</strong> Change the background to <code class="inline">Background(40, 10, 30)</code>, or make the circle bigger when it's further right: <code class="inline">Circle(MouseX, MouseY, MouseX / 10)</code>.</div>
+<h3 class="entry-title" id="tutorial-2">2. Shapes and color: a night scene <span class="sig-return">5 min</span></h3>
+<p class="entry-desc">Drawing is done in order, like painting: what you draw later covers what came before. <code class="inline">Fill()</code> and <code class="inline">Stroke()</code> set the colors for everything drawn after them, and a fourth number is transparency (0 to 255). Moving the scene into its own method keeps <code class="inline">Draw()</code> readable. <code class="inline">RandomSeed(7)</code> makes <code class="inline">Random()</code> return the same numbers every frame, so the grass doesn't flicker.</p>
+<div class="code-block">
+  <pre id="tutorial-2-code"><span class="kw">public</span> <span class="kw">class</span> Fireflies : <span class="tp">Sketch</span>
+{
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup()
+    {
+        Size(<span class="str">800</span>, <span class="str">500</span>);
+    }
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        Background(<span class="str">15</span>, <span class="str">20</span>, <span class="str">40</span>);
+        DrawScene();
+
+        Fill(<span class="str">255</span>, <span class="str">230</span>, <span class="str">120</span>);
+        NoStroke();
+        Circle(MouseX, MouseY, <span class="str">20</span>);
+    }
+
+    <span class="kw">void</span> DrawScene()
+    {
+        <span class="cm">// The moon: a big pale circle with a soft halo behind it.</span>
+        NoStroke();
+        Fill(<span class="str">255</span>, <span class="str">255</span>, <span class="str">220</span>, <span class="str">30</span>);
+        Circle(<span class="str">650</span>, <span class="str">100</span>, <span class="str">160</span>);
+        Fill(<span class="str">250</span>, <span class="str">245</span>, <span class="str">220</span>);
+        Circle(<span class="str">650</span>, <span class="str">100</span>, <span class="str">90</span>);
+
+        <span class="cm">// Grass: hundreds of thin lines, a little different each.</span>
+        RandomSeed(<span class="str">7</span>);                       <span class="cm">// same "random" grass every frame</span>
+        StrokeWeight(<span class="str">2</span>);
+        <span class="kw">for</span> (<span class="kw">int</span> x = <span class="str">0</span>; x &lt; Width; x += <span class="str">4</span>)
+        {
+Stroke(<span class="str">30</span>, Random(<span class="str">70</span>, <span class="str">110</span>), <span class="str">60</span>);
+<span class="kw">float</span> h = Random(<span class="str">30</span>, <span class="str">90</span>);
+Line(x, Height, x + Random(-<span class="str">8</span>, <span class="str">8</span>), Height - h);
+        }
+    }
+}</pre>
+  <button class="dana-test-btn" data-target="tutorial-2-code" title="Run in DanaProcessing IDE">
+    <i class="ph-bold ph-play"></i>
+    <span class="dana-test-label">Test in Dana</span>
+  </button>
+</div>
+<div class="note"><strong>Try:</strong> Add stars: a loop of 80 tiny <code class="inline">Circle(Random(Width), Random(300), 2)</code> calls, before the moon.</div>
+<h3 class="entry-title" id="tutorial-3">3. Animation: one firefly <span class="sig-return">5 min</span></h3>
+<p class="entry-desc"><code class="inline">Noise()</code> is random that changes smoothly: neighbouring inputs give neighbouring outputs, so increasing <code class="inline">t</code> a little each frame makes the firefly wander instead of jump. <code class="inline">Sin()</code> swings between -1 and 1; scaled to 0..1 it makes the glow breathe. Two circles, a big faint one and a small bright one, look like light.</p>
+<div class="code-block">
+  <pre id="tutorial-3-code"><span class="kw">public</span> <span class="kw">class</span> Fireflies : <span class="tp">Sketch</span>
+{
+    <span class="kw">float</span> t;
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup()
+    {
+        Size(<span class="str">800</span>, <span class="str">500</span>);
+    }
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        Background(<span class="str">15</span>, <span class="str">20</span>, <span class="str">40</span>);
+        DrawScene();
+
+        <span class="cm">// Noise() gives smooth random values: perfect for wandering.</span>
+        t += <span class="str">0.005f</span>;
+        <span class="kw">float</span> x = Noise(t) * Width;
+        <span class="kw">float</span> y = Noise(t + <span class="str">100</span>) * (Height - <span class="str">120</span>);
+
+        <span class="cm">// Sin() pulses between -1 and 1: the glow breathes.</span>
+        <span class="kw">float</span> glow = (Sin(FrameCount * <span class="str">0.1f</span>) + <span class="str">1</span>) / <span class="str">2</span>;   <span class="cm">// 0..1</span>
+        NoStroke();
+        Fill(<span class="str">255</span>, <span class="str">230</span>, <span class="str">120</span>, <span class="str">40</span> * glow);
+        Circle(x, y, <span class="str">60</span>);
+        Fill(<span class="str">255</span>, <span class="str">240</span>, <span class="str">150</span>, <span class="str">120</span> + <span class="str">135</span> * glow);
+        Circle(x, y, <span class="str">10</span>);
+    }
+
+    <span class="kw">void</span> DrawScene()
+    {
+        NoStroke();
+        Fill(<span class="str">255</span>, <span class="str">255</span>, <span class="str">220</span>, <span class="str">30</span>);
+        Circle(<span class="str">650</span>, <span class="str">100</span>, <span class="str">160</span>);
+        Fill(<span class="str">250</span>, <span class="str">245</span>, <span class="str">220</span>);
+        Circle(<span class="str">650</span>, <span class="str">100</span>, <span class="str">90</span>);
+
+        RandomSeed(<span class="str">7</span>);
+        StrokeWeight(<span class="str">2</span>);
+        <span class="kw">for</span> (<span class="kw">int</span> x = <span class="str">0</span>; x &lt; Width; x += <span class="str">4</span>)
+        {
+Stroke(<span class="str">30</span>, Random(<span class="str">70</span>, <span class="str">110</span>), <span class="str">60</span>);
+Line(x, Height, x + Random(-<span class="str">8</span>, <span class="str">8</span>), Height - Random(<span class="str">30</span>, <span class="str">90</span>));
+        }
+    }
+}</pre>
+  <button class="dana-test-btn" data-target="tutorial-3-code" title="Run in DanaProcessing IDE">
+    <i class="ph-bold ph-play"></i>
+    <span class="dana-test-label">Test in Dana</span>
+  </button>
+</div>
+<div class="note"><strong>Try:</strong> Make it faster by changing <code class="inline">0.005f</code>, or slow the breathing by changing <code class="inline">0.1f</code>.</div>
+<h3 class="entry-title" id="tutorial-4">4. Many fireflies: classes, lists and vectors <span class="sig-return">7 min</span></h3>
+<p class="entry-desc">Forty fireflies need forty positions, so each one becomes an object of a small class, kept in a <code class="inline">List</code>. A <code class="inline">PVector</code> holds an x and a y and supports <code class="inline">+</code>, <code class="inline">-</code> and <code class="inline">*</code>, so moving is <code class="inline">f.Pos += step</code>. <code class="inline">PVector.FromAngle()</code> turns a noise value into a direction, and every firefly has its own noise <code class="inline">Seed</code> and glow <code class="inline">Phase</code>, so they don't move or blink together.</p>
+<div class="code-block">
+  <pre id="tutorial-4-code"><span class="kw">public</span> <span class="kw">class</span> Fireflies : <span class="tp">Sketch</span>
+{
+    <span class="cm">// One class per "thing": each firefly keeps its own position and rhythm.</span>
+    <span class="kw">class</span> <span class="tp">Firefly</span>
+    {
+        <span class="kw">public</span> <span class="tp">PVector</span> Pos;
+        <span class="kw">public</span> <span class="kw">float</span> Seed, Phase;
+    }
+
+    <span class="kw">readonly</span> <span class="tp">List</span>&lt;<span class="tp">Firefly</span>&gt; flies = <span class="kw">new</span>();
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup()
+    {
+        Size(<span class="str">800</span>, <span class="str">500</span>);
+        <span class="kw">for</span> (<span class="kw">int</span> i = <span class="str">0</span>; i &lt; <span class="str">40</span>; i++)
+flies.Add(NewFly(Random(Width), Random(Height - <span class="str">120</span>)));
+    }
+
+    <span class="tp">Firefly</span> NewFly(<span class="kw">float</span> x, <span class="kw">float</span> y) =&gt; <span class="kw">new</span> <span class="tp">Firefly</span>
+    {
+        Pos = <span class="kw">new</span> <span class="tp">PVector</span>(x, y),
+        Seed = Random(<span class="str">1000</span>),
+        Phase = Random(TWO_PI),
+    };
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        Background(<span class="str">15</span>, <span class="str">20</span>, <span class="str">40</span>);
+        DrawScene();
+        <span class="kw">float</span> t = FrameCount * <span class="str">0.01f</span>;
+        NoStroke();
+        <span class="kw">foreach</span> (<span class="kw">var</span> f <span class="kw">in</span> flies)
+        {
+<span class="cm">// Each one wanders by its own noise, and wraps around the edges.</span>
+<span class="kw">var</span> step = <span class="tp">PVector</span>.FromAngle(Noise(f.Seed, t) * TWO_PI * <span class="str">2</span>) * <span class="str">1.2f</span>;
+f.Pos += step;
+f.Pos.X = (f.Pos.X + Width) % Width;
+f.Pos.Y = Constrain(f.Pos.Y, <span class="str">10</span>, Height - <span class="str">100</span>);
+
+<span class="kw">float</span> glow = (Sin(FrameCount * <span class="str">0.08f</span> + f.Phase) + <span class="str">1</span>) / <span class="str">2</span>;
+Fill(<span class="str">255</span>, <span class="str">230</span>, <span class="str">120</span>, <span class="str">40</span> * glow);
+Circle(f.Pos.X, f.Pos.Y, <span class="str">50</span>);
+Fill(<span class="str">255</span>, <span class="str">240</span>, <span class="str">150</span>, <span class="str">100</span> + <span class="str">155</span> * glow);
+Circle(f.Pos.X, f.Pos.Y, <span class="str">8</span>);
+        }
+    }
+
+    <span class="kw">void</span> DrawScene()
+    {
+        NoStroke();
+        Fill(<span class="str">255</span>, <span class="str">255</span>, <span class="str">220</span>, <span class="str">30</span>);
+        Circle(<span class="str">650</span>, <span class="str">100</span>, <span class="str">160</span>);
+        Fill(<span class="str">250</span>, <span class="str">245</span>, <span class="str">220</span>);
+        Circle(<span class="str">650</span>, <span class="str">100</span>, <span class="str">90</span>);
+
+        RandomSeed(<span class="str">7</span>);
+        StrokeWeight(<span class="str">2</span>);
+        <span class="kw">for</span> (<span class="kw">int</span> x = <span class="str">0</span>; x &lt; Width; x += <span class="str">4</span>)
+        {
+Stroke(<span class="str">30</span>, Random(<span class="str">70</span>, <span class="str">110</span>), <span class="str">60</span>);
+Line(x, Height, x + Random(-<span class="str">8</span>, <span class="str">8</span>), Height - Random(<span class="str">30</span>, <span class="str">90</span>));
+        }
+        RandomSeed((<span class="kw">int</span>)Millis());                <span class="cm">// back to real randomness</span>
+    }
+}</pre>
+  <button class="dana-test-btn" data-target="tutorial-4-code" title="Run in DanaProcessing IDE">
+    <i class="ph-bold ph-play"></i>
+    <span class="dana-test-label">Test in Dana</span>
+  </button>
+</div>
+<div class="note"><strong>Try:</strong> Give each firefly its own size or color by adding a field to the class.</div>
+<h3 class="entry-title" id="tutorial-5">5. Interaction: mouse and keyboard <span class="sig-return">5 min</span></h3>
+<p class="entry-desc">Methods like <code class="inline">MousePressed()</code> and <code class="inline">KeyPressed()</code> are called once per event: a click adds five fireflies, Space switches their mood. Inside <code class="inline">Draw()</code>, the vector from the mouse to each firefly decides how it reacts: <code class="inline">SetMag()</code> keeps the direction and sets the strength, which <code class="inline">Map()</code> makes stronger the closer the mouse is.</p>
+<div class="code-block">
+  <pre id="tutorial-5-code"><span class="kw">public</span> <span class="kw">class</span> Fireflies : <span class="tp">Sketch</span>
+{
+    <span class="kw">class</span> <span class="tp">Firefly</span>
+    {
+        <span class="kw">public</span> <span class="tp">PVector</span> Pos;
+        <span class="kw">public</span> <span class="kw">float</span> Seed, Phase;
+    }
+
+    <span class="kw">readonly</span> <span class="tp">List</span>&lt;<span class="tp">Firefly</span>&gt; flies = <span class="kw">new</span>();
+    <span class="kw">bool</span> scared = <span class="kw">true</span>;
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup()
+    {
+        Size(<span class="str">800</span>, <span class="str">500</span>);
+        <span class="kw">for</span> (<span class="kw">int</span> i = <span class="str">0</span>; i &lt; <span class="str">40</span>; i++)
+flies.Add(NewFly(Random(Width), Random(Height - <span class="str">120</span>)));
+    }
+
+    <span class="tp">Firefly</span> NewFly(<span class="kw">float</span> x, <span class="kw">float</span> y) =&gt; <span class="kw">new</span> <span class="tp">Firefly</span>
+    {
+        Pos = <span class="kw">new</span> <span class="tp">PVector</span>(x, y),
+        Seed = Random(<span class="str">1000</span>),
+        Phase = Random(TWO_PI),
+    };
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        Background(<span class="str">15</span>, <span class="str">20</span>, <span class="str">40</span>);
+        DrawScene();
+        <span class="kw">float</span> t = FrameCount * <span class="str">0.01f</span>;
+        <span class="kw">var</span> mouse = <span class="kw">new</span> <span class="tp">PVector</span>(MouseX, MouseY);
+        NoStroke();
+        <span class="kw">foreach</span> (<span class="kw">var</span> f <span class="kw">in</span> flies)
+        {
+<span class="kw">var</span> step = <span class="tp">PVector</span>.FromAngle(Noise(f.Seed, t) * TWO_PI * <span class="str">2</span>) * <span class="str">1.2f</span>;
+
+<span class="cm">// Near the mouse: flee from it, or come closer -- Space switches.</span>
+<span class="kw">var</span> away = f.Pos - mouse;
+<span class="kw">float</span> d = away.Mag();
+<span class="kw">if</span> (d &lt; <span class="str">150</span>)
+    step += away.SetMag(Map(d, <span class="str">0</span>, <span class="str">150</span>, <span class="str">3</span>, <span class="str">0</span>)) * (scared ? <span class="str">1</span> : -<span class="str">1</span>);
+
+f.Pos += step;
+f.Pos.X = (f.Pos.X + Width) % Width;
+f.Pos.Y = Constrain(f.Pos.Y, <span class="str">10</span>, Height - <span class="str">100</span>);
+
+<span class="kw">float</span> glow = (Sin(FrameCount * <span class="str">0.08f</span> + f.Phase) + <span class="str">1</span>) / <span class="str">2</span>;
+Fill(<span class="str">255</span>, <span class="str">230</span>, <span class="str">120</span>, <span class="str">40</span> * glow);
+Circle(f.Pos.X, f.Pos.Y, <span class="str">50</span>);
+Fill(<span class="str">255</span>, <span class="str">240</span>, <span class="str">150</span>, <span class="str">100</span> + <span class="str">155</span> * glow);
+Circle(f.Pos.X, f.Pos.Y, <span class="str">8</span>);
+        }
+
+        Fill(<span class="str">255</span>, <span class="str">150</span>);
+        Text(<span class="str">$"{flies.Count} fireflies · click: add five · space: {(scared ? "</span>shy<span class="str">" : "</span>curious<span class="str">")}"</span>, <span class="str">12</span>, <span class="str">20</span>);
+    }
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> MousePressed()
+    {
+        <span class="kw">for</span> (<span class="kw">int</span> i = <span class="str">0</span>; i &lt; <span class="str">5</span>; i++)
+flies.Add(NewFly(MouseX + Random(-<span class="str">20</span>, <span class="str">20</span>), MouseY + Random(-<span class="str">20</span>, <span class="str">20</span>)));
+    }
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> KeyPressed()
+    {
+        <span class="kw">if</span> (Key == <span class="str">' '</span>) scared = !scared;
+    }
+
+    <span class="kw">void</span> DrawScene()
+    {
+        NoStroke();
+        Fill(<span class="str">255</span>, <span class="str">255</span>, <span class="str">220</span>, <span class="str">30</span>);
+        Circle(<span class="str">650</span>, <span class="str">100</span>, <span class="str">160</span>);
+        Fill(<span class="str">250</span>, <span class="str">245</span>, <span class="str">220</span>);
+        Circle(<span class="str">650</span>, <span class="str">100</span>, <span class="str">90</span>);
+
+        RandomSeed(<span class="str">7</span>);
+        StrokeWeight(<span class="str">2</span>);
+        <span class="kw">for</span> (<span class="kw">int</span> x = <span class="str">0</span>; x &lt; Width; x += <span class="str">4</span>)
+        {
+Stroke(<span class="str">30</span>, Random(<span class="str">70</span>, <span class="str">110</span>), <span class="str">60</span>);
+Line(x, Height, x + Random(-<span class="str">8</span>, <span class="str">8</span>), Height - Random(<span class="str">30</span>, <span class="str">90</span>));
+        }
+        RandomSeed((<span class="kw">int</span>)Millis());
+    }
+}</pre>
+  <button class="dana-test-btn" data-target="tutorial-5-code" title="Run in DanaProcessing IDE">
+    <i class="ph-bold ph-play"></i>
+    <span class="dana-test-label">Test in Dana</span>
+  </button>
+</div>
+<div class="note"><strong>Try:</strong> Press a key to clear them all with <code class="inline">flies.Clear()</code>, or make the moon follow the mouse.</div>
+<h3 class="entry-title" id="tutorial-6">6. Sound, saving and sharing <span class="sig-return">5 min</span></h3>
+<p class="entry-desc">One line of <code class="inline">Play()</code> gives each click a note, higher to the right. <code class="inline">Save()</code> writes a PNG of the canvas when you press S. The <code class="inline">// @reel</code> comments don't change how the sketch runs: they tell <strong>Sketch → Create reel...</strong> how to turn it into a short video, with the code typing itself scene by scene, then the sketch running with a simulated mouse. Export it as MP4 with sound, a GIF, or a YouTube thumbnail.</p>
+<div class="code-block">
+  <pre id="tutorial-6-code"><span class="cm">// @reel title: Fireflies in 60 lines of C#</span>
+<span class="cm">// @reel format: vertical</span>
+<span class="cm">// @reel result: 8 caption="Move the mouse · click to add more"</span>
+<span class="cm">// @reel scene "A firefly is a position, a seed and a rhythm" effect=type</span>
+<span class="kw">public</span> <span class="kw">class</span> Fireflies : <span class="tp">Sketch</span>
+{
+    <span class="kw">class</span> <span class="tp">Firefly</span>
+    {
+        <span class="kw">public</span> <span class="tp">PVector</span> Pos;
+        <span class="kw">public</span> <span class="kw">float</span> Seed, Phase;
+    }
+
+    <span class="kw">readonly</span> <span class="tp">List</span>&lt;<span class="tp">Firefly</span>&gt; flies = <span class="kw">new</span>();
+    <span class="kw">bool</span> scared = <span class="kw">true</span>;
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup()
+    {
+        Size(<span class="str">800</span>, <span class="str">500</span>);
+        <span class="kw">for</span> (<span class="kw">int</span> i = <span class="str">0</span>; i &lt; <span class="str">40</span>; i++)
+flies.Add(NewFly(Random(Width), Random(Height - <span class="str">120</span>)));
+    }
+
+    <span class="tp">Firefly</span> NewFly(<span class="kw">float</span> x, <span class="kw">float</span> y) =&gt; <span class="kw">new</span> <span class="tp">Firefly</span>
+    {
+        Pos = <span class="kw">new</span> <span class="tp">PVector</span>(x, y),
+        Seed = Random(<span class="str">1000</span>),
+        Phase = Random(TWO_PI),
+    };
+<span class="cm">// @reel scene "Every frame: wander, avoid the mouse, glow" effect=lines</span>
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        Background(<span class="str">15</span>, <span class="str">20</span>, <span class="str">40</span>);
+        DrawScene();
+        <span class="kw">float</span> t = FrameCount * <span class="str">0.01f</span>;
+        <span class="kw">var</span> mouse = <span class="kw">new</span> <span class="tp">PVector</span>(MouseX, MouseY);
+        NoStroke();
+        <span class="kw">foreach</span> (<span class="kw">var</span> f <span class="kw">in</span> flies)
+        {
+<span class="kw">var</span> step = <span class="tp">PVector</span>.FromAngle(Noise(f.Seed, t) * TWO_PI * <span class="str">2</span>) * <span class="str">1.2f</span>;   <span class="cm">// @mark</span>
+<span class="kw">var</span> away = f.Pos - mouse;
+<span class="kw">float</span> d = away.Mag();
+<span class="kw">if</span> (d &lt; <span class="str">150</span>)
+    step += away.SetMag(Map(d, <span class="str">0</span>, <span class="str">150</span>, <span class="str">3</span>, <span class="str">0</span>)) * (scared ? <span class="str">1</span> : -<span class="str">1</span>);   <span class="cm">// @mark</span>
+f.Pos += step;
+f.Pos.X = (f.Pos.X + Width) % Width;
+f.Pos.Y = Constrain(f.Pos.Y, <span class="str">10</span>, Height - <span class="str">100</span>);
+
+<span class="kw">float</span> glow = (Sin(FrameCount * <span class="str">0.08f</span> + f.Phase) + <span class="str">1</span>) / <span class="str">2</span>;
+Fill(<span class="str">255</span>, <span class="str">230</span>, <span class="str">120</span>, <span class="str">40</span> * glow);
+Circle(f.Pos.X, f.Pos.Y, <span class="str">50</span>);
+Fill(<span class="str">255</span>, <span class="str">240</span>, <span class="str">150</span>, <span class="str">100</span> + <span class="str">155</span> * glow);
+Circle(f.Pos.X, f.Pos.Y, <span class="str">8</span>);
+        }
+    }
+<span class="cm">// @reel hide</span>
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> MousePressed()
+    {
+        <span class="cm">// A soft note for every new group, higher the further right you click.</span>
+        Play(Map(MouseX, <span class="str">0</span>, Width, <span class="str">60</span>, <span class="str">84</span>), synth: <span class="tp">Synth</span>.Pluck, amp: <span class="str">0.5</span>, release: <span class="str">0.6</span>);
+        <span class="kw">for</span> (<span class="kw">int</span> i = <span class="str">0</span>; i &lt; <span class="str">5</span>; i++)
+flies.Add(NewFly(MouseX + Random(-<span class="str">20</span>, <span class="str">20</span>), MouseY + Random(-<span class="str">20</span>, <span class="str">20</span>)));
+    }
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> KeyPressed()
+    {
+        <span class="kw">if</span> (Key == <span class="str">' '</span>) scared = !scared;
+        <span class="kw">if</span> (Key == <span class="str">'s'</span>) Save(<span class="str">"fireflies.png"</span>);
+    }
+
+    <span class="kw">void</span> DrawScene()
+    {
+        NoStroke();
+        Fill(<span class="str">255</span>, <span class="str">255</span>, <span class="str">220</span>, <span class="str">30</span>);
+        Circle(<span class="str">650</span>, <span class="str">100</span>, <span class="str">160</span>);
+        Fill(<span class="str">250</span>, <span class="str">245</span>, <span class="str">220</span>);
+        Circle(<span class="str">650</span>, <span class="str">100</span>, <span class="str">90</span>);
+
+        RandomSeed(<span class="str">7</span>);
+        StrokeWeight(<span class="str">2</span>);
+        <span class="kw">for</span> (<span class="kw">int</span> x = <span class="str">0</span>; x &lt; Width; x += <span class="str">4</span>)
+        {
+Stroke(<span class="str">30</span>, Random(<span class="str">70</span>, <span class="str">110</span>), <span class="str">60</span>);
+Line(x, Height, x + Random(-<span class="str">8</span>, <span class="str">8</span>), Height - Random(<span class="str">30</span>, <span class="str">90</span>));
+        }
+        RandomSeed((<span class="kw">int</span>)Millis());
+    }
+}
+<span class="cm">// @reel show</span></pre>
+  <button class="dana-test-btn" data-target="tutorial-6-code" title="Run in DanaProcessing IDE">
+    <i class="ph-bold ph-play"></i>
+    <span class="dana-test-label">Test in Dana</span>
+  </button>
+</div>
+<div class="note"><strong>Try:</strong> Open <strong>Sketch → Examples</strong> for 50+ more sketches, starting with the numbered "YT" series.</div>
+<p>Where next: <a href="#from-processing">coming from Processing or p5.js</a>, then every section of this reference ends with a runnable example.</p>

@@ -1,0 +1,21 @@
+<!--meta {"title": "Camera & Projection", "nav": "Camera & Projection", "summary": "Two independent matrices: the camera (view — where the eye is and what it's looking at) and the projection (perspective vs. orthographic, field of view, clipping planes). Both…", "tags": ["3D renderer"]} -->
+<p class="section-intro">Two independent matrices: the <strong>camera</strong> (view — where the eye is and what it's looking at) and the <strong>projection</strong> (perspective vs. orthographic, field of view, clipping planes). Both start at Processing's own defaults and stay set until changed.</p>
+
+<h3 class="entry-title" id="camera">Camera() · Camera(eyeX, eyeY, eyeZ, centerX, centerY, centerZ, upX, upY, upZ)</h3>
+<p class="entry-desc">No-arg resets to Processing's default view — eye pulled back from the canvas center, looking straight at it, +Y up. The 9-argument form positions the eye explicitly, looking at <code class="inline">center</code>, with <code class="inline">up</code> as the up direction.</p>
+
+<h3 class="entry-title" id="perspective">Perspective() · Perspective(fovy, aspect, zNear, zFar)</h3>
+<p class="entry-desc">No-arg resets to the default perspective projection (60° vertical FOV). The 4-argument form sets an explicit symmetric perspective — <code class="inline">fovy</code> in radians, <code class="inline">aspect</code> = width/height.</p>
+
+<h3 class="entry-title" id="ortho">Ortho() · Ortho(left, right, bottom, top) · Ortho(left, right, bottom, top, near, far)</h3>
+<p class="entry-desc">Orthographic (parallel) projection — objects stay the same size regardless of distance from the camera, useful for isometric-style views. No-arg uses the canvas bounds; the 4-argument form sets the X/Y clipping volume with default near/far planes; the 6-argument form sets everything explicitly.</p>
+
+<h3 class="entry-title" id="frustum">Frustum(left, right, bottom, top, near, far)</h3>
+<p class="entry-desc">A general (possibly asymmetric) perspective projection from explicit clipping-plane coordinates — unlike <code class="inline">Perspective()</code>, the planes don't need to be centered on the view axis. <code class="inline">near</code> must be greater than zero, <code class="inline">far</code> greater than <code class="inline">near</code>. Processing gives <code class="inline">frustum()</code> no no-argument form, so neither does this.</p>
+
+<h3 class="entry-title" id="begincamera">BeginCamera() · EndCamera()</h3>
+<p class="entry-desc">Places the camera with <code class="inline">Translate()</code>/<code class="inline">RotateX/Y/Z()</code>/<code class="inline">Scale()</code> — the same calls, composed the same way, you'd use to place any object — between these two. <code class="inline">EndCamera()</code> inverts the result into the actual view matrix once.</p>
+<div class="note"><strong>Call Camera() first.</strong> <code class="inline">BeginCamera()</code> continues from whatever camera state already exists rather than resetting it — start from a known placement with <code class="inline">Camera()</code> (or the 9-argument overload) right before, same idiom as real Processing.</div>
+
+<h3 class="entry-title" id="printcamera">PrintCamera() · PrintProjection()</h3>
+<p class="entry-desc">Logs the current view or projection matrix to the console — a debugging aid for figuring out what a chain of camera calls actually produced.</p>

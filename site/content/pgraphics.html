@@ -1,0 +1,48 @@
+<!--meta {"title": "PGraphics", "nav": "PGraphics", "summary": "An offscreen drawing buffer with the exact same drawing API as Sketch.", "tags": []} -->
+<p class="section-intro">An offscreen drawing buffer with the exact same drawing API as <code class="inline">Sketch</code>.</p>
+
+<h3 class="entry-title" id="creategraphics">CreateGraphics(<span class="tp">int</span> w, <span class="tp">int</span> h) <span class="sig-return">→ PGraphics</span></h3>
+<p class="entry-desc">Creates a new raster-backed offscreen surface.</p>
+
+<h3 class="entry-title" id="begindraw">BeginDraw() · EndDraw()</h3>
+<p class="entry-desc">Brackets a batch of drawing calls.</p>
+
+<h3 class="entry-title" id="pgraphics-get">Get() <span class="sig-return">→ PImage</span></h3>
+<p class="entry-desc">Snapshots the current pixels as a standalone <code class="inline">PImage</code>.</p>
+
+<h3 class="entry-title" id="pgraphics-example">Runnable example</h3>
+<p class="entry-desc">A complete sketch using this section. <strong>Test in Dana</strong> opens it in the IDE, or paste it into a new tab and press Run.</p>
+<div class="code-block">
+  <pre id="pgraphics-example-code"><span class="cm">// PGraphics: an offscreen canvas. Paint trails into it, then show it like an image.</span>
+<span class="kw">public</span> <span class="kw">class</span> Offscreen : <span class="tp">Sketch</span>
+{
+    <span class="tp">PGraphics</span> layer;
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup()
+    {
+        Size(<span class="str">600</span>, <span class="str">400</span>);
+        layer = CreateGraphics(Width, Height);
+    }
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        layer.BeginDraw();
+        layer.Fill(<span class="str">0</span>, <span class="str">12</span>);                 <span class="cm">// slowly fade what's there</span>
+        layer.NoStroke();
+        layer.Rect(<span class="str">0</span>, <span class="str">0</span>, Width, Height);
+        layer.FillHSB(FrameCount % <span class="str">360</span>, <span class="str">80</span>, <span class="str">100</span>);
+        layer.Circle(MouseX, MouseY, <span class="str">30</span>);
+        layer.EndDraw();
+
+        Background(<span class="str">0</span>);
+        Image(layer, <span class="str">0</span>, <span class="str">0</span>);                         <span class="cm">// full size</span>
+        Image(layer, Width - <span class="str">160</span>, <span class="str">10</span>, <span class="str">150</span>, <span class="str">100</span>);    <span class="cm">// and a thumbnail</span>
+        NoFill(); Stroke(<span class="str">255</span>);
+        Rect(Width - <span class="str">160</span>, <span class="str">10</span>, <span class="str">150</span>, <span class="str">100</span>);
+    }
+}</pre>
+  <button class="dana-test-btn" data-target="pgraphics-example-code" title="Run in DanaProcessing IDE">
+    <i class="ph-bold ph-play"></i>
+    <span class="dana-test-label">Test in Dana</span>
+  </button>
+</div>

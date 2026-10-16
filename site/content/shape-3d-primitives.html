@@ -1,0 +1,11 @@
+<!--meta {"title": "3D Primitives", "nav": "3D Primitives", "summary": "Two built-in solids — the same two Processing itself ships as core 3D primitives. Both are centered on the current origin, filled with the current Fill() color, and shaded by…", "tags": ["3D renderer"]} -->
+<p class="section-intro">Two built-in solids — the same two Processing itself ships as core 3D primitives. Both are centered on the current origin, filled with the current <code class="inline">Fill()</code> color, and shaded by the active lights (flat and fully unlit if <code class="inline">Lights()</code> hasn't been called — Processing's own default too).</p>
+
+<h3 class="entry-title" id="box">Box(<span class="tp">float</span> size) · Box(w, h, d)</h3>
+<p class="entry-desc">A cube (or box) centered on the origin. <code class="inline">Box(size)</code> is a shortcut for <code class="inline">Box(size, size, size)</code>.</p>
+
+<h3 class="entry-title" id="sphere">Sphere(<span class="tp">float</span> radius)</h3>
+<p class="entry-desc">A sphere centered on the origin, meshed at the resolution set by the last <code class="inline">SphereDetail()</code> call (default 30×30).</p>
+
+<h3 class="entry-title" id="spheredetail">SphereDetail(<span class="tp">int</span> res) · SphereDetail(ures, vres)</h3>
+<p class="entry-desc">Sets the sphere mesh resolution for <code class="inline">Sphere()</code> calls made <em>after</em> this one — <code class="inline">res</code> segments both around the equator and pole-to-pole, or independently via <code class="inline">ures</code>/<code class="inline">vres</code>. Values below 3 are clamped up to 3. Applied lazily: the mesh is only rebuilt the next time <code class="inline">Sphere()</code> actually runs, so calling this repeatedly (or never calling <code class="inline">Sphere()</code> at all) never touches the GPU for nothing.</p>

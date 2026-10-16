@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en" data-root="../">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-N4ZWC7GN1B"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-N4ZWC7GN1B');
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Transformations — DanaProcessing reference</title>
+<meta name="description" content="Transformations">
+<link rel="canonical" href="https://buddhacodes.github.io/DanaProcessing/reference/transform.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="DanaProcessing">
+<meta property="og:title" content="Transformations — DanaProcessing reference">
+<meta property="og:description" content="Transformations">
+<meta property="og:url" content="https://buddhacodes.github.io/DanaProcessing/reference/transform.html">
+<meta property="og:image" content="https://buddhacodes.github.io/DanaProcessing/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://buddhacodes.github.io/DanaProcessing/og-image.png">
+<meta name="theme-color" content="#13202A">
+<link rel="icon" type="image/png" href="../DanaProcessing.Ide/Theme/dana.png">
+<link rel="apple-touch-icon" href="../DanaProcessing.Ide/Theme/dana.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&amp;family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/search-index.js" defer></script>
+<script src="../assets/site.js" defer></script>
+</head>
+<body class="page-topic">
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="bar">
+    <a class="brand" href="../index.html"><svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><circle cx="15" cy="15" r="13" fill="none" stroke="currentColor" stroke-width="2"></circle><circle cx="15" cy="15" r="6" fill="#E7B66B"></circle><circle cx="23" cy="8" r="2.5" fill="#FF8A6B"></circle></svg><span>DanaProcessing</span></a>
+    <button type="button" class="menu-toggle" aria-expanded="false" aria-controls="site-menu">Menu</button>
+    <div class="site-menu" id="site-menu">
+      <nav class="main-nav" aria-label="Main">
+        <a href="../reference/tutorial.html">Learn</a>
+        <a href="../reference/a-z.html" aria-current="page">Reference</a>
+        <a href="../index.html#gallery">Examples</a>
+        <a href="../reference/ide.html">The IDE</a>
+      </nav>
+      <form class="search" role="search" action="../reference/a-z.html">
+        <label class="visually-hidden" for="site-search">Search the documentation</label>
+        <div class="search-box">
+          <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+          <input id="site-search" name="q" type="search" autocomplete="off" placeholder="Search — press /" aria-describedby="search-status" aria-controls="search-results">
+        </div>
+        <p id="search-status" class="visually-hidden" aria-live="polite"></p>
+        <ul id="search-results" class="search-results" hidden></ul>
+      </form>
+      <a class="support-link" href="../index.html#support"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M12 21s-7.5-4.6-9.6-9.4C1 8.2 3.1 4.5 6.8 4.5c2.2 0 3.7 1.3 5.2 3 1.5-1.7 3-3 5.2-3 3.7 0 5.8 3.7 4.4 7.1C19.5 16.4 12 21 12 21z"></path></svg><span>Support Dana</span></a>
+    </div>
+  </div>
+</header>
+<main id="main">
+<div class="topic-hero">
+  <div class="wrap">
+    <div class="topic-hero-text">
+      <nav class="breadcrumb" aria-label="Breadcrumb"><ol><li><a href="a-z.html">Reference</a></li><li>Drawing</li><li aria-current="page">Transformations</li></ol></nav>
+      <h1>Transformations</h1>
+      
+      
+    </div>
+    <div class="topic-art" aria-hidden="true"><span style="background:#FF8A6B"></span><span></span><span></span><span></span><span></span></div>
+  </div>
+</div>
+<div class="wrap topic-layout">
+  <button type="button" class="topics-toggle" aria-expanded="false" aria-controls="topics">All topics</button>
+<nav class="topics" id="topics" aria-label="Reference topics">
+<div class="topic-group"><h2>Start here</h2><ul>
+<li><a href="intro.html">Overview</a></li>
+<li><a href="tutorial.html">30-minute tutorial</a></li>
+<li><a href="from-processing.html">From Processing / p5.js</a></li>
+</ul></div>
+<div class="topic-group"><h2>Basics</h2><ul>
+<li><a href="structure.html">Sketch structure</a></li>
+<li><a href="input.html">Input &amp; time</a></li>
+</ul></div>
+<div class="topic-group"><h2>Drawing</h2><ul>
+<li><a href="color.html">Color</a></li>
+<li><a href="shape-primitives.html">2D Primitives</a></li>
+<li><a href="shape-custom.html">Custom shapes</a></li>
+<li><a href="typography.html">Typography</a></li>
+<li><a href="transform.html" aria-current="page">Transformations</a>
+<ul class="on-this-page" aria-label="On this page">
+<li><a href="#pushmatrix"><code>PushMatrix · PopMatrix</code></a></li>
+<li><a href="#translate"><code>Translate</code></a></li>
+<li><a href="#rotate"><code>Rotate · RotateDegrees</code></a></li>
+<li><a href="#scale"><code>Scale</code></a></li>
+<li><a href="#shearx"><code>ShearX · ShearY</code></a></li>
+<li><a href="#resetmatrix"><code>ResetMatrix</code></a></li>
+<li><a href="#applymatrix"><code>ApplyMatrix</code></a></li>
+<li><a href="#printmatrix"><code>PrintMatrix</code></a></li>
+<li><a href="#clip"><code>Clip · NoClip</code></a></li>
+<li><a href="#hint"><code>Hint</code></a></li>
+<li><a href="#transform-example">Runnable example</a></li>
+</ul>
+</li>
+</ul></div>
+<div class="topic-group"><h2>Media</h2><ul>
+<li><a href="image.html">PImage</a></li>
+<li><a href="pgraphics.html">PGraphics</a></li>
+<li><a href="pshape.html">PShape</a></li>
+<li><a href="output.html">Saving output</a></li>
+<li><a href="pixels.html">Pixels</a></li>
+<li><a href="reels.html">Reels</a></li>
+</ul></div>
+<div class="topic-group"><h2>Data &amp; math</h2><ul>
+<li><a href="files-data.html">Files &amp; data</a></li>
+<li><a href="utilities.html">Conversion &amp; utilities</a></li>
+<li><a href="math.html">Math &amp; trig</a></li>
+<li><a href="pvector.html">PVector</a></li>
+<li><a href="random-noise.html">Random &amp; noise</a></li>
+<li><a href="collections.html">Collections</a></li>
+</ul></div>
+<div class="topic-group"><h2>3D</h2><ul>
+<li><a href="getting-started-3d.html">Getting started</a></li>
+<li><a href="shape-3d-primitives.html">3D Primitives</a></li>
+<li><a href="transform-3d.html">3D Transformations</a></li>
+<li><a href="camera-3d.html">Camera &amp; Projection</a></li>
+<li><a href="lights-3d.html">Lights</a></li>
+<li><a href="material-3d.html">Material properties</a></li>
+<li><a href="coordinates-3d.html">Coordinates</a></li>
+<li><a href="shape-3d-custom.html">Custom 3D shapes</a></li>
+<li><a href="pshader.html">PShader</a></li>
+</ul></div>
+<div class="topic-group"><h2>Sound</h2><ul>
+<li><a href="audio.html">Live loops &amp; timing</a></li>
+</ul></div>
+<div class="topic-group"><h2>Live &amp; generative</h2><ul>
+<li><a href="live.html">Playing live: MIDI, beat, mic</a></li>
+<li><a href="generative.html">Generative art: seeds, print</a></li>
+<li><a href="workflow.html">Day to day: F3, data/, rewind</a></li>
+</ul></div>
+<div class="topic-group"><h2>Tooling</h2><ul>
+<li><a href="ide.html">The IDE</a></li>
+<li><a href="hosting.html">Avalonia host</a></li>
+<li><a href="enums.html">Enumerations</a></li>
+</ul></div>
+<p class="topics-all"><a href="a-z.html">All topics &amp; A–Z index</a></p></nav>
+  <div class="topic-main">
+<details class="on-this-page-mobile"><summary>On this page · 11 entries</summary><ul><li><a href="#pushmatrix"><code>PushMatrix · PopMatrix</code></a></li><li><a href="#translate"><code>Translate</code></a></li><li><a href="#rotate"><code>Rotate · RotateDegrees</code></a></li><li><a href="#scale"><code>Scale</code></a></li><li><a href="#shearx"><code>ShearX · ShearY</code></a></li><li><a href="#resetmatrix"><code>ResetMatrix</code></a></li><li><a href="#applymatrix"><code>ApplyMatrix</code></a></li><li><a href="#printmatrix"><code>PrintMatrix</code></a></li><li><a href="#clip"><code>Clip · NoClip</code></a></li><li><a href="#hint"><code>Hint</code></a></li><li><a href="#transform-example">Runnable example</a></li></ul></details>
+<div class="doc">
+<h2 class="entry-title api" id="pushmatrix"><code>PushMatrix · PopMatrix</code></h2><ul class="sigs" aria-label="Signatures"><li><code>PushMatrix()</code></li><li><code>PopMatrix()</code></li></ul>
+<p class="entry-desc">Saves and restores the canvas's transform stack.</p>
+
+<h2 class="entry-title api" id="translate"><code>Translate</code></h2><ul class="sigs" aria-label="Signatures"><li><code>Translate(x, y)</code></li></ul>
+<p class="entry-desc">Shifts the origin.</p>
+
+<h2 class="entry-title api" id="rotate"><code>Rotate · RotateDegrees</code></h2><ul class="sigs" aria-label="Signatures"><li><code>Rotate(<span class="tp">float</span> angle)</code></li><li><code>RotateDegrees(<span class="tp">float</span> degrees)</code></li></ul>
+<p class="entry-desc"><code class="inline">Rotate()</code> takes <strong>radians</strong>, like Processing and p5.js: <code class="inline">Rotate(HALF_PI)</code> is a quarter turn. If you think in degrees, use <code class="inline">RotateDegrees(90)</code> or <code class="inline">Rotate(Radians(90))</code>. (Before 1.0, <code class="inline">Rotate()</code> took degrees; sketches written for 0.x need <code class="inline">Radians()</code> around the angle.)</p>
+
+<h2 class="entry-title api" id="scale"><code>Scale</code></h2><ul class="sigs" aria-label="Signatures"><li><code>Scale(<span class="tp">float</span> sx, <span class="tp">float?</span> sy = null)</code></li></ul>
+<p class="entry-desc">Uniform scale when <code class="inline">sy</code> is omitted.</p>
+
+<h2 class="entry-title api" id="shearx"><code>ShearX · ShearY</code></h2><ul class="sigs" aria-label="Signatures"><li><code>ShearX(<span class="tp">float</span> angleRadians)</code></li><li><code>ShearY(<span class="tp">float</span> angleRadians)</code></li></ul>
+<p class="entry-desc">Shears drawing along one axis.</p>
+
+<h2 class="entry-title api" id="resetmatrix"><code>ResetMatrix</code></h2><ul class="sigs" aria-label="Signatures"><li><code>ResetMatrix()</code></li></ul>
+<p class="entry-desc">Replaces the current transform with the identity, discarding <em>every</em> <code class="inline">Translate</code>/<code class="inline">Rotate</code>/<code class="inline">Scale</code>/<code class="inline">Shear</code>/<code class="inline">ApplyMatrix</code> applied so far — including ones from before the innermost <code class="inline">PushMatrix()</code>. Stronger than <code class="inline">PopMatrix()</code>, which only undoes back to the last <code class="inline">PushMatrix()</code>.</p>
+
+<h2 class="entry-title api" id="applymatrix"><code>ApplyMatrix</code></h2><ul class="sigs" aria-label="Signatures"><li><code>ApplyMatrix(a, b, c, d, e, f)</code></li></ul>
+<p class="entry-desc">Multiplies the current transform by an arbitrary affine matrix <code class="inline">[[a c e][b d f][0 0 1]]</code> — for effects the named transform calls can't express directly.</p>
+
+<h2 class="entry-title api" id="printmatrix"><code>PrintMatrix</code></h2><ul class="sigs" aria-label="Signatures"><li><code>PrintMatrix()</code></li></ul>
+<p class="entry-desc">Prints the current transformation matrix to the console as a 3×3 row-major matrix — a debugging aid for figuring out what a chain of transform calls actually produced.</p>
+
+<h2 class="entry-title api" id="clip"><code>Clip · NoClip</code></h2><ul class="sigs" aria-label="Signatures"><li><code>Clip(x, y, w, h)</code></li><li><code>NoClip()</code></li></ul>
+<p class="entry-desc">Restricts drawing to a rectangle until <code class="inline">NoClip()</code> is called — or until <code class="inline">Clip()</code> is called again with a new rectangle, which replaces rather than intersects the old one. Always uses corner-style x/y/w/h regardless of the current <code class="inline">RectMode()</code>.</p>
+<div class="note"><strong>Don't straddle PushMatrix/PopMatrix.</strong> Implemented with its own internal save/restore pair on the canvas — pair a <code class="inline">Clip()</code> with its <code class="inline">NoClip()</code> at the same matrix-nesting depth, rather than spanning a <code class="inline">PushMatrix()</code>/<code class="inline">PopMatrix()</code> boundary.</div>
+
+<h2 class="entry-title api" id="hint"><code>Hint</code></h2><ul class="sigs" aria-label="Signatures"><li><code>Hint(<span class="tp">string</span> hintName)</code></li></ul>
+<p class="entry-desc">A logged no-op. Every hint constant Processing defines is either meaningless for a single always-antialiased 2D software renderer, or already covered by a dedicated method (<code class="inline">Smooth()</code>/<code class="inline">NoSmooth()</code>). Exists so ported sketches that defensively call <code class="inline">hint(SOME_CONSTANT)</code> still compile and run.</p>
+
+<h2 class="entry-title" id="transform-example">Runnable example</h2>
+<p class="entry-desc">A complete sketch using this section. <strong>Test in Dana</strong> opens it in the IDE, or paste it into a new tab and press Run.</p>
+<div class="code-block"><div class="code-bar"><span class="code-label">C#</span><div class="code-actions"><button type="button" class="copy-btn" data-target="transform-example-code">Copy code</button><button class="dana-test-btn" data-target="transform-example-code" type="button"><svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M7 4l13 8-13 8z"></path></svg><span class="dana-test-label">Run in Dana</span></button></div></div><pre id="transform-example-code" tabindex="0" aria-label="Code, scrollable"><span class="cm">// Translate, Rotate (radians) and Scale, with PushMatrix/PopMatrix to undo them.</span>
+<span class="kw">public</span> <span class="kw">class</span> Clock : <span class="tp">Sketch</span>
+{
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup() =&gt; Size(<span class="str">400</span>, <span class="str">400</span>);
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        Background(<span class="str">245</span>);
+        Translate(Width / <span class="str">2</span>, Height / <span class="str">2</span>);           <span class="cm">// origin to the centre</span>
+
+        <span class="kw">for</span> (<span class="kw">int</span> i = <span class="str">0</span>; i &lt; <span class="str">12</span>; i++)
+        {
+PushMatrix();
+Rotate(TWO_PI * i / <span class="str">12</span>);                 <span class="cm">// radians; RotateDegrees(30 * i) also works</span>
+Fill(i % <span class="str">3</span> == <span class="str">0</span> ? <span class="str">40</span> : <span class="str">160</span>);
+NoStroke();
+Rect(-<span class="str">4</span>, -<span class="str">170</span>, <span class="str">8</span>, i % <span class="str">3</span> == <span class="str">0</span> ? <span class="str">30</span> : <span class="str">15</span>);
+PopMatrix();
+        }
+
+        <span class="kw">float</span> s = Second() + Millis() % <span class="str">1000</span> / <span class="str">1000f</span>;
+        PushMatrix();
+        Rotate(TWO_PI * s / <span class="str">60</span>);
+        Stroke(<span class="str">220</span>, <span class="str">60</span>, <span class="str">60</span>);
+        StrokeWeight(<span class="str">3</span>);
+        Line(<span class="str">0</span>, <span class="str">20</span>, <span class="str">0</span>, -<span class="str">150</span>);
+        PopMatrix();
+
+        PushMatrix();
+        Scale(<span class="str">1</span> + Sin(FrameCount * <span class="str">0.05f</span>) * <span class="str">0.2f</span>);   <span class="cm">// a breathing dot</span>
+        Fill(<span class="str">220</span>, <span class="str">60</span>, <span class="str">60</span>);
+        Circle(<span class="str">0</span>, <span class="str">0</span>, <span class="str">16</span>);
+        PopMatrix();
+    }
+}</pre></div>
+
+</div>
+<nav class="pager" aria-label="Previous and next topic"><a class="prev" href="typography.html"><span>← Previous</span><strong>Typography</strong></a><a class="next" href="image.html"><span>Next →</span><strong>PImage</strong></a></nav>
+<aside class="support-aside" aria-label="Support the project">
+  <p><strong>Found this useful?</strong> Dana is free and built in spare time — a donation buys more time for docs like this one.</p>
+  <a class="btn btn-ink" href="https://paypal.me/CarlosFernandez934"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M12 21s-7.5-4.6-9.6-9.4C1 8.2 3.1 4.5 6.8 4.5c2.2 0 3.7 1.3 5.2 3 1.5-1.7 3-3 5.2-3 3.7 0 5.8 3.7 4.4 7.1C19.5 16.4 12 21 12 21z"></path></svg><span>Donate via PayPal</span></a>
+</aside>
+
+  </div>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap">
+    <p>DanaProcessing · v1.0 RC · MIT · stands on the shoulders of <a href="https://processing.org">Processing</a>, <a href="https://p5js.org">p5.js</a> and <a href="https://sonic-pi.net">Sonic Pi</a>.</p>
+    <nav aria-label="Footer">
+      <a href="../reference/a-z.html">All topics &amp; A–Z</a>
+      <a href="https://github.com/BuddhaCodes/DanaProcessing/releases/latest">Releases</a>
+      <a href="https://github.com/BuddhaCodes/DanaProcessing">GitHub</a>
+      <a href="../index.html#support">Support</a>
+    </nav>
+  </div>
+</footer>
+</body>
+</html>

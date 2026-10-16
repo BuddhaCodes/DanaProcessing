@@ -1,0 +1,14 @@
+<!--meta {"title": "Material properties", "nav": "Material properties", "summary": "Unlike the light list, these are persistent style state — set once, applied to every shape drawn afterward, not reset per frame — the same contract as Fill()/Stroke().", "tags": ["3D renderer"]} -->
+<p class="section-intro">Unlike the light list, these are persistent style state — set once, applied to every shape drawn afterward, <strong>not</strong> reset per frame — the same contract as <code class="inline">Fill()</code>/<code class="inline">Stroke()</code>.</p>
+
+<h3 class="entry-title" id="ambient-material">Ambient(gray) · Ambient(r, g, b)</h3>
+<p class="entry-desc">Ambient reflectance — how much of each light's ambient contribution a surface reflects. Before this is ever called, it defaults to tracking the current <code class="inline">Fill()</code> color, matching Processing; calling it explicitly detaches from that tracking.</p>
+
+<h3 class="entry-title" id="specular-material">Specular(gray) · Specular(r, g, b)</h3>
+<p class="entry-desc">Specular reflectance color — controls the color of specular highlights. Has no visible effect until <code class="inline">Shininess()</code> is set above 0.</p>
+
+<h3 class="entry-title" id="emissive">Emissive(gray) · Emissive(r, g, b)</h3>
+<p class="entry-desc">Added on top of a surface's shading regardless of lighting — makes it look like it's glowing on its own, without actually casting light onto other shapes.</p>
+
+<h3 class="entry-title" id="shininess">Shininess(<span class="tp">float</span> shine)</h3>
+<p class="entry-desc">The specular exponent. 0 (the default) disables the specular highlight entirely; higher values give a smaller, glossier highlight. Needs <code class="inline">Specular()</code> and an active light with <code class="inline">LightSpecular()</code> set to be visible at all.</p>

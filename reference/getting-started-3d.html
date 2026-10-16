@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en" data-root="../">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-N4ZWC7GN1B"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-N4ZWC7GN1B');
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Getting started with 3D — DanaProcessing reference</title>
+<meta name="description" content="An entirely separate rendering pipeline — offscreen OpenGL 3.3 (core profile) via Silk.NET, rendered into a hidden window&#x27;s framebuffer and read back as a normal PGraphics.…">
+<link rel="canonical" href="https://buddhacodes.github.io/DanaProcessing/reference/getting-started-3d.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="DanaProcessing">
+<meta property="og:title" content="Getting started with 3D — DanaProcessing reference">
+<meta property="og:description" content="An entirely separate rendering pipeline — offscreen OpenGL 3.3 (core profile) via Silk.NET, rendered into a hidden window&#x27;s framebuffer and read back as a normal PGraphics.…">
+<meta property="og:url" content="https://buddhacodes.github.io/DanaProcessing/reference/getting-started-3d.html">
+<meta property="og:image" content="https://buddhacodes.github.io/DanaProcessing/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://buddhacodes.github.io/DanaProcessing/og-image.png">
+<meta name="theme-color" content="#13202A">
+<link rel="icon" type="image/png" href="../DanaProcessing.Ide/Theme/dana.png">
+<link rel="apple-touch-icon" href="../DanaProcessing.Ide/Theme/dana.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&amp;family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/search-index.js" defer></script>
+<script src="../assets/site.js" defer></script>
+</head>
+<body class="page-topic">
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="bar">
+    <a class="brand" href="../index.html"><svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><circle cx="15" cy="15" r="13" fill="none" stroke="currentColor" stroke-width="2"></circle><circle cx="15" cy="15" r="6" fill="#E7B66B"></circle><circle cx="23" cy="8" r="2.5" fill="#FF8A6B"></circle></svg><span>DanaProcessing</span></a>
+    <button type="button" class="menu-toggle" aria-expanded="false" aria-controls="site-menu">Menu</button>
+    <div class="site-menu" id="site-menu">
+      <nav class="main-nav" aria-label="Main">
+        <a href="../reference/tutorial.html">Learn</a>
+        <a href="../reference/a-z.html" aria-current="page">Reference</a>
+        <a href="../index.html#gallery">Examples</a>
+        <a href="../reference/ide.html">The IDE</a>
+      </nav>
+      <form class="search" role="search" action="../reference/a-z.html">
+        <label class="visually-hidden" for="site-search">Search the documentation</label>
+        <div class="search-box">
+          <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+          <input id="site-search" name="q" type="search" autocomplete="off" placeholder="Search — press /" aria-describedby="search-status" aria-controls="search-results">
+        </div>
+        <p id="search-status" class="visually-hidden" aria-live="polite"></p>
+        <ul id="search-results" class="search-results" hidden></ul>
+      </form>
+      <a class="support-link" href="../index.html#support"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M12 21s-7.5-4.6-9.6-9.4C1 8.2 3.1 4.5 6.8 4.5c2.2 0 3.7 1.3 5.2 3 1.5-1.7 3-3 5.2-3 3.7 0 5.8 3.7 4.4 7.1C19.5 16.4 12 21 12 21z"></path></svg><span>Support Dana</span></a>
+    </div>
+  </div>
+</header>
+<main id="main">
+<div class="topic-hero">
+  <div class="wrap">
+    <div class="topic-hero-text">
+      <nav class="breadcrumb" aria-label="Breadcrumb"><ol><li><a href="a-z.html">Reference</a></li><li>3D</li><li aria-current="page">Getting started with 3D</li></ol></nav>
+      <h1>Getting started with 3D</h1>
+      <p class="lede">An entirely separate rendering pipeline — offscreen OpenGL 3.3 (core profile) via Silk.NET, rendered into a hidden window's framebuffer and read back as a normal <code class="inline">PGraphics</code>. Everything under this "3D" nav group requires <code class="inline">RendererKind.Renderer3D</code> and throws <code class="inline">InvalidOperationException</code> otherwise — the same way Processing itself errors when <code class="inline">box()</code>/<code class="inline">rotateZ()</code>/etc. are called under the default 2D renderer.</p>
+      <p class="tags"><span class="tag">3D renderer</span></p>
+    </div>
+    <div class="topic-art" aria-hidden="true"><span style="background:#9DB8F2"></span><span></span><span></span><span></span><span></span></div>
+  </div>
+</div>
+<div class="wrap topic-layout">
+  <button type="button" class="topics-toggle" aria-expanded="false" aria-controls="topics">All topics</button>
+<nav class="topics" id="topics" aria-label="Reference topics">
+<div class="topic-group"><h2>Start here</h2><ul>
+<li><a href="intro.html">Overview</a></li>
+<li><a href="tutorial.html">30-minute tutorial</a></li>
+<li><a href="from-processing.html">From Processing / p5.js</a></li>
+</ul></div>
+<div class="topic-group"><h2>Basics</h2><ul>
+<li><a href="structure.html">Sketch structure</a></li>
+<li><a href="input.html">Input &amp; time</a></li>
+</ul></div>
+<div class="topic-group"><h2>Drawing</h2><ul>
+<li><a href="color.html">Color</a></li>
+<li><a href="shape-primitives.html">2D Primitives</a></li>
+<li><a href="shape-custom.html">Custom shapes</a></li>
+<li><a href="typography.html">Typography</a></li>
+<li><a href="transform.html">Transformations</a></li>
+</ul></div>
+<div class="topic-group"><h2>Media</h2><ul>
+<li><a href="image.html">PImage</a></li>
+<li><a href="pgraphics.html">PGraphics</a></li>
+<li><a href="pshape.html">PShape</a></li>
+<li><a href="output.html">Saving output</a></li>
+<li><a href="pixels.html">Pixels</a></li>
+<li><a href="reels.html">Reels</a></li>
+</ul></div>
+<div class="topic-group"><h2>Data &amp; math</h2><ul>
+<li><a href="files-data.html">Files &amp; data</a></li>
+<li><a href="utilities.html">Conversion &amp; utilities</a></li>
+<li><a href="math.html">Math &amp; trig</a></li>
+<li><a href="pvector.html">PVector</a></li>
+<li><a href="random-noise.html">Random &amp; noise</a></li>
+<li><a href="collections.html">Collections</a></li>
+</ul></div>
+<div class="topic-group"><h2>3D</h2><ul>
+<li><a href="getting-started-3d.html" aria-current="page">Getting started</a>
+<ul class="on-this-page" aria-label="On this page">
+<li><a href="#renderer3d-setup"><code>Size · CreateGraphics</code></a></li>
+<li><a href="#renderer3d-frame"><code>BeginDraw</code></a></li>
+<li><a href="#getting-started-3d-example">Runnable example</a></li>
+</ul>
+</li>
+<li><a href="shape-3d-primitives.html">3D Primitives</a></li>
+<li><a href="transform-3d.html">3D Transformations</a></li>
+<li><a href="camera-3d.html">Camera &amp; Projection</a></li>
+<li><a href="lights-3d.html">Lights</a></li>
+<li><a href="material-3d.html">Material properties</a></li>
+<li><a href="coordinates-3d.html">Coordinates</a></li>
+<li><a href="shape-3d-custom.html">Custom 3D shapes</a></li>
+<li><a href="pshader.html">PShader</a></li>
+</ul></div>
+<div class="topic-group"><h2>Sound</h2><ul>
+<li><a href="audio.html">Live loops &amp; timing</a></li>
+</ul></div>
+<div class="topic-group"><h2>Live &amp; generative</h2><ul>
+<li><a href="live.html">Playing live: MIDI, beat, mic</a></li>
+<li><a href="generative.html">Generative art: seeds, print</a></li>
+<li><a href="workflow.html">Day to day: F3, data/, rewind</a></li>
+</ul></div>
+<div class="topic-group"><h2>Tooling</h2><ul>
+<li><a href="ide.html">The IDE</a></li>
+<li><a href="hosting.html">Avalonia host</a></li>
+<li><a href="enums.html">Enumerations</a></li>
+</ul></div>
+<p class="topics-all"><a href="a-z.html">All topics &amp; A–Z index</a></p></nav>
+  <div class="topic-main">
+<details class="on-this-page-mobile"><summary>On this page · 3 entries</summary><ul><li><a href="#renderer3d-setup"><code>Size · CreateGraphics</code></a></li><li><a href="#renderer3d-frame"><code>BeginDraw</code></a></li><li><a href="#getting-started-3d-example">Runnable example</a></li></ul></details>
+<div class="doc">
+<h2 class="entry-title api" id="renderer3d-setup"><code>Size · CreateGraphics</code></h2><ul class="sigs" aria-label="Signatures"><li><code>Size(w, h, RendererKind.Renderer3D)</code></li><li><code>CreateGraphics(w, h, RendererKind.Renderer3D)</code></li></ul>
+<p class="entry-desc">Requests the 3D pipeline for the main sketch canvas, or for an offscreen buffer. The renderer is fixed for that context's entire lifetime — calling either again with a different <code class="inline">RendererKind</code> later throws, matching Processing's own restriction that <code class="inline">size(w, h, renderer)</code> can't switch renderers mid-sketch.</p>
+<div class="note"><strong>Set it directly on the main canvas — compositing is automatic.</strong> Pass <code class="inline">RendererKind.Renderer3D</code> straight to the sketch's own <code class="inline">Size()</code> in <code class="inline">Setup()</code>. <code class="inline">Sketch.RenderFrame()</code> already runs your 3D draw calls against the GPU backend and composites the result with any 2D overlay — <code class="inline">Fill()</code>/<code class="inline">Text()</code> calls after your 3D geometry — automatically, every frame. Every built-in 3D example uses this direct form; a separate offscreen 3D <code class="inline">PGraphics</code> via <code class="inline">CreateGraphics()</code> is still there for when you actually want one (a texture rendered once in <code class="inline">Setup()</code>, say), just not as the default.</div>
+
+<h2 class="entry-title api" id="renderer3d-frame"><code>BeginDraw</code></h2><ul class="sigs" aria-label="Signatures"><li><code>BeginDraw() / EndDraw()</code></li></ul>
+<p class="entry-desc">Only needed for an <em>offscreen</em> 3D <code class="inline">PGraphics</code> (from <code class="inline">CreateGraphics()</code>) — the main sketch canvas never needs them, since <code class="inline">RenderFrame()</code> calls the GPU backend's begin/end for you. An offscreen 3D buffer only accepts drawing calls between these two — <code class="inline">Box()</code>, <code class="inline">Sphere()</code>, <code class="inline">Lights()</code>, custom <code class="inline">Vertex()</code>/<code class="inline">EndShape()</code>, all of it — and throws <code class="inline">InvalidOperationException</code> outside the bracket.</p>
+<div class="note"><strong>Exception: CreateShape3D().</strong> Building a reusable mesh doesn't need the bracket — it claims and releases the GL context on its own, so it's safe to call once, loose, in <code class="inline">Setup()</code>. See <a href="shape-3d-custom.html#createshape3d">Custom 3D shapes</a>.</div>
+
+<div class="code-block"><div class="code-bar"><span class="code-label">C#</span><div class="code-actions"><button type="button" class="copy-btn" data-target="getting-started-3d-code-1">Copy code</button></div></div><pre id="getting-started-3d-code-1" tabindex="0" aria-label="Code, scrollable"><span class="kw">public class</span> <span class="tp">MySketch</span> : <span class="tp">Sketch</span>
+{
+    <span class="kw">public override void</span> Setup() =&gt; Size(<span class="str">700</span>, <span class="str">500</span>, <span class="tp">RendererKind</span>.Renderer3D);
+
+    <span class="kw">public override void</span> Draw()
+    {
+        Background(<span class="str">20</span>);
+        Lights();                              <span class="cm">// every frame — see Lights()</span>
+        Fill(<span class="str">160</span>, <span class="str">200</span>, <span class="str">255</span>);
+        PushMatrix();
+        Translate(Width / <span class="str">2f</span>, Height / <span class="str">2f</span>, <span class="str">0</span>);
+        RotateY(FrameCount / <span class="str">60f</span>);
+        Box(<span class="str">160</span>);
+        PopMatrix();
+    }
+}</pre></div>
+
+<h2 class="entry-title" id="getting-started-3d-example">Runnable example</h2>
+<p class="entry-desc">A complete sketch using this section. <strong>Test in Dana</strong> opens it in the IDE, or paste it into a new tab and press Run.</p>
+<div class="code-block"><div class="code-bar"><span class="code-label">C#</span><div class="code-actions"><button type="button" class="copy-btn" data-target="getting-started-3d-example-code">Copy code</button><button class="dana-test-btn" data-target="getting-started-3d-example-code" type="button"><svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M7 4l13 8-13 8z"></path></svg><span class="dana-test-label">Run in Dana</span></button></div></div><pre id="getting-started-3d-example-code" tabindex="0" aria-label="Code, scrollable"><span class="cm">// Size(w, h, RendererKind.Renderer3D) turns on 3D: lights, boxes, spheres.</span>
+<span class="kw">public</span> <span class="kw">class</span> Hello3D : <span class="tp">Sketch</span>
+{
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup() =&gt; Size(<span class="str">600</span>, <span class="str">400</span>, <span class="tp">RendererKind</span>.Renderer3D);
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        Background(<span class="str">25</span>, <span class="str">28</span>, <span class="str">40</span>);
+        Lights();
+        NoStroke();
+
+        Translate(Width / <span class="str">2</span>, Height / <span class="str">2</span>, <span class="str">0</span>);
+        RotateY(FrameCount * <span class="str">0.01f</span>);
+        RotateX(Map(MouseY, <span class="str">0</span>, Height, -<span class="str">1</span>, <span class="str">1</span>));
+
+        Fill(<span class="str">255</span>, <span class="str">150</span>, <span class="str">100</span>);
+        Box(<span class="str">140</span>);
+
+        Translate(<span class="str">200</span>, <span class="str">0</span>, <span class="str">0</span>);
+        Fill(<span class="str">120</span>, <span class="str">190</span>, <span class="str">255</span>);
+        Sphere(<span class="str">50</span>);
+    }
+}</pre></div>
+
+</div>
+<nav class="pager" aria-label="Previous and next topic"><a class="prev" href="collections.html"><span>← Previous</span><strong>Collections</strong></a><a class="next" href="shape-3d-primitives.html"><span>Next →</span><strong>3D Primitives</strong></a></nav>
+<aside class="support-aside" aria-label="Support the project">
+  <p><strong>Found this useful?</strong> Dana is free and built in spare time — a donation buys more time for docs like this one.</p>
+  <a class="btn btn-ink" href="https://paypal.me/CarlosFernandez934"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M12 21s-7.5-4.6-9.6-9.4C1 8.2 3.1 4.5 6.8 4.5c2.2 0 3.7 1.3 5.2 3 1.5-1.7 3-3 5.2-3 3.7 0 5.8 3.7 4.4 7.1C19.5 16.4 12 21 12 21z"></path></svg><span>Donate via PayPal</span></a>
+</aside>
+
+  </div>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap">
+    <p>DanaProcessing · v1.0 RC · MIT · stands on the shoulders of <a href="https://processing.org">Processing</a>, <a href="https://p5js.org">p5.js</a> and <a href="https://sonic-pi.net">Sonic Pi</a>.</p>
+    <nav aria-label="Footer">
+      <a href="../reference/a-z.html">All topics &amp; A–Z</a>
+      <a href="https://github.com/BuddhaCodes/DanaProcessing/releases/latest">Releases</a>
+      <a href="https://github.com/BuddhaCodes/DanaProcessing">GitHub</a>
+      <a href="../index.html#support">Support</a>
+    </nav>
+  </div>
+</footer>
+</body>
+</html>

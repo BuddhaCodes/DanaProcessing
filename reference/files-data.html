@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en" data-root="../">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-N4ZWC7GN1B"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-N4ZWC7GN1B');
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Files &amp; data — DanaProcessing reference</title>
+<meta name="description" content="Reading and writing plain text, bytes, JSON, XML, and CSV — all on Sketch, mirroring Processing&#x27;s load*/save* globals.">
+<link rel="canonical" href="https://buddhacodes.github.io/DanaProcessing/reference/files-data.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="DanaProcessing">
+<meta property="og:title" content="Files &amp; data — DanaProcessing reference">
+<meta property="og:description" content="Reading and writing plain text, bytes, JSON, XML, and CSV — all on Sketch, mirroring Processing&#x27;s load*/save* globals.">
+<meta property="og:url" content="https://buddhacodes.github.io/DanaProcessing/reference/files-data.html">
+<meta property="og:image" content="https://buddhacodes.github.io/DanaProcessing/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://buddhacodes.github.io/DanaProcessing/og-image.png">
+<meta name="theme-color" content="#13202A">
+<link rel="icon" type="image/png" href="../DanaProcessing.Ide/Theme/dana.png">
+<link rel="apple-touch-icon" href="../DanaProcessing.Ide/Theme/dana.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&amp;family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/search-index.js" defer></script>
+<script src="../assets/site.js" defer></script>
+</head>
+<body class="page-topic">
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="bar">
+    <a class="brand" href="../index.html"><svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><circle cx="15" cy="15" r="13" fill="none" stroke="currentColor" stroke-width="2"></circle><circle cx="15" cy="15" r="6" fill="#E7B66B"></circle><circle cx="23" cy="8" r="2.5" fill="#FF8A6B"></circle></svg><span>DanaProcessing</span></a>
+    <button type="button" class="menu-toggle" aria-expanded="false" aria-controls="site-menu">Menu</button>
+    <div class="site-menu" id="site-menu">
+      <nav class="main-nav" aria-label="Main">
+        <a href="../reference/tutorial.html">Learn</a>
+        <a href="../reference/a-z.html" aria-current="page">Reference</a>
+        <a href="../index.html#gallery">Examples</a>
+        <a href="../reference/ide.html">The IDE</a>
+      </nav>
+      <form class="search" role="search" action="../reference/a-z.html">
+        <label class="visually-hidden" for="site-search">Search the documentation</label>
+        <div class="search-box">
+          <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+          <input id="site-search" name="q" type="search" autocomplete="off" placeholder="Search — press /" aria-describedby="search-status" aria-controls="search-results">
+        </div>
+        <p id="search-status" class="visually-hidden" aria-live="polite"></p>
+        <ul id="search-results" class="search-results" hidden></ul>
+      </form>
+      <a class="support-link" href="../index.html#support"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M12 21s-7.5-4.6-9.6-9.4C1 8.2 3.1 4.5 6.8 4.5c2.2 0 3.7 1.3 5.2 3 1.5-1.7 3-3 5.2-3 3.7 0 5.8 3.7 4.4 7.1C19.5 16.4 12 21 12 21z"></path></svg><span>Support Dana</span></a>
+    </div>
+  </div>
+</header>
+<main id="main">
+<div class="topic-hero">
+  <div class="wrap">
+    <div class="topic-hero-text">
+      <nav class="breadcrumb" aria-label="Breadcrumb"><ol><li><a href="a-z.html">Reference</a></li><li>Data &amp; math</li><li aria-current="page">Files &amp; data</li></ol></nav>
+      <h1>Files &amp; data</h1>
+      <p class="lede">Reading and writing plain text, bytes, JSON, XML, and CSV — all on <code class="inline">Sketch</code>, mirroring Processing's <code class="inline">load*</code>/<code class="inline">save*</code> globals.</p>
+      
+    </div>
+    <div class="topic-art" aria-hidden="true"><span style="background:#8FD3B6"></span><span></span><span></span><span></span><span></span></div>
+  </div>
+</div>
+<div class="wrap topic-layout">
+  <button type="button" class="topics-toggle" aria-expanded="false" aria-controls="topics">All topics</button>
+<nav class="topics" id="topics" aria-label="Reference topics">
+<div class="topic-group"><h2>Start here</h2><ul>
+<li><a href="intro.html">Overview</a></li>
+<li><a href="tutorial.html">30-minute tutorial</a></li>
+<li><a href="from-processing.html">From Processing / p5.js</a></li>
+</ul></div>
+<div class="topic-group"><h2>Basics</h2><ul>
+<li><a href="structure.html">Sketch structure</a></li>
+<li><a href="input.html">Input &amp; time</a></li>
+</ul></div>
+<div class="topic-group"><h2>Drawing</h2><ul>
+<li><a href="color.html">Color</a></li>
+<li><a href="shape-primitives.html">2D Primitives</a></li>
+<li><a href="shape-custom.html">Custom shapes</a></li>
+<li><a href="typography.html">Typography</a></li>
+<li><a href="transform.html">Transformations</a></li>
+</ul></div>
+<div class="topic-group"><h2>Media</h2><ul>
+<li><a href="image.html">PImage</a></li>
+<li><a href="pgraphics.html">PGraphics</a></li>
+<li><a href="pshape.html">PShape</a></li>
+<li><a href="output.html">Saving output</a></li>
+<li><a href="pixels.html">Pixels</a></li>
+<li><a href="reels.html">Reels</a></li>
+</ul></div>
+<div class="topic-group"><h2>Data &amp; math</h2><ul>
+<li><a href="files-data.html" aria-current="page">Files &amp; data</a>
+<ul class="on-this-page" aria-label="On this page">
+<li><a href="#loadstrings"><code>LoadStrings · SaveStrings</code></a></li>
+<li><a href="#loadbytes"><code>LoadBytes · SaveBytes</code></a></li>
+<li><a href="#loadjsonobject"><code>LoadJSONObject · SaveJSONObject · LoadJSONArray · SaveJSONArray</code></a></li>
+<li><a href="#parsejsonobject"><code>ParseJSONObject · ParseJSONArray · ParseXML</code></a></li>
+<li><a href="#loadxml"><code>LoadXML · SaveXML</code></a></li>
+<li><a href="#loadtable"><code>LoadTable · SaveTable</code></a></li>
+<li><a href="#createwriter"><code>CreateWriter · CreateReader</code></a></li>
+<li><a href="#createoutput"><code>CreateOutput · CreateInput</code></a></li>
+<li><a href="#savestream"><code>SaveStream</code></a></li>
+<li><a href="#printwriter"><code>class PrintWriter · class BufferedReader</code></a></li>
+<li><a href="#printarray"><code>PrintArray</code></a></li>
+<li><a href="#files-data-example">Runnable example</a></li>
+</ul>
+</li>
+<li><a href="utilities.html">Conversion &amp; utilities</a></li>
+<li><a href="math.html">Math &amp; trig</a></li>
+<li><a href="pvector.html">PVector</a></li>
+<li><a href="random-noise.html">Random &amp; noise</a></li>
+<li><a href="collections.html">Collections</a></li>
+</ul></div>
+<div class="topic-group"><h2>3D</h2><ul>
+<li><a href="getting-started-3d.html">Getting started</a></li>
+<li><a href="shape-3d-primitives.html">3D Primitives</a></li>
+<li><a href="transform-3d.html">3D Transformations</a></li>
+<li><a href="camera-3d.html">Camera &amp; Projection</a></li>
+<li><a href="lights-3d.html">Lights</a></li>
+<li><a href="material-3d.html">Material properties</a></li>
+<li><a href="coordinates-3d.html">Coordinates</a></li>
+<li><a href="shape-3d-custom.html">Custom 3D shapes</a></li>
+<li><a href="pshader.html">PShader</a></li>
+</ul></div>
+<div class="topic-group"><h2>Sound</h2><ul>
+<li><a href="audio.html">Live loops &amp; timing</a></li>
+</ul></div>
+<div class="topic-group"><h2>Live &amp; generative</h2><ul>
+<li><a href="live.html">Playing live: MIDI, beat, mic</a></li>
+<li><a href="generative.html">Generative art: seeds, print</a></li>
+<li><a href="workflow.html">Day to day: F3, data/, rewind</a></li>
+</ul></div>
+<div class="topic-group"><h2>Tooling</h2><ul>
+<li><a href="ide.html">The IDE</a></li>
+<li><a href="hosting.html">Avalonia host</a></li>
+<li><a href="enums.html">Enumerations</a></li>
+</ul></div>
+<p class="topics-all"><a href="a-z.html">All topics &amp; A–Z index</a></p></nav>
+  <div class="topic-main">
+<details class="on-this-page-mobile"><summary>On this page · 12 entries</summary><ul><li><a href="#loadstrings"><code>LoadStrings · SaveStrings</code></a></li><li><a href="#loadbytes"><code>LoadBytes · SaveBytes</code></a></li><li><a href="#loadjsonobject"><code>LoadJSONObject · SaveJSONObject · LoadJSONArray · SaveJSONArray</code></a></li><li><a href="#parsejsonobject"><code>ParseJSONObject · ParseJSONArray · ParseXML</code></a></li><li><a href="#loadxml"><code>LoadXML · SaveXML</code></a></li><li><a href="#loadtable"><code>LoadTable · SaveTable</code></a></li><li><a href="#createwriter"><code>CreateWriter · CreateReader</code></a></li><li><a href="#createoutput"><code>CreateOutput · CreateInput</code></a></li><li><a href="#savestream"><code>SaveStream</code></a></li><li><a href="#printwriter"><code>class PrintWriter · class BufferedReader</code></a></li><li><a href="#printarray"><code>PrintArray</code></a></li><li><a href="#files-data-example">Runnable example</a></li></ul></details>
+<div class="doc">
+<h2 class="entry-title api" id="loadstrings"><code>LoadStrings · SaveStrings</code></h2><ul class="sigs" aria-label="Signatures"><li><code>LoadStrings(<span class="tp">string</span> path) <span class="sig-return">→ string[]</span></code></li><li><code>SaveStrings(path, lines)</code></li></ul>
+<p class="entry-desc">Reads/writes a text file as an array of lines.</p>
+
+<h2 class="entry-title api" id="loadbytes"><code>LoadBytes · SaveBytes</code></h2><ul class="sigs" aria-label="Signatures"><li><code>LoadBytes(<span class="tp">string</span> path) <span class="sig-return">→ byte[]</span></code></li><li><code>SaveBytes(path, data)</code></li></ul>
+<p class="entry-desc">Reads/writes a file's raw bytes.</p>
+
+<h2 class="entry-title api" id="loadjsonobject"><code>LoadJSONObject · SaveJSONObject · LoadJSONArray · SaveJSONArray</code></h2><ul class="sigs" aria-label="Signatures"><li><code>LoadJSONObject(path) <span class="sig-return">→ JSONObject</span></code></li><li><code>SaveJSONObject(json, path)</code></li><li><code>LoadJSONArray(path) <span class="sig-return">→ JSONArray</span></code></li><li><code>SaveJSONArray(json, path)</code></li></ul>
+<p class="entry-desc">Reads/writes JSON files. <code class="inline">JSONObject</code>/<code class="inline">JSONArray</code> wrap <code class="inline">System.Text.Json</code> with Processing's <code class="inline">Get*</code>/<code class="inline">Set*</code>/<code class="inline">Append*</code> naming (<code class="inline">GetString</code>, <code class="inline">GetInt</code>, <code class="inline">GetFloat</code>, <code class="inline">GetBoolean</code>, <code class="inline">GetJSONObject</code>, <code class="inline">GetJSONArray</code>, and their <code class="inline">Set*</code>/<code class="inline">Append*</code> counterparts).</p>
+
+<h2 class="entry-title api" id="parsejsonobject"><code>ParseJSONObject · ParseJSONArray · ParseXML</code></h2><ul class="sigs" aria-label="Signatures"><li><code>ParseJSONObject(<span class="tp">string</span> json) <span class="sig-return">→ JSONObject</span></code></li><li><code>ParseJSONArray(json) <span class="sig-return">→ JSONArray</span></code></li><li><code>ParseXML(<span class="tp">string</span> xml) <span class="sig-return">→ XML</span></code></li></ul>
+<p class="entry-desc">Parses an already-in-memory string instead of reading from a file — use these instead of <code class="inline">LoadJSONObject</code>/<code class="inline">LoadJSONArray</code>/<code class="inline">LoadXML</code> when the data came from somewhere other than disk: a network response, a string built by hand, text pasted into the sketch.</p>
+
+<h2 class="entry-title api" id="loadxml"><code>LoadXML · SaveXML</code></h2><ul class="sigs" aria-label="Signatures"><li><code>LoadXML(<span class="tp">string</span> path) <span class="sig-return">→ XML</span></code></li><li><code>SaveXML(xml, path)</code></li></ul>
+<p class="entry-desc">Reads/writes an XML file. <code class="inline">XML</code> wraps <code class="inline">System.Xml.Linq</code> with <code class="inline">GetString</code>/<code class="inline">GetInt</code>/<code class="inline">GetFloat</code> attribute accessors, <code class="inline">GetContent()</code> for text, and <code class="inline">GetChildren()</code>/<code class="inline">GetChild(name)</code>/<code class="inline">AddChild(name)</code> for structure.</p>
+
+<h2 class="entry-title api" id="loadtable"><code>LoadTable · SaveTable</code></h2><ul class="sigs" aria-label="Signatures"><li><code>LoadTable(path, options = "") <span class="sig-return">→ Table</span></code></li><li><code>SaveTable(table, path)</code></li></ul>
+<p class="entry-desc">Reads/writes a CSV file as a <code class="inline">Table</code>. Pass <code class="inline">"header"</code> for a first line naming the columns. Cell values are stored as text and parsed on demand via <code class="inline">TableRow.GetInt</code>/<code class="inline">GetFloat</code>/<code class="inline">GetString</code>, by index or column name.</p>
+<div class="note"><strong>CSV only.</strong> Processing's <code class="inline">Table</code> also reads TSV and its own binary <code class="inline">.tbl</code> format; only CSV is implemented here. The parser handles quoted fields with embedded commas, but not escaped double-quotes inside a quoted field — enough for CSV a spreadsheet actually produces, not a full RFC&nbsp;4180 implementation.</div>
+
+<h2 class="entry-title api" id="createwriter"><code>CreateWriter · CreateReader</code></h2><ul class="sigs" aria-label="Signatures"><li><code>CreateWriter(<span class="tp">string</span> path) <span class="sig-return">→ PrintWriter</span></code></li><li><code>CreateReader(path) <span class="sig-return">→ BufferedReader</span></code></li></ul>
+<p class="entry-desc">Incremental text I/O — for a long-running log file, or a large input read a line at a time — where <code class="inline">LoadStrings</code>/<code class="inline">SaveStrings</code> already cover the one-shot case. <code class="inline">CreateWriter</code> creates the containing directory if needed. Remember to <code class="inline">Flush()</code>/<code class="inline">Close()</code> the <code class="inline">PrintWriter</code> when done.</p>
+
+<h2 class="entry-title api" id="createoutput"><code>CreateOutput · CreateInput</code></h2><ul class="sigs" aria-label="Signatures"><li><code>CreateOutput(<span class="tp">string</span> path)</code></li><li><code>CreateInput(path) <span class="sig-return">→ Stream</span></code></li></ul>
+<p class="entry-desc">Raw byte streams to/from a file, like Processing's <code class="inline">createOutput()</code>/<code class="inline">createInput()</code>. The caller owns the returned <code class="inline">Stream</code> and should dispose it when finished.</p>
+
+<h2 class="entry-title api" id="savestream"><code>SaveStream</code></h2><ul class="sigs" aria-label="Signatures"><li><code>SaveStream(<span class="tp">string</span> path) <span class="sig-return">→ Stream</span></code></li><li><code>SaveStream(path, <span class="tp">Stream</span> input)</code></li></ul>
+<p class="entry-desc">The single-argument overload is an alias for <code class="inline">CreateOutput()</code>, under Processing's other name for the same thing. The two-argument overload copies the entire contents of <code class="inline">input</code> to a new file at <code class="inline">path</code> and closes both — handy when you already have an input stream (from <code class="inline">CreateInput()</code> on another file, say) and just want it saved whole.</p>
+
+<h2 class="entry-title api" id="printwriter"><code>class PrintWriter · class BufferedReader</code></h2><ul class="sigs" aria-label="Signatures"><li><code>class PrintWriter</code></li><li><code>class BufferedReader</code></li></ul>
+<p class="entry-desc"><code class="inline">PrintWriter</code> exposes <code class="inline">Print(value)</code>/<code class="inline">Println(value?)</code>/<code class="inline">Flush()</code>/<code class="inline">Close()</code>. <code class="inline">BufferedReader</code> exposes <code class="inline">ReadLine()</code>, which returns null once the file is exhausted.</p>
+
+<h2 class="entry-title api" id="printarray"><code>PrintArray</code></h2><ul class="sigs" aria-label="Signatures"><li><code>PrintArray(<span class="tp">Array</span> array)</code></li></ul>
+<p class="entry-desc">Prints every element on its own line, prefixed with its index in square brackets. Works with any array type, matching Processing's own <code class="inline">printArray()</code> (which needs a separate overload per type).</p>
+
+<h2 class="entry-title" id="files-data-example">Runnable example</h2>
+<p class="entry-desc">A complete sketch using this section. <strong>Test in Dana</strong> opens it in the IDE, or paste it into a new tab and press Run.</p>
+<div class="code-block"><div class="code-bar"><span class="code-label">C#</span><div class="code-actions"><button type="button" class="copy-btn" data-target="files-data-example-code">Copy code</button><button class="dana-test-btn" data-target="files-data-example-code" type="button"><svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M7 4l13 8-13 8z"></path></svg><span class="dana-test-label">Run in Dana</span></button></div></div><pre id="files-data-example-code" tabindex="0" aria-label="Code, scrollable"><span class="cm">// Files &amp; data: JSON in memory, then saved and loaded back from disk.</span>
+<span class="kw">public</span> <span class="kw">class</span> Data : <span class="tp">Sketch</span>
+{
+    <span class="tp">JSONArray</span> scores;
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup()
+    {
+        Size(<span class="str">500</span>, <span class="str">300</span>);
+        scores = ParseJSONArray(<span class="str">"[{\"name\":\"Ana\",\"score\":42},{\"name\":\"Leo\",\"score\":77},{\"name\":\"Mia\",\"score\":63}]"</span>);
+
+        <span class="kw">var</span> best = <span class="kw">new</span> <span class="tp">JSONObject</span>();
+        best.SetString(<span class="str">"name"</span>, <span class="str">"Leo"</span>);
+        best.SetInt(<span class="str">"score"</span>, <span class="str">77</span>);
+        SaveJSONObject(best, <span class="str">"best.json"</span>);                       <span class="cm">// next to the sketch</span>
+        Println(<span class="str">"Saved: "</span> + LoadJSONObject(<span class="str">"best.json"</span>).ToString());
+
+        SaveStrings(<span class="str">"names.txt"</span>, <span class="kw">new</span>[] { <span class="str">"Ana"</span>, <span class="str">"Leo"</span>, <span class="str">"Mia"</span> });
+        Println(<span class="kw">string</span>.Join(<span class="str">", "</span>, LoadStrings(<span class="str">"names.txt"</span>)));
+    }
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        Background(<span class="str">250</span>);
+        <span class="kw">for</span> (<span class="kw">int</span> i = <span class="str">0</span>; i &lt; scores.Size(); i++)
+        {
+<span class="kw">var</span> row = scores.GetJSONObject(i);
+<span class="kw">float</span> w = row.GetInt(<span class="str">"score"</span>) * <span class="str">4</span>;
+Fill(<span class="str">90</span>, <span class="str">140</span>, <span class="str">220</span>); NoStroke();
+Rect(<span class="str">100</span>, <span class="str">40</span> + i * <span class="str">70</span>, w, <span class="str">40</span>);
+Fill(<span class="str">30</span>);
+Text(row.GetString(<span class="str">"name"</span>), <span class="str">20</span>, <span class="str">66</span> + i * <span class="str">70</span>);
+Text(Str(row.GetInt(<span class="str">"score"</span>)), <span class="str">110</span> + w, <span class="str">66</span> + i * <span class="str">70</span>);
+        }
+    }
+}</pre></div>
+
+</div>
+<nav class="pager" aria-label="Previous and next topic"><a class="prev" href="reels.html"><span>← Previous</span><strong>Reels: turn a sketch into a video</strong></a><a class="next" href="utilities.html"><span>Next →</span><strong>Conversion &amp; utility functions</strong></a></nav>
+<aside class="support-aside" aria-label="Support the project">
+  <p><strong>Found this useful?</strong> Dana is free and built in spare time — a donation buys more time for docs like this one.</p>
+  <a class="btn btn-ink" href="https://paypal.me/CarlosFernandez934"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M12 21s-7.5-4.6-9.6-9.4C1 8.2 3.1 4.5 6.8 4.5c2.2 0 3.7 1.3 5.2 3 1.5-1.7 3-3 5.2-3 3.7 0 5.8 3.7 4.4 7.1C19.5 16.4 12 21 12 21z"></path></svg><span>Donate via PayPal</span></a>
+</aside>
+
+  </div>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap">
+    <p>DanaProcessing · v1.0 RC · MIT · stands on the shoulders of <a href="https://processing.org">Processing</a>, <a href="https://p5js.org">p5.js</a> and <a href="https://sonic-pi.net">Sonic Pi</a>.</p>
+    <nav aria-label="Footer">
+      <a href="../reference/a-z.html">All topics &amp; A–Z</a>
+      <a href="https://github.com/BuddhaCodes/DanaProcessing/releases/latest">Releases</a>
+      <a href="https://github.com/BuddhaCodes/DanaProcessing">GitHub</a>
+      <a href="../index.html#support">Support</a>
+    </nav>
+  </div>
+</footer>
+</body>
+</html>

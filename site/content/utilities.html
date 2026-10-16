@@ -1,0 +1,111 @@
+<!--meta {"title": "Conversion & utility functions", "nav": "Conversion & utilities", "summary": "Type conversion, array manipulation, and string formatting. Processing/Java needed dedicated functions for most of these because of stricter primitive typing and no operator…", "tags": []} -->
+<p class="section-intro">Type conversion, array manipulation, and string formatting. Processing/Java needed dedicated functions for most of these because of stricter primitive typing and no operator overloading — in C# they exist mainly for 1:1 API parity with sketches ported from Processing.</p>
+
+<h3 class="entry-title" id="int">Int(<span class="tp">float</span> value) · Int(<span class="tp">string</span> value) · Int(<span class="tp">bool</span> value) <span class="sig-return">→ int</span></h3>
+<p class="entry-desc">Truncates a float toward zero (not rounding), parses a string (0 on failure), or converts true/false to 1/0.</p>
+
+<h3 class="entry-title" id="float-fn">Float(<span class="tp">int</span> value) · Float(<span class="tp">string</span> value) <span class="sig-return">→ float</span></h3>
+<p class="entry-desc">Converts an int, or parses a string — <code class="inline">float.NaN</code> on failure, matching Processing's own documented behavior.</p>
+
+<h3 class="entry-title" id="boolean-fn">Boolean(<span class="tp">float</span> value) · Boolean(<span class="tp">string</span> value) <span class="sig-return">→ bool</span></h3>
+<p class="entry-desc">Nonzero is true for numbers; a case-insensitive <code class="inline">"true"</code> for strings, anything else false.</p>
+
+<h3 class="entry-title" id="byte-fn">Byte(<span class="tp">int</span> value) · Byte(<span class="tp">float</span> value) · Byte(<span class="tp">char</span> value) <span class="sig-return">→ byte</span></h3>
+<p class="entry-desc">Truncates/wraps into a byte using two's-complement, matching Java/Processing's own <code class="inline">byte()</code> rather than throwing on overflow.</p>
+
+<h3 class="entry-title" id="char-fn">Char(<span class="tp">int</span> value) · Char(<span class="tp">byte</span> value) <span class="sig-return">→ char</span></h3>
+<p class="entry-desc">Converts a numeric code point to its character — <code class="inline">Char(65)</code> is <code class="inline">'A'</code>.</p>
+
+<h3 class="entry-title" id="str-fn">Str(<span class="tp">int</span>) · Str(<span class="tp">float</span>) · Str(<span class="tp">bool</span>) · Str(<span class="tp">char</span>) <span class="sig-return">→ string</span></h3>
+<p class="entry-desc">Renders a value as text. Exists mainly so ported sketch code compiles unchanged — C#'s own <code class="inline">ToString()</code> already covers every case here.</p>
+
+<h3 class="entry-title" id="hex-fn">Hex(<span class="tp">int</span>) · Hex(<span class="tp">int</span>, digits) · Hex(<span class="tp">byte</span>) · Hex(<span class="tp">char</span>) <span class="sig-return">→ string</span></h3>
+<p class="entry-desc">Hexadecimal string, zero-padded — 8 digits for <code class="inline">int</code> by default (or a custom digit count), 2 for <code class="inline">byte</code>, 4 for <code class="inline">char</code>.</p>
+
+<h3 class="entry-title" id="unhex">Unhex(<span class="tp">string</span> value) <span class="sig-return">→ int</span></h3>
+<p class="entry-desc">Parses a hex string back into an int. Ignores an optional leading <code class="inline">"0x"</code>; returns 0 if the text isn't valid hex.</p>
+
+<h3 class="entry-title" id="binary-fn">Binary(<span class="tp">int</span>) · Binary(<span class="tp">int</span>, digits) · Binary(<span class="tp">byte</span>) · Binary(<span class="tp">char</span>) <span class="sig-return">→ string</span></h3>
+<p class="entry-desc">Binary string, zero-padded — 32 digits for <code class="inline">int</code> by default (or the rightmost <code class="inline">digits</code> bits), 8 for <code class="inline">byte</code>, 16 for <code class="inline">char</code>. Negative <code class="inline">int</code> values render their full two's-complement bit pattern, matching Processing/Java.</p>
+
+<h3 class="entry-title" id="unbinary">Unbinary(<span class="tp">string</span> value) <span class="sig-return">→ int</span></h3>
+<p class="entry-desc">Parses a binary string back into an int. Anything other than <code class="inline">'0'</code>/<code class="inline">'1'</code> in the string makes the whole result 0; strings longer than 32 bits keep only the rightmost 32, matching <code class="inline">int</code>'s width.</p>
+
+<div class="note"><strong>Prefer a plain C# cast.</strong> These exist purely for parity with sketches ported line-for-line from Processing. New DanaProcessing code can just write <code class="inline">(int)value</code>, <code class="inline">value.ToString()</code>, etc. directly.</div>
+
+<h3 class="entry-title" id="append">Append&lt;T&gt;(array, value) · Concat&lt;T&gt;(a, b) · Expand&lt;T&gt;(array, newSize?) <span class="sig-return">→ T[]</span></h3>
+<p class="entry-desc">Grows an array without mutating the original. <code class="inline">Expand</code> called with no size doubles the array (or grows an empty one to size 1) and never shrinks — matching Processing's own <code class="inline">expand()</code>.</p>
+
+<h3 class="entry-title" id="reverse">Reverse&lt;T&gt;(array) · Shorten&lt;T&gt;(array) · Subset&lt;T&gt;(array, start, count?) <span class="sig-return">→ T[]</span></h3>
+<p class="entry-desc">Returns a new, reordered or trimmed array. None of the array functions on this page mutate their input — the result is always a fresh array, matching Processing's own contract.</p>
+
+<h3 class="entry-title" id="sort">Sort&lt;T&gt;(array) · Sort&lt;T&gt;(array, count) <span class="sig-return">→ T[]</span></h3>
+<p class="entry-desc">Returns a new, ascending-sorted copy using <code class="inline">T</code>'s natural ordering. The two-argument overload sorts only the first <code class="inline">count</code> elements.</p>
+
+<h3 class="entry-title" id="splice">Splice&lt;T&gt;(array, value, index) · Splice&lt;T&gt;(array, insertion, index) <span class="sig-return">→ T[]</span></h3>
+<p class="entry-desc">Inserts a single value, or every element of another array, starting at <code class="inline">index</code>.</p>
+
+<h3 class="entry-title" id="arraycopy">ArrayCopy&lt;T&gt;(src, dst) · ArrayCopy&lt;T&gt;(src, srcPos, dst, dstPos, count)</h3>
+<p class="entry-desc">Copies elements into an already-sized destination array — the one function here that writes into an existing array rather than returning a new one, matching Processing's own <code class="inline">arrayCopy()</code>.</p>
+
+<div class="note"><strong>Generic, not per-type.</strong> Processing needs a separate overload of each array function per primitive type (Java has no clean generics-over-arrays story). DanaProcessing needs just one <code class="inline">&lt;T&gt;</code> implementation, covering <code class="inline">int[]</code>, <code class="inline">float[]</code>, <code class="inline">string[]</code>, <code class="inline">PVector[]</code>, or anything else.</div>
+
+<h3 class="entry-title" id="join">Join(array, separator) <span class="sig-return">→ string</span> · Split(value, delimiter) <span class="sig-return">→ string[]</span></h3>
+<p class="entry-desc"><code class="inline">Split</code> takes either a single <code class="inline">char</code> or a (possibly multi-character) <code class="inline">string</code> delimiter, matched literally.</p>
+
+<h3 class="entry-title" id="splittokens">SplitTokens(value) · SplitTokens(value, delimiters) <span class="sig-return">→ string[]</span></h3>
+<p class="entry-desc">Splits on runs of whitespace, or on runs of any character found in <code class="inline">delimiters</code> (each character is its own delimiter, not a multi-character sequence). Empty tokens between adjacent delimiters are dropped.</p>
+
+<h3 class="entry-title" id="trim-fn">Trim(<span class="tp">string</span>) · Trim(<span class="tp">string[]</span>)</h3>
+<p class="entry-desc">Trims leading/trailing whitespace — a single string, or every element of an array.</p>
+
+<h3 class="entry-title" id="match">Match(value, regexp) <span class="sig-return">→ string[]?</span> · MatchAll(value, regexp) <span class="sig-return">→ string[][]?</span></h3>
+<p class="entry-desc">Regular-expression matching. <code class="inline">Match</code> returns the first match's groups (index 0 is the whole match); <code class="inline">MatchAll</code> returns one row of groups per match, non-overlapping. Both return null rather than an empty array when there's no match at all.</p>
+
+<h3 class="entry-title" id="nf">Nf(num, digits) · Nf(num, left, right) <span class="sig-return">→ string</span></h3>
+<p class="entry-desc">Zero-pads a number to a fixed digit count — an <code class="inline">int</code> overload, and a <code class="inline">float</code> overload with separate widths for the digits before and after the decimal point.</p>
+
+<h3 class="entry-title" id="nfc">Nfc(num) · Nfc(num, right) <span class="sig-return">→ string</span></h3>
+<p class="entry-desc">Same idea as <code class="inline">Nf</code>, with thousands separators added.</p>
+
+<h3 class="entry-title" id="nfp">Nfp(num, digits) · Nfp(num, left, right) <span class="sig-return">→ string</span></h3>
+<p class="entry-desc">Same as <code class="inline">Nf</code>, but always shows a leading <code class="inline">+</code> or <code class="inline">-</code> sign.</p>
+
+<h3 class="entry-title" id="nfs">Nfs(num, digits) · Nfs(num, left, right) <span class="sig-return">→ string</span></h3>
+<p class="entry-desc">Same as <code class="inline">Nf</code>, but pads with spaces instead of zeros.</p>
+
+<h3 class="entry-title" id="utilities-example">Runnable example</h3>
+<p class="entry-desc">A complete sketch using this section. <strong>Test in Dana</strong> opens it in the IDE, or paste it into a new tab and press Run.</p>
+<div class="code-block">
+  <pre id="utilities-example-code"><span class="cm">// Conversion and formatting helpers: Nf, Hex, Binary, Int, Float, Split, Join.</span>
+<span class="kw">public</span> <span class="kw">class</span> Utils : <span class="tp">Sketch</span>
+{
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup() =&gt; Size(<span class="str">520</span>, <span class="str">260</span>);
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        Background(<span class="str">250</span>);
+        Fill(<span class="str">30</span>);
+        <span class="kw">int</span> n = (<span class="kw">int</span>)MouseX;
+        <span class="kw">string</span>[] parts = Split(<span class="str">"red,green,blue"</span>, <span class="str">','</span>);
+        <span class="kw">string</span>[] lines =
+        {
+<span class="str">$"MouseX = {n}"</span>,
+<span class="str">$"Nf(n, 4)       = {Nf(n, 4)}"</span>,
+<span class="str">$"Hex(n)         = {Hex(n)}"</span>,
+<span class="str">$"Binary(n, 10)  = {Binary(n, 10)}"</span>,
+<span class="str">$"Int(\"42\") + 1  = {Int("</span><span class="str">42</span><span class="str">") + 1}"</span>,
+<span class="str">$"Float(\"2.5\")*2 = {Float("</span><span class="str">2.5</span><span class="str">") * 2}"</span>,
+<span class="str">$"Split + Join   = {Join(parts, "</span> | <span class="str">")}"</span>,
+<span class="str">$"Time           = {Nf(Hour(), 2)}:{Nf(Minute(), 2)}:{Nf(Second(), 2)}"</span>,
+        };
+        TextSize(<span class="str">15</span>);
+        <span class="kw">for</span> (<span class="kw">int</span> i = <span class="str">0</span>; i &lt; lines.Length; i++)
+Text(lines[i], <span class="str">20</span>, <span class="str">30</span> + i * <span class="str">28</span>);
+    }
+}</pre>
+  <button class="dana-test-btn" data-target="utilities-example-code" title="Run in DanaProcessing IDE">
+    <i class="ph-bold ph-play"></i>
+    <span class="dana-test-label">Test in Dana</span>
+  </button>
+</div>

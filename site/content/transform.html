@@ -1,0 +1,75 @@
+<!--meta {"title": "Transformations", "nav": "Transformations", "summary": "Transformations", "tags": []} -->
+<h3 class="entry-title" id="pushmatrix">PushMatrix() · PopMatrix()</h3>
+<p class="entry-desc">Saves and restores the canvas's transform stack.</p>
+
+<h3 class="entry-title" id="translate">Translate(x, y)</h3>
+<p class="entry-desc">Shifts the origin.</p>
+
+<h3 class="entry-title" id="rotate">Rotate(<span class="tp">float</span> angle) · RotateDegrees(<span class="tp">float</span> degrees)</h3>
+<p class="entry-desc"><code class="inline">Rotate()</code> takes <strong>radians</strong>, like Processing and p5.js: <code class="inline">Rotate(HALF_PI)</code> is a quarter turn. If you think in degrees, use <code class="inline">RotateDegrees(90)</code> or <code class="inline">Rotate(Radians(90))</code>. (Before 1.0, <code class="inline">Rotate()</code> took degrees; sketches written for 0.x need <code class="inline">Radians()</code> around the angle.)</p>
+
+<h3 class="entry-title" id="scale">Scale(<span class="tp">float</span> sx, <span class="tp">float?</span> sy = null)</h3>
+<p class="entry-desc">Uniform scale when <code class="inline">sy</code> is omitted.</p>
+
+<h3 class="entry-title" id="shearx">ShearX(<span class="tp">float</span> angleRadians) · ShearY(<span class="tp">float</span> angleRadians)</h3>
+<p class="entry-desc">Shears drawing along one axis.</p>
+
+<h3 class="entry-title" id="resetmatrix">ResetMatrix()</h3>
+<p class="entry-desc">Replaces the current transform with the identity, discarding <em>every</em> <code class="inline">Translate</code>/<code class="inline">Rotate</code>/<code class="inline">Scale</code>/<code class="inline">Shear</code>/<code class="inline">ApplyMatrix</code> applied so far — including ones from before the innermost <code class="inline">PushMatrix()</code>. Stronger than <code class="inline">PopMatrix()</code>, which only undoes back to the last <code class="inline">PushMatrix()</code>.</p>
+
+<h3 class="entry-title" id="applymatrix">ApplyMatrix(a, b, c, d, e, f)</h3>
+<p class="entry-desc">Multiplies the current transform by an arbitrary affine matrix <code class="inline">[[a c e][b d f][0 0 1]]</code> — for effects the named transform calls can't express directly.</p>
+
+<h3 class="entry-title" id="printmatrix">PrintMatrix()</h3>
+<p class="entry-desc">Prints the current transformation matrix to the console as a 3×3 row-major matrix — a debugging aid for figuring out what a chain of transform calls actually produced.</p>
+
+<h3 class="entry-title" id="clip">Clip(x, y, w, h) · NoClip()</h3>
+<p class="entry-desc">Restricts drawing to a rectangle until <code class="inline">NoClip()</code> is called — or until <code class="inline">Clip()</code> is called again with a new rectangle, which replaces rather than intersects the old one. Always uses corner-style x/y/w/h regardless of the current <code class="inline">RectMode()</code>.</p>
+<div class="note"><strong>Don't straddle PushMatrix/PopMatrix.</strong> Implemented with its own internal save/restore pair on the canvas — pair a <code class="inline">Clip()</code> with its <code class="inline">NoClip()</code> at the same matrix-nesting depth, rather than spanning a <code class="inline">PushMatrix()</code>/<code class="inline">PopMatrix()</code> boundary.</div>
+
+<h3 class="entry-title" id="hint">Hint(<span class="tp">string</span> hintName)</h3>
+<p class="entry-desc">A logged no-op. Every hint constant Processing defines is either meaningless for a single always-antialiased 2D software renderer, or already covered by a dedicated method (<code class="inline">Smooth()</code>/<code class="inline">NoSmooth()</code>). Exists so ported sketches that defensively call <code class="inline">hint(SOME_CONSTANT)</code> still compile and run.</p>
+
+<h3 class="entry-title" id="transform-example">Runnable example</h3>
+<p class="entry-desc">A complete sketch using this section. <strong>Test in Dana</strong> opens it in the IDE, or paste it into a new tab and press Run.</p>
+<div class="code-block">
+  <pre id="transform-example-code"><span class="cm">// Translate, Rotate (radians) and Scale, with PushMatrix/PopMatrix to undo them.</span>
+<span class="kw">public</span> <span class="kw">class</span> Clock : <span class="tp">Sketch</span>
+{
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup() =&gt; Size(<span class="str">400</span>, <span class="str">400</span>);
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        Background(<span class="str">245</span>);
+        Translate(Width / <span class="str">2</span>, Height / <span class="str">2</span>);           <span class="cm">// origin to the centre</span>
+
+        <span class="kw">for</span> (<span class="kw">int</span> i = <span class="str">0</span>; i &lt; <span class="str">12</span>; i++)
+        {
+PushMatrix();
+Rotate(TWO_PI * i / <span class="str">12</span>);                 <span class="cm">// radians; RotateDegrees(30 * i) also works</span>
+Fill(i % <span class="str">3</span> == <span class="str">0</span> ? <span class="str">40</span> : <span class="str">160</span>);
+NoStroke();
+Rect(-<span class="str">4</span>, -<span class="str">170</span>, <span class="str">8</span>, i % <span class="str">3</span> == <span class="str">0</span> ? <span class="str">30</span> : <span class="str">15</span>);
+PopMatrix();
+        }
+
+        <span class="kw">float</span> s = Second() + Millis() % <span class="str">1000</span> / <span class="str">1000f</span>;
+        PushMatrix();
+        Rotate(TWO_PI * s / <span class="str">60</span>);
+        Stroke(<span class="str">220</span>, <span class="str">60</span>, <span class="str">60</span>);
+        StrokeWeight(<span class="str">3</span>);
+        Line(<span class="str">0</span>, <span class="str">20</span>, <span class="str">0</span>, -<span class="str">150</span>);
+        PopMatrix();
+
+        PushMatrix();
+        Scale(<span class="str">1</span> + Sin(FrameCount * <span class="str">0.05f</span>) * <span class="str">0.2f</span>);   <span class="cm">// a breathing dot</span>
+        Fill(<span class="str">220</span>, <span class="str">60</span>, <span class="str">60</span>);
+        Circle(<span class="str">0</span>, <span class="str">0</span>, <span class="str">16</span>);
+        PopMatrix();
+    }
+}</pre>
+  <button class="dana-test-btn" data-target="transform-example-code" title="Run in DanaProcessing IDE">
+    <i class="ph-bold ph-play"></i>
+    <span class="dana-test-label">Test in Dana</span>
+  </button>
+</div>

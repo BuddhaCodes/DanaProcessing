@@ -1,0 +1,69 @@
+<!--meta {"title": "Custom shapes & meshes", "nav": "Custom shapes", "summary": "Build arbitrary shapes vertex by vertex. There are two render paths at EndShape(): a simple path when every vertex shares one fill color, and a mesh path (Gouraud shading…", "tags": ["2D"]} -->
+<p class="section-intro">Build arbitrary shapes vertex by vertex. There are two render paths at <code class="inline">EndShape()</code>: a <strong>simple path</strong> when every vertex shares one fill color, and a <strong>mesh path</strong> (Gouraud shading and/or texturing) once either varies.</p>
+
+<h3 class="entry-title" id="beginshape">BeginShape(<span class="tp">ShapeKind</span> kind = Polygon)</h3>
+<p class="entry-desc">Starts recording vertices. See <a href="#enums">ShapeKind</a> for all interpretations.</p>
+
+<h3 class="entry-title" id="vertex">Vertex(x, y) · Vertex(x, y, u, v)</h3>
+<p class="entry-desc">Adds a vertex, colored by the current <code class="inline">Fill()</code> at the moment of the call. The UV overload adds texture coordinates.</p>
+
+<h3 class="entry-title" id="beziervertex">BezierVertex(...) · QuadraticVertex(...)</h3>
+<p class="entry-desc">Adds a curved segment to a <code class="inline">Polygon</code>-mode shape.</p>
+
+<h3 class="entry-title" id="curvevertex">CurveVertex(x, y)</h3>
+<p class="entry-desc">Adds a Catmull-Rom curve vertex, respecting <code class="inline">CurveTightness()</code>. As in Processing, the curve only passes through the <em>interior</em> points — the very first and very last <code class="inline">CurveVertex()</code> calls shape the tangent at each end but aren't drawn to themselves, so nothing appears until the 4th call. The common pattern is to repeat the first and last point once so the curve visibly starts/ends there.</p>
+
+<h3 class="entry-title" id="begincontour">BeginContour() · EndContour()</h3>
+<p class="entry-desc">Cuts a hole in the shape currently being built — the vertices recorded between these two calls form a subpath that's subtracted from the outline, like a donut. Only valid in the default <code class="inline">Polygon</code> mode of <code class="inline">BeginShape()</code>.</p>
+<div class="note"><strong>Only contour shapes are affected.</strong> Using <code class="inline">BeginContour()</code> switches that shape's fill rule to even-odd so the hole punches through reliably regardless of winding direction. Shapes that never call it keep the usual winding rule and render exactly as before.</div>
+
+<h3 class="entry-title" id="texture">Texture(<span class="tp">PImage</span> img) · NoTexture()</h3>
+<p class="entry-desc">Sets or clears the texture image for the shape.</p>
+
+<h3 class="entry-title" id="texturemode">TextureMode(<span class="tp">TextureModeKind</span> mode) · TextureWrap(<span class="tp">TextureWrapKind</span> mode)</h3>
+<p class="entry-desc">Sets how <code class="inline">Vertex(x, y, u, v)</code>'s u/v are interpreted, and how a texture samples outside its 0–1 range. See <a href="#enums">TextureModeKind</a> / <a href="#enums">TextureWrapKind</a>.</p>
+<div class="note"><strong>Default differs from Processing.</strong> DanaProcessing's default is <code class="inline">Normal</code> (0–1 UVs), not Processing's own default of <code class="inline">Image</code> (pixel-coordinate UVs) — <code class="inline">Vertex(x, y, u, v)</code> already treated its u/v as 0–1 before <code class="inline">TextureMode()</code> existed, so the default was kept for backward compatibility. Call <code class="inline">TextureMode(Image)</code> for Processing's real default behavior.</div>
+
+<h3 class="entry-title" id="endshape">EndShape(<span class="tp">bool</span> close = false)</h3>
+<p class="entry-desc">Finishes and draws the recorded shape.</p>
+
+<h3 class="entry-title" id="shape-custom-example">Runnable example</h3>
+<p class="entry-desc">A complete sketch using this section. <strong>Test in Dana</strong> opens it in the IDE, or paste it into a new tab and press Run.</p>
+<div class="code-block">
+  <pre id="shape-custom-example-code"><span class="cm">// BeginShape/Vertex/EndShape: a star whose points follow the mouse.</span>
+<span class="kw">public</span> <span class="kw">class</span> Star : <span class="tp">Sketch</span>
+{
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup() =&gt; Size(<span class="str">500</span>, <span class="str">500</span>);
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        Background(<span class="str">20</span>, <span class="str">24</span>, <span class="str">40</span>);
+        <span class="kw">float</span> inner = Map(MouseX, <span class="str">0</span>, Width, <span class="str">30</span>, <span class="str">180</span>);
+        <span class="kw">int</span> points = (<span class="kw">int</span>)Map(MouseY, <span class="str">0</span>, Height, <span class="str">3</span>, <span class="str">12</span>);
+
+        Fill(<span class="str">255</span>, <span class="str">210</span>, <span class="str">90</span>);
+        Stroke(<span class="str">255</span>);
+        StrokeWeight(<span class="str">2</span>);
+        BeginShape();
+        <span class="kw">for</span> (<span class="kw">int</span> i = <span class="str">0</span>; i &lt; points * <span class="str">2</span>; i++)
+        {
+<span class="kw">float</span> r = i % <span class="str">2</span> == <span class="str">0</span> ? <span class="str">200</span> : inner;
+<span class="kw">float</span> a = i * PI / points - HALF_PI;
+Vertex(Width / <span class="str">2</span> + Cos(a) * r, Height / <span class="str">2</span> + Sin(a) * r);
+        }
+        EndShape(close: <span class="kw">true</span>);
+
+        <span class="cm">// A smooth curve through points.</span>
+        NoFill();
+        Stroke(<span class="str">120</span>, <span class="str">200</span>, <span class="str">255</span>);
+        BeginShape();
+        <span class="kw">for</span> (<span class="kw">int</span> x = -<span class="str">50</span>; x &lt;= Width + <span class="str">50</span>; x += <span class="str">50</span>)
+CurveVertex(x, <span class="str">460</span> + Sin(x * <span class="str">0.02f</span> + FrameCount * <span class="str">0.05f</span>) * <span class="str">20</span>);
+        EndShape();
+    }
+}</pre>
+  <button class="dana-test-btn" data-target="shape-custom-example-code" title="Run in DanaProcessing IDE">
+    <i class="ph-bold ph-play"></i>
+    <span class="dana-test-label">Test in Dana</span>
+  </button>
+</div>

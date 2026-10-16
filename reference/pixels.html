@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en" data-root="../">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-N4ZWC7GN1B"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-N4ZWC7GN1B');
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pixels — DanaProcessing reference</title>
+<meta name="description" content="Direct pixel access and per-pixel operations. Reading pixels back (LoadPixels, Get, and everything built on them) requires a CPU-readable Surface — the same requirement Save() has.">
+<link rel="canonical" href="https://buddhacodes.github.io/DanaProcessing/reference/pixels.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="DanaProcessing">
+<meta property="og:title" content="Pixels — DanaProcessing reference">
+<meta property="og:description" content="Direct pixel access and per-pixel operations. Reading pixels back (LoadPixels, Get, and everything built on them) requires a CPU-readable Surface — the same requirement Save() has.">
+<meta property="og:url" content="https://buddhacodes.github.io/DanaProcessing/reference/pixels.html">
+<meta property="og:image" content="https://buddhacodes.github.io/DanaProcessing/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://buddhacodes.github.io/DanaProcessing/og-image.png">
+<meta name="theme-color" content="#13202A">
+<link rel="icon" type="image/png" href="../DanaProcessing.Ide/Theme/dana.png">
+<link rel="apple-touch-icon" href="../DanaProcessing.Ide/Theme/dana.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&amp;family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/search-index.js" defer></script>
+<script src="../assets/site.js" defer></script>
+</head>
+<body class="page-topic">
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="bar">
+    <a class="brand" href="../index.html"><svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><circle cx="15" cy="15" r="13" fill="none" stroke="currentColor" stroke-width="2"></circle><circle cx="15" cy="15" r="6" fill="#E7B66B"></circle><circle cx="23" cy="8" r="2.5" fill="#FF8A6B"></circle></svg><span>DanaProcessing</span></a>
+    <button type="button" class="menu-toggle" aria-expanded="false" aria-controls="site-menu">Menu</button>
+    <div class="site-menu" id="site-menu">
+      <nav class="main-nav" aria-label="Main">
+        <a href="../reference/tutorial.html">Learn</a>
+        <a href="../reference/a-z.html" aria-current="page">Reference</a>
+        <a href="../index.html#gallery">Examples</a>
+        <a href="../reference/ide.html">The IDE</a>
+      </nav>
+      <form class="search" role="search" action="../reference/a-z.html">
+        <label class="visually-hidden" for="site-search">Search the documentation</label>
+        <div class="search-box">
+          <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+          <input id="site-search" name="q" type="search" autocomplete="off" placeholder="Search — press /" aria-describedby="search-status" aria-controls="search-results">
+        </div>
+        <p id="search-status" class="visually-hidden" aria-live="polite"></p>
+        <ul id="search-results" class="search-results" hidden></ul>
+      </form>
+      <a class="support-link" href="../index.html#support"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M12 21s-7.5-4.6-9.6-9.4C1 8.2 3.1 4.5 6.8 4.5c2.2 0 3.7 1.3 5.2 3 1.5-1.7 3-3 5.2-3 3.7 0 5.8 3.7 4.4 7.1C19.5 16.4 12 21 12 21z"></path></svg><span>Support Dana</span></a>
+    </div>
+  </div>
+</header>
+<main id="main">
+<div class="topic-hero">
+  <div class="wrap">
+    <div class="topic-hero-text">
+      <nav class="breadcrumb" aria-label="Breadcrumb"><ol><li><a href="a-z.html">Reference</a></li><li>Media</li><li aria-current="page">Pixels</li></ol></nav>
+      <h1>Pixels</h1>
+      <p class="lede">Direct pixel access and per-pixel operations. Reading pixels back (<code class="inline">LoadPixels</code>, <code class="inline">Get</code>, and everything built on them) requires a CPU-readable <code class="inline">Surface</code> — the same requirement <code class="inline">Save()</code> has.</p>
+      
+    </div>
+    <div class="topic-art" aria-hidden="true"><span style="background:#9DB8F2"></span><span></span><span></span><span></span><span></span></div>
+  </div>
+</div>
+<div class="wrap topic-layout">
+  <button type="button" class="topics-toggle" aria-expanded="false" aria-controls="topics">All topics</button>
+<nav class="topics" id="topics" aria-label="Reference topics">
+<div class="topic-group"><h2>Start here</h2><ul>
+<li><a href="intro.html">Overview</a></li>
+<li><a href="tutorial.html">30-minute tutorial</a></li>
+<li><a href="from-processing.html">From Processing / p5.js</a></li>
+</ul></div>
+<div class="topic-group"><h2>Basics</h2><ul>
+<li><a href="structure.html">Sketch structure</a></li>
+<li><a href="input.html">Input &amp; time</a></li>
+</ul></div>
+<div class="topic-group"><h2>Drawing</h2><ul>
+<li><a href="color.html">Color</a></li>
+<li><a href="shape-primitives.html">2D Primitives</a></li>
+<li><a href="shape-custom.html">Custom shapes</a></li>
+<li><a href="typography.html">Typography</a></li>
+<li><a href="transform.html">Transformations</a></li>
+</ul></div>
+<div class="topic-group"><h2>Media</h2><ul>
+<li><a href="image.html">PImage</a></li>
+<li><a href="pgraphics.html">PGraphics</a></li>
+<li><a href="pshape.html">PShape</a></li>
+<li><a href="output.html">Saving output</a></li>
+<li><a href="pixels.html" aria-current="page">Pixels</a>
+<ul class="on-this-page" aria-label="On this page">
+<li><a href="#loadpixels"><code>LoadPixels · Pixels · UpdatePixels</code></a></li>
+<li><a href="#pixels-get"><code>Get</code></a></li>
+<li><a href="#pixels-set"><code>Set</code></a></li>
+<li><a href="#copy"><code>Copy</code></a></li>
+<li><a href="#blend-pixels"><code>Blend</code></a></li>
+<li><a href="#filter"><code>Filter</code></a></li>
+<li><a href="#pixels-example">Runnable example</a></li>
+</ul>
+</li>
+<li><a href="reels.html">Reels</a></li>
+</ul></div>
+<div class="topic-group"><h2>Data &amp; math</h2><ul>
+<li><a href="files-data.html">Files &amp; data</a></li>
+<li><a href="utilities.html">Conversion &amp; utilities</a></li>
+<li><a href="math.html">Math &amp; trig</a></li>
+<li><a href="pvector.html">PVector</a></li>
+<li><a href="random-noise.html">Random &amp; noise</a></li>
+<li><a href="collections.html">Collections</a></li>
+</ul></div>
+<div class="topic-group"><h2>3D</h2><ul>
+<li><a href="getting-started-3d.html">Getting started</a></li>
+<li><a href="shape-3d-primitives.html">3D Primitives</a></li>
+<li><a href="transform-3d.html">3D Transformations</a></li>
+<li><a href="camera-3d.html">Camera &amp; Projection</a></li>
+<li><a href="lights-3d.html">Lights</a></li>
+<li><a href="material-3d.html">Material properties</a></li>
+<li><a href="coordinates-3d.html">Coordinates</a></li>
+<li><a href="shape-3d-custom.html">Custom 3D shapes</a></li>
+<li><a href="pshader.html">PShader</a></li>
+</ul></div>
+<div class="topic-group"><h2>Sound</h2><ul>
+<li><a href="audio.html">Live loops &amp; timing</a></li>
+</ul></div>
+<div class="topic-group"><h2>Live &amp; generative</h2><ul>
+<li><a href="live.html">Playing live: MIDI, beat, mic</a></li>
+<li><a href="generative.html">Generative art: seeds, print</a></li>
+<li><a href="workflow.html">Day to day: F3, data/, rewind</a></li>
+</ul></div>
+<div class="topic-group"><h2>Tooling</h2><ul>
+<li><a href="ide.html">The IDE</a></li>
+<li><a href="hosting.html">Avalonia host</a></li>
+<li><a href="enums.html">Enumerations</a></li>
+</ul></div>
+<p class="topics-all"><a href="a-z.html">All topics &amp; A–Z index</a></p></nav>
+  <div class="topic-main">
+<details class="on-this-page-mobile"><summary>On this page · 7 entries</summary><ul><li><a href="#loadpixels"><code>LoadPixels · Pixels · UpdatePixels</code></a></li><li><a href="#pixels-get"><code>Get</code></a></li><li><a href="#pixels-set"><code>Set</code></a></li><li><a href="#copy"><code>Copy</code></a></li><li><a href="#blend-pixels"><code>Blend</code></a></li><li><a href="#filter"><code>Filter</code></a></li><li><a href="#pixels-example">Runnable example</a></li></ul></details>
+<div class="doc">
+<h2 class="entry-title api" id="loadpixels"><code>LoadPixels · Pixels · UpdatePixels</code></h2><ul class="sigs" aria-label="Signatures"><li><code>LoadPixels()</code></li><li><code>Pixels <span class="sig-return">→ Color[]</span></code></li><li><code>UpdatePixels()</code></li></ul>
+<p class="entry-desc"><code class="inline">LoadPixels()</code> snapshots the canvas into the <code class="inline">Pixels</code> array (row-major, index = <code class="inline">y * Width + x</code>) for reading or editing. <code class="inline">UpdatePixels()</code> writes it back — verbatim, no blending with what was there. <code class="inline">Pixels</code> throws if <code class="inline">LoadPixels()</code> hasn't been called; it deliberately doesn't auto-load, so it's always clear whether you're looking at a fresh read.</p>
+
+<h2 class="entry-title api" id="pixels-get"><code>Get</code></h2><ul class="sigs" aria-label="Signatures"><li><code>Get(x, y) <span class="sig-return">→ Color</span></code></li><li><code>Get(x, y, w, h) <span class="sig-return">→ PImage</span></code></li><li><code>Get() <span class="sig-return">→ PImage</span></code></li></ul>
+<p class="entry-desc">Reads pixels straight from the canvas — no <code class="inline">LoadPixels()</code> needed. Out-of-bounds coordinates come back transparent rather than throwing.</p>
+
+<h2 class="entry-title api" id="pixels-set"><code>Set</code></h2><ul class="sigs" aria-label="Signatures"><li><code>Set(x, y, <span class="tp">Color</span> c)</code></li><li><code>Set(x, y, <span class="tp">PImage</span> img)</code></li></ul>
+<p class="entry-desc">Writes a single pixel or draws an image with pixels copied verbatim — no tint, no blending. Out-of-bounds coordinates are silently ignored.</p>
+
+<h2 class="entry-title api" id="copy"><code>Copy</code></h2><ul class="sigs" aria-label="Signatures"><li><code>Copy(sx,sy,sw,sh, dx,dy,dw,dh)</code></li><li><code>Copy(<span class="tp">PImage</span> src, sx,sy,sw,sh, dx,dy,dw,dh)</code></li></ul>
+<p class="entry-desc">Copies a region (scaling if source/destination sizes differ) — verbatim, no blending. Without a source image, copies from this same canvas onto itself.</p>
+
+<h2 class="entry-title api" id="blend-pixels"><code>Blend</code></h2><ul class="sigs" aria-label="Signatures"><li><code>Blend(sx,sy,sw,sh, dx,dy,dw,dh, <span class="tp">BlendModeKind</span> mode)</code></li><li><code>Blend(<span class="tp">PImage</span> src, ...)</code></li></ul>
+<p class="entry-desc">Same as <code class="inline">Copy()</code>, but composites through the given blend mode instead of overwriting. See <a href="enums.html">BlendModeKind</a>.</p>
+
+<h2 class="entry-title api" id="filter"><code>Filter</code></h2><ul class="sigs" aria-label="Signatures"><li><code>Filter(<span class="tp">FilterKind</span> kind, <span class="tp">float</span> param = 0.5f)</code></li></ul>
+<p class="entry-desc">Applies a per-pixel filter to the whole canvas in place. <code class="inline">param</code> means different things per kind: the cutoff for <code class="inline">Threshold</code> (0–1), the levels per channel for <code class="inline">Posterize</code>, the pixel radius for <code class="inline">Blur</code>; ignored otherwise. See <a href="enums.html">FilterKind</a>.</p>
+<div class="note"><strong>Not implemented.</strong> <code class="inline">Erode</code>/<code class="inline">Dilate</code> need neighbor-pixel sampling rather than a per-pixel transform and throw <code class="inline">NotSupportedException</code> for now.</div>
+
+<h2 class="entry-title" id="pixels-example">Runnable example</h2>
+<p class="entry-desc">A complete sketch using this section. <strong>Test in Dana</strong> opens it in the IDE, or paste it into a new tab and press Run.</p>
+<div class="code-block"><div class="code-bar"><span class="code-label">C#</span><div class="code-actions"><button type="button" class="copy-btn" data-target="pixels-example-code">Copy code</button><button class="dana-test-btn" data-target="pixels-example-code" type="button"><svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M7 4l13 8-13 8z"></path></svg><span class="dana-test-label">Run in Dana</span></button></div></div><pre id="pixels-example-code" tabindex="0" aria-label="Code, scrollable"><span class="cm">// LoadPixels / Pixels[] / UpdatePixels: read and rewrite every pixel.</span>
+<span class="kw">public</span> <span class="kw">class</span> PixelWave : <span class="tp">Sketch</span>
+{
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup() =&gt; Size(<span class="str">320</span>, <span class="str">240</span>);
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        LoadPixels();
+        <span class="kw">float</span> t = FrameCount * <span class="str">0.05f</span>;
+        <span class="kw">for</span> (<span class="kw">int</span> y = <span class="str">0</span>; y &lt; Height; y++)
+<span class="kw">for</span> (<span class="kw">int</span> x = <span class="str">0</span>; x &lt; Width; x++)
+{
+    <span class="kw">float</span> d = Dist(x, y, MouseX, MouseY);
+    <span class="kw">byte</span> v = (<span class="kw">byte</span>)(<span class="str">128</span> + <span class="str">127</span> * Sin(d * <span class="str">0.08f</span> - t));
+    Pixels[y * Width + x] = <span class="kw">new</span> <span class="tp">Color</span>(v, (<span class="kw">byte</span>)(x * <span class="str">255</span> / Width), (<span class="kw">byte</span>)(<span class="str">255</span> - v), <span class="str">255</span>);
+}
+        UpdatePixels();
+
+        <span class="cm">// Get(x, y) reads one pixel straight from the canvas.</span>
+        <span class="kw">var</span> c = Get((<span class="kw">int</span>)MouseX, (<span class="kw">int</span>)MouseY);
+        Fill(c); Stroke(<span class="str">255</span>);
+        Rect(<span class="str">10</span>, <span class="str">10</span>, <span class="str">40</span>, <span class="str">40</span>);
+    }
+}</pre></div>
+
+</div>
+<nav class="pager" aria-label="Previous and next topic"><a class="prev" href="output.html"><span>← Previous</span><strong>Saving output</strong></a><a class="next" href="reels.html"><span>Next →</span><strong>Reels: turn a sketch into a video</strong></a></nav>
+<aside class="support-aside" aria-label="Support the project">
+  <p><strong>Found this useful?</strong> Dana is free and built in spare time — a donation buys more time for docs like this one.</p>
+  <a class="btn btn-ink" href="https://paypal.me/CarlosFernandez934"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M12 21s-7.5-4.6-9.6-9.4C1 8.2 3.1 4.5 6.8 4.5c2.2 0 3.7 1.3 5.2 3 1.5-1.7 3-3 5.2-3 3.7 0 5.8 3.7 4.4 7.1C19.5 16.4 12 21 12 21z"></path></svg><span>Donate via PayPal</span></a>
+</aside>
+
+  </div>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap">
+    <p>DanaProcessing · v1.0 RC · MIT · stands on the shoulders of <a href="https://processing.org">Processing</a>, <a href="https://p5js.org">p5.js</a> and <a href="https://sonic-pi.net">Sonic Pi</a>.</p>
+    <nav aria-label="Footer">
+      <a href="../reference/a-z.html">All topics &amp; A–Z</a>
+      <a href="https://github.com/BuddhaCodes/DanaProcessing/releases/latest">Releases</a>
+      <a href="https://github.com/BuddhaCodes/DanaProcessing">GitHub</a>
+      <a href="../index.html#support">Support</a>
+    </nav>
+  </div>
+</footer>
+</body>
+</html>

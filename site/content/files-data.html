@@ -1,0 +1,80 @@
+<!--meta {"title": "Files & data", "nav": "Files & data", "summary": "Reading and writing plain text, bytes, JSON, XML, and CSV — all on Sketch, mirroring Processing's load*/save* globals.", "tags": []} -->
+<p class="section-intro">Reading and writing plain text, bytes, JSON, XML, and CSV — all on <code class="inline">Sketch</code>, mirroring Processing's <code class="inline">load*</code>/<code class="inline">save*</code> globals.</p>
+
+<h3 class="entry-title" id="loadstrings">LoadStrings(<span class="tp">string</span> path) <span class="sig-return">→ string[]</span> · SaveStrings(path, lines)</h3>
+<p class="entry-desc">Reads/writes a text file as an array of lines.</p>
+
+<h3 class="entry-title" id="loadbytes">LoadBytes(<span class="tp">string</span> path) <span class="sig-return">→ byte[]</span> · SaveBytes(path, data)</h3>
+<p class="entry-desc">Reads/writes a file's raw bytes.</p>
+
+<h3 class="entry-title" id="loadjsonobject">LoadJSONObject(path) <span class="sig-return">→ JSONObject</span> · SaveJSONObject(json, path) · LoadJSONArray(path) <span class="sig-return">→ JSONArray</span> · SaveJSONArray(json, path)</h3>
+<p class="entry-desc">Reads/writes JSON files. <code class="inline">JSONObject</code>/<code class="inline">JSONArray</code> wrap <code class="inline">System.Text.Json</code> with Processing's <code class="inline">Get*</code>/<code class="inline">Set*</code>/<code class="inline">Append*</code> naming (<code class="inline">GetString</code>, <code class="inline">GetInt</code>, <code class="inline">GetFloat</code>, <code class="inline">GetBoolean</code>, <code class="inline">GetJSONObject</code>, <code class="inline">GetJSONArray</code>, and their <code class="inline">Set*</code>/<code class="inline">Append*</code> counterparts).</p>
+
+<h3 class="entry-title" id="parsejsonobject">ParseJSONObject(<span class="tp">string</span> json) <span class="sig-return">→ JSONObject</span> · ParseJSONArray(json) <span class="sig-return">→ JSONArray</span> · ParseXML(<span class="tp">string</span> xml) <span class="sig-return">→ XML</span></h3>
+<p class="entry-desc">Parses an already-in-memory string instead of reading from a file — use these instead of <code class="inline">LoadJSONObject</code>/<code class="inline">LoadJSONArray</code>/<code class="inline">LoadXML</code> when the data came from somewhere other than disk: a network response, a string built by hand, text pasted into the sketch.</p>
+
+<h3 class="entry-title" id="loadxml">LoadXML(<span class="tp">string</span> path) <span class="sig-return">→ XML</span> · SaveXML(xml, path)</h3>
+<p class="entry-desc">Reads/writes an XML file. <code class="inline">XML</code> wraps <code class="inline">System.Xml.Linq</code> with <code class="inline">GetString</code>/<code class="inline">GetInt</code>/<code class="inline">GetFloat</code> attribute accessors, <code class="inline">GetContent()</code> for text, and <code class="inline">GetChildren()</code>/<code class="inline">GetChild(name)</code>/<code class="inline">AddChild(name)</code> for structure.</p>
+
+<h3 class="entry-title" id="loadtable">LoadTable(path, options = "") <span class="sig-return">→ Table</span> · SaveTable(table, path)</h3>
+<p class="entry-desc">Reads/writes a CSV file as a <code class="inline">Table</code>. Pass <code class="inline">"header"</code> for a first line naming the columns. Cell values are stored as text and parsed on demand via <code class="inline">TableRow.GetInt</code>/<code class="inline">GetFloat</code>/<code class="inline">GetString</code>, by index or column name.</p>
+<div class="note"><strong>CSV only.</strong> Processing's <code class="inline">Table</code> also reads TSV and its own binary <code class="inline">.tbl</code> format; only CSV is implemented here. The parser handles quoted fields with embedded commas, but not escaped double-quotes inside a quoted field — enough for CSV a spreadsheet actually produces, not a full RFC&nbsp;4180 implementation.</div>
+
+<h3 class="entry-title" id="createwriter">CreateWriter(<span class="tp">string</span> path) <span class="sig-return">→ PrintWriter</span> · CreateReader(path) <span class="sig-return">→ BufferedReader</span></h3>
+<p class="entry-desc">Incremental text I/O — for a long-running log file, or a large input read a line at a time — where <code class="inline">LoadStrings</code>/<code class="inline">SaveStrings</code> already cover the one-shot case. <code class="inline">CreateWriter</code> creates the containing directory if needed. Remember to <code class="inline">Flush()</code>/<code class="inline">Close()</code> the <code class="inline">PrintWriter</code> when done.</p>
+
+<h3 class="entry-title" id="createoutput">CreateOutput(<span class="tp">string</span> path) · CreateInput(path) <span class="sig-return">→ Stream</span></h3>
+<p class="entry-desc">Raw byte streams to/from a file, like Processing's <code class="inline">createOutput()</code>/<code class="inline">createInput()</code>. The caller owns the returned <code class="inline">Stream</code> and should dispose it when finished.</p>
+
+<h3 class="entry-title" id="savestream">SaveStream(<span class="tp">string</span> path) <span class="sig-return">→ Stream</span> · SaveStream(path, <span class="tp">Stream</span> input)</h3>
+<p class="entry-desc">The single-argument overload is an alias for <code class="inline">CreateOutput()</code>, under Processing's other name for the same thing. The two-argument overload copies the entire contents of <code class="inline">input</code> to a new file at <code class="inline">path</code> and closes both — handy when you already have an input stream (from <code class="inline">CreateInput()</code> on another file, say) and just want it saved whole.</p>
+
+<h3 class="entry-title" id="printwriter">class PrintWriter · class BufferedReader</h3>
+<p class="entry-desc"><code class="inline">PrintWriter</code> exposes <code class="inline">Print(value)</code>/<code class="inline">Println(value?)</code>/<code class="inline">Flush()</code>/<code class="inline">Close()</code>. <code class="inline">BufferedReader</code> exposes <code class="inline">ReadLine()</code>, which returns null once the file is exhausted.</p>
+
+<h3 class="entry-title" id="printarray">PrintArray(<span class="tp">Array</span> array)</h3>
+<p class="entry-desc">Prints every element on its own line, prefixed with its index in square brackets. Works with any array type, matching Processing's own <code class="inline">printArray()</code> (which needs a separate overload per type).</p>
+
+<h3 class="entry-title" id="files-data-example">Runnable example</h3>
+<p class="entry-desc">A complete sketch using this section. <strong>Test in Dana</strong> opens it in the IDE, or paste it into a new tab and press Run.</p>
+<div class="code-block">
+  <pre id="files-data-example-code"><span class="cm">// Files &amp; data: JSON in memory, then saved and loaded back from disk.</span>
+<span class="kw">public</span> <span class="kw">class</span> Data : <span class="tp">Sketch</span>
+{
+    <span class="tp">JSONArray</span> scores;
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup()
+    {
+        Size(<span class="str">500</span>, <span class="str">300</span>);
+        scores = ParseJSONArray(<span class="str">"[{\"name\":\"Ana\",\"score\":42},{\"name\":\"Leo\",\"score\":77},{\"name\":\"Mia\",\"score\":63}]"</span>);
+
+        <span class="kw">var</span> best = <span class="kw">new</span> <span class="tp">JSONObject</span>();
+        best.SetString(<span class="str">"name"</span>, <span class="str">"Leo"</span>);
+        best.SetInt(<span class="str">"score"</span>, <span class="str">77</span>);
+        SaveJSONObject(best, <span class="str">"best.json"</span>);                       <span class="cm">// next to the sketch</span>
+        Println(<span class="str">"Saved: "</span> + LoadJSONObject(<span class="str">"best.json"</span>).ToString());
+
+        SaveStrings(<span class="str">"names.txt"</span>, <span class="kw">new</span>[] { <span class="str">"Ana"</span>, <span class="str">"Leo"</span>, <span class="str">"Mia"</span> });
+        Println(<span class="kw">string</span>.Join(<span class="str">", "</span>, LoadStrings(<span class="str">"names.txt"</span>)));
+    }
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        Background(<span class="str">250</span>);
+        <span class="kw">for</span> (<span class="kw">int</span> i = <span class="str">0</span>; i &lt; scores.Size(); i++)
+        {
+<span class="kw">var</span> row = scores.GetJSONObject(i);
+<span class="kw">float</span> w = row.GetInt(<span class="str">"score"</span>) * <span class="str">4</span>;
+Fill(<span class="str">90</span>, <span class="str">140</span>, <span class="str">220</span>); NoStroke();
+Rect(<span class="str">100</span>, <span class="str">40</span> + i * <span class="str">70</span>, w, <span class="str">40</span>);
+Fill(<span class="str">30</span>);
+Text(row.GetString(<span class="str">"name"</span>), <span class="str">20</span>, <span class="str">66</span> + i * <span class="str">70</span>);
+Text(Str(row.GetInt(<span class="str">"score"</span>)), <span class="str">110</span> + w, <span class="str">66</span> + i * <span class="str">70</span>);
+        }
+    }
+}</pre>
+  <button class="dana-test-btn" data-target="files-data-example-code" title="Run in DanaProcessing IDE">
+    <i class="ph-bold ph-play"></i>
+    <span class="dana-test-label">Test in Dana</span>
+  </button>
+</div>

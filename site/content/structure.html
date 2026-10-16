@@ -1,0 +1,122 @@
+<!--meta {"title": "Sketch structure", "nav": "Sketch structure", "summary": "Every sketch inherits from Sketch and implements Draw(). A host calls Setup() once, then Draw() on every frame, at the rate set by FrameRate().", "tags": []} -->
+<p class="section-intro">Every sketch inherits from <code class="inline">Sketch</code> and implements <code class="inline">Draw()</code>. A host calls <code class="inline">Setup()</code> once, then <code class="inline">Draw()</code> on every frame, at the rate set by <code class="inline">FrameRate()</code>.</p>
+
+<h3 class="entry-title" id="setup">Setup() <span class="sig-return">→ void</span></h3>
+<p class="entry-desc">Runs once before the first frame. Use it to set the canvas size and any one-time state.</p>
+
+<h3 class="entry-title" id="draw">Draw() <span class="sig-return">→ void</span> · abstract</h3>
+<p class="entry-desc">Runs once per frame while <code class="inline">IsLooping</code> is true. The only member every sketch must implement.</p>
+
+<h3 class="entry-title" id="size">Size(<span class="tp">int</span> w, <span class="tp">int</span> h)</h3>
+<p class="entry-desc">Sets the canvas dimensions. Call from <code class="inline">Setup()</code>.</p>
+
+<h3 class="entry-title" id="framerate">FrameRate(<span class="tp">int</span> fps)</h3>
+<p class="entry-desc">Sets the target frame rate. Minimum 1.</p>
+
+<h3 class="entry-title" id="noloop-loop">NoLoop() / Loop()</h3>
+<p class="entry-desc">Stops or resumes automatic per-frame redraw via <code class="inline">IsLooping</code>.</p>
+
+<h3 class="entry-title" id="delay">Delay(<span class="tp">int</span> ms)</h3>
+<p class="entry-desc">Halts the calling thread for <code class="inline">ms</code> milliseconds. Since <code class="inline">Draw()</code> runs on whatever thread the host pumps its render loop on, a long <code class="inline">Delay()</code> blocks that same thread/frame — exactly like Processing blocking its own animation thread.</p>
+<div class="note"><strong>Not for animation pacing.</strong> Use <code class="inline">FrameRate()</code> for smooth motion. <code class="inline">Delay()</code> is meant for sketches that only need to redraw occasionally and would rather sit idle than burn CPU on frames nobody will see change — a slow-updating clock, a sensor readout, an ambient display.</div>
+
+<h3 class="entry-title" id="thread">Thread(<span class="tp">string</span> methodName)</h3>
+<p class="entry-desc">Runs a no-argument method of this sketch on a background thread and returns immediately, like Processing's <code class="inline">thread(functionName)</code>. Looks the method up by name via reflection (public or private, instance method) — same string-based API as Processing's own.</p>
+<div class="note"><strong>No automatic locking.</strong> Write results to a field the background method owns, and have <code class="inline">Draw()</code> just read that field each frame. Keep the handoff to something simple (a single field write/read, or your own lock) to avoid tearing.</div>
+
+<h3 class="entry-title" id="tweak">[Tweak] · [Tweak(<span class="tp">float</span> min, <span class="tp">float</span> max)] · ShowTweaks() · HideTweaks()</h3>
+<p class="entry-desc">Put <code class="inline">[Tweak]</code> above a <code class="inline">float</code>, <code class="inline">double</code>, <code class="inline">int</code>, <code class="inline">bool</code> or <code class="inline">Color</code> field and it gets a live control in a panel over the running sketch: a slider (a checkbox for <code class="inline">bool</code>, three R/G/B sliders for <code class="inline">Color</code>). Drag it and the field changes while the sketch keeps running — no Run, no restart. <code class="inline">[Tweak(0, 20)]</code> sets the range; plain <code class="inline">[Tweak]</code> goes from 0 to twice the starting value. <code class="inline">Label = "..."</code> changes the text. Click the panel's header to fold it; <code class="inline">HideTweaks()</code> hides it (before <code class="inline">SaveFrame()</code>, say) and <code class="inline">ShowTweaks()</code> brings it back.</p>
+<div class="note"><strong>The panel takes the mouse first.</strong> A press on the panel, the drag that follows and its click never reach <code class="inline">MousePressed()</code>/<code class="inline">MouseClicked()</code>, so dragging a slider doesn't also paint on your canvas. The values live in your own fields, so ⚡ Hot Reload keeps whatever you tuned.</div>
+<div class="note"><strong>Put it back in the code.</strong> In the IDE, <em>Sketch → Apply tweaks to code</em> (also under the ▾ next to Run) writes the values you moved into those fields' initializers — only the sliders you actually touched, in one step, so a single Ctrl+Z undoes it. From code, <code class="inline">GetTweakValues()</code> returns each [Tweak] field's current value already written as C#.</div>
+
+<h3 class="entry-title" id="onstop">OnStop() <span class="sig-return">→ void</span> · virtual</h3>
+<p class="entry-desc">Override to let go of anything the sketch opened outside the engine — a camera, a serial port, a MIDI or audio device, a socket — like Processing's <code class="inline">dispose()</code>. Called once, when the sketch stops for good: <strong>■ Stop</strong> (the Run switch) in the IDE, another Run replaces it, or its window closes. Not called on ⚡ Hot Reload, where those same objects carry over to the new code. Without it, a device opened by the previous Run stays busy until the IDE closes.</p>
+
+<h3 class="entry-title" id="shade">Shade(<span class="tp">string</span> sksl) · Shade(<span class="tp">PShader2D</span> shader, x?, y?, w?, h?) · CreateShader2D(sksl) · LoadShader2D(path)</h3>
+<p class="entry-desc">Fills the canvas (or a rectangle) with a fragment shader written in SkSL — Skia's shading language: GLSL with <code class="inline">half4</code>/<code class="inline">float2</code> instead of <code class="inline">vec4</code>/<code class="inline">vec2</code> and a <code class="inline">half4 main(float2 fragCoord)</code>. Runs in the plain 2D renderer on every OS. When declared, these uniforms are filled in for you: <code class="inline">iTime</code>, <code class="inline">iResolution</code>, <code class="inline">iMouse</code> (x, y, pressed), <code class="inline">iFrame</code>, <code class="inline">iAmplitude</code> and <code class="inline">iSpectrum[8|16|32|64]</code>; set your own with <code class="inline">shader.Set("name", ...)</code>. fragCoord is in sketch pixels with y pointing down.</p>
+<div class="note"><strong>Live editing.</strong> <code class="inline">Shade(source)</code> compiles once and caches by the text, so editing the shader and pressing ⚡ Hot Reload swaps it in without restarting time or music. If the new code doesn't compile, the last good shader keeps running and the error shows bottom-left. It runs on the CPU: keep the canvas modest.</div>
+
+<h3 class="entry-title" id="windowresized">WindowResized() <span class="sig-return">→ void</span> · virtual</h3>
+<p class="entry-desc">Called when the canvas size changes after the first frame.</p>
+
+<h3 class="entry-title" id="displaydensity">DisplayDensity() <span class="sig-return">→ int</span> · PixelDensity(<span class="tp">int</span> density)</h3>
+<p class="entry-desc">HiDPI helpers kept for API parity. <code class="inline">DisplayDensity()</code> always returns 1 — DanaProcessing draws everything at logical-pixel resolution and leaves any HiDPI scaling to the host. <code class="inline">PixelDensity()</code> only validates its argument (1 or 2, like Processing) and otherwise has no effect.</p>
+
+<h3 class="entry-title" id="pixelwidth">PixelWidth · PixelHeight <span class="sig-return">→ int</span></h3>
+<p class="entry-desc">Width/height of the sketch's backing buffer in actual pixels, like Processing's <code class="inline">pixelWidth</code>/<code class="inline">pixelHeight</code>. Since DanaProcessing always draws at 1:1 (see <code class="inline">PixelDensity()</code> above), these are always equal to <code class="inline">Width</code>/<code class="inline">Height</code> — kept so sketches ported from Processing that read them directly (e.g. when indexing <code class="inline">LoadPixels()</code>'s array by hand) keep working unchanged.</p>
+
+<h3 class="entry-title" id="settings">Settings() <span class="sig-return">→ void</span> · virtual</h3>
+<p class="entry-desc">Runs once, before <code class="inline">Setup()</code>, like Processing's <code class="inline">settings()</code>. The host is responsible for calling it immediately before <code class="inline">Setup()</code>.</p>
+<div class="note"><strong>Optional in C#.</strong> Real Processing needs this only because <code class="inline">size()</code> is special-cased by the preprocessor and can't take a variable inside <code class="inline">setup()</code>. Plain C# has no such restriction — <code class="inline">Size()</code> works fine called directly inside <code class="inline">Setup()</code> too. Overriding <code class="inline">Settings()</code> is provided purely so sketches ported from Processing that rely on the setup-order guarantee (<code class="inline">settings()</code> strictly before <code class="inline">setup()</code>) keep behaving the same way.</div>
+
+<h3 class="entry-title" id="window-management">FullScreen(<span class="tp">bool</span> fullScreen = true) · WindowMove(x, y) · WindowResize(w, h) · WindowResizable(<span class="tp">bool</span>) · WindowTitle(<span class="tp">string</span>) · WindowRatio(w, h)</h3>
+<p class="entry-desc">Window-management requests, each backed by an event a host can subscribe to and act on — the same pattern <code class="inline">RedrawRequested</code>/<code class="inline">ExitRequested</code> already use. <code class="inline">SetLocation()</code>, <code class="inline">SetResizable()</code>, and <code class="inline">SetTitle()</code> are classic-API aliases for <code class="inline">WindowMove()</code>, <code class="inline">WindowResizable()</code>, and <code class="inline">WindowTitle()</code> respectively.</p>
+<div class="table-wrap">
+  <table>
+    <tr><th>call</th><th>event raised</th><th>readable state</th></tr>
+    <tr><td>FullScreen(bool)</td><td>FullScreenRequested</td><td>IsFullScreen</td></tr>
+    <tr><td>WindowMove(x, y)</td><td>WindowMoveRequested</td><td>—</td></tr>
+    <tr><td>WindowResize(w, h)</td><td>WindowResizeRequested</td><td>—</td></tr>
+    <tr><td>WindowResizable(bool)</td><td>WindowResizableChanged</td><td>IsWindowResizable</td></tr>
+    <tr><td>WindowTitle(string)</td><td>WindowTitleChanged</td><td>WindowTitleText</td></tr>
+    <tr><td>WindowRatio(w, h)</td><td>WindowRatioRequested</td><td>—</td></tr>
+  </table>
+</div>
+<div class="note"><strong>Host-dependent.</strong> Calling any of these always updates the readable state and raises its event — that part works regardless of host. Whether the actual OS window visibly moves/resizes/retitles depends entirely on whether the host you're running in (the bundled IDE, a custom Avalonia/WPF shell) subscribes to that event and acts on it. A host that doesn't wire these up yet will accept the calls silently rather than throwing.</div>
+
+<h3 class="entry-title" id="redraw">Redraw() <span class="sig-return">→ void</span></h3>
+<p class="entry-desc">Requests a single extra frame while <code class="inline">NoLoop()</code> is in effect, raising the <code class="inline">RedrawRequested</code> event. Looping sketches don't need this — they're already rendering continuously.</p>
+
+<h3 class="entry-title" id="exit">Exit() <span class="sig-return">→ void</span></h3>
+<p class="entry-desc">Raises the <code class="inline">ExitRequested</code> event. DanaProcessing doesn't own a process to terminate — whatever hosts the sketch (a window, a canvas control) should subscribe and close/stop accordingly.</p>
+
+<h3 class="entry-title" id="print">Print(<span class="tp">object</span> message) · Println(message) · LogWarning(message) · LogError(message)</h3>
+<p class="entry-desc"><code class="inline">Print</code> writes with no trailing newline and no timestamp/coloring — meant for building a line piece by piece across calls, finished off with a <code class="inline">Println</code>. <code class="inline">Println</code>/<code class="inline">LogWarning</code>/<code class="inline">LogError</code> go through <code class="inline">DanaLogger</code>, timestamped and color-coded by level.</p>
+
+<div class="table-wrap">
+  <table>
+    <tr><th>property</th><th>type</th><th>meaning</th></tr>
+    <tr><td>FrameCount</td><td class="ptype">int</td><td>Frames drawn so far.</td></tr>
+    <tr><td>Width / Height</td><td class="ptype">int</td><td>Current canvas size.</td></tr>
+    <tr><td>TargetFrameRate</td><td class="ptype">int</td><td>Set via <code class="inline">FrameRate()</code>.</td></tr>
+    <tr><td>IsLooping</td><td class="ptype">bool</td><td>Whether the host should keep calling <code class="inline">Draw()</code>.</td></tr>
+    <tr><td>DisplayWidth / DisplayHeight</td><td class="ptype">int</td><td>Size of the screen the sketch runs on. 0 until the host sets it.</td></tr>
+  </table>
+</div>
+
+<h3 class="entry-title" id="structure-example">Runnable example</h3>
+<p class="entry-desc">A complete sketch using this section. <strong>Test in Dana</strong> opens it in the IDE, or paste it into a new tab and press Run.</p>
+<div class="code-block">
+  <pre id="structure-example-code"><span class="cm">// Setup() runs once, Draw() every frame. NoLoop()/Loop() pause and resume.</span>
+<span class="kw">public</span> <span class="kw">class</span> Structure : <span class="tp">Sketch</span>
+{
+    <span class="kw">float</span> angle;
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup()
+    {
+        Size(<span class="str">500</span>, <span class="str">300</span>);
+        FrameRate(<span class="str">60</span>);
+    }
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        Background(<span class="str">30</span>, <span class="str">32</span>, <span class="str">40</span>);
+        angle += <span class="str">0.05f</span>;
+        Fill(<span class="str">255</span>, <span class="str">180</span>, <span class="str">120</span>);
+        NoStroke();
+        Circle(Width / <span class="str">2</span> + Cos(angle) * <span class="str">150</span>, Height / <span class="str">2</span>, <span class="str">40</span>);
+
+        Fill(<span class="str">255</span>);
+        Text(<span class="str">$"frame {FrameCount} · click to {(IsLooping ? "</span>pause<span class="str">" : "</span>resume<span class="str">")}"</span>, <span class="str">12</span>, <span class="str">20</span>);
+    }
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> MousePressed()
+    {
+        <span class="kw">if</span> (IsLooping) NoLoop(); <span class="kw">else</span> Loop();
+    }
+}</pre>
+  <button class="dana-test-btn" data-target="structure-example-code" title="Run in DanaProcessing IDE">
+    <i class="ph-bold ph-play"></i>
+    <span class="dana-test-label">Test in Dana</span>
+  </button>
+</div>

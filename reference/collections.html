@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en" data-root="../">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-N4ZWC7GN1B"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-N4ZWC7GN1B');
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Collections — DanaProcessing reference</title>
+<meta name="description" content="FloatList, IntList, and StringList — Processing-flavored typed lists, like Processing&#x27;s own. Thin wrappers around List&lt;T&gt; with the handful of methods sketches actually reach…">
+<link rel="canonical" href="https://buddhacodes.github.io/DanaProcessing/reference/collections.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="DanaProcessing">
+<meta property="og:title" content="Collections — DanaProcessing reference">
+<meta property="og:description" content="FloatList, IntList, and StringList — Processing-flavored typed lists, like Processing&#x27;s own. Thin wrappers around List&lt;T&gt; with the handful of methods sketches actually reach…">
+<meta property="og:url" content="https://buddhacodes.github.io/DanaProcessing/reference/collections.html">
+<meta property="og:image" content="https://buddhacodes.github.io/DanaProcessing/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://buddhacodes.github.io/DanaProcessing/og-image.png">
+<meta name="theme-color" content="#13202A">
+<link rel="icon" type="image/png" href="../DanaProcessing.Ide/Theme/dana.png">
+<link rel="apple-touch-icon" href="../DanaProcessing.Ide/Theme/dana.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&amp;family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/search-index.js" defer></script>
+<script src="../assets/site.js" defer></script>
+</head>
+<body class="page-topic">
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="bar">
+    <a class="brand" href="../index.html"><svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><circle cx="15" cy="15" r="13" fill="none" stroke="currentColor" stroke-width="2"></circle><circle cx="15" cy="15" r="6" fill="#E7B66B"></circle><circle cx="23" cy="8" r="2.5" fill="#FF8A6B"></circle></svg><span>DanaProcessing</span></a>
+    <button type="button" class="menu-toggle" aria-expanded="false" aria-controls="site-menu">Menu</button>
+    <div class="site-menu" id="site-menu">
+      <nav class="main-nav" aria-label="Main">
+        <a href="../reference/tutorial.html">Learn</a>
+        <a href="../reference/a-z.html" aria-current="page">Reference</a>
+        <a href="../index.html#gallery">Examples</a>
+        <a href="../reference/ide.html">The IDE</a>
+      </nav>
+      <form class="search" role="search" action="../reference/a-z.html">
+        <label class="visually-hidden" for="site-search">Search the documentation</label>
+        <div class="search-box">
+          <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+          <input id="site-search" name="q" type="search" autocomplete="off" placeholder="Search — press /" aria-describedby="search-status" aria-controls="search-results">
+        </div>
+        <p id="search-status" class="visually-hidden" aria-live="polite"></p>
+        <ul id="search-results" class="search-results" hidden></ul>
+      </form>
+      <a class="support-link" href="../index.html#support"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M12 21s-7.5-4.6-9.6-9.4C1 8.2 3.1 4.5 6.8 4.5c2.2 0 3.7 1.3 5.2 3 1.5-1.7 3-3 5.2-3 3.7 0 5.8 3.7 4.4 7.1C19.5 16.4 12 21 12 21z"></path></svg><span>Support Dana</span></a>
+    </div>
+  </div>
+</header>
+<main id="main">
+<div class="topic-hero">
+  <div class="wrap">
+    <div class="topic-hero-text">
+      <nav class="breadcrumb" aria-label="Breadcrumb"><ol><li><a href="a-z.html">Reference</a></li><li>Data &amp; math</li><li aria-current="page">Collections</li></ol></nav>
+      <h1>Collections</h1>
+      <p class="lede"><code class="inline">FloatList</code>, <code class="inline">IntList</code>, and <code class="inline">StringList</code> — Processing-flavored typed lists, like <a href="https://processing.org/reference/FloatList.html" target="_blank" rel="noopener">Processing's own</a>. Thin wrappers around <code class="inline">List&lt;T&gt;</code> with the handful of methods sketches actually reach for, rather than a 1:1 port of Java's much larger surface. Standalone value-holder types — like <code class="inline">PVector</code>, you just <code class="inline">new FloatList()</code> directly, no <code class="inline">Sketch</code> factory method needed.</p>
+      
+    </div>
+    <div class="topic-art" aria-hidden="true"><span style="background:#8FD3B6"></span><span></span><span></span><span></span><span></span></div>
+  </div>
+</div>
+<div class="wrap topic-layout">
+  <button type="button" class="topics-toggle" aria-expanded="false" aria-controls="topics">All topics</button>
+<nav class="topics" id="topics" aria-label="Reference topics">
+<div class="topic-group"><h2>Start here</h2><ul>
+<li><a href="intro.html">Overview</a></li>
+<li><a href="tutorial.html">30-minute tutorial</a></li>
+<li><a href="from-processing.html">From Processing / p5.js</a></li>
+</ul></div>
+<div class="topic-group"><h2>Basics</h2><ul>
+<li><a href="structure.html">Sketch structure</a></li>
+<li><a href="input.html">Input &amp; time</a></li>
+</ul></div>
+<div class="topic-group"><h2>Drawing</h2><ul>
+<li><a href="color.html">Color</a></li>
+<li><a href="shape-primitives.html">2D Primitives</a></li>
+<li><a href="shape-custom.html">Custom shapes</a></li>
+<li><a href="typography.html">Typography</a></li>
+<li><a href="transform.html">Transformations</a></li>
+</ul></div>
+<div class="topic-group"><h2>Media</h2><ul>
+<li><a href="image.html">PImage</a></li>
+<li><a href="pgraphics.html">PGraphics</a></li>
+<li><a href="pshape.html">PShape</a></li>
+<li><a href="output.html">Saving output</a></li>
+<li><a href="pixels.html">Pixels</a></li>
+<li><a href="reels.html">Reels</a></li>
+</ul></div>
+<div class="topic-group"><h2>Data &amp; math</h2><ul>
+<li><a href="files-data.html">Files &amp; data</a></li>
+<li><a href="utilities.html">Conversion &amp; utilities</a></li>
+<li><a href="math.html">Math &amp; trig</a></li>
+<li><a href="pvector.html">PVector</a></li>
+<li><a href="random-noise.html">Random &amp; noise</a></li>
+<li><a href="collections.html" aria-current="page">Collections</a>
+<ul class="on-this-page" aria-label="On this page">
+<li><a href="#floatlist"><code>class FloatList · class IntList · class StringList</code></a></li>
+<li><a href="#intlist-range"><code>IntList.Range</code></a></li>
+<li><a href="#collections-example">Runnable example</a></li>
+</ul>
+</li>
+</ul></div>
+<div class="topic-group"><h2>3D</h2><ul>
+<li><a href="getting-started-3d.html">Getting started</a></li>
+<li><a href="shape-3d-primitives.html">3D Primitives</a></li>
+<li><a href="transform-3d.html">3D Transformations</a></li>
+<li><a href="camera-3d.html">Camera &amp; Projection</a></li>
+<li><a href="lights-3d.html">Lights</a></li>
+<li><a href="material-3d.html">Material properties</a></li>
+<li><a href="coordinates-3d.html">Coordinates</a></li>
+<li><a href="shape-3d-custom.html">Custom 3D shapes</a></li>
+<li><a href="pshader.html">PShader</a></li>
+</ul></div>
+<div class="topic-group"><h2>Sound</h2><ul>
+<li><a href="audio.html">Live loops &amp; timing</a></li>
+</ul></div>
+<div class="topic-group"><h2>Live &amp; generative</h2><ul>
+<li><a href="live.html">Playing live: MIDI, beat, mic</a></li>
+<li><a href="generative.html">Generative art: seeds, print</a></li>
+<li><a href="workflow.html">Day to day: F3, data/, rewind</a></li>
+</ul></div>
+<div class="topic-group"><h2>Tooling</h2><ul>
+<li><a href="ide.html">The IDE</a></li>
+<li><a href="hosting.html">Avalonia host</a></li>
+<li><a href="enums.html">Enumerations</a></li>
+</ul></div>
+<p class="topics-all"><a href="a-z.html">All topics &amp; A–Z index</a></p></nav>
+  <div class="topic-main">
+<details class="on-this-page-mobile"><summary>On this page · 3 entries</summary><ul><li><a href="#floatlist"><code>class FloatList · class IntList · class StringList</code></a></li><li><a href="#intlist-range"><code>IntList.Range</code></a></li><li><a href="#collections-example">Runnable example</a></li></ul></details>
+<div class="doc">
+<div class="note"><strong>What about FloatDict/IntDict/StringDict?</strong> Not ported, on purpose. A plain C# <code class="inline">Dictionary&lt;string, float&gt;</code> (or <code class="inline">int</code>/<code class="inline">string</code>) already does exactly what Processing's dict types do, with better performance and an API every C# developer already knows. That wrapper only earned its keep in Java, which didn't have comfortable generics when Processing's API was designed.</div>
+
+<h2 class="entry-title api" id="floatlist"><code>class FloatList · class IntList · class StringList</code></h2><ul class="sigs" aria-label="Signatures"><li><code>class FloatList</code></li><li><code>class IntList</code></li><li><code>class StringList</code></li></ul>
+<p class="entry-desc">All three share the same shape — <code class="inline">Size</code>, an indexer (<code class="inline">this[int]</code>), and the methods below. <code class="inline">FloatList</code>/<code class="inline">IntList</code> additionally expose <code class="inline">Min()</code>/<code class="inline">Max()</code>/<code class="inline">Sum()</code> (and <code class="inline">FloatList</code> alone adds <code class="inline">Average()</code>) — numeric summaries that don't make sense for <code class="inline">StringList</code>, which instead adds <code class="inline">Join(separator)</code>. All three implement <code class="inline">IEnumerable&lt;T&gt;</code>, so a plain <code class="inline">foreach</code> works too.</p>
+
+<div class="table-wrap" role="region" tabindex="0" aria-label="Table: method, does">
+  <table>
+    <tr><th>method</th><th>does</th></tr>
+    <tr><td>Append(value)</td><td>Adds to the end.</td></tr>
+    <tr><td>Get(i) / Set(i, value)</td><td>Read/write by index (same as the indexer).</td></tr>
+    <tr><td>Remove(i) / Clear()</td><td>Removes one element, or everything.</td></tr>
+    <tr><td>Contains(value) / IndexOf(value)</td><td>Linear search.</td></tr>
+    <tr><td>Sort() / SortReverse() / Reverse()</td><td>In place.</td></tr>
+    <tr><td>Shuffle(<span class="ptype">Random?</span> rng = null)</td><td>Fisher-Yates in place. Uses its own internal <code class="inline">Random</code> by default — pass your own for reproducible results tied to a seed.</td></tr>
+    <tr><td>ToArray()</td><td>Snapshot as a plain array.</td></tr>
+  </table>
+</div>
+
+<h2 class="entry-title api" id="intlist-range"><code>IntList.Range</code><span class="badge">static</span></h2><ul class="sigs" aria-label="Signatures"><li><code>IntList.Range(<span class="tp">int</span> count) <span class="sig-return">→ IntList</span></code></li></ul>
+<p class="entry-desc">Fills a new list with <code class="inline">count</code> sequential ints starting at 0 — handy for building an index list to shuffle/sort alongside parallel data.</p>
+
+<div class="code-block"><div class="code-bar"><span class="code-label">C#</span><div class="code-actions"><button type="button" class="copy-btn" data-target="collections-code-1">Copy code</button></div></div><pre id="collections-code-1" tabindex="0" aria-label="Code, scrollable"><span class="kw">var</span> heights = <span class="kw">new</span> <span class="tp">FloatList</span>();
+<span class="kw">for</span> (<span class="kw">int</span> i = <span class="str">0</span>; i &lt; <span class="str">24</span>; i++)
+    heights.Append(Random(<span class="str">40</span>, Height - <span class="str">40</span>));
+
+heights.Shuffle();               <span class="cm">// reorders in place</span>
+<span class="kw">float</span> avg = heights.Average();  <span class="cm">// numeric summary</span></pre></div>
+
+<h2 class="entry-title" id="collections-example">Runnable example</h2>
+<p class="entry-desc">A complete sketch using this section. <strong>Test in Dana</strong> opens it in the IDE, or paste it into a new tab and press Run.</p>
+<div class="code-block"><div class="code-bar"><span class="code-label">C#</span><div class="code-actions"><button type="button" class="copy-btn" data-target="collections-example-code">Copy code</button><button class="dana-test-btn" data-target="collections-example-code" type="button"><svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M7 4l13 8-13 8z"></path></svg><span class="dana-test-label">Run in Dana</span></button></div></div><pre id="collections-example-code" tabindex="0" aria-label="Code, scrollable"><span class="cm">// IntList, FloatList and StringList: Processing's handy lists.</span>
+<span class="kw">public</span> <span class="kw">class</span> Lists : <span class="tp">Sketch</span>
+{
+    <span class="tp">IntList</span> rolls = <span class="kw">new</span> <span class="tp">IntList</span>();
+    <span class="tp">StringList</span> words = <span class="kw">new</span> <span class="tp">StringList</span>(<span class="kw">new</span>[] { <span class="str">"pear"</span>, <span class="str">"apple"</span>, <span class="str">"fig"</span>, <span class="str">"kiwi"</span> });
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup()
+    {
+        Size(<span class="str">520</span>, <span class="str">300</span>);
+        words.Sort();
+    }
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        Background(<span class="str">250</span>);
+        <span class="kw">if</span> (FrameCount % <span class="str">10</span> == <span class="str">0</span> &amp;&amp; rolls.Size &lt; <span class="str">40</span>)
+rolls.Append((<span class="kw">int</span>)Random(<span class="str">1</span>, <span class="str">7</span>));
+
+        NoStroke();
+        <span class="kw">for</span> (<span class="kw">int</span> i = <span class="str">0</span>; i &lt; rolls.Size; i++)
+        {
+Fill(<span class="str">90</span>, <span class="str">140</span>, <span class="str">220</span>);
+Rect(<span class="str">20</span> + i * <span class="str">12</span>, <span class="str">200</span> - rolls.Get(i) * <span class="str">25</span>, <span class="str">10</span>, rolls.Get(i) * <span class="str">25</span>);
+        }
+        Fill(<span class="str">30</span>);
+        <span class="kw">if</span> (rolls.Size &gt; <span class="str">0</span>)
+Text(<span class="str">$"rolls {rolls.Size} · sum {rolls.Sum()} · max {rolls.Max()} · min {rolls.Min()}"</span>, <span class="str">20</span>, <span class="str">230</span>);
+        Text(<span class="str">"sorted: "</span> + words.Join(<span class="str">", "</span>) + <span class="str">" -- click to shuffle"</span>, <span class="str">20</span>, <span class="str">260</span>);
+    }
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> MousePressed() =&gt; words.Shuffle();
+}</pre></div>
+
+</div>
+<nav class="pager" aria-label="Previous and next topic"><a class="prev" href="random-noise.html"><span>← Previous</span><strong>Random &amp; noise</strong></a><a class="next" href="getting-started-3d.html"><span>Next →</span><strong>Getting started with 3D</strong></a></nav>
+<aside class="support-aside" aria-label="Support the project">
+  <p><strong>Found this useful?</strong> Dana is free and built in spare time — a donation buys more time for docs like this one.</p>
+  <a class="btn btn-ink" href="https://paypal.me/CarlosFernandez934"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M12 21s-7.5-4.6-9.6-9.4C1 8.2 3.1 4.5 6.8 4.5c2.2 0 3.7 1.3 5.2 3 1.5-1.7 3-3 5.2-3 3.7 0 5.8 3.7 4.4 7.1C19.5 16.4 12 21 12 21z"></path></svg><span>Donate via PayPal</span></a>
+</aside>
+
+  </div>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap">
+    <p>DanaProcessing · v1.0 RC · MIT · stands on the shoulders of <a href="https://processing.org">Processing</a>, <a href="https://p5js.org">p5.js</a> and <a href="https://sonic-pi.net">Sonic Pi</a>.</p>
+    <nav aria-label="Footer">
+      <a href="../reference/a-z.html">All topics &amp; A–Z</a>
+      <a href="https://github.com/BuddhaCodes/DanaProcessing/releases/latest">Releases</a>
+      <a href="https://github.com/BuddhaCodes/DanaProcessing">GitHub</a>
+      <a href="../index.html#support">Support</a>
+    </nav>
+  </div>
+</footer>
+</body>
+</html>

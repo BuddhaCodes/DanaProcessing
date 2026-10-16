@@ -1,0 +1,73 @@
+<!--meta {"title": "Collections", "nav": "Collections", "summary": "FloatList, IntList, and StringList — Processing-flavored typed lists, like Processing's own. Thin wrappers around List<T> with the handful of methods sketches actually reach…", "tags": []} -->
+<p class="section-intro"><code class="inline">FloatList</code>, <code class="inline">IntList</code>, and <code class="inline">StringList</code> — Processing-flavored typed lists, like <a href="https://processing.org/reference/FloatList.html" target="_blank" rel="noopener">Processing's own</a>. Thin wrappers around <code class="inline">List&lt;T&gt;</code> with the handful of methods sketches actually reach for, rather than a 1:1 port of Java's much larger surface. Standalone value-holder types — like <code class="inline">PVector</code>, you just <code class="inline">new FloatList()</code> directly, no <code class="inline">Sketch</code> factory method needed.</p>
+
+<div class="note"><strong>What about FloatDict/IntDict/StringDict?</strong> Not ported, on purpose. A plain C# <code class="inline">Dictionary&lt;string, float&gt;</code> (or <code class="inline">int</code>/<code class="inline">string</code>) already does exactly what Processing's dict types do, with better performance and an API every C# developer already knows. That wrapper only earned its keep in Java, which didn't have comfortable generics when Processing's API was designed.</div>
+
+<h3 class="entry-title" id="floatlist">class FloatList · class IntList · class StringList</h3>
+<p class="entry-desc">All three share the same shape — <code class="inline">Size</code>, an indexer (<code class="inline">this[int]</code>), and the methods below. <code class="inline">FloatList</code>/<code class="inline">IntList</code> additionally expose <code class="inline">Min()</code>/<code class="inline">Max()</code>/<code class="inline">Sum()</code> (and <code class="inline">FloatList</code> alone adds <code class="inline">Average()</code>) — numeric summaries that don't make sense for <code class="inline">StringList</code>, which instead adds <code class="inline">Join(separator)</code>. All three implement <code class="inline">IEnumerable&lt;T&gt;</code>, so a plain <code class="inline">foreach</code> works too.</p>
+
+<div class="table-wrap">
+  <table>
+    <tr><th>method</th><th>does</th></tr>
+    <tr><td>Append(value)</td><td>Adds to the end.</td></tr>
+    <tr><td>Get(i) / Set(i, value)</td><td>Read/write by index (same as the indexer).</td></tr>
+    <tr><td>Remove(i) / Clear()</td><td>Removes one element, or everything.</td></tr>
+    <tr><td>Contains(value) / IndexOf(value)</td><td>Linear search.</td></tr>
+    <tr><td>Sort() / SortReverse() / Reverse()</td><td>In place.</td></tr>
+    <tr><td>Shuffle(<span class="ptype">Random?</span> rng = null)</td><td>Fisher-Yates in place. Uses its own internal <code class="inline">Random</code> by default — pass your own for reproducible results tied to a seed.</td></tr>
+    <tr><td>ToArray()</td><td>Snapshot as a plain array.</td></tr>
+  </table>
+</div>
+
+<h3 class="entry-title" id="intlist-range">IntList.Range(<span class="tp">int</span> count) <span class="sig-return">→ IntList</span> · static</h3>
+<p class="entry-desc">Fills a new list with <code class="inline">count</code> sequential ints starting at 0 — handy for building an index list to shuffle/sort alongside parallel data.</p>
+
+<div class="code-block">
+<pre><span class="kw">var</span> heights = <span class="kw">new</span> <span class="tp">FloatList</span>();
+<span class="kw">for</span> (<span class="kw">int</span> i = <span class="str">0</span>; i &lt; <span class="str">24</span>; i++)
+    heights.Append(Random(<span class="str">40</span>, Height - <span class="str">40</span>));
+
+heights.Shuffle();               <span class="cm">// reorders in place</span>
+<span class="kw">float</span> avg = heights.Average();  <span class="cm">// numeric summary</span></pre>
+</div>
+
+<h3 class="entry-title" id="collections-example">Runnable example</h3>
+<p class="entry-desc">A complete sketch using this section. <strong>Test in Dana</strong> opens it in the IDE, or paste it into a new tab and press Run.</p>
+<div class="code-block">
+  <pre id="collections-example-code"><span class="cm">// IntList, FloatList and StringList: Processing's handy lists.</span>
+<span class="kw">public</span> <span class="kw">class</span> Lists : <span class="tp">Sketch</span>
+{
+    <span class="tp">IntList</span> rolls = <span class="kw">new</span> <span class="tp">IntList</span>();
+    <span class="tp">StringList</span> words = <span class="kw">new</span> <span class="tp">StringList</span>(<span class="kw">new</span>[] { <span class="str">"pear"</span>, <span class="str">"apple"</span>, <span class="str">"fig"</span>, <span class="str">"kiwi"</span> });
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup()
+    {
+        Size(<span class="str">520</span>, <span class="str">300</span>);
+        words.Sort();
+    }
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        Background(<span class="str">250</span>);
+        <span class="kw">if</span> (FrameCount % <span class="str">10</span> == <span class="str">0</span> &amp;&amp; rolls.Size &lt; <span class="str">40</span>)
+rolls.Append((<span class="kw">int</span>)Random(<span class="str">1</span>, <span class="str">7</span>));
+
+        NoStroke();
+        <span class="kw">for</span> (<span class="kw">int</span> i = <span class="str">0</span>; i &lt; rolls.Size; i++)
+        {
+Fill(<span class="str">90</span>, <span class="str">140</span>, <span class="str">220</span>);
+Rect(<span class="str">20</span> + i * <span class="str">12</span>, <span class="str">200</span> - rolls.Get(i) * <span class="str">25</span>, <span class="str">10</span>, rolls.Get(i) * <span class="str">25</span>);
+        }
+        Fill(<span class="str">30</span>);
+        <span class="kw">if</span> (rolls.Size &gt; <span class="str">0</span>)
+Text(<span class="str">$"rolls {rolls.Size} · sum {rolls.Sum()} · max {rolls.Max()} · min {rolls.Min()}"</span>, <span class="str">20</span>, <span class="str">230</span>);
+        Text(<span class="str">"sorted: "</span> + words.Join(<span class="str">", "</span>) + <span class="str">" -- click to shuffle"</span>, <span class="str">20</span>, <span class="str">260</span>);
+    }
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> MousePressed() =&gt; words.Shuffle();
+}</pre>
+  <button class="dana-test-btn" data-target="collections-example-code" title="Run in DanaProcessing IDE">
+    <i class="ph-bold ph-play"></i>
+    <span class="dana-test-label">Test in Dana</span>
+  </button>
+</div>

@@ -1,0 +1,67 @@
+<!--meta {"title": "PShape", "nav": "PShape", "summary": "A loaded or built vector shape. Four ways to get one: load an SVG, build a primitive or group in code, or — under the 3D renderer — build a reusable mesh with CreateShape3D().…", "tags": []} -->
+<p class="section-intro">A loaded or built vector shape. Four ways to get one: load an SVG, build a primitive or group in code, or — under the 3D renderer — build a reusable mesh with <a href="#createshape3d"><code class="inline">CreateShape3D()</code></a>. A given <code class="inline">PShape</code> is either a 2D <code class="inline">SKPicture</code> or a 3D mesh handle, never both.</p>
+
+<h3 class="entry-title" id="loadshape">LoadShape(<span class="tp">string</span> path) <span class="sig-return">→ PShape</span></h3>
+<p class="entry-desc">Loads an SVG file.</p>
+
+<h3 class="entry-title" id="createshape">CreateShape(<span class="tp">PShapeType</span> type, <span class="tp">params float[]</span> v) <span class="sig-return">→ PShape</span></h3>
+<p class="entry-desc">Builds a standalone, reusable primitive shape in code, like Processing's <code class="inline">createShape(RECT/ELLIPSE/LINE/TRIANGLE/QUAD, ...)</code>. <code class="inline">x</code>/<code class="inline">y</code>/<code class="inline">w</code>/<code class="inline">h</code> are in the shape's <em>own</em> local coordinate system — <code class="inline">Shape(built, drawX, drawY)</code> later draws it translated by <code class="inline">(drawX, drawY)</code>, so it ends up on screen at <code class="inline">(drawX + x, drawY + y)</code>, matching real Processing. Captures the <strong>current</strong> <code class="inline">Fill()</code>/<code class="inline">Stroke()</code>/<code class="inline">StrokeWeight()</code> as the shape's fixed, baked-in style — changing them afterward has no retroactive effect.</p>
+
+<table class="enum-table">
+  <caption>PShapeType</caption>
+  <tr><td>Rect</td><td>4 values: x, y, w, h.</td></tr>
+  <tr><td>Ellipse</td><td>4 values: x, y, w, h.</td></tr>
+  <tr><td>Line</td><td>4 values: x1, y1, x2, y2.</td></tr>
+  <tr><td>Triangle</td><td>6 values: x1,y1, x2,y2, x3,y3.</td></tr>
+  <tr><td>Quad</td><td>8 values: x1,y1, x2,y2, x3,y3, x4,y4.</td></tr>
+</table>
+
+<h3 class="entry-title" id="createshape-group">CreateShape(<span class="tp">params PShape[]</span> children) <span class="sig-return">→ PShape</span></h3>
+<p class="entry-desc">Groups several 2D shapes into one, like Processing's <code class="inline">createShape(GROUP)</code> followed by <code class="inline">addChild()</code> for each piece. Each child keeps the absolute local coordinates it was built with — build a rocket out of a triangle, a rect, and an ellipse once in <code class="inline">Setup()</code>, then stamp the whole group with a single <code class="inline">Shape()</code> call per instance in <code class="inline">Draw()</code>.</p>
+<div class="note"><strong>2D only.</strong> Group a set of <code class="inline">CreateShape3D()</code> meshes by drawing each with its own <code class="inline">Shape()</code> call instead — there's no 3D-mesh grouping yet.</div>
+
+<h3 class="entry-title" id="shape">Shape(<span class="tp">PShape</span> shape, x, y) · Shape(shape, x, y, w, h)</h3>
+<p class="entry-desc">Draws the shape, positioned/sized per the current <code class="inline">ShapeMode</code>. Dispatches automatically to the 3D draw path when <code class="inline">shape</code> wraps a mesh from <code class="inline">CreateShape3D()</code> — see <a href="#shape-3d-custom">Custom 3D shapes</a>.</p>
+<div class="note"><strong>Tint doesn't apply here.</strong> To tint a vector shape, render it into a <code class="inline">PGraphics</code> first.</div>
+
+<h3 class="entry-title" id="pshape-example">Runnable example</h3>
+<p class="entry-desc">A complete sketch using this section. <strong>Test in Dana</strong> opens it in the IDE, or paste it into a new tab and press Run.</p>
+<div class="code-block">
+  <pre id="pshape-example-code"><span class="cm">// PShape: build a shape once, draw it many times. LoadShape("icon.svg") loads SVGs.</span>
+<span class="kw">public</span> <span class="kw">class</span> Shapes : <span class="tp">Sketch</span>
+{
+    <span class="tp">PShape</span> flower;
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup()
+    {
+        Size(<span class="str">600</span>, <span class="str">400</span>);
+        Fill(<span class="str">255</span>, <span class="str">140</span>, <span class="str">160</span>);
+        Stroke(<span class="str">120</span>, <span class="str">40</span>, <span class="str">60</span>);
+        <span class="kw">var</span> petals = <span class="kw">new</span> <span class="tp">List</span>&lt;<span class="tp">PShape</span>&gt;();
+        <span class="kw">for</span> (<span class="kw">int</span> i = <span class="str">0</span>; i &lt; <span class="str">6</span>; i++)
+        {
+<span class="kw">float</span> a = i * TWO_PI / <span class="str">6</span>;
+petals.Add(CreateShape(<span class="tp">PShapeType</span>.Ellipse, <span class="str">30</span> + Cos(a) * <span class="str">18</span> - <span class="str">12</span>, <span class="str">30</span> + Sin(a) * <span class="str">18</span> - <span class="str">12</span>, <span class="str">24</span>, <span class="str">24</span>));
+        }
+        Fill(<span class="str">255</span>, <span class="str">220</span>, <span class="str">90</span>);
+        petals.Add(CreateShape(<span class="tp">PShapeType</span>.Ellipse, <span class="str">22</span>, <span class="str">22</span>, <span class="str">16</span>, <span class="str">16</span>));
+        flower = CreateShape(petals.ToArray());
+    }
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        Background(<span class="str">235</span>, <span class="str">245</span>, <span class="str">230</span>);
+        RandomSeed(<span class="str">1</span>);
+        <span class="kw">for</span> (<span class="kw">int</span> i = <span class="str">0</span>; i &lt; <span class="str">40</span>; i++)
+        {
+<span class="kw">float</span> s = Random(<span class="str">30</span>, <span class="str">90</span>);
+Shape(flower, Random(Width), Random(Height), s, s);
+        }
+        Shape(flower, MouseX - <span class="str">50</span>, MouseY - <span class="str">50</span>, <span class="str">100</span>, <span class="str">100</span>);
+    }
+}</pre>
+  <button class="dana-test-btn" data-target="pshape-example-code" title="Run in DanaProcessing IDE">
+    <i class="ph-bold ph-play"></i>
+    <span class="dana-test-label">Test in Dana</span>
+  </button>
+</div>

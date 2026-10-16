@@ -1,0 +1,168 @@
+<!--meta {"title": "Generative art", "nav": "Generative art: seeds, print", "summary": "Tools for work where chance decides the picture: a seed you control (and that travels inside every PNG), a sheet of variations to choose from, and an export that turns the…", "tags": []} -->
+<p class="section-intro">Tools for work where chance decides the picture: a seed you control (and that travels inside every PNG), a sheet of variations to choose from, and an export that turns the chosen one into a print-quality PNG, an SVG, or paths for a pen plotter.</p>
+
+<h3 class="entry-title" id="seed">Seed <span class="sig-return">→ int</span> · RandomSeed(seed) · NoiseSeed(seed)</h3>
+<p class="entry-desc">Every sketch has a seed: <code class="inline">Random()</code>, <code class="inline">RandomGaussian()</code>, <code class="inline">Noise()</code>, <code class="inline">PVector.Random2D()</code> and list <code class="inline">Shuffle()</code> all follow it, so the same seed draws the same picture. The IDE picks one before <code class="inline">Setup()</code> — a new one per Run — and shows it in the status bar. <code class="inline">RandomSeed(Seed)</code> at the top of <code class="inline">Draw()</code> makes every frame repeat the same numbers, so a [Tweak] slider changes only what it controls.</p>
+<div class="note"><strong>In the IDE.</strong> 🎲 next to Run (F6) runs again with a new seed; <em>Sketch → Keep the seed</em> locks it. Every PNG a sketch saves (<code class="inline">Save()</code>, <code class="inline">SaveFrame()</code>) carries its seed, frame and [Tweak] values inside, and <em>Sketch → Open seed from PNG...</em> brings them back: the same image again. Randomness from <code class="inline">new System.Random()</code> or <code class="inline">Random.Shared</code> doesn't follow the seed.</div>
+
+<h3 class="entry-title" id="variations">Variations sheet <span class="sig-return">Ctrl+Shift+V</span></h3>
+<p class="entry-desc"><em>Sketch → Variations sheet</em> draws the sketch 9 or 16 times side by side: each with its own seed, its own [Tweak] values (random inside each slider's range) or both, after the first frame or after 1–3 seconds of animation. Click the best one: its seed is locked and its values go back into the running sketch — then <em>Apply tweaks to code</em> writes them into the source. Like a contact sheet for generative work: you choose instead of rolling the dice one Run at a time.</p>
+<div class="note"><strong>From code.</strong> <code class="inline">VariationRenderer.Plan(...)</code> makes the list of seeds/values and <code class="inline">VariationRenderer.Render(...)</code> draws each one offscreen into a <code class="inline">PImage</code>, without touching the running sketch.</div>
+
+<h3 class="entry-title" id="print-export">Export for print · SVG for plotters <span class="sig-return">Ctrl+Shift+E</span></h3>
+<p class="entry-desc"><em>File → Export for print</em> redraws the sketch from scratch — same seed and [Tweak] values, after as many frames as you choose — as vectors, so it is sharp at any size. Three outputs:</p>
+<div class="table-wrap">
+  <table>
+    <tr><th>Output</th><th>What you get</th></tr>
+    <tr><td>PNG, 2x–16x</td><td>A poster-sized PNG rendered band by band, so even 16x never has to fit in memory. Carries the seed and values inside, like every PNG a sketch saves.</td></tr>
+    <tr><td>SVG</td><td>The drawing as vectors for Illustrator, Inkscape or a laser cutter.</td></tr>
+    <tr><td>SVG for a plotter</td><td>One Inkscape layer per stroke color (one pen each), backgrounds dropped, fills turned into outlines, and the strokes reordered — and reversed when that's shorter — so the pen travels as little as possible in the air.</td></tr>
+  </table>
+</div>
+<div class="note"><strong>From code.</strong> <code class="inline">PrintExport.SavePng(factory, seed, tweaks, frames, scale, path)</code>, <code class="inline">PrintExport.SaveSvg(...)</code> and <code class="inline">PlotterSvg.Optimize(svg)</code> are public. Sketches that read pixels back (<code class="inline">LoadPixels()</code>, <code class="inline">Get()</code>) can't be recorded as vectors; they're exported as pixels at the big size and the IDE says so.</div>
+
+<h3 class="entry-title" id="generative-example">Runnable example: seeded landscapes</h3>
+<p class="entry-desc">A landscape made only with <code class="inline">Random()</code> and <code class="inline">Noise()</code>: F6 rolls another seed, Ctrl+Shift+V opens the variations sheet, and S saves a PNG you can reopen with <em>Sketch → Open seed from PNG</em>. <strong>Test in Dana</strong> opens it in the IDE, or paste it into a new tab and press Run. It is also in <em>Sketch → Examples</em>.</p>
+<div class="code-block">
+  <pre id="generative-example-code"><span class="cm">// Seeded generative art: same seed, same landscape.</span>
+<span class="cm">//</span>
+<span class="cm">// Everything random here comes from Random() and Noise(), which follow the</span>
+<span class="cm">// sketch's Seed -- so:</span>
+<span class="cm">//   F6 (🎲)              a new seed (Sketch menu: keep the seed to lock it)</span>
+<span class="cm">//   Ctrl+Shift+V         the variations sheet: pick the best of 9 or 16</span>
+<span class="cm">//   S                    save a PNG; it remembers the seed and the sliders</span>
+<span class="cm">//                        (Sketch &gt; Open seed from PNG... brings them back)</span>
+<span class="cm">//</span>
+<span class="cm">// RandomSeed(Seed) at the top of Draw() makes every frame repeat the same</span>
+<span class="cm">// random numbers, so moving a slider changes only what that slider controls.</span>
+<span class="kw">public</span> <span class="kw">class</span> MySketch : <span class="tp">Sketch</span>
+{
+    [<span class="tp">Tweak</span>(<span class="str">2</span>, <span class="str">8</span>)] <span class="kw">int</span> layers = <span class="str">5</span>;
+    [<span class="tp">Tweak</span>(<span class="str">0.5f</span>, <span class="str">6</span>)] <span class="kw">float</span> roughness = <span class="str">2.2f</span>;
+    [<span class="tp">Tweak</span>(<span class="str">0</span>, <span class="str">360</span>)] <span class="kw">float</span> hue = <span class="str">215</span>;
+    [<span class="tp">Tweak</span>(<span class="str">0</span>, <span class="str">400</span>)] <span class="kw">int</span> stars = <span class="str">160</span>;
+    [<span class="tp">Tweak</span>] <span class="kw">bool</span> sun = <span class="kw">true</span>;
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup() =&gt; Size(<span class="str">800</span>, <span class="str">500</span>);
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        RandomSeed(Seed);
+
+        <span class="cm">// Sky: a vertical gradient.</span>
+        <span class="kw">for</span> (<span class="kw">int</span> y = <span class="str">0</span>; y &lt; Height; y += <span class="str">4</span>)
+        {
+<span class="kw">float</span> t = y / (<span class="kw">float</span>)Height;
+FillHSB(hue, <span class="str">50</span> - t * <span class="str">20</span>, <span class="str">18</span> + t * <span class="str">30</span>);
+NoStroke();
+Rect(<span class="str">0</span>, y, Width, <span class="str">4</span>);
+        }
+
+        <span class="cm">// Stars.</span>
+        <span class="kw">for</span> (<span class="kw">int</span> i = <span class="str">0</span>; i &lt; stars; i++)
+        {
+<span class="kw">float</span> x = <span class="tp">Random</span>(Width), y = <span class="tp">Random</span>(Height * <span class="str">0.6f</span>);
+Fill(<span class="str">255</span>, <span class="tp">Random</span>(<span class="str">80</span>, <span class="str">230</span>));
+Circle(x, y, <span class="tp">Random</span>(<span class="str">1</span>, <span class="str">3</span>));
+        }
+
+        <span class="cm">// Sun (or moon).</span>
+        <span class="kw">if</span> (sun)
+        {
+FillHSB((hue + <span class="str">180</span>) % <span class="str">360</span>, <span class="str">40</span>, <span class="str">100</span>, <span class="str">230</span>);
+Circle(<span class="tp">Random</span>(<span class="str">120</span>, Width - <span class="str">120</span>), <span class="tp">Random</span>(<span class="str">80</span>, <span class="str">200</span>), <span class="tp">Random</span>(<span class="str">60</span>, <span class="str">120</span>));
+        }
+
+        <span class="cm">// Mountain layers, back to front: lighter and smoother far away.</span>
+        <span class="kw">for</span> (<span class="kw">int</span> layer = <span class="str">0</span>; layer &lt; layers; layer++)
+        {
+<span class="kw">float</span> depth = layer / (<span class="kw">float</span>)<span class="tp">Math</span>.Max(<span class="str">1</span>, layers - <span class="str">1</span>);
+<span class="kw">float</span> baseY = Height * (<span class="str">0.45f</span> + depth * <span class="str">0.4f</span>);
+<span class="kw">float</span> amp = <span class="str">60</span> + depth * <span class="str">90</span>;
+<span class="kw">float</span> offset = <span class="tp">Random</span>(<span class="str">1000</span>);
+FillHSB(hue, <span class="str">35</span> + depth * <span class="str">30</span>, <span class="str">70</span> - depth * <span class="str">55</span>);
+BeginShape();
+Vertex(<span class="str">0</span>, Height);
+<span class="kw">for</span> (<span class="kw">int</span> x = <span class="str">0</span>; x &lt;= Width; x += <span class="str">6</span>)
+    Vertex(x, baseY - Noise(offset + x * <span class="str">0.004f</span> * roughness, layer * <span class="str">10</span>) * amp * <span class="str">2</span> + amp);
+Vertex(Width, Height);
+EndShape(<span class="kw">true</span>);
+        }
+
+        Fill(<span class="str">255</span>, <span class="str">200</span>);
+        TextSize(<span class="str">13</span>);
+        Text(<span class="str">$"seed {Seed}   ·   F6 new seed   ·   Ctrl+Shift+V variations   ·   S save PNG"</span>, <span class="str">14</span>, Height - <span class="str">14</span>);
+    }
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> KeyPressed()
+    {
+        <span class="kw">if</span> (Key == <span class="str">'s'</span>)
+        {
+HideTweaks();
+SaveFrame(<span class="str">$"landscape-{Seed}-####.png"</span>);
+ShowTweaks();
+Println(<span class="str">$"Saved landscape-{Seed}-{FrameCount:0000}.png (seed and sliders are inside the PNG)"</span>);
+        }
+    }
+}</pre>
+  <button class="dana-test-btn" data-target="generative-example-code" title="Run in DanaProcessing IDE">
+    <i class="ph-bold ph-play"></i>
+    <span class="dana-test-label">Test in Dana</span>
+  </button>
+</div>
+
+<h3 class="entry-title" id="plotter-example">Runnable example: flow lines for a plotter</h3>
+<p class="entry-desc">Hundreds of strokes following a <code class="inline">Noise()</code> field in two colors — export it with Ctrl+Shift+E as an SVG for a plotter (one layer per pen) or as an 8x PNG. <strong>Test in Dana</strong> opens it in the IDE, or paste it into a new tab and press Run. It is also in <em>Sketch → Examples</em>.</p>
+<div class="code-block">
+  <pre id="plotter-example-code"><span class="cm">// Plotter-friendly art: only strokes, two pens.</span>
+<span class="cm">//</span>
+<span class="cm">// File &gt; Export for print (Ctrl+Shift+E):</span>
+<span class="cm">//   "Plotter SVG"  one layer per color (= per pen), strokes reordered so the</span>
+<span class="cm">//                  pen travels as little as possible between them</span>
+<span class="cm">//   "Big PNG"      2x-16x, drawn again as vectors: sharp at poster size</span>
+<span class="cm">// Same seed, same drawing -- F6 rolls another one.</span>
+<span class="kw">public</span> <span class="kw">class</span> MySketch : <span class="tp">Sketch</span>
+{
+    [<span class="tp">Tweak</span>(<span class="str">50</span>, <span class="str">900</span>)] <span class="kw">int</span> lines = <span class="str">420</span>;
+    [<span class="tp">Tweak</span>(<span class="str">10</span>, <span class="str">160</span>)] <span class="kw">int</span> steps = <span class="str">70</span>;
+    [<span class="tp">Tweak</span>(<span class="str">0.5f</span>, <span class="str">6</span>)] <span class="kw">float</span> zoom = <span class="str">2.2f</span>;
+    [<span class="tp">Tweak</span>(<span class="str">0</span>, <span class="str">1</span>)] <span class="kw">float</span> secondPen = <span class="str">0.25f</span>;
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup()
+    {
+        Size(<span class="str">700</span>, <span class="str">500</span>);
+        FrameRate(<span class="str">12</span>); <span class="cm">// a still drawing: a few frames a second is plenty for the sliders</span>
+    }
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        RandomSeed(Seed);
+        Background(<span class="str">250</span>, <span class="str">248</span>, <span class="str">240</span>);
+        NoFill();
+        StrokeWeight(<span class="str">1</span>);
+
+        <span class="kw">for</span> (<span class="kw">int</span> i = <span class="str">0</span>; i &lt; lines; i++)
+        {
+<span class="kw">float</span> x = <span class="tp">Random</span>(-<span class="str">50</span>, Width + <span class="str">50</span>);
+<span class="kw">float</span> y = <span class="tp">Random</span>(-<span class="str">50</span>, Height + <span class="str">50</span>);
+<span class="kw">bool</span> red = <span class="tp">Random</span>(<span class="str">1</span>) &lt; secondPen;
+<span class="kw">if</span> (red) Stroke(<span class="str">200</span>, <span class="str">40</span>, <span class="str">40</span>); <span class="kw">else</span> Stroke(<span class="str">20</span>, <span class="str">20</span>, <span class="str">30</span>);
+
+BeginShape();
+<span class="kw">for</span> (<span class="kw">int</span> s = <span class="str">0</span>; s &lt; steps; s++)
+{
+    Vertex(x, y);
+    <span class="kw">float</span> angle = Noise(x / Width * zoom, y / Height * zoom) * TWO_PI * <span class="str">2</span>;
+    x += Cos(angle) * <span class="str">4</span>;
+    y += Sin(angle) * <span class="str">4</span>;
+}
+EndShape();
+        }
+    }
+
+}</pre>
+  <button class="dana-test-btn" data-target="plotter-example-code" title="Run in DanaProcessing IDE">
+    <i class="ph-bold ph-play"></i>
+    <span class="dana-test-label">Test in Dana</span>
+  </button>
+</div>

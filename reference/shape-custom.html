@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en" data-root="../">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-N4ZWC7GN1B"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-N4ZWC7GN1B');
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Custom shapes &amp; meshes — DanaProcessing reference</title>
+<meta name="description" content="Build arbitrary shapes vertex by vertex. There are two render paths at EndShape(): a simple path when every vertex shares one fill color, and a mesh path (Gouraud shading…">
+<link rel="canonical" href="https://buddhacodes.github.io/DanaProcessing/reference/shape-custom.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="DanaProcessing">
+<meta property="og:title" content="Custom shapes &amp; meshes — DanaProcessing reference">
+<meta property="og:description" content="Build arbitrary shapes vertex by vertex. There are two render paths at EndShape(): a simple path when every vertex shares one fill color, and a mesh path (Gouraud shading…">
+<meta property="og:url" content="https://buddhacodes.github.io/DanaProcessing/reference/shape-custom.html">
+<meta property="og:image" content="https://buddhacodes.github.io/DanaProcessing/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://buddhacodes.github.io/DanaProcessing/og-image.png">
+<meta name="theme-color" content="#13202A">
+<link rel="icon" type="image/png" href="../DanaProcessing.Ide/Theme/dana.png">
+<link rel="apple-touch-icon" href="../DanaProcessing.Ide/Theme/dana.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&amp;family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/search-index.js" defer></script>
+<script src="../assets/site.js" defer></script>
+</head>
+<body class="page-topic">
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="bar">
+    <a class="brand" href="../index.html"><svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><circle cx="15" cy="15" r="13" fill="none" stroke="currentColor" stroke-width="2"></circle><circle cx="15" cy="15" r="6" fill="#E7B66B"></circle><circle cx="23" cy="8" r="2.5" fill="#FF8A6B"></circle></svg><span>DanaProcessing</span></a>
+    <button type="button" class="menu-toggle" aria-expanded="false" aria-controls="site-menu">Menu</button>
+    <div class="site-menu" id="site-menu">
+      <nav class="main-nav" aria-label="Main">
+        <a href="../reference/tutorial.html">Learn</a>
+        <a href="../reference/a-z.html" aria-current="page">Reference</a>
+        <a href="../index.html#gallery">Examples</a>
+        <a href="../reference/ide.html">The IDE</a>
+      </nav>
+      <form class="search" role="search" action="../reference/a-z.html">
+        <label class="visually-hidden" for="site-search">Search the documentation</label>
+        <div class="search-box">
+          <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+          <input id="site-search" name="q" type="search" autocomplete="off" placeholder="Search — press /" aria-describedby="search-status" aria-controls="search-results">
+        </div>
+        <p id="search-status" class="visually-hidden" aria-live="polite"></p>
+        <ul id="search-results" class="search-results" hidden></ul>
+      </form>
+      <a class="support-link" href="../index.html#support"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M12 21s-7.5-4.6-9.6-9.4C1 8.2 3.1 4.5 6.8 4.5c2.2 0 3.7 1.3 5.2 3 1.5-1.7 3-3 5.2-3 3.7 0 5.8 3.7 4.4 7.1C19.5 16.4 12 21 12 21z"></path></svg><span>Support Dana</span></a>
+    </div>
+  </div>
+</header>
+<main id="main">
+<div class="topic-hero">
+  <div class="wrap">
+    <div class="topic-hero-text">
+      <nav class="breadcrumb" aria-label="Breadcrumb"><ol><li><a href="a-z.html">Reference</a></li><li>Drawing</li><li aria-current="page">Custom shapes &amp; meshes</li></ol></nav>
+      <h1>Custom shapes &amp; meshes</h1>
+      <p class="lede">Build arbitrary shapes vertex by vertex. There are two render paths at <code class="inline">EndShape()</code>: a <strong>simple path</strong> when every vertex shares one fill color, and a <strong>mesh path</strong> (Gouraud shading and/or texturing) once either varies.</p>
+      <p class="tags"><span class="tag">2D</span></p>
+    </div>
+    <div class="topic-art" aria-hidden="true"><span style="background:#FF8A6B"></span><span></span><span></span><span></span><span></span></div>
+  </div>
+</div>
+<div class="wrap topic-layout">
+  <button type="button" class="topics-toggle" aria-expanded="false" aria-controls="topics">All topics</button>
+<nav class="topics" id="topics" aria-label="Reference topics">
+<div class="topic-group"><h2>Start here</h2><ul>
+<li><a href="intro.html">Overview</a></li>
+<li><a href="tutorial.html">30-minute tutorial</a></li>
+<li><a href="from-processing.html">From Processing / p5.js</a></li>
+</ul></div>
+<div class="topic-group"><h2>Basics</h2><ul>
+<li><a href="structure.html">Sketch structure</a></li>
+<li><a href="input.html">Input &amp; time</a></li>
+</ul></div>
+<div class="topic-group"><h2>Drawing</h2><ul>
+<li><a href="color.html">Color</a></li>
+<li><a href="shape-primitives.html">2D Primitives</a></li>
+<li><a href="shape-custom.html" aria-current="page">Custom shapes</a>
+<ul class="on-this-page" aria-label="On this page">
+<li><a href="#beginshape"><code>BeginShape</code></a></li>
+<li><a href="#vertex"><code>Vertex</code></a></li>
+<li><a href="#beziervertex"><code>BezierVertex · QuadraticVertex</code></a></li>
+<li><a href="#curvevertex"><code>CurveVertex</code></a></li>
+<li><a href="#begincontour"><code>BeginContour · EndContour</code></a></li>
+<li><a href="#texture"><code>Texture · NoTexture</code></a></li>
+<li><a href="#texturemode"><code>TextureMode · TextureWrap</code></a></li>
+<li><a href="#endshape"><code>EndShape</code></a></li>
+<li><a href="#shape-custom-example">Runnable example</a></li>
+</ul>
+</li>
+<li><a href="typography.html">Typography</a></li>
+<li><a href="transform.html">Transformations</a></li>
+</ul></div>
+<div class="topic-group"><h2>Media</h2><ul>
+<li><a href="image.html">PImage</a></li>
+<li><a href="pgraphics.html">PGraphics</a></li>
+<li><a href="pshape.html">PShape</a></li>
+<li><a href="output.html">Saving output</a></li>
+<li><a href="pixels.html">Pixels</a></li>
+<li><a href="reels.html">Reels</a></li>
+</ul></div>
+<div class="topic-group"><h2>Data &amp; math</h2><ul>
+<li><a href="files-data.html">Files &amp; data</a></li>
+<li><a href="utilities.html">Conversion &amp; utilities</a></li>
+<li><a href="math.html">Math &amp; trig</a></li>
+<li><a href="pvector.html">PVector</a></li>
+<li><a href="random-noise.html">Random &amp; noise</a></li>
+<li><a href="collections.html">Collections</a></li>
+</ul></div>
+<div class="topic-group"><h2>3D</h2><ul>
+<li><a href="getting-started-3d.html">Getting started</a></li>
+<li><a href="shape-3d-primitives.html">3D Primitives</a></li>
+<li><a href="transform-3d.html">3D Transformations</a></li>
+<li><a href="camera-3d.html">Camera &amp; Projection</a></li>
+<li><a href="lights-3d.html">Lights</a></li>
+<li><a href="material-3d.html">Material properties</a></li>
+<li><a href="coordinates-3d.html">Coordinates</a></li>
+<li><a href="shape-3d-custom.html">Custom 3D shapes</a></li>
+<li><a href="pshader.html">PShader</a></li>
+</ul></div>
+<div class="topic-group"><h2>Sound</h2><ul>
+<li><a href="audio.html">Live loops &amp; timing</a></li>
+</ul></div>
+<div class="topic-group"><h2>Live &amp; generative</h2><ul>
+<li><a href="live.html">Playing live: MIDI, beat, mic</a></li>
+<li><a href="generative.html">Generative art: seeds, print</a></li>
+<li><a href="workflow.html">Day to day: F3, data/, rewind</a></li>
+</ul></div>
+<div class="topic-group"><h2>Tooling</h2><ul>
+<li><a href="ide.html">The IDE</a></li>
+<li><a href="hosting.html">Avalonia host</a></li>
+<li><a href="enums.html">Enumerations</a></li>
+</ul></div>
+<p class="topics-all"><a href="a-z.html">All topics &amp; A–Z index</a></p></nav>
+  <div class="topic-main">
+<details class="on-this-page-mobile"><summary>On this page · 9 entries</summary><ul><li><a href="#beginshape"><code>BeginShape</code></a></li><li><a href="#vertex"><code>Vertex</code></a></li><li><a href="#beziervertex"><code>BezierVertex · QuadraticVertex</code></a></li><li><a href="#curvevertex"><code>CurveVertex</code></a></li><li><a href="#begincontour"><code>BeginContour · EndContour</code></a></li><li><a href="#texture"><code>Texture · NoTexture</code></a></li><li><a href="#texturemode"><code>TextureMode · TextureWrap</code></a></li><li><a href="#endshape"><code>EndShape</code></a></li><li><a href="#shape-custom-example">Runnable example</a></li></ul></details>
+<div class="doc">
+<h2 class="entry-title api" id="beginshape"><code>BeginShape</code></h2><ul class="sigs" aria-label="Signatures"><li><code>BeginShape(<span class="tp">ShapeKind</span> kind = Polygon)</code></li></ul>
+<p class="entry-desc">Starts recording vertices. See <a href="enums.html">ShapeKind</a> for all interpretations.</p>
+
+<h2 class="entry-title api" id="vertex"><code>Vertex</code></h2><ul class="sigs" aria-label="Signatures"><li><code>Vertex(x, y)</code></li><li><code>Vertex(x, y, u, v)</code></li></ul>
+<p class="entry-desc">Adds a vertex, colored by the current <code class="inline">Fill()</code> at the moment of the call. The UV overload adds texture coordinates.</p>
+
+<h2 class="entry-title api" id="beziervertex"><code>BezierVertex · QuadraticVertex</code></h2><ul class="sigs" aria-label="Signatures"><li><code>BezierVertex(...)</code></li><li><code>QuadraticVertex(...)</code></li></ul>
+<p class="entry-desc">Adds a curved segment to a <code class="inline">Polygon</code>-mode shape.</p>
+
+<h2 class="entry-title api" id="curvevertex"><code>CurveVertex</code></h2><ul class="sigs" aria-label="Signatures"><li><code>CurveVertex(x, y)</code></li></ul>
+<p class="entry-desc">Adds a Catmull-Rom curve vertex, respecting <code class="inline">CurveTightness()</code>. As in Processing, the curve only passes through the <em>interior</em> points — the very first and very last <code class="inline">CurveVertex()</code> calls shape the tangent at each end but aren't drawn to themselves, so nothing appears until the 4th call. The common pattern is to repeat the first and last point once so the curve visibly starts/ends there.</p>
+
+<h2 class="entry-title api" id="begincontour"><code>BeginContour · EndContour</code></h2><ul class="sigs" aria-label="Signatures"><li><code>BeginContour()</code></li><li><code>EndContour()</code></li></ul>
+<p class="entry-desc">Cuts a hole in the shape currently being built — the vertices recorded between these two calls form a subpath that's subtracted from the outline, like a donut. Only valid in the default <code class="inline">Polygon</code> mode of <code class="inline">BeginShape()</code>.</p>
+<div class="note"><strong>Only contour shapes are affected.</strong> Using <code class="inline">BeginContour()</code> switches that shape's fill rule to even-odd so the hole punches through reliably regardless of winding direction. Shapes that never call it keep the usual winding rule and render exactly as before.</div>
+
+<h2 class="entry-title api" id="texture"><code>Texture · NoTexture</code></h2><ul class="sigs" aria-label="Signatures"><li><code>Texture(<span class="tp">PImage</span> img)</code></li><li><code>NoTexture()</code></li></ul>
+<p class="entry-desc">Sets or clears the texture image for the shape.</p>
+
+<h2 class="entry-title api" id="texturemode"><code>TextureMode · TextureWrap</code></h2><ul class="sigs" aria-label="Signatures"><li><code>TextureMode(<span class="tp">TextureModeKind</span> mode)</code></li><li><code>TextureWrap(<span class="tp">TextureWrapKind</span> mode)</code></li></ul>
+<p class="entry-desc">Sets how <code class="inline">Vertex(x, y, u, v)</code>'s u/v are interpreted, and how a texture samples outside its 0–1 range. See <a href="enums.html">TextureModeKind</a> / <a href="enums.html">TextureWrapKind</a>.</p>
+<div class="note"><strong>Default differs from Processing.</strong> DanaProcessing's default is <code class="inline">Normal</code> (0–1 UVs), not Processing's own default of <code class="inline">Image</code> (pixel-coordinate UVs) — <code class="inline">Vertex(x, y, u, v)</code> already treated its u/v as 0–1 before <code class="inline">TextureMode()</code> existed, so the default was kept for backward compatibility. Call <code class="inline">TextureMode(Image)</code> for Processing's real default behavior.</div>
+
+<h2 class="entry-title api" id="endshape"><code>EndShape</code></h2><ul class="sigs" aria-label="Signatures"><li><code>EndShape(<span class="tp">bool</span> close = false)</code></li></ul>
+<p class="entry-desc">Finishes and draws the recorded shape.</p>
+
+<h2 class="entry-title" id="shape-custom-example">Runnable example</h2>
+<p class="entry-desc">A complete sketch using this section. <strong>Test in Dana</strong> opens it in the IDE, or paste it into a new tab and press Run.</p>
+<div class="code-block"><div class="code-bar"><span class="code-label">C#</span><div class="code-actions"><button type="button" class="copy-btn" data-target="shape-custom-example-code">Copy code</button><button class="dana-test-btn" data-target="shape-custom-example-code" type="button"><svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M7 4l13 8-13 8z"></path></svg><span class="dana-test-label">Run in Dana</span></button></div></div><pre id="shape-custom-example-code" tabindex="0" aria-label="Code, scrollable"><span class="cm">// BeginShape/Vertex/EndShape: a star whose points follow the mouse.</span>
+<span class="kw">public</span> <span class="kw">class</span> Star : <span class="tp">Sketch</span>
+{
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup() =&gt; Size(<span class="str">500</span>, <span class="str">500</span>);
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        Background(<span class="str">20</span>, <span class="str">24</span>, <span class="str">40</span>);
+        <span class="kw">float</span> inner = Map(MouseX, <span class="str">0</span>, Width, <span class="str">30</span>, <span class="str">180</span>);
+        <span class="kw">int</span> points = (<span class="kw">int</span>)Map(MouseY, <span class="str">0</span>, Height, <span class="str">3</span>, <span class="str">12</span>);
+
+        Fill(<span class="str">255</span>, <span class="str">210</span>, <span class="str">90</span>);
+        Stroke(<span class="str">255</span>);
+        StrokeWeight(<span class="str">2</span>);
+        BeginShape();
+        <span class="kw">for</span> (<span class="kw">int</span> i = <span class="str">0</span>; i &lt; points * <span class="str">2</span>; i++)
+        {
+<span class="kw">float</span> r = i % <span class="str">2</span> == <span class="str">0</span> ? <span class="str">200</span> : inner;
+<span class="kw">float</span> a = i * PI / points - HALF_PI;
+Vertex(Width / <span class="str">2</span> + Cos(a) * r, Height / <span class="str">2</span> + Sin(a) * r);
+        }
+        EndShape(close: <span class="kw">true</span>);
+
+        <span class="cm">// A smooth curve through points.</span>
+        NoFill();
+        Stroke(<span class="str">120</span>, <span class="str">200</span>, <span class="str">255</span>);
+        BeginShape();
+        <span class="kw">for</span> (<span class="kw">int</span> x = -<span class="str">50</span>; x &lt;= Width + <span class="str">50</span>; x += <span class="str">50</span>)
+CurveVertex(x, <span class="str">460</span> + Sin(x * <span class="str">0.02f</span> + FrameCount * <span class="str">0.05f</span>) * <span class="str">20</span>);
+        EndShape();
+    }
+}</pre></div>
+
+</div>
+<nav class="pager" aria-label="Previous and next topic"><a class="prev" href="shape-primitives.html"><span>← Previous</span><strong>2D primitives</strong></a><a class="next" href="typography.html"><span>Next →</span><strong>Typography</strong></a></nav>
+<aside class="support-aside" aria-label="Support the project">
+  <p><strong>Found this useful?</strong> Dana is free and built in spare time — a donation buys more time for docs like this one.</p>
+  <a class="btn btn-ink" href="https://paypal.me/CarlosFernandez934"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M12 21s-7.5-4.6-9.6-9.4C1 8.2 3.1 4.5 6.8 4.5c2.2 0 3.7 1.3 5.2 3 1.5-1.7 3-3 5.2-3 3.7 0 5.8 3.7 4.4 7.1C19.5 16.4 12 21 12 21z"></path></svg><span>Donate via PayPal</span></a>
+</aside>
+
+  </div>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap">
+    <p>DanaProcessing · v1.0 RC · MIT · stands on the shoulders of <a href="https://processing.org">Processing</a>, <a href="https://p5js.org">p5.js</a> and <a href="https://sonic-pi.net">Sonic Pi</a>.</p>
+    <nav aria-label="Footer">
+      <a href="../reference/a-z.html">All topics &amp; A–Z</a>
+      <a href="https://github.com/BuddhaCodes/DanaProcessing/releases/latest">Releases</a>
+      <a href="https://github.com/BuddhaCodes/DanaProcessing">GitHub</a>
+      <a href="../index.html#support">Support</a>
+    </nav>
+  </div>
+</footer>
+</body>
+</html>

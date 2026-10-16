@@ -1,0 +1,189 @@
+<main id="main">
+<section class="hero" aria-labelledby="hero-title">
+  <svg class="hero-art" viewBox="0 0 1440 720" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+    <g fill="none" stroke-width="1.5">
+      <path d="M760 620 C 900 420, 1080 600, 1220 380 S 1440 260, 1500 120" stroke="#E7B66B"></path>
+      <path d="M740 640 C 900 450, 1070 630, 1230 410 S 1440 290, 1500 150" stroke="#E7B66B" opacity="0.7"></path>
+      <path d="M720 660 C 900 480, 1060 660, 1240 440 S 1440 320, 1500 180" stroke="#E7B66B" opacity="0.5"></path>
+      <path d="M700 680 C 900 510, 1050 690, 1250 470 S 1440 350, 1500 210" stroke="#E7B66B" opacity="0.3"></path>
+      <path d="M820 120 C 960 220, 1020 80, 1160 180 S 1340 120, 1460 220" stroke="#9DB8F2" opacity="0.8"></path>
+      <path d="M830 150 C 970 250, 1030 110, 1170 210 S 1350 150, 1470 250" stroke="#9DB8F2" opacity="0.55"></path>
+      <path d="M840 180 C 980 280, 1040 140, 1180 240 S 1360 180, 1480 280" stroke="#9DB8F2" opacity="0.3"></path>
+    </g>
+    <g fill="none" stroke="#F4EBDD" opacity="0.18">
+      <circle cx="1090" cy="330" r="80"></circle><circle cx="1090" cy="330" r="130"></circle><circle cx="1090" cy="330" r="190"></circle><circle cx="1090" cy="330" r="260"></circle>
+    </g>
+    <circle cx="1090" cy="330" r="34" fill="#FF8A6B"></circle>
+    <circle cx="1182" cy="260" r="10" fill="#E7B66B"></circle>
+    <circle cx="960" cy="420" r="7" fill="#8FD3B6"></circle>
+    <circle cx="1270" cy="470" r="14" fill="#9DB8F2"></circle>
+    <circle cx="1010" cy="190" r="5" fill="#F4EBDD"></circle>
+    <circle cx="1330" cy="180" r="4" fill="#F4EBDD"></circle>
+    <circle cx="1220" cy="580" r="6" fill="#FF8A6B"></circle>
+  </svg>
+  <div class="wrap hero-inner">
+    <div class="hero-text">
+      <p class="pill"><span class="dot" aria-hidden="true"></span>New: MIDI learn, Beat(), the microphone and performance mode</p>
+      <h1 id="hero-title">Draw, play and perform — in&#160;C#.</h1>
+      <p class="lede">The Processing way of sketching, with real 3D, its own live-coding sound engine and an IDE built for the stage. Free and open source.</p>
+      <div class="actions">
+        <a class="btn btn-gold download-primary" href="{{RELEASES}}"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"></path></svg><span class="download-primary-label">Download</span></a>
+        <a class="btn btn-line" href="ref:tutorial">Start the 30-minute tutorial</a>
+      </div>
+      <details class="platforms">
+        <summary>Other platforms</summary>
+        <ul>
+          <li><a href="{{RELEASES}}" data-platform="win">Windows</a></li>
+          <li><a href="{{RELEASES}}" data-platform="osx-arm64">macOS (Apple Silicon)</a></li>
+          <li><a href="{{RELEASES}}" data-platform="osx-x64">macOS (Intel)</a></li>
+          <li><a href="{{RELEASES}}" data-platform="linux">Linux</a></li>
+        </ul>
+      </details>
+    </div>
+    <figure class="hero-code">
+      <div class="hero-code-bar">
+        <figcaption>Fireflies.cs</figcaption>
+        <span class="live-chip"><span class="dot breathe" aria-hidden="true"></span>■ Stop · 1:42</span>
+      </div>
+      <pre tabindex="0" aria-label="Fireflies sketch code"><span class="kw">public override void</span> Draw()
+{
+    Background(<span class="str">12</span>, <span class="str">14</span>, <span class="str">30</span>);
+    <span class="kw">foreach</span> (<span class="kw">var</span> f <span class="kw">in</span> flies)
+    {
+        Fill(<span class="str">255</span>, <span class="str">230</span>, <span class="str">120</span>, <span class="str">200</span> * Pulse(<span class="str">1</span>));
+        Circle(f.X, f.Y, <span class="str">6</span>);
+    }
+}</pre>
+    </figure>
+  </div>
+</section>
+
+<section class="paths" aria-labelledby="paths-title">
+  <div class="wrap">
+    <div class="section-head">
+      <h2 id="paths-title">Pick where to start.</h2>
+      <p>Six short ways in, each leading into the full reference. 2D, 3D and sound sit side by side — nothing is hidden behind a mode.</p>
+    </div>
+    <ul class="path-grid">
+      <li style="--c:#13202A"><h3><a href="ref:tutorial">Learn the basics</a></h3><p>One sketch of fireflies, built in six steps: canvas, color, animation, classes, input, sound.</p><p class="mono">30 min · 6 steps</p></li>
+      <li style="--c:#E7B66B"><h3><a href="ref:color">Draw in 2D</a></h3><p>Color, shapes, text, transforms, images and pixels — Processing&#39;s whole vocabulary.</p><p class="mono">Fill() · Rect() · Text()</p></li>
+      <li style="--c:#9DB8F2"><h3><a href="ref:getting-started-3d">Go 3D</a></h3><p>Pass Renderer3D to Size() and get boxes, cameras, lights, materials and shaders.</p><p class="mono">Box() · Camera() · Lights()</p></li>
+      <li style="--c:#8FD3B6"><h3><a href="ref:audio">Make sound</a></h3><p>Live loops that stay in time while you edit, synths, samples, and visuals that hear them.</p><p class="mono">[LiveLoop] · Play() · Sample()</p></li>
+      <li style="--c:#FF8A6B"><h3><a href="ref:live">Play live</a></h3><p>Knobs with MIDI learn, visuals on the beat, the room&#39;s microphone, code on the projector.</p><p class="mono">MidiCC() · Beat() · F11</p></li>
+      <li style="--c:#A13D2A"><h3><a href="ref:generative">Generative art &amp; print</a></h3><p>Seeds you control, a sheet of variations, poster PNGs and SVG for pen plotters.</p><p class="mono">Seed · Ctrl+Shift+V · Ctrl+Shift+E</p></li>
+    </ul>
+    <p class="more"><a href="reference/a-z.html">All 38 topics and the A–Z index</a> · <a href="ref:from-processing">Coming from Processing or p5.js</a></p>
+  </div>
+</section>
+
+<section id="gallery" class="gallery" aria-labelledby="gallery-title">
+  <div class="wrap">
+    <div class="section-head">
+      <h2 id="gallery-title">Open one and press Run.</h2>
+      <p>Every example is in the IDE&#39;s gallery too. Each page below has the full code and a “Run in Dana” button.</p>
+    </div>
+    <ul class="tiles">
+      <li class="tile">
+        <svg viewBox="0 0 360 200" role="img" aria-label="Glowing yellow dots on a dark blue night" style="background:#0C1220">
+          <circle cx="60" cy="70" r="5" fill="#FFE678"></circle><circle cx="60" cy="70" r="16" fill="#FFE678" opacity="0.15"></circle>
+          <circle cx="150" cy="120" r="4" fill="#FFE678"></circle><circle cx="150" cy="120" r="13" fill="#FFE678" opacity="0.15"></circle>
+          <circle cx="230" cy="60" r="6" fill="#FFE678"></circle><circle cx="230" cy="60" r="20" fill="#FFE678" opacity="0.12"></circle>
+          <circle cx="300" cy="140" r="4" fill="#FFE678"></circle><circle cx="300" cy="140" r="12" fill="#FFE678" opacity="0.15"></circle>
+          <circle cx="105" cy="160" r="3" fill="#FFE678"></circle><circle cx="270" cy="100" r="3" fill="#FFE678"></circle>
+          <path d="M0 200 L0 175 Q90 150 180 172 T360 165 L360 200Z" fill="#071019"></path>
+        </svg>
+        <div><h3><a href="ref:tutorial-6">Fireflies</a></h3><p>The tutorial&#39;s sketch: classes, lists, mouse and sound.</p></div>
+      </li>
+      <li class="tile">
+        <svg viewBox="0 0 360 200" role="img" aria-label="Layered mountain ridges at dusk" style="background:#F3D9B1">
+          <circle cx="270" cy="62" r="24" fill="#FF8A6B"></circle>
+          <path d="M0 120 L50 90 L95 112 L150 70 L205 108 L260 84 L310 110 L360 92 L360 200 L0 200Z" fill="#C98C6B"></path>
+          <path d="M0 145 L60 118 L120 140 L170 112 L235 142 L290 120 L360 138 L360 200 L0 200Z" fill="#8C5A4A"></path>
+          <path d="M0 172 L70 150 L140 168 L210 146 L280 170 L360 156 L360 200 L0 200Z" fill="#4A3330"></path>
+        </svg>
+        <div><h3><a href="ref:generative-example">Seeded landscapes</a></h3><p>Random() and Noise() follow the seed. F6 for another, Ctrl+Shift+V for sixteen.</p></div>
+      </li>
+      <li class="tile">
+        <svg viewBox="0 0 360 200" role="img" aria-label="Wavy flow lines in two ink colors on paper" style="background:#FBF7EF">
+          <g fill="none" stroke-width="1.4">
+            <path d="M10 40 C 80 10, 140 80, 210 40 S 330 30, 350 60" stroke="#1C3A5E"></path>
+            <path d="M10 60 C 80 30, 140 100, 210 60 S 330 50, 350 80" stroke="#1C3A5E"></path>
+            <path d="M10 80 C 80 50, 140 120, 210 80 S 330 70, 350 100" stroke="#1C3A5E"></path>
+            <path d="M10 100 C 80 70, 140 140, 210 100 S 330 90, 350 120" stroke="#C2452D"></path>
+            <path d="M10 120 C 80 90, 140 160, 210 120 S 330 110, 350 140" stroke="#C2452D"></path>
+            <path d="M10 140 C 80 110, 140 180, 210 140 S 330 130, 350 160" stroke="#C2452D"></path>
+            <path d="M10 160 C 80 130, 140 200, 210 160 S 330 150, 350 180" stroke="#1C3A5E"></path>
+          </g>
+        </svg>
+        <div><h3><a href="ref:plotter-example">Flow lines for a plotter</a></h3><p>Two pens, one SVG layer each, strokes ordered so the pen barely travels in the air.</p></div>
+      </li>
+      <li class="tile">
+        <svg viewBox="0 0 360 200" role="img" aria-label="A ring pulsing on the beat above a row of sliding blocks" style="background:#1A1033">
+          <circle cx="180" cy="80" r="46" fill="none" stroke="#FF6FB5" stroke-width="10"></circle>
+          <circle cx="180" cy="80" r="64" fill="none" stroke="#FF6FB5" stroke-width="2" opacity="0.4"></circle>
+          <rect x="40" y="160" width="40" height="22" rx="4" fill="#7DE2FF"></rect><rect x="100" y="160" width="40" height="22" rx="4" fill="#7DE2FF" opacity="0.5"></rect><rect x="160" y="160" width="40" height="22" rx="4" fill="#7DE2FF"></rect><rect x="220" y="160" width="40" height="22" rx="4" fill="#7DE2FF" opacity="0.5"></rect><rect x="280" y="160" width="40" height="22" rx="4" fill="#FFE678"></rect>
+        </svg>
+        <div><h3><a href="ref:live-example">Visuals in time</a></h3><p>Pulse(), BeatTween() and OnBeat(4): everything moves with the music.</p></div>
+      </li>
+      <li class="tile">
+        <svg viewBox="0 0 360 200" role="img" aria-label="Petals arranged like a flower, like a dial" style="background:#10261F">
+          <g transform="translate(180 100)">
+            <ellipse rx="16" ry="62" fill="#8FD3B6" opacity="0.85"></ellipse>
+            <ellipse rx="16" ry="62" fill="#8FD3B6" opacity="0.7" transform="rotate(30)"></ellipse>
+            <ellipse rx="16" ry="62" fill="#8FD3B6" opacity="0.55" transform="rotate(60)"></ellipse>
+            <ellipse rx="16" ry="62" fill="#E7B66B" opacity="0.85" transform="rotate(90)"></ellipse>
+            <ellipse rx="16" ry="62" fill="#E7B66B" opacity="0.7" transform="rotate(120)"></ellipse>
+            <ellipse rx="16" ry="62" fill="#E7B66B" opacity="0.55" transform="rotate(150)"></ellipse>
+            <circle r="16" fill="#FF8A6B"></circle>
+          </g>
+        </svg>
+        <div><h3><a href="ref:midi-example">MIDI learn flower</a></h3><p>Touch a slider, turn a knob: they&#39;re connected. Pads fire bursts.</p></div>
+      </li>
+      <li class="tile">
+        <svg viewBox="0 0 360 200" role="img" aria-label="A grid of living cells from the Game of Life" style="background:#0E1A12">
+          <g fill="#9BE37A">
+            <rect x="120" y="40" width="18" height="18" rx="3"></rect><rect x="140" y="60" width="18" height="18" rx="3"></rect><rect x="100" y="80" width="18" height="18" rx="3"></rect><rect x="120" y="80" width="18" height="18" rx="3"></rect><rect x="140" y="80" width="18" height="18" rx="3"></rect>
+            <rect x="220" y="100" width="18" height="18" rx="3"></rect><rect x="240" y="100" width="18" height="18" rx="3"></rect><rect x="260" y="100" width="18" height="18" rx="3"></rect>
+            <rect x="60" y="140" width="18" height="18" rx="3" opacity="0.5"></rect><rect x="80" y="140" width="18" height="18" rx="3" opacity="0.5"></rect><rect x="60" y="160" width="18" height="18" rx="3" opacity="0.5"></rect><rect x="80" y="160" width="18" height="18" rx="3" opacity="0.5"></rect>
+          </g>
+        </svg>
+        <div><h3><a href="ref:workflow-example">Life, rewound</a></h3><p>Pause, drag back, press ⤺: it really continues from that frame.</p></div>
+      </li>
+    </ul>
+  </div>
+</section>
+
+<section class="stage" aria-labelledby="stage-title">
+  <div class="wrap stage-inner">
+    <div class="stage-text">
+      <h2 id="stage-title">An IDE that keeps playing.</h2>
+      <p>The sketch and its music keep going while you type. One switch runs and stops them, and tells you how long they&#39;ve been live. F11 puts the visuals on the projector with your code floating on top.</p>
+      <ul class="keys">
+        <li><kbd>Ctrl+Enter</kbd> Hot reload, state kept</li>
+        <li><kbd>Shift+F5</kbd> Stop the sketch and its sound</li>
+        <li><kbd>F3</kbd> Why is it slow? fps, Draw() time, memory</li>
+      </ul>
+      <p><a href="ref:ide">Everything the IDE does</a></p>
+    </div>
+    <figure class="ide-bar">
+      <figcaption class="visually-hidden">The IDE&#39;s Run switch, live and stopped</figcaption>
+      <div class="ide-row"><strong>DanaProcessing</strong><span class="grow"></span><span class="run-switch live"><span class="dot breathe" aria-hidden="true"></span>■ Stop · 1:42</span><span class="run-caret live" aria-hidden="true">▾</span></div>
+      <div class="ide-row"><span class="muted">Stopped, the same switch reads</span><span class="run-switch">▶ Run</span></div>
+    </figure>
+  </div>
+</section>
+
+<section id="support" class="support" aria-labelledby="support-title">
+  <div class="wrap support-inner">
+    <div>
+      <h2 id="support-title">Keep Dana growing.</h2>
+      <p class="lede">DanaProcessing is free and open source, built in spare time. A donation buys more time for new features, examples and fixes.</p>
+      <p>PayPal isn&#39;t available where I live, so donations are received on my behalf by a trusted collaborator, Carlos Fernandez.</p>
+    </div>
+    <div class="support-actions">
+      <a class="btn btn-ink btn-big" href="{{PAYPAL}}"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" fill="#FF8A6B"><path d="M12 21s-7.5-4.6-9.6-9.4C1 8.2 3.1 4.5 6.8 4.5c2.2 0 3.7 1.3 5.2 3 1.5-1.7 3-3 5.2-3 3.7 0 5.8 3.7 4.4 7.1C19.5 16.4 12 21 12 21z"></path></svg>Donate via PayPal</a>
+      <a class="btn btn-line-ink" href="{{GITHUB}}">Star it on GitHub</a>
+    </div>
+  </div>
+</section>
+</main>

@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en" data-root="../">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-N4ZWC7GN1B"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-N4ZWC7GN1B');
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Camera &amp; Projection — DanaProcessing reference</title>
+<meta name="description" content="Two independent matrices: the camera (view — where the eye is and what it&#x27;s looking at) and the projection (perspective vs. orthographic, field of view, clipping planes). Both…">
+<link rel="canonical" href="https://buddhacodes.github.io/DanaProcessing/reference/camera-3d.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="DanaProcessing">
+<meta property="og:title" content="Camera &amp; Projection — DanaProcessing reference">
+<meta property="og:description" content="Two independent matrices: the camera (view — where the eye is and what it&#x27;s looking at) and the projection (perspective vs. orthographic, field of view, clipping planes). Both…">
+<meta property="og:url" content="https://buddhacodes.github.io/DanaProcessing/reference/camera-3d.html">
+<meta property="og:image" content="https://buddhacodes.github.io/DanaProcessing/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://buddhacodes.github.io/DanaProcessing/og-image.png">
+<meta name="theme-color" content="#13202A">
+<link rel="icon" type="image/png" href="../DanaProcessing.Ide/Theme/dana.png">
+<link rel="apple-touch-icon" href="../DanaProcessing.Ide/Theme/dana.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&amp;family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/search-index.js" defer></script>
+<script src="../assets/site.js" defer></script>
+</head>
+<body class="page-topic">
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="bar">
+    <a class="brand" href="../index.html"><svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><circle cx="15" cy="15" r="13" fill="none" stroke="currentColor" stroke-width="2"></circle><circle cx="15" cy="15" r="6" fill="#E7B66B"></circle><circle cx="23" cy="8" r="2.5" fill="#FF8A6B"></circle></svg><span>DanaProcessing</span></a>
+    <button type="button" class="menu-toggle" aria-expanded="false" aria-controls="site-menu">Menu</button>
+    <div class="site-menu" id="site-menu">
+      <nav class="main-nav" aria-label="Main">
+        <a href="../reference/tutorial.html">Learn</a>
+        <a href="../reference/a-z.html" aria-current="page">Reference</a>
+        <a href="../index.html#gallery">Examples</a>
+        <a href="../reference/ide.html">The IDE</a>
+      </nav>
+      <form class="search" role="search" action="../reference/a-z.html">
+        <label class="visually-hidden" for="site-search">Search the documentation</label>
+        <div class="search-box">
+          <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+          <input id="site-search" name="q" type="search" autocomplete="off" placeholder="Search — press /" aria-describedby="search-status" aria-controls="search-results">
+        </div>
+        <p id="search-status" class="visually-hidden" aria-live="polite"></p>
+        <ul id="search-results" class="search-results" hidden></ul>
+      </form>
+      <a class="support-link" href="../index.html#support"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M12 21s-7.5-4.6-9.6-9.4C1 8.2 3.1 4.5 6.8 4.5c2.2 0 3.7 1.3 5.2 3 1.5-1.7 3-3 5.2-3 3.7 0 5.8 3.7 4.4 7.1C19.5 16.4 12 21 12 21z"></path></svg><span>Support Dana</span></a>
+    </div>
+  </div>
+</header>
+<main id="main">
+<div class="topic-hero">
+  <div class="wrap">
+    <div class="topic-hero-text">
+      <nav class="breadcrumb" aria-label="Breadcrumb"><ol><li><a href="a-z.html">Reference</a></li><li>3D</li><li aria-current="page">Camera &amp; Projection</li></ol></nav>
+      <h1>Camera &amp; Projection</h1>
+      <p class="lede">Two independent matrices: the <strong>camera</strong> (view — where the eye is and what it's looking at) and the <strong>projection</strong> (perspective vs. orthographic, field of view, clipping planes). Both start at Processing's own defaults and stay set until changed.</p>
+      <p class="tags"><span class="tag">3D renderer</span></p>
+    </div>
+    <div class="topic-art" aria-hidden="true"><span style="background:#9DB8F2"></span><span></span><span></span><span></span><span></span></div>
+  </div>
+</div>
+<div class="wrap topic-layout">
+  <button type="button" class="topics-toggle" aria-expanded="false" aria-controls="topics">All topics</button>
+<nav class="topics" id="topics" aria-label="Reference topics">
+<div class="topic-group"><h2>Start here</h2><ul>
+<li><a href="intro.html">Overview</a></li>
+<li><a href="tutorial.html">30-minute tutorial</a></li>
+<li><a href="from-processing.html">From Processing / p5.js</a></li>
+</ul></div>
+<div class="topic-group"><h2>Basics</h2><ul>
+<li><a href="structure.html">Sketch structure</a></li>
+<li><a href="input.html">Input &amp; time</a></li>
+</ul></div>
+<div class="topic-group"><h2>Drawing</h2><ul>
+<li><a href="color.html">Color</a></li>
+<li><a href="shape-primitives.html">2D Primitives</a></li>
+<li><a href="shape-custom.html">Custom shapes</a></li>
+<li><a href="typography.html">Typography</a></li>
+<li><a href="transform.html">Transformations</a></li>
+</ul></div>
+<div class="topic-group"><h2>Media</h2><ul>
+<li><a href="image.html">PImage</a></li>
+<li><a href="pgraphics.html">PGraphics</a></li>
+<li><a href="pshape.html">PShape</a></li>
+<li><a href="output.html">Saving output</a></li>
+<li><a href="pixels.html">Pixels</a></li>
+<li><a href="reels.html">Reels</a></li>
+</ul></div>
+<div class="topic-group"><h2>Data &amp; math</h2><ul>
+<li><a href="files-data.html">Files &amp; data</a></li>
+<li><a href="utilities.html">Conversion &amp; utilities</a></li>
+<li><a href="math.html">Math &amp; trig</a></li>
+<li><a href="pvector.html">PVector</a></li>
+<li><a href="random-noise.html">Random &amp; noise</a></li>
+<li><a href="collections.html">Collections</a></li>
+</ul></div>
+<div class="topic-group"><h2>3D</h2><ul>
+<li><a href="getting-started-3d.html">Getting started</a></li>
+<li><a href="shape-3d-primitives.html">3D Primitives</a></li>
+<li><a href="transform-3d.html">3D Transformations</a></li>
+<li><a href="camera-3d.html" aria-current="page">Camera &amp; Projection</a>
+<ul class="on-this-page" aria-label="On this page">
+<li><a href="#camera"><code>Camera</code></a></li>
+<li><a href="#perspective"><code>Perspective</code></a></li>
+<li><a href="#ortho"><code>Ortho</code></a></li>
+<li><a href="#frustum"><code>Frustum</code></a></li>
+<li><a href="#begincamera"><code>BeginCamera · EndCamera</code></a></li>
+<li><a href="#printcamera"><code>PrintCamera · PrintProjection</code></a></li>
+</ul>
+</li>
+<li><a href="lights-3d.html">Lights</a></li>
+<li><a href="material-3d.html">Material properties</a></li>
+<li><a href="coordinates-3d.html">Coordinates</a></li>
+<li><a href="shape-3d-custom.html">Custom 3D shapes</a></li>
+<li><a href="pshader.html">PShader</a></li>
+</ul></div>
+<div class="topic-group"><h2>Sound</h2><ul>
+<li><a href="audio.html">Live loops &amp; timing</a></li>
+</ul></div>
+<div class="topic-group"><h2>Live &amp; generative</h2><ul>
+<li><a href="live.html">Playing live: MIDI, beat, mic</a></li>
+<li><a href="generative.html">Generative art: seeds, print</a></li>
+<li><a href="workflow.html">Day to day: F3, data/, rewind</a></li>
+</ul></div>
+<div class="topic-group"><h2>Tooling</h2><ul>
+<li><a href="ide.html">The IDE</a></li>
+<li><a href="hosting.html">Avalonia host</a></li>
+<li><a href="enums.html">Enumerations</a></li>
+</ul></div>
+<p class="topics-all"><a href="a-z.html">All topics &amp; A–Z index</a></p></nav>
+  <div class="topic-main">
+<details class="on-this-page-mobile"><summary>On this page · 6 entries</summary><ul><li><a href="#camera"><code>Camera</code></a></li><li><a href="#perspective"><code>Perspective</code></a></li><li><a href="#ortho"><code>Ortho</code></a></li><li><a href="#frustum"><code>Frustum</code></a></li><li><a href="#begincamera"><code>BeginCamera · EndCamera</code></a></li><li><a href="#printcamera"><code>PrintCamera · PrintProjection</code></a></li></ul></details>
+<div class="doc">
+<h2 class="entry-title api" id="camera"><code>Camera</code></h2><ul class="sigs" aria-label="Signatures"><li><code>Camera()</code></li><li><code>Camera(eyeX, eyeY, eyeZ, centerX, centerY, centerZ, upX, upY, upZ)</code></li></ul>
+<p class="entry-desc">No-arg resets to Processing's default view — eye pulled back from the canvas center, looking straight at it, +Y up. The 9-argument form positions the eye explicitly, looking at <code class="inline">center</code>, with <code class="inline">up</code> as the up direction.</p>
+
+<h2 class="entry-title api" id="perspective"><code>Perspective</code></h2><ul class="sigs" aria-label="Signatures"><li><code>Perspective()</code></li><li><code>Perspective(fovy, aspect, zNear, zFar)</code></li></ul>
+<p class="entry-desc">No-arg resets to the default perspective projection (60° vertical FOV). The 4-argument form sets an explicit symmetric perspective — <code class="inline">fovy</code> in radians, <code class="inline">aspect</code> = width/height.</p>
+
+<h2 class="entry-title api" id="ortho"><code>Ortho</code></h2><ul class="sigs" aria-label="Signatures"><li><code>Ortho()</code></li><li><code>Ortho(left, right, bottom, top)</code></li><li><code>Ortho(left, right, bottom, top, near, far)</code></li></ul>
+<p class="entry-desc">Orthographic (parallel) projection — objects stay the same size regardless of distance from the camera, useful for isometric-style views. No-arg uses the canvas bounds; the 4-argument form sets the X/Y clipping volume with default near/far planes; the 6-argument form sets everything explicitly.</p>
+
+<h2 class="entry-title api" id="frustum"><code>Frustum</code></h2><ul class="sigs" aria-label="Signatures"><li><code>Frustum(left, right, bottom, top, near, far)</code></li></ul>
+<p class="entry-desc">A general (possibly asymmetric) perspective projection from explicit clipping-plane coordinates — unlike <code class="inline">Perspective()</code>, the planes don't need to be centered on the view axis. <code class="inline">near</code> must be greater than zero, <code class="inline">far</code> greater than <code class="inline">near</code>. Processing gives <code class="inline">frustum()</code> no no-argument form, so neither does this.</p>
+
+<h2 class="entry-title api" id="begincamera"><code>BeginCamera · EndCamera</code></h2><ul class="sigs" aria-label="Signatures"><li><code>BeginCamera()</code></li><li><code>EndCamera()</code></li></ul>
+<p class="entry-desc">Places the camera with <code class="inline">Translate()</code>/<code class="inline">RotateX/Y/Z()</code>/<code class="inline">Scale()</code> — the same calls, composed the same way, you'd use to place any object — between these two. <code class="inline">EndCamera()</code> inverts the result into the actual view matrix once.</p>
+<div class="note"><strong>Call Camera() first.</strong> <code class="inline">BeginCamera()</code> continues from whatever camera state already exists rather than resetting it — start from a known placement with <code class="inline">Camera()</code> (or the 9-argument overload) right before, same idiom as real Processing.</div>
+
+<h2 class="entry-title api" id="printcamera"><code>PrintCamera · PrintProjection</code></h2><ul class="sigs" aria-label="Signatures"><li><code>PrintCamera()</code></li><li><code>PrintProjection()</code></li></ul>
+<p class="entry-desc">Logs the current view or projection matrix to the console — a debugging aid for figuring out what a chain of camera calls actually produced.</p>
+
+</div>
+<nav class="pager" aria-label="Previous and next topic"><a class="prev" href="transform-3d.html"><span>← Previous</span><strong>3D Transformations</strong></a><a class="next" href="lights-3d.html"><span>Next →</span><strong>Lights</strong></a></nav>
+<aside class="support-aside" aria-label="Support the project">
+  <p><strong>Found this useful?</strong> Dana is free and built in spare time — a donation buys more time for docs like this one.</p>
+  <a class="btn btn-ink" href="https://paypal.me/CarlosFernandez934"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M12 21s-7.5-4.6-9.6-9.4C1 8.2 3.1 4.5 6.8 4.5c2.2 0 3.7 1.3 5.2 3 1.5-1.7 3-3 5.2-3 3.7 0 5.8 3.7 4.4 7.1C19.5 16.4 12 21 12 21z"></path></svg><span>Donate via PayPal</span></a>
+</aside>
+
+  </div>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap">
+    <p>DanaProcessing · v1.0 RC · MIT · stands on the shoulders of <a href="https://processing.org">Processing</a>, <a href="https://p5js.org">p5.js</a> and <a href="https://sonic-pi.net">Sonic Pi</a>.</p>
+    <nav aria-label="Footer">
+      <a href="../reference/a-z.html">All topics &amp; A–Z</a>
+      <a href="https://github.com/BuddhaCodes/DanaProcessing/releases/latest">Releases</a>
+      <a href="https://github.com/BuddhaCodes/DanaProcessing">GitHub</a>
+      <a href="../index.html#support">Support</a>
+    </nav>
+  </div>
+</footer>
+</body>
+</html>

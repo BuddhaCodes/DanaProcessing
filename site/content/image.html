@@ -1,0 +1,64 @@
+<!--meta {"title": "PImage", "nav": "PImage", "summary": "A loaded bitmap. Load one with Sketch.LoadImage(path), then draw it with Image().", "tags": []} -->
+<p class="section-intro">A loaded bitmap. Load one with <code class="inline">Sketch.LoadImage(path)</code>, then draw it with <code class="inline">Image()</code>.</p>
+
+<h3 class="entry-title" id="loadimage">LoadImage(<span class="tp">string</span> path) <span class="sig-return">→ PImage</span></h3>
+<p class="entry-desc">Decodes an image file from disk.</p>
+
+<h3 class="entry-title" id="requestimage">RequestImage(<span class="tp">string</span> path) <span class="sig-return">→ PImage</span></h3>
+<p class="entry-desc">Starts loading an image on a background thread and returns immediately. The returned image's <code class="inline">IsLoaded</code> is false (and <code class="inline">Width</code>/<code class="inline">Height</code> read as 0) until the background decode finishes, at which point it silently swaps in the real bitmap — check <code class="inline">IsLoaded</code> in <code class="inline">Draw()</code> before using it, the same way a Processing sketch checks <code class="inline">img.width != 0</code>.</p>
+
+<h3 class="entry-title" id="imagemode">ImageMode(<span class="tp">ShapeAlignMode</span> mode)</h3>
+<p class="entry-desc">Sets how <code class="inline">Image()</code>'s x/y/w/h are interpreted — <code class="inline">Corner</code> by default (x,y is top-left, w,h is size), <code class="inline">Corners</code> (w,h is the opposite corner instead of a size), or <code class="inline">Center</code>.</p>
+
+<h3 class="entry-title" id="loadimage-bytes">LoadImage(<span class="tp">byte[]</span> encodedImage) <span class="sig-return">→ PImage</span></h3>
+<p class="entry-desc">Decodes an image that's already in memory — PNG, JPEG, BMP, GIF, WebP: a webcam frame, a download, a resource. Throws if the bytes aren't an image. When you replace one every frame, <code class="inline">Dispose()</code> the old PImage.</p>
+
+<h3 class="entry-title" id="image-draw">Image(<span class="tp">PImage</span> img, x, y) · Image(img, x, y, w, h)</h3>
+<p class="entry-desc">Draws the bitmap, respecting the current <code class="inline">Tint()</code> and <code class="inline">ImageMode()</code>.</p>
+
+<h3 class="entry-title" id="mask">img.Mask(<span class="tp">PImage</span> maskImage)</h3>
+<p class="entry-desc">Applies another image as an alpha mask, in place.</p>
+
+<h3 class="entry-title" id="image-example">Runnable example</h3>
+<p class="entry-desc">A complete sketch using this section. <strong>Test in Dana</strong> opens it in the IDE, or paste it into a new tab and press Run.</p>
+<div class="code-block">
+  <pre id="image-example-code"><span class="cm">// PImage: Image() draws it, Tint() colors it. LoadImage("photo.png") loads a file</span>
+<span class="cm">// next to your sketch; this example makes its image in code so it runs anywhere.</span>
+<span class="kw">public</span> <span class="kw">class</span> Images : <span class="tp">Sketch</span>
+{
+    <span class="tp">PImage</span> tile;
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup()
+    {
+        Size(<span class="str">600</span>, <span class="str">300</span>);
+        <span class="kw">var</span> pg = CreateGraphics(<span class="str">100</span>, <span class="str">100</span>);
+        pg.BeginDraw();
+        pg.Background(<span class="str">255</span>);
+        pg.NoStroke();
+        pg.Fill(<span class="str">255</span>, <span class="str">120</span>, <span class="str">80</span>); pg.Circle(<span class="str">50</span>, <span class="str">50</span>, <span class="str">70</span>);
+        pg.Fill(<span class="str">40</span>);           pg.Circle(<span class="str">50</span>, <span class="str">50</span>, <span class="str">20</span>);
+        pg.EndDraw();
+        tile = pg.Get();
+        pg.Dispose();
+    }
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        Background(<span class="str">30</span>);
+        <span class="kw">for</span> (<span class="kw">int</span> i = <span class="str">0</span>; i &lt; <span class="str">5</span>; i++)
+        {
+Tint(<span class="str">255</span>, <span class="str">255</span> - i * <span class="str">40</span>, <span class="str">120</span> + i * <span class="str">30</span>);
+Image(tile, <span class="str">20</span> + i * <span class="str">115</span>, <span class="str">40</span>, <span class="str">100</span>, <span class="str">100</span>);
+        }
+        NoTint();
+        <span class="kw">float</span> size = Map(MouseX, <span class="str">0</span>, Width, <span class="str">40</span>, <span class="str">200</span>);
+        ImageMode(<span class="tp">ShapeAlignMode</span>.Center);
+        Image(tile, MouseX, <span class="str">220</span>, size, size * <span class="str">0.6f</span>);
+        ImageMode(<span class="tp">ShapeAlignMode</span>.Corner);
+    }
+}</pre>
+  <button class="dana-test-btn" data-target="image-example-code" title="Run in DanaProcessing IDE">
+    <i class="ph-bold ph-play"></i>
+    <span class="dana-test-label">Test in Dana</span>
+  </button>
+</div>
