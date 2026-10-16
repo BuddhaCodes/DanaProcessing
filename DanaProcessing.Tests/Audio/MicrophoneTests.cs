@@ -165,4 +165,22 @@ public class MicrophoneTests : IDisposable
         Assert.Equal(0f, s.Amplitude);
         Assert.Contains("no device", s.MicStatus);
     }
+
+    [Fact]
+    public void Nothing_from_an_earlier_session_leaks_into_a_new_one()
+    {
+        // A session that heard a loud tone...
+        var loud = new Listener();
+        Offscreen.Run(loud, 1);
+        Assert.True(loud.MicLevel > 0.3f);
+        loud.RaiseStopped();                          // the sketch stops: the microphone closes
+        Assert.Equal(0, Microphone.Listeners);
+        Assert.Equal(0f, Microphone.Analyzer.Amplitude); // closed means silent, not frozen on the last sound
+
+        // ...then a sketch whose microphone can't open reads silence, not the old tone.
+        Microphone.Factory = () => throw new InvalidOperationException("no device");
+        var next = new Listener();
+        Offscreen.Run(next, 1);
+        Assert.Equal(0f, next.Amplitude);
+    }
 }

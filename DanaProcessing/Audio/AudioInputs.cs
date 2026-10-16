@@ -404,6 +404,9 @@ namespace DanaProcessing.Audio
                 if (_input != null || _listeners > 1)
                     return;
 
+                // Silence first: whether the microphone opens or not, nothing
+                // from a previous session may leak into Amplitude/Spectrum.
+                Analyzer.Reset();
                 IAudioInput? input = null;
                 try
                 {
@@ -414,7 +417,6 @@ namespace DanaProcessing.Audio
                         AudioEngine.Report(_status);
                         return;
                     }
-                    Analyzer.Reset(); // nothing stale from a previous session
                     Analyzer.SampleRate = input.SampleRate;
                     input.Start(OnSamples);
                     _input = input;
@@ -445,6 +447,8 @@ namespace DanaProcessing.Audio
                 }
             }
             try { toClose?.Dispose(); } catch (Exception ex) { DanaLogger.ErrorFromException(ex, "Cerrando el micrófono"); }
+            if (toClose != null)
+                Analyzer.Reset(); // closed: MicLevel goes back to 0 instead of freezing on the last sound
         }
 
         [ThreadStatic] private static float[]? _gained;
