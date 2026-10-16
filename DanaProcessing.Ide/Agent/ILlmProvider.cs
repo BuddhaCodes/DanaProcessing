@@ -22,7 +22,7 @@ namespace DanaProcessing.Ide.Agent
     /// <summary>The result of actually running one AgentToolCall, always as
     /// plain text (an error message counts as a valid result -- see
     /// AgentTools.ExecuteAsync's own remarks on why a tool never throws out).</summary>
-    public sealed record AgentToolResult(string ToolCallId, string ResultText);
+    public sealed record AgentToolResult(string ToolCallId, string ResultText, byte[]? ImageJpeg = null);
 
     /// <summary>One message in the conversation. Exactly one of (Text,
     /// ToolCalls) is meaningful for an Assistant message; ToolResults is only

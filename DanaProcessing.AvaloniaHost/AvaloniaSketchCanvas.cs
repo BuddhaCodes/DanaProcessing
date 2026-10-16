@@ -171,7 +171,7 @@ namespace DanaProcessing.AvaloniaHost
                 // minimized IDE (or an exported standalone sketch) doesn't
                 // keep a heavy sketch running at full tilt in the background.
                 var isMinimized = TopLevel.GetTopLevel(this) is Window { WindowState: WindowState.Minimized };
-                if ((_sketch.IsLooping || _crashed) && IsEffectivelyVisible && !isMinimized && !IsPaused)
+                if ((_sketch.IsLooping || _crashed) && IsEffectivelyVisible && !isMinimized && !IsPaused && !_frozen)
                     InvalidateVisual();
             };
             _timer.Start();
@@ -191,15 +191,25 @@ namespace DanaProcessing.AvaloniaHost
         {
             lock (_sketchLock)
             {
+                if (!ReferenceEquals(_sketch, newSketch))
+                    StopQuietly(_sketch); // the old sketch is gone for good: let it close its devices
+
                 _sketch.SizeChanged -= OnSketchSizeChanged;
                 _sketch = newSketch;
                 _sketch.SizeChanged += OnSketchSizeChanged;
+                _sketch.IgnoresAudio = !_connectsAudio;
 
                 _didSetup = false;
                 _crashed = false;
                 _crashException = null;
                 _crashContext = "";
                 _lastKnownFrameRate = -1; // forces the timer interval to resync on the next tick
+
+                // A new Run starts a new timeline: nothing to rewind into yet.
+                _history.Clear();
+                _historyIndex = -1;
+                _frozen = false;
+                _stepOnce = false;
             }
 
             // The old sketch's size no longer applies. Ask for a fresh layout
@@ -232,6 +242,7 @@ namespace DanaProcessing.AvaloniaHost
                 _sketch.SizeChanged -= OnSketchSizeChanged;
                 _sketch = newSketch;
                 _sketch.SizeChanged += OnSketchSizeChanged;
+                _sketch.IgnoresAudio = !_connectsAudio;
 
                 _crashed = false;
                 _crashException = null;
@@ -248,7 +259,8 @@ namespace DanaProcessing.AvaloniaHost
 
                 // Same hand-over as after Setup(): running loops switch to the
                 // new instance's code on their next pass, in time.
-                DanaProcessing.Audio.AudioEngine.ActivateSketch(_sketch);
+                if (ConnectsAudio)
+                    DanaProcessing.Audio.AudioEngine.ActivateSketch(_sketch);
 
                 return plan;
             }
@@ -280,7 +292,8 @@ namespace DanaProcessing.AvaloniaHost
             // playing, pick up this sketch's code on their next pass) only
             // once Setup() has had its say -- it may set Bpm or load samples.
             if (!_crashed)
-                DanaProcessing.Audio.AudioEngine.ActivateSketch(_sketch);
+                if (ConnectsAudio)
+                    DanaProcessing.Audio.AudioEngine.ActivateSketch(_sketch);
 
             // Notify even if Setup() never called Size() itself (i.e. it kept
             // the 600x400 default) — listeners still need to learn the final
@@ -326,8 +339,33 @@ namespace DanaProcessing.AvaloniaHost
         /// as the frame gives the same guarantee: an event waits for the
         /// current Draw() to finish and never runs in the middle of one.
         /// </summary>
+        /// <summary>
+        /// Tells the running sketch it's done (its OnStop() runs once). For a
+        /// host that's going away -- a closing window, the IDE shutting down.
+        /// </summary>
+        public void StopSketch()
+        {
+            lock (_sketchLock)
+                StopQuietly(_sketch);
+        }
+
+        private static void StopQuietly(Sketch sketch)
+        {
+            try
+            {
+                sketch.RaiseStopped();
+            }
+            catch (Exception ex)
+            {
+                // A sketch failing to clean up must never block the next Run.
+                DanaLogger.ErrorFromException(ex, "Error en OnStop()");
+            }
+        }
+
         private void RunInput(Action userCode, string context)
         {
+            if (_frozen)
+                return; // rewound: what's on screen isn't the sketch's real state, so don't feed it input
             lock (_sketchLock)
                 RunSafely(userCode, context);
         }
@@ -355,6 +393,7 @@ namespace DanaProcessing.AvaloniaHost
             var pos = e.GetPosition(this);
             _sketch.MouseX = (float)pos.X;
             _sketch.MouseY = (float)pos.Y;
+            _inputRecorder?.Move(_sketch.MouseX, _sketch.MouseY);
 
             RunInput(_sketch.RaiseMouseMoved, "MouseMoved/MouseDragged");
         }
@@ -364,12 +403,14 @@ namespace DanaProcessing.AvaloniaHost
             Focus(); // click-to-focus, like a canvas in a web page
 
             var button = MapButton(e.GetCurrentPoint(this).Properties);
+            _inputRecorder?.Down(_sketch.MouseX, _sketch.MouseY);
             RunInput(() => _sketch.RaiseMousePressed(button), "MousePressed");
         }
 
         private void OnPointerReleased(object? sender, PointerReleasedEventArgs e)
         {
             var button = MapButton(e.InitialPressMouseButton);
+            _inputRecorder?.Up(_sketch.MouseX, _sketch.MouseY);
             RunInput(() => _sketch.RaiseMouseReleased(button), "MouseReleased");
 
             // Processing fires mouseClicked() right after mouseReleased() for
@@ -412,6 +453,8 @@ namespace DanaProcessing.AvaloniaHost
         {
             _sketch.IsKeyPressed = true;
             SetSketchKeyFrom(e.Key);
+            if (_inputRecorder != null && _sketch.Key != '\0')
+                _inputRecorder.Key(_sketch.Key == ' ' ? "space" : _sketch.Key.ToString());
             RunInput(_sketch.KeyPressed, "KeyPressed");
         }
 
@@ -436,6 +479,236 @@ namespace DanaProcessing.AvaloniaHost
                 _sketch.Key = '-';
             else
                 _sketch.Key = '\0';
+        }
+
+        /// <summary>
+        /// The running sketch's [Tweak] values (see Sketch.GetTweakValues) --
+        /// what the IDE's "Apply tweaks to code" writes back into the source.
+        /// Read under the same lock Draw() and input run under, so a slider
+        /// mid-drag can't hand back a half-written Color.
+        /// </summary>
+        public IReadOnlyList<TweakValue> ReadTweakValues()
+        {
+            lock (_sketchLock)
+                return _sketch.GetTweakValues();
+        }
+
+        // =====================================================================
+        // Rewind -- see FrameHistory. Freeze() stops running the sketch and
+        // shows recorded frames instead; StepBack/StepForward/ScrubTo move
+        // through them; StepForward on the newest frame runs exactly one real
+        // Draw(). Purely visual: the sketch's own state is never rolled back.
+        // =====================================================================
+
+        private readonly FrameHistory _history = new();
+        private volatile bool _frozen;
+        private volatile bool _stepOnce;
+        private volatile int _historyIndex = -1;
+
+        /// <summary>Keep the last frames for rewinding (on by default; ~128 MB at most). Turning it off doesn't clear what's already there.</summary>
+        public bool RecordHistory { get; set; } = true;
+
+        /// <summary>True while rewound/paused on a recorded frame.</summary>
+        public bool IsFrozen => _frozen;
+
+        /// <summary>How many frames are recorded right now.</summary>
+        public int HistoryCount => _history.Count;
+
+        /// <summary>Which recorded frame is on screen while frozen (0 = oldest).</summary>
+        public int HistoryIndex => _historyIndex;
+
+        /// <summary>The sketch's FrameCount for the recorded frame at <paramref name="index"/>, or -1.</summary>
+        public int HistoryFrameCount(int index) => _history.FrameCountAt(index);
+
+        /// <summary>Raised (on the UI thread) when frozen/resumed or the shown frame changes.</summary>
+        public event Action? HistoryChanged;
+
+        public void Freeze()
+        {
+            if (_frozen)
+                return;
+            _historyIndex = _history.Count - 1;
+            _frozen = true;
+            RaiseHistoryChanged();
+            InvalidateVisual();
+        }
+
+        public void Resume()
+        {
+            if (!_frozen)
+                return;
+            _frozen = false;
+            _stepOnce = false;
+            RaiseHistoryChanged();
+            InvalidateVisual();
+        }
+
+        public void ScrubTo(int index)
+        {
+            Freeze();
+            _historyIndex = Math.Clamp(index, 0, Math.Max(0, _history.Count - 1));
+            RaiseHistoryChanged();
+            InvalidateVisual();
+        }
+
+        public void StepBack()
+        {
+            Freeze();
+            if (_historyIndex > 0)
+                _historyIndex--;
+            RaiseHistoryChanged();
+            InvalidateVisual();
+        }
+
+        public void StepForward()
+        {
+            Freeze();
+            if (_historyIndex < _history.Count - 1)
+                _historyIndex++;
+            else
+                _stepOnce = true; // newest frame already: run one real frame
+            RaiseHistoryChanged();
+            InvalidateVisual();
+        }
+
+        private void RaiseHistoryChanged() =>
+            Dispatcher.UIThread.Post(() => HistoryChanged?.Invoke());
+
+        private void DrawFrozenFrame(SKCanvas leasedCanvas, double scaling)
+        {
+            var sampling = new SKSamplingOptions(SKFilterMode.Linear, SKMipmapMode.Linear);
+            leasedCanvas.Save();
+            var shown = _history.Get(_historyIndex);
+            if (shown != null)
+            {
+                leasedCanvas.Scale((float)scaling); // history is stored at logical size
+                leasedCanvas.DrawImage(shown, 0, 0, sampling);
+            }
+            else if (_offscreenSurface != null)
+            {
+                // Nothing recorded (RecordHistory off): hold the last real frame.
+                leasedCanvas.Scale((float)(scaling / Math.Max(1, _offscreenScale)));
+                using var snapshot = _offscreenSurface.Snapshot();
+                leasedCanvas.DrawImage(snapshot, 0, 0, sampling);
+            }
+            leasedCanvas.Restore();
+        }
+
+        /// <summary>The finished frame at the sketch's logical size, for FrameHistory.</summary>
+        private SKImage? SnapshotLogical(SKSurface surface, int width, int height)
+        {
+            if (width <= 0 || height <= 0)
+                return null;
+            try
+            {
+                using var full = surface.Snapshot();
+                using var small = SKSurface.Create(new SKImageInfo(width, height, SKColorType.Rgba8888, SKAlphaType.Premul));
+                if (small == null)
+                    return null;
+                small.Canvas.Scale(1f / Math.Max(1, _offscreenScale));
+                small.Canvas.DrawImage(full, 0, 0, new SKSamplingOptions(SKFilterMode.Linear, SKMipmapMode.Linear));
+                small.Canvas.Flush();
+                return small.Snapshot();
+            }
+            catch (Exception ex)
+            {
+                DanaLogger.ErrorFromException(ex, "FrameHistory");
+                RecordHistory = false; // don't spam the log every frame
+                return null;
+            }
+        }
+
+        // =====================================================================
+        // Recording your interaction for a reel -- see ReelInputRecorder. The
+        // pointer/key handlers above feed it while it exists.
+        // =====================================================================
+
+        private DanaProcessing.Reels.ReelInputRecorder? _inputRecorder;
+
+        public bool IsRecordingInput => _inputRecorder?.IsRecording == true;
+
+        /// <summary>Starts recording mouse paths, clicks, drags and keys over the sketch; time 0 is now.</summary>
+        public void StartRecordingInput()
+        {
+            var recorder = new DanaProcessing.Reels.ReelInputRecorder();
+            recorder.Start();
+            _inputRecorder = recorder;
+        }
+
+        /// <summary>Stops recording and returns what was recorded (empty if nothing was being recorded).</summary>
+        public IReadOnlyList<DanaProcessing.Reels.RecordedInput> StopRecordingInput()
+        {
+            var recorder = _inputRecorder;
+            _inputRecorder = null;
+            return recorder?.Stop() ?? (IReadOnlyList<DanaProcessing.Reels.RecordedInput>)Array.Empty<DanaProcessing.Reels.RecordedInput>();
+        }
+
+        private bool _connectsAudio = true;
+
+        /// <summary>
+        /// Whether this canvas's sketch takes part in the shared audio engine
+        /// (live loops, OnNote()). True for the IDE's canvas and exported apps;
+        /// false for a side preview (the Examples window), which must never take
+        /// over the live loops or the OnNote() events of the sketch that's really
+        /// running. Applies to the current sketch and every one loaded after.
+        /// </summary>
+        public bool ConnectsAudio
+        {
+            get => _connectsAudio;
+            set
+            {
+                _connectsAudio = value;
+                lock (_sketchLock)
+                    _sketch.IgnoresAudio = !value;
+            }
+        }
+
+        private TaskCompletionSource<byte[]?>? _pendingCapture;
+        private volatile int _pendingCaptureMaxSize = 768;
+
+        /// <summary>
+        /// The next finished frame as a JPEG, scaled down so its longest side is
+        /// at most <paramref name="maxSize"/> -- what the IDE agent's
+        /// look_at_canvas tool sends the model. Completes on the render thread
+        /// right after that frame is drawn; completes with null if the frame
+        /// couldn't be encoded. Callers should still time out: nothing is
+        /// rendered while the canvas isn't visible.
+        /// </summary>
+        public Task<byte[]?> CaptureFrameAsync(int maxSize = 768)
+        {
+            var tcs = new TaskCompletionSource<byte[]?>(TaskCreationOptions.RunContinuationsAsynchronously);
+            _pendingCaptureMaxSize = Math.Max(64, maxSize);
+            Interlocked.Exchange(ref _pendingCapture, tcs)?.TrySetResult(null);
+            Dispatcher.UIThread.Post(InvalidateVisual); // make sure one more frame actually comes
+            return tcs.Task;
+        }
+
+        private static byte[]? EncodeCapture(SKSurface? surface, int maxSize)
+        {
+            if (surface == null)
+                return null;
+            try
+            {
+                using var full = surface.Snapshot();
+                float scale = Math.Min(1f, maxSize / (float)Math.Max(full.Width, full.Height));
+                int w = Math.Max(1, (int)(full.Width * scale));
+                int h = Math.Max(1, (int)(full.Height * scale));
+
+                using var small = SKSurface.Create(new SKImageInfo(w, h, SKColorType.Rgba8888, SKAlphaType.Premul));
+                small.Canvas.Clear(SKColors.Black); // JPEG has no alpha: transparent areas read as black, like on screen
+                small.Canvas.Scale(scale);
+                small.Canvas.DrawImage(full, 0, 0, new SKSamplingOptions(SKFilterMode.Linear, SKMipmapMode.Linear));
+                small.Canvas.Flush();
+
+                using var image = small.Snapshot();
+                using var data = image.Encode(SKEncodedImageFormat.Jpeg, 85);
+                return data?.ToArray();
+            }
+            catch (Exception ex)
+            {
+                DanaLogger.ErrorFromException(ex, "CaptureFrameAsync");
+                return null;
+            }
         }
 
         public override void Render(DrawingContext context)
@@ -499,6 +772,18 @@ namespace DanaProcessing.AvaloniaHost
             if (_offscreenSurface == null)
                 return; // sketch size not yet valid — nothing to draw
 
+            // Frozen (rewind): don't run the sketch at all, just show the frame
+            // the user scrubbed to. A StepForward() past the newest frame sets
+            // _stepOnce, which lets exactly one real frame through below.
+            if (_frozen && !_stepOnce)
+            {
+                DrawFrozenFrame(leasedCanvas, scaling);
+                var frozenCapture = Interlocked.Exchange(ref _pendingCapture, null);
+                frozenCapture?.TrySetResult(EncodeCapture(_offscreenSurface, _pendingCaptureMaxSize));
+                return;
+            }
+            _stepOnce = false;
+
             var offscreenCanvas = _offscreenSurface.Canvas;
 
             // IMPORTANT: unlike the leased canvas (fresh matrix every frame),
@@ -551,6 +836,27 @@ namespace DanaProcessing.AvaloniaHost
 
             offscreenCanvas.Restore();
             offscreenCanvas.Flush();
+
+            // A pending CaptureFrameAsync() is served here, on the render
+            // thread, right after a finished frame -- never from the UI thread,
+            // which could otherwise read _offscreenSurface mid-Draw() or while
+            // EnsureOffscreenSurface() is replacing it.
+            var capture = Interlocked.Exchange(ref _pendingCapture, null);
+            if (capture != null)
+                capture.TrySetResult(EncodeCapture(_offscreenSurface, _pendingCaptureMaxSize));
+
+            if (RecordHistory && !_crashed)
+            {
+                var frame = SnapshotLogical(_offscreenSurface, _sketch.Width, _sketch.Height);
+                if (frame != null)
+                    _history.Push(frame, _sketch.FrameCount);
+                if (_frozen)
+                {
+                    // That was a single step: show it, and stay frozen on it.
+                    _historyIndex = _history.Count - 1;
+                    RaiseHistoryChanged();
+                }
+            }
 
             // Blit the finished offscreen frame onto the real, leased canvas,
             // applying the DPI scale AND undoing the supersampling upscale

@@ -198,7 +198,19 @@ namespace DanaProcessing
         /// <summary>Stops every live loop and silences all sound.</summary>
         public void StopAudio() => AudioEngine.StopEverything();
 
+        /// <summary>
+        /// True for a sketch that only looks along -- the Examples window's live
+        /// preview -- so it never takes OnNote() events (one shared queue) away
+        /// from the sketch actually running in the IDE. Set by the host.
+        /// Phrased as "ignores" so the default (false) needs no initializer:
+        /// sketches created without running constructors still get OnNote().
+        /// </summary>
+        internal bool IgnoresAudio { get; set; }
+
         internal void DispatchAudioEvents()
-            => AudioEngine.SharedIfCreated?.DispatchAudibleNotes(_onNoteHandler ??= OnNote);
+        {
+            if (!IgnoresAudio)
+                AudioEngine.SharedIfCreated?.DispatchAudibleNotes(_onNoteHandler ??= OnNote);
+        }
     }
 }

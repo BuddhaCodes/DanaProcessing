@@ -84,11 +84,51 @@ Status labels: **Idea** (scoped, not started) · **In progress** · **Shipped**.
 
 ---
 
+## 6. Tweak mode — In progress
+
+**The pitch.** Processing had a "Tweak mode"; DanaProcessing can go further because hot reload already keeps state. Mark a field with `[Tweak(0, 10)]` and a slider panel appears over the running sketch: drag it and the value changes live, no recompile, no restart. It's the fastest possible loop for tuning a generative piece, and it looks great in a Reel.
+
+**First cut — written, not yet compiled.** Code in `TweakAttribute.cs`, `TweakPanel.cs`, `Sketch.Tweak.cs`, hooks in `Sketch.RenderFrame()` and the `Raise*` mouse methods, tests in `TweakTests.cs`, sample "Tweak mode: live sliders with [Tweak]", docs entry `#tweak`. Scope: `[Tweak]` on `float`/`int`/`bool`/`Color` fields of the sketch; an overlay panel drawn by the engine after `Draw()` (click its header to fold it, `HideTweaks()`/`ShowTweaks()` from code), handling the mouse before the sketch sees it so dragging a slider doesn't also paint on the canvas. Values live in the sketch's own fields, so ⚡ Hot Reload keeps them for free.
+
+**Second step — written, not yet compiled: back into the code.** *Sketch → Apply tweaks to code* writes the moved values into the fields' initializers (`TweakSourceRewriter` in the IDE, Roslyn-based, tests in `TweakSourceRewriterTests.cs`). Only sliders you actually moved count (the panel tracks them, across hot reloads too), and an initializer that already evaluates to the running value is left as written — so `1.5708f` never turns into `1.571f` and `MathF.PI / 2` survives untouched. One document update: a single Ctrl+Z undoes it.
+
+**Next.** Drag numbers straight in the editor (Roslyn knows where each literal is), no `[Tweak]` needed; remember panel position per sketch.
+
+---
+
+## 7. Ideas backlog, first pass — written, not yet compiled
+
+Everything here was written against the real code and APIs (checked in their sources), syntax-checked, but **not compiled or run** — the environment it was written in had no .NET SDK or NuGet access. Build, run the tests, then try each by hand.
+
+- **An agent that sees the canvas.** New `look_at_canvas` tool: the canvas encodes its next finished frame as a JPEG (max 768 px) on the render thread (`AvaloniaSketchCanvas.CaptureFrameAsync`); Anthropic gets it as an image block inside the tool_result, OpenAI (text-only tool messages) as a user message right after. The system prompt now asks the agent to look before calling anything visual done.
+- **Rewind.** `FrameHistory` keeps the last frames at logical size (128 MB budget, up to 600 frames); the canvas can `Freeze()`/`StepBack()`/`StepForward()`/`ScrubTo()` — frozen means the sketch doesn't run, and stepping forward from the newest frame runs exactly one real `Draw()`. `TimelineBar` under the canvas drives it. Visual only: the sketch's state isn't rolled back (re-running from an earlier frame would need state snapshots — next step).
+- **`OnStop()`** (Processing's `dispose()`): called once when a sketch stops for good (another Run, its window closing), never on Hot Reload. Devices opened by a sketch used to stay busy until the IDE closed.
+- **`// nuget:` now loads `runtimes/`.** The resolver extracts `runtimes/<rid>/lib/<tfm>` (replacing lib/ stubs, e.g. System.IO.Ports) and `runtimes/<rid>/native` (most specific RID first); `SketchCompiler` resolves native libraries from there via `ResolvingUnmanagedDll` (and PATH on Windows); exports copy them next to the executable. Cache marker bumped to `.complete-v2` so old cached packages re-extract once. Not handled yet: `runtime.json`-style native packages (Linux/macOS native part of System.IO.Ports).
+- **Physical world samples:** Arduino over serial (System.IO.Ports), webcam with slit-scan (FlashCap + new `LoadImage(byte[])`), MIDI out bouncing notes (NAudio). New sample tag *Hardware*.
+- **Live shaders:** `Shade(sksl)` / `PShader2D` on SkiaSharp's `SKRuntimeEffect` — Shadertoy-style uniforms (iTime, iResolution, iMouse, iFrame, iAmplitude, iSpectrum[]), 2D renderer, every OS, cached by source so Hot Reload swaps shaders live; a compile error keeps the last good shader and shows the message. Sample "Live shaders: a plasma that hears the beat".
+- New samples live in `SketchSamples.Extras.cs`; `SketchSamples.All` concatenates.
+- **Record your interaction for a reel.** *Sketch → Record interaction for the reel* records mouse paths, clicks, drags and keys over the running sketch (`ReelInputRecorder`, up to 30 s) and, on stop, writes them as `// @reel move/drag/click/key` markers at the top of the tab -- the reel's result part replays what you actually did. Round-trip tested through `ReelScript.Parse`.
+- **Guided challenges — postponed.** A first cut (offscreen checks over what the sketch draws) was written and taken out to revisit later.
+- **Live preview in Examples.** Selecting a sample compiles it off the UI thread and runs it scaled in the details pane (`SamplePreview`); samples with sound, `// nuget:` or 3D show a note instead, so browsing never plays music, downloads or creates GL contexts. (This replaces "animated thumbnails": one live preview instead of 60 tiny ones.)
+- **Web export — dropped.** A web player (Avalonia.Browser + WebAssembly, loading the IDE-compiled sketch DLL) was written and then removed by decision: not pursuing browser export for now.
+
+---
+
 ## Other directions worth a line, not yet scoped
 
 Came up while thinking through the initiatives above but aren't fleshed out — flagging so they don't get lost, not committing to them:
 
 - **A sketch-sharing gallery**, OpenProcessing-style, even as something as light as a GitHub-backed community samples browser inside the IDE.
+- **Rewind / time scrubbing.** `VirtualMillis` already makes the clock controllable; a ring buffer of the last N frames would let you pause, scrub back, step frame by frame and "re-run from frame 300 with this change". A debugger for creative coding.
+- **Live shader sketches (Shadertoy-style).** A sketch kind that's just a fragment shader, with `time`, `mouse`, resolution and the **audio spectrum** (as a texture) wired up automatically, recompiled on save. Ties the sound engine to the GPU.
+- **An agent that can see the canvas.** The IDE agent already knows the API; give it a rendered frame of the running sketch (the Reels pipeline already renders offscreen) so it can act on "make it feel like a sunset" or "why is nothing showing up?" and check its own result.
+- **Web export (WebAssembly).** Today a sketch exports as a desktop executable; a link that opens in the browser (SkiaSharp runs on WASM) is what would make the sharing gallery above really work. Hard, but the biggest lever for spreading the project.
+- **Record a session as a Reel.** A record button that captures your real keystrokes plus the canvas while you code, exported as a Reel/MP4 — the YouTube videos make themselves.
+- **Guided challenges**, Coding Train "Coding Challenge"-style: the IDE sets a goal and checks whether the sketch meets it. For the educational side and the YouTube series.
+- **Webcam capture.** No video input exists yet — a real gap vs. Processing's Video library. Combined with TensorSharp/ONNX it opens hand/face tracking from one `// nuget:` line.
+- **Ableton Link + MIDI out.** Sync `[LiveLoop]`s to other musicians' tempo and drive external synths — makes the sound engine a live-performance tool.
+- **Serial / Arduino** with a tiny API (`Serial.Read()`), the Processing classic for installations.
+- **Small ones:** animated thumbnails in the Samples window (rendered with the Reels code).
 
 ---
 

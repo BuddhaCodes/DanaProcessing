@@ -118,6 +118,7 @@ namespace DanaProcessing.Ide.Agent
                         break;
 
                     case AgentRole.ToolResult:
+                        var images = new List<byte[]>();
                         foreach (var result in message.ToolResults ?? Array.Empty<AgentToolResult>())
                         {
                             yield return new JsonObject
@@ -126,6 +127,28 @@ namespace DanaProcessing.Ide.Agent
                                 ["tool_call_id"] = result.ToolCallId,
                                 ["content"] = result.ResultText,
                             };
+                            if (result.ImageJpeg is { Length: > 0 } jpeg)
+                                images.Add(jpeg);
+                        }
+
+                        // Chat Completions only takes text in "tool" messages, so a
+                        // look_at_canvas capture follows as a user message right after
+                        // every tool reply of this turn (they must stay contiguous).
+                        if (images.Count > 0)
+                        {
+                            var parts = new JsonArray
+                            {
+                                new JsonObject { ["type"] = "text", ["text"] = "Captura del canvas pedida con look_at_canvas:" },
+                            };
+                            foreach (var jpeg in images)
+                            {
+                                parts.Add(new JsonObject
+                                {
+                                    ["type"] = "image_url",
+                                    ["image_url"] = new JsonObject { ["url"] = "data:image/jpeg;base64," + Convert.ToBase64String(jpeg) },
+                                });
+                            }
+                            yield return new JsonObject { ["role"] = "user", ["content"] = parts };
                         }
                         break;
                 }

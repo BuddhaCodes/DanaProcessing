@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Runtime.Loader;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -85,8 +86,14 @@ namespace DanaProcessing.Ide.Compilation
         // the remark on SetNuGetAssemblies below for the one consequence of that.
         private static readonly Dictionary<string, string> NuGetAssemblyPaths = new(StringComparer.OrdinalIgnoreCase);
 
+        // Folders holding the native libraries of the current `// nuget:`
+        // packages (runtimes/<rid>/native, see NuGetPackageResolver), probed by
+        // ResolveNative when a package's [DllImport] isn't found the normal way.
+        private static readonly List<string> NativeDirectories = new();
+
         static SketchCompiler()
         {
+            AssemblyLoadContext.Default.ResolvingUnmanagedDll += (_, libraryName) => ResolveNative(libraryName);
             AssemblyLoadContext.Default.Resolving += (context, name) =>
             {
                 if (name.Name != null && NuGetAssemblyPaths.TryGetValue(name.Name, out var path))
@@ -116,9 +123,71 @@ namespace DanaProcessing.Ide.Compilation
         public static void SetNuGetAssemblies(IEnumerable<ResolvedNuGetPackage> packages)
         {
             NuGetAssemblyPaths.Clear();
+            var nativeDirs = new List<string>();
             foreach (var package in packages)
+            {
                 foreach (var path in package.AssemblyPaths)
                     NuGetAssemblyPaths[Path.GetFileNameWithoutExtension(path)] = path;
+                if (package.NativeDirectory != null)
+                    nativeDirs.Add(package.NativeDirectory);
+            }
+
+            lock (NativeDirectories)
+            {
+                // Additive on purpose: a native library already loaded stays loaded
+                // for the whole session anyway (same caveat as managed ones above).
+                foreach (var dir in nativeDirs)
+                    if (!NativeDirectories.Contains(dir, StringComparer.OrdinalIgnoreCase))
+                        NativeDirectories.Add(dir);
+            }
+
+            // Windows resolves a native DLL's OWN native dependencies through PATH,
+            // not through ResolvingUnmanagedDll -- e.g. OpenCV's extra DLLs.
+            if (OperatingSystem.IsWindows() && nativeDirs.Count > 0)
+            {
+                var path = Environment.GetEnvironmentVariable("PATH") ?? "";
+                foreach (var dir in nativeDirs)
+                    if (!path.Split(Path.PathSeparator).Contains(dir, StringComparer.OrdinalIgnoreCase))
+                        path = dir + Path.PathSeparator + path;
+                Environment.SetEnvironmentVariable("PATH", path);
+            }
+        }
+
+        /// <summary>Finds a package's native library by the name its [DllImport] uses ("onnxruntime", "libSkiaSharp", "e_sqlite3"...).</summary>
+        private static IntPtr ResolveNative(string libraryName)
+        {
+            string[] dirs;
+            lock (NativeDirectories)
+                dirs = NativeDirectories.ToArray();
+
+            foreach (var dir in dirs)
+            {
+                foreach (var candidate in NativeFileNames(libraryName))
+                {
+                    var path = Path.Combine(dir, candidate);
+                    if (File.Exists(path) && NativeLibrary.TryLoad(path, out var handle))
+                        return handle;
+                }
+            }
+            return IntPtr.Zero;
+        }
+
+        private static IEnumerable<string> NativeFileNames(string libraryName)
+        {
+            string file = Path.GetFileName(libraryName);
+            yield return file;
+            if (OperatingSystem.IsWindows())
+            {
+                if (!file.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
+                    yield return file + ".dll";
+                yield break;
+            }
+
+            string ext = OperatingSystem.IsMacOS() ? ".dylib" : ".so";
+            string withLib = file.StartsWith("lib", StringComparison.Ordinal) ? file : "lib" + file;
+            yield return file + ext;
+            yield return withLib + ext;
+            yield return withLib;
         }
 
         /// <summary>
@@ -131,6 +200,10 @@ namespace DanaProcessing.Ide.Compilation
         {
             public SketchLoadContext() : base("DanaProcessing sketch", isCollectible: true) { }
             protected override Assembly? Load(AssemblyName assemblyName) => null;
+
+            // The sketch's own [DllImport]s (rare -- usually it's a NuGet package's,
+            // which go through the Default context's ResolvingUnmanagedDll above).
+            protected override IntPtr LoadUnmanagedDll(string unmanagedDllName) => ResolveNative(unmanagedDllName);
         }
 
         // The last few compiles stay loaded no matter what (the running sketch,

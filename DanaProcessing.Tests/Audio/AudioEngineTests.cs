@@ -96,6 +96,11 @@ public class AudioEngineTests : IDisposable
         _engine = new AudioEngine(() => _rec);
         SetShared(_engine);
         _engine.Bpm = 120;
+        // A wide scheduling cushion: these tests check that notes land on the
+        // sample grid, not that the CI runner is fast. Shared macOS runners stall
+        // the thread pool for 100-300 ms, longer than the default 0.1 s, and a
+        // loop that far behind sounds late by design (see LiveLoops.Sleep).
+        _engine.ScheduleAhead = 0.5;
     }
 
     public void Dispose()

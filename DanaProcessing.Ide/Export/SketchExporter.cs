@@ -61,6 +61,7 @@ namespace DanaProcessing.Ide.Export
             }
 
             var extraAssemblyPaths = new List<string>();
+            var nativeDirectories = new List<string>();
             var directives = PackageDirectiveParser.Parse(source);
             if (directives.Count > 0)
             {
@@ -69,6 +70,7 @@ namespace DanaProcessing.Ide.Export
                 if (!resolution.Success)
                     return new ExportResult(false, null, resolution.Errors);
                 extraAssemblyPaths.AddRange(resolution.AllAssemblyPaths);
+                nativeDirectories.AddRange(resolution.AllNativeDirectories);
             }
 
             try
@@ -116,6 +118,12 @@ namespace DanaProcessing.Ide.Export
                     foreach (var path in extraAssemblyPaths)
                         File.Copy(path, Path.Combine(exportFolder, Path.GetFileName(path)), overwrite: true);
                 }
+
+                // Native libraries go right next to the executable: the default
+                // native probing of an app looks in its own folder first.
+                foreach (var dir in nativeDirectories)
+                    foreach (var file in Directory.GetFiles(dir))
+                        File.Copy(file, Path.Combine(exportFolder, Path.GetFileName(file)), overwrite: true);
 
                 progress?.Report(Loc.Tr("Escribiendo el sketch...", "Writing the sketch..."));
                 await File.WriteAllTextAsync(Path.Combine(exportFolder, ExportedSketchRunner.MarkerFileName), source, ct);

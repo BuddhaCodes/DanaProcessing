@@ -195,27 +195,47 @@ namespace DanaProcessing
             // this frame's Draw() already sees them (see Sketch.Audio.cs).
             DispatchAudioEvents();
 
-            if (Renderer != RendererKind.Renderer3D)
+            // [Tweak] panel (see Sketch.Tweak.cs): drawn on top of the frame,
+            // with the canvas put back to how the host handed it over -- a
+            // Translate()/Clip() the sketch left behind in Draw() must not move
+            // or clip the panel. Only when there IS a panel, so sketches without
+            // [Tweak] fields render exactly as before.
+            bool tweaks = Tweaks.IsActive(this);
+            var frameCanvas = Canvas;
+            int saveCount = tweaks ? frameCanvas.Save() : 0;
+            try
             {
-                Draw();
-                return;
+                if (Renderer != RendererKind.Renderer3D)
+                {
+                    Draw();
+                }
+                else
+                {
+                    var backend = (Renderer3DBackend)_backend!;
+                    var hostCanvas = Canvas;
+                    var hostSurface = Surface;
+
+                    Canvas = backend.Canvas;
+                    Surface = backend.Surface;
+
+                    backend.BeginFrame();
+                    Draw();
+                    backend.EndFrame();
+
+                    hostCanvas.DrawSurface(backend.Surface, 0, 0);
+
+                    Canvas = hostCanvas;
+                    Surface = hostSurface;
+                }
+            }
+            finally
+            {
+                if (tweaks)
+                    frameCanvas.RestoreToCount(saveCount);
             }
 
-            var backend = (Renderer3DBackend)_backend!;
-            var hostCanvas = Canvas;
-            var hostSurface = Surface;
-
-            Canvas = backend.Canvas;
-            Surface = backend.Surface;
-
-            backend.BeginFrame();
-            Draw();
-            backend.EndFrame();
-
-            hostCanvas.DrawSurface(backend.Surface, 0, 0);
-
-            Canvas = hostCanvas;
-            Surface = hostSurface;
+            if (tweaks)
+                Tweaks.Draw(this, frameCanvas);
         }
 
         /// <summary>
@@ -340,6 +360,26 @@ namespace DanaProcessing
         public virtual void Setup() { }
         public abstract void Draw();
 
+        /// <summary>
+        /// Override to let go of anything the sketch opened outside the engine
+        /// -- a camera, a serial port, a MIDI or audio device, a network socket --
+        /// like Processing's dispose(). Called once, when the sketch stops for
+        /// good: another Run replaces it, or its window closes. NOT called on
+        /// ⚡ Hot Reload, where those same objects carry over to the new code.
+        /// </summary>
+        public virtual void OnStop() { }
+
+        private bool _stopped;
+
+        /// <summary>Host hook: runs OnStop() at most once per sketch instance.</summary>
+        internal void RaiseStopped()
+        {
+            if (_stopped)
+                return;
+            _stopped = true;
+            OnStop();
+        }
+
         public virtual void KeyPressed() { }
         public virtual void KeyReleased() { }
 
@@ -369,6 +409,25 @@ namespace DanaProcessing
         /// DanaLogger, rather than throwing on a background thread where
         /// nothing could catch it.
         /// </summary>
+        /// <summary>
+        /// Decodes an image already in memory (PNG, JPEG, BMP, GIF, WebP...) --
+        /// a webcam frame, a download, a resource. Throws if the bytes aren't an
+        /// image Skia can read. Dispose() the previous PImage when replacing one
+        /// every frame.
+        /// </summary>
+        public PImage LoadImage(byte[] encodedImage)
+        {
+            ArgumentNullException.ThrowIfNull(encodedImage);
+            // SKBitmap.Decode(byte[]) throws ArgumentNullException("codec") on
+            // bytes it can't recognise; ask for the codec first instead.
+            using var data = SKData.CreateCopy(encodedImage);
+            using var codec = SKCodec.Create(data);
+            var bitmap = codec == null ? null : SKBitmap.Decode(codec);
+            if (bitmap == null)
+                throw new InvalidOperationException($"No se pudo decodificar la imagen ({encodedImage.Length} bytes): formato no reconocido.");
+            return new PImage(bitmap);
+        }
+
         public PImage RequestImage(string path)
         {
             var placeholder = PImage.CreatePlaceholder();
