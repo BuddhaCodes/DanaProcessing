@@ -1146,6 +1146,12 @@ void main()
                     _gl.ReadPixels(0, 0, (uint)_width, (uint)_height, PixelFormat.Rgba, PixelType.UnsignedByte, p);
             }
 
+            // Done with GL for this frame: let go of the context, so the next
+            // frame can claim it from whichever thread draws it -- Avalonia's
+            // render thread while the canvas is on screen, the UI thread while
+            // it's hidden and the IDE keeps the sketch running.
+            _window.GLContext?.Clear();
+
             using var bitmap = new SKBitmap(new SKImageInfo(_width, _height, SKColorType.Rgba8888, SKAlphaType.Premul));
             System.Runtime.InteropServices.Marshal.Copy(pixels, 0, bitmap.GetPixels(), pixels.Length);
 

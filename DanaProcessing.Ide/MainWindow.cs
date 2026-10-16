@@ -58,6 +58,8 @@ namespace DanaProcessing.Ide
         // every tab, same as the editor's one shared TextEditor).
         private EditorTab? _runningTab;
         private readonly Button _runButton;
+        // ■ Stop: the only thing that stops a running sketch (and its sound).
+        private Button? _stopButton;
         private readonly Button _hotReloadButton;
         private readonly Button _applyTweaksButton;
         private readonly Button _runFastButton;
@@ -191,9 +193,10 @@ namespace DanaProcessing.Ide
             _editorView.StatusMessageRequested += ShowTransientStatus;
             _editorView.TabSaved += OnTabSaved;
             _editorView.TypingActivityChanged += OnTypingActivityChanged;
-            // Pause the sketch while you type in the editor -- except on stage
-            // (performance mode), where it must keep playing under the code.
-            _editorView.EditorFocusChanged += focused => _canvas.IsPaused = focused && _performanceWindow == null;
+            // A running sketch keeps running -- while you type, on the "Code"
+            // pane of a narrow window, minimized -- in step with its sound,
+            // which never stopped either. Only ■ Stop (Shift+F5) stops it.
+            _canvas.RunsWhenHidden = true;
 
             // --- Grupo de ejecución: [▶ Ejecutar][▾] ---
             // Antes eran tres botones sueltos en el title bar (▶ Ejecutar, ⚡ y
@@ -258,7 +261,7 @@ namespace DanaProcessing.Ide
                 Orientation = Orientation.Horizontal,
                 Spacing = 1,
                 VerticalAlignment = VerticalAlignment.Center,
-                Children = { _runButton, runOptionsButton, BuildSeedButton() },
+                Children = { _runButton, runOptionsButton, BuildSeedButton(), BuildStopButton() },
             };
 
             // El Asistente es lo único que queda como botón propio fuera del
@@ -1263,6 +1266,7 @@ namespace DanaProcessing.Ide
                 MirrorEnabled(BuildMenuItem("🎚", Loc.Tr("Aplicar tweaks al código", "Apply tweaks to code"), null, ApplyTweaksToCode), _hotReloadButton),
                 MirrorEnabled(BuildMenuItem("⏺", Loc.Tr("Grabar interacción para el reel (empezar/terminar)", "Record interaction for the reel (start/stop)"), null, ToggleInputRecording), _hotReloadButton),
                 MirrorEnabled(BuildMenuItem("⏩", Loc.Tr("Ejecutar en ventana aparte", "Run in a separate window"), "Ctrl+F5", () => _ = RunInSeparateWindowAsync()), _runFastButton),
+                MirrorEnabled(BuildMenuItem("⏹", Loc.Tr("Detener el sketch", "Stop the sketch"), "Shift+F5", StopCurrentSketch), _stopButton!),
                 BuildMenuItem("■", Loc.Tr("Detener sonido", "Stop sound"), "Ctrl+.", StopSound),
                 BuildMenuItem("📊", Loc.Tr("Panel de rendimiento", "Performance panel"), Loc.Tr("F3 en el sketch", "F3 on the sketch"), () => _canvas.ToggleStats()),
                 BuildMenuItem("🎭", Loc.Tr("Modo performance (código sobre el visual)", "Performance mode (code over the visuals)"), "F11", () => _ = TogglePerformanceModeAsync()),
@@ -1385,6 +1389,8 @@ namespace DanaProcessing.Ide
                 Run(() => { if (_runButton.IsEnabled) _ = RunCurrentSketchAsync(); });
             else if (e.Key == Key.R && mods == ctrlShift)
                 Run(() => { if (_hotReloadButton.IsEnabled) _ = HotReloadCurrentSketchAsync(); });
+            else if (e.Key == Key.F5 && mods == KeyModifiers.Shift)
+                Run(StopCurrentSketch);
             else if (e.Key == Key.F6 && mods == KeyModifiers.None)
                 Run(RerollAndRun);
             else if (e.Key == Key.F11 && mods == KeyModifiers.None)
@@ -1705,6 +1711,8 @@ namespace DanaProcessing.Ide
         private void UpdateHotReloadButtonEnabled()
         {
             _hotReloadButton.IsEnabled = !_isRunning && _runningTab != null && _runningTab == _editorView.ActiveTab;
+            if (_stopButton != null)
+                _stopButton.IsEnabled = _runningTab != null && !_canvas.IsStopped;
         }
 
         /// <summary>Fire-and-forget startup check — silent either way: shows the banner
@@ -2315,6 +2323,43 @@ namespace DanaProcessing.Ide
         /// already use, for SketchEditorView's navigation feedback ("no symbol here", "no
         /// source available for X") — a transient message rather than a permanent one, so
         /// it auto-reverts to "Listo" instead of sitting there looking stale forever.</summary>
+        private Button BuildStopButton()
+        {
+            _stopButton = new Button
+            {
+                Content = Loc.Tr("■  Detener", "■  Stop"),
+                Classes = { "clay-secondary" },
+                Padding = new Avalonia.Thickness(12, 7),
+                Margin = new Avalonia.Thickness(6, 0, 0, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+                IsEnabled = false, // nothing running yet
+            };
+            ToolTip.SetTip(_stopButton, Loc.Tr(
+                "Detener el sketch y su sonido (Shift+F5). Mientras no lo detengas, sigue corriendo aunque estés en el código",
+                "Stop the sketch and its sound (Shift+F5). Until you stop it, it keeps running even while you're in the code"));
+            _stopButton.Click += (_, _) => StopCurrentSketch();
+            return _stopButton;
+        }
+
+        /// <summary>
+        /// ■ Stop (Shift+F5): the running sketch stops for good -- no more
+        /// frames, its OnStop() runs (camera, microphone, MIDI, ports are let
+        /// go) -- and so does every sound. The last frame stays on the canvas;
+        /// Run starts again from scratch.
+        /// </summary>
+        internal void StopCurrentSketch()
+        {
+            if (_runningTab == null || _canvas.IsStopped)
+                return;
+            _canvas.Stop();
+            AudioEngine.StopEverything();
+            _runningTab = null; // nothing live to hot-reload into any more
+            UpdateHotReloadButtonEnabled();
+            _statusDot.Fill = ClayTheme.TextMuted;
+            _statusLabel.Text = Loc.Tr("Detenido", "Stopped");
+            ((Border)_statusPill).Background = ClayTheme.SurfaceHigher;
+        }
+
         /// <summary>Sketch > Stop sound (Ctrl+.): every live loop stops and every voice goes silent.</summary>
         private void StopSound()
         {

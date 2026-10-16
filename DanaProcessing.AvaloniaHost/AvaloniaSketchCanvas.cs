@@ -111,15 +111,31 @@ namespace DanaProcessing.AvaloniaHost
 
         /// <summary>
         /// A host-settable pause, independent of IsEffectivelyVisible/minimized --
-        /// this control has no opinion on WHY it should pause (a reusable control
-        /// in DanaProcessing.AvaloniaHost has no business knowing "the code editor
-        /// has focus"), it just honors whatever the host decides. The IDE's
-        /// MainWindow sets this from SketchEditorView.EditorFocusChanged, so the
-        /// sketch actually stops running the moment your attention is on the code
-        /// -- not just when the canvas happens to be physically hidden, which
-        /// only ever applies in the narrow single-pane layout.
+        /// this control has no opinion on WHY it should pause, it just honors
+        /// whatever the host decides. (The IDE no longer pauses on its own: a
+        /// sketch there runs until its Stop button -- see RunsWhenHidden.)
         /// </summary>
         public bool IsPaused { get; set; }
+
+        /// <summary>
+        /// Keep running the sketch while this control can't be seen -- hidden
+        /// behind another pane, or the window minimized. Off by default, so an
+        /// exported app minimized to the taskbar doesn't burn CPU on frames
+        /// nobody sees. The IDE turns it on: switching to the code must not
+        /// freeze the visuals while the music (which never stops) plays on.
+        /// Hidden frames are drawn into the offscreen surface on the UI thread
+        /// and shown as soon as the canvas is visible again.
+        /// </summary>
+        public bool RunsWhenHidden { get; set; }
+
+        /// <summary>True after <see cref="Stop"/> until the next <see cref="LoadSketch"/>: no frames, no input.</summary>
+        public bool IsStopped => _stopped;
+
+        private volatile bool _stopped;
+
+        // One frame at a time into _offscreenSurface: the render thread
+        // (visible) and the UI thread (hidden, RunsWhenHidden) both draw there.
+        private readonly object _frameLock = new();
 
         /// <summary>The current width the loaded sketch has requested via Size(w, h) — what this control asks the layout system for, not necessarily what the parent ends up giving it.</summary>
         public int SketchWidth => _sketch.Width;
@@ -174,10 +190,41 @@ namespace DanaProcessing.AvaloniaHost
                 // minimized IDE (or an exported standalone sketch) doesn't
                 // keep a heavy sketch running at full tilt in the background.
                 var isMinimized = TopLevel.GetTopLevel(this) is Window { WindowState: WindowState.Minimized };
-                if ((_sketch.IsLooping || _crashed) && IsEffectivelyVisible && !isMinimized && !IsPaused && !_frozen)
-                    InvalidateVisual();
+                switch (DecideFrame(_sketch.IsLooping, _crashed, IsPaused, _frozen, _stopped,
+                                    visible: IsEffectivelyVisible && !isMinimized, RunsWhenHidden))
+                {
+                    case FrameAction.Render:
+                        InvalidateVisual();
+                        break;
+                    case FrameAction.RunHidden:
+                        AdvanceHiddenFrame();
+                        break;
+                }
             };
             _timer.Start();
+        }
+
+        /// <summary>What a timer tick does.</summary>
+        public enum FrameAction
+        {
+            /// <summary>Nothing: paused, stopped, rewound, NoLoop(), or hidden without RunsWhenHidden.</summary>
+            None,
+            /// <summary>Ask Avalonia to repaint: the frame runs on the render thread and goes on screen.</summary>
+            Render,
+            /// <summary>Run the frame offscreen now: the canvas can't be seen but the sketch must keep going.</summary>
+            RunHidden,
+        }
+
+        /// <summary>The per-tick decision, kept pure so it can be tested without a window.</summary>
+        public static FrameAction DecideFrame(bool looping, bool crashed, bool paused, bool frozen, bool stopped,
+                                              bool visible, bool runsWhenHidden)
+        {
+            if (stopped || paused || frozen || !(looping || crashed))
+                return FrameAction.None;
+            if (visible)
+                return FrameAction.Render;
+            // A crash overlay nobody can see needs no repainting.
+            return runsWhenHidden && !crashed ? FrameAction.RunHidden : FrameAction.None;
         }
 
         private void SetTimerInterval(int fps)
@@ -212,6 +259,7 @@ namespace DanaProcessing.AvaloniaHost
                 _history.Clear();
                 _historyIndex = -1;
                 _frozen = false;
+                _stopped = false;
                 _stepOnce = false;
                 _resumeRequest = -1;
                 _stateUnsupported = false;
@@ -357,6 +405,24 @@ namespace DanaProcessing.AvaloniaHost
                 StopQuietly(_sketch);
         }
 
+        /// <summary>
+        /// The Stop button: the sketch stops for good -- no more frames or
+        /// input, and its OnStop() runs (cameras, ports, the microphone and
+        /// MIDI are let go). The last frame stays on screen. Only a new
+        /// <see cref="LoadSketch"/> (Run) starts something again. Sound is the
+        /// host's call (the IDE silences the audio engine too).
+        /// </summary>
+        public void Stop()
+        {
+            if (_stopped)
+                return;
+            lock (_sketchLock)
+            {
+                _stopped = true;
+                StopQuietly(_sketch);
+            }
+        }
+
         private static void StopQuietly(Sketch sketch)
         {
             try
@@ -372,8 +438,8 @@ namespace DanaProcessing.AvaloniaHost
 
         private void RunInput(Action userCode, string context)
         {
-            if (_frozen)
-                return; // rewound: what's on screen isn't the sketch's real state, so don't feed it input
+            if (_frozen || _stopped)
+                return; // rewound or stopped: what's on screen isn't a live sketch, so don't feed it input
             lock (_sketchLock)
                 RunSafely(userCode, context);
         }
@@ -887,6 +953,43 @@ namespace DanaProcessing.AvaloniaHost
         /// </summary>
         internal void PaintSketch(SKCanvas leasedCanvas, double scaling, int width, int height)
         {
+            lock (_frameLock)
+            {
+                if (_stopped)
+                {
+                    // Stopped: keep showing the last frame, run nothing.
+                    if (_offscreenSurface != null)
+                        BlitOffscreen(leasedCanvas, scaling);
+                    return;
+                }
+                if (!AdvanceFrame(leasedCanvas, scaling))
+                    return;
+                BlitOffscreen(leasedCanvas, scaling);
+            }
+        }
+
+        /// <summary>
+        /// A frame while the canvas can't be seen (RunsWhenHidden): the same
+        /// work as a visible one -- Draw(), history, pending captures -- into
+        /// the offscreen surface, just not put on screen. Runs on the UI thread.
+        /// </summary>
+        private void AdvanceHiddenFrame()
+        {
+            lock (_frameLock)
+            {
+                if (_stopped || _frozen)
+                    return;
+                AdvanceFrame(leasedCanvas: null, scaling: 1);
+            }
+        }
+
+        /// <summary>
+        /// Runs one frame of the sketch into _offscreenSurface. Returns false
+        /// when there's nothing to blit (no surface yet, or the frozen frame was
+        /// already drawn straight onto <paramref name="leasedCanvas"/>).
+        /// </summary>
+        private bool AdvanceFrame(SKCanvas? leasedCanvas, double scaling)
+        {
             if (!_didSetup)
                 EnsureSetupRun(); // fallback: normally already run by MeasureOverride before the first Render
             else
@@ -900,7 +1003,7 @@ namespace DanaProcessing.AvaloniaHost
                 EnsureOffscreenSurface(_sketch.Width, _sketch.Height);
 
             if (_offscreenSurface == null)
-                return; // sketch size not yet valid — nothing to draw
+                return false; // sketch size not yet valid — nothing to draw
 
             int resume = _resumeRequest;
             if (resume >= 0)
@@ -914,10 +1017,11 @@ namespace DanaProcessing.AvaloniaHost
             // _stepOnce, which lets exactly one real frame through below.
             if (_frozen && !_stepOnce)
             {
-                DrawFrozenFrame(leasedCanvas, scaling);
+                if (leasedCanvas != null)
+                    DrawFrozenFrame(leasedCanvas, scaling);
                 var frozenCapture = Interlocked.Exchange(ref _pendingCapture, null);
                 frozenCapture?.TrySetResult(EncodeCapture(_offscreenSurface, _pendingCaptureMaxSize));
-                return;
+                return false;
             }
             _stepOnce = false;
 
@@ -1000,6 +1104,11 @@ namespace DanaProcessing.AvaloniaHost
                 }
             }
 
+            return true;
+        }
+
+        private void BlitOffscreen(SKCanvas leasedCanvas, double scaling)
+        {
             // Blit the finished offscreen frame onto the real, leased canvas,
             // applying the DPI scale AND undoing the supersampling upscale
             // (see the Scale() call above) in one step — dividing by
@@ -1014,7 +1123,7 @@ namespace DanaProcessing.AvaloniaHost
             // actually contribute to the downscaled result.
             leasedCanvas.Save();
             leasedCanvas.Scale((float)(scaling / _offscreenScale));
-            using (var snapshot = _offscreenSurface.Snapshot())
+            using (var snapshot = _offscreenSurface!.Snapshot())
                 leasedCanvas.DrawImage(snapshot, 0, 0, new SKSamplingOptions(SKFilterMode.Linear, SKMipmapMode.Linear));
             leasedCanvas.Restore();
         }
