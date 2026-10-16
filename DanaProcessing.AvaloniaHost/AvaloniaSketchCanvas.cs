@@ -197,7 +197,7 @@ namespace DanaProcessing.AvaloniaHost
                 _sketch.SizeChanged -= OnSketchSizeChanged;
                 _sketch = newSketch;
                 _sketch.SizeChanged += OnSketchSizeChanged;
-                _sketch.ListensToAudio = _connectsAudio;
+                _sketch.IgnoresAudio = !_connectsAudio;
 
                 _didSetup = false;
                 _crashed = false;
@@ -242,7 +242,7 @@ namespace DanaProcessing.AvaloniaHost
                 _sketch.SizeChanged -= OnSketchSizeChanged;
                 _sketch = newSketch;
                 _sketch.SizeChanged += OnSketchSizeChanged;
-                _sketch.ListensToAudio = _connectsAudio;
+                _sketch.IgnoresAudio = !_connectsAudio;
 
                 _crashed = false;
                 _crashException = null;
@@ -659,7 +659,7 @@ namespace DanaProcessing.AvaloniaHost
             {
                 _connectsAudio = value;
                 lock (_sketchLock)
-                    _sketch.ListensToAudio = value;
+                    _sketch.IgnoresAudio = !value;
             }
         }
 

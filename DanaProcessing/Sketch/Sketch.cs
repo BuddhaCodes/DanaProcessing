@@ -418,7 +418,11 @@ namespace DanaProcessing
         public PImage LoadImage(byte[] encodedImage)
         {
             ArgumentNullException.ThrowIfNull(encodedImage);
-            var bitmap = SKBitmap.Decode(encodedImage);
+            // SKBitmap.Decode(byte[]) throws ArgumentNullException("codec") on
+            // bytes it can't recognise; ask for the codec first instead.
+            using var data = SKData.CreateCopy(encodedImage);
+            using var codec = SKCodec.Create(data);
+            var bitmap = codec == null ? null : SKBitmap.Decode(codec);
             if (bitmap == null)
                 throw new InvalidOperationException($"No se pudo decodificar la imagen ({encodedImage.Length} bytes): formato no reconocido.");
             return new PImage(bitmap);
