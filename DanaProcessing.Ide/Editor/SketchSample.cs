@@ -40,6 +40,7 @@ namespace DanaProcessing.Ide.Editor
         YouTubeSeries,
         Text,
         Images,
+        Hardware,
     }
 
     public static class SampleTags
@@ -65,7 +66,7 @@ namespace DanaProcessing.Ide.Editor
             SampleTag.LiveCoding => "Live coding",
             SampleTag.MidiOsc => "MIDI / OSC",
             SampleTag.NuGet => "NuGet",
-            SampleTag.MachineLearning => "ML.NET",
+            SampleTag.MachineLearning => "ML / IA",
             SampleTag.Data => "Datos",
             SampleTag.Files => "Archivos",
             SampleTag.Window => "Ventana",
@@ -76,12 +77,14 @@ namespace DanaProcessing.Ide.Editor
             SampleTag.YouTubeSeries => "YouTube series",
             SampleTag.Text => "Texto / tipografía",
             SampleTag.Images => "Imágenes / píxeles",
+            SampleTag.Hardware => "Hardware / sensores",
             _ => tag.ToString(),
         };
 
         private static string English(SampleTag tag) => tag switch
         {
             SampleTag.Basics => "Basics",
+            SampleTag.MachineLearning => "ML / AI",
             SampleTag.Interaction => "Interaction",
             SampleTag.Animation => "Animation",
             SampleTag.Generative => "Generative",
@@ -96,6 +99,7 @@ namespace DanaProcessing.Ide.Editor
             SampleTag.YouTubeSeries => "YouTube series",
             SampleTag.Text => "Text / typography",
             SampleTag.Images => "Images / pixels",
+            SampleTag.Hardware => "Hardware / sensors",
             _ => Spanish(tag),
         };
     }
@@ -107,9 +111,13 @@ namespace DanaProcessing.Ide.Editor
     /// file at first run. Add new samples here as the API grows (PShape,
     /// PImage, custom shapes, etc.) rather than scattering them elsewhere.
     /// </summary>
-    public static class SketchSamples
+    public static partial class SketchSamples
     {
-        public static readonly SketchSample[] All =
+        /// <summary>Every sample: this file's catalog, then the ones in SketchSamples.Extras.cs.</summary>
+        public static SketchSample[] All => _all ??= Catalog.Concat(Extras).ToArray();
+        private static SketchSample[]? _all;
+
+        private static readonly SketchSample[] Catalog =
         {
             // ----- YouTube intro series: numbered, in publishing order -----
             new SketchSample(
@@ -444,6 +452,13 @@ namespace DanaProcessing.Ide.Editor
                 new[] { SampleTag.Games, SampleTag.HotReload, SampleTag.LiveCoding }),
 
             new SketchSample(
+                Loc.Tr("Modo Tweak: sliders en vivo con [Tweak]", "Tweak mode: live sliders with [Tweak]"),
+                Loc.Tr("Poné [Tweak] arriba de un campo y aparece un slider en un panel sobre el sketch: arrastralo y el valor cambia mientras corre, sin Run ni reinicio. Este es un harmonógrafo -- dos péndulos que pierden energía dibujando una sola línea -- donde un cambio mínimo de frecuencia o fase da una figura completamente distinta. bool se vuelve casilla, Color se vuelve tres sliders R/G/B; clic en el encabezado pliega el panel.",
+                       "Put [Tweak] above a field and a slider shows up in a panel over the sketch: drag it and the value changes while it runs, no Run, no restart. This one is a harmonograph -- two pendulums losing energy, drawing a single line -- where the tiniest change in frequency or phase gives a completely different figure. bool becomes a checkbox, Color becomes three R/G/B sliders; click the header to fold the panel."),
+                TweakHarmonograph,
+                new[] { SampleTag.HotReload, SampleTag.LiveCoding, SampleTag.Interaction, SampleTag.Generative }),
+
+            new SketchSample(
                 Loc.Tr("ML.NET paso a paso: regresión lineal en vivo", "ML.NET step by step: live linear regression"),
                 Loc.Tr("El ejemplo de ML.NET más simple posible, pensado para VER el aprendizaje, no solo el resultado: una línea recta se reentrena un poquito más cada frame (un paso de descenso de gradiente a la vez) sobre los puntos que clickeás, y el cartel de arriba muestra la iteración y el error (MSE) bajando en vivo. R reinicia con puntos al azar.",
                        "The simplest possible ML.NET example, built to SHOW the learning instead of just the result: a straight line retrains a little more every frame (one gradient-descent step at a time) against the points you click, with the iteration count and error (MSE) visibly dropping frame by frame. R restarts with random points."),
@@ -463,6 +478,13 @@ namespace DanaProcessing.Ide.Editor
                        "ML.NET has no reinforcement learning built in, so this example builds one out of what it DOES have: every so often, 60 simulated attempts (with a bit of noise) run on a background thread; the best ones teach a classifier when to flap, and that model becomes the new champion ONLY if it genuinely plays better than the last one. The bird playing on screen always uses the current champion -- watch the score climb generation after generation, without you touching anything."),
                 SelfPlayingFlapper,
                 new[] { SampleTag.MachineLearning, SampleTag.NuGet, SampleTag.Games }),
+
+            new SketchSample(
+                Loc.Tr("Sueños de red neuronal: CPPN con TensorSharp", "Neural dreams: a TensorSharp CPPN"),
+                Loc.Tr("Un `// nuget: TensorSharp.Tensors` de verdad -- una red neuronal con pesos al azar (nadie la entrenó) recibe las coordenadas de cada píxel y devuelve su color: el resultado son imágenes orgánicas, marmoladas, imposibles. Toda la pantalla es UN solo forward pass de tensores (9.216 píxeles en un batch, Ops.Dot + Tanh + Sigmoid) y el cartel de abajo muestra cuánto tarda. Mové el mouse para recorrer el espacio latente, clickeá para que la red se transforme suavemente en otra nueva, rueda para el zoom, espacio pausa, S guarda la imagen.",
+                       "A real `// nuget: TensorSharp.Tensors` sketch -- a neural network with random weights (nobody trained it) takes each pixel's coordinates and returns its color: the result is organic, marbled, impossible imagery. The whole screen is ONE tensor forward pass (9,216 pixels in a single batch, Ops.Dot + Tanh + Sigmoid) and the label at the bottom shows how long it takes. Move the mouse to travel the latent space, click to morph smoothly into a brand-new network, wheel to zoom, space pauses, S saves the image."),
+                NeuralDreams,
+                new[] { SampleTag.MachineLearning, SampleTag.NuGet, SampleTag.Generative, SampleTag.Interaction }),
 
             new SketchSample(
                 Loc.Tr("200.000 partículas en la GPU: ruido curl", "200,000 GPU particles: curl noise"),
@@ -5001,6 +5023,295 @@ public class MySketch : Sketch
     }
 }
 ";
+
+        private const string TweakHarmonograph =
+@"// Tweak mode -- mark a field with [Tweak] and it gets a live slider in the
+// panel on the right. Drag it: the value changes while the sketch keeps
+// running, no Run, no restart. [Tweak(min, max)] sets the range; a plain
+// [Tweak] picks 0..2x the starting value. bool -> checkbox, Color -> R/G/B.
+//
+// This one is a harmonograph: two pendulums (one per axis), slowly losing
+// energy, drawing a single line. Tiny changes in frequency or phase give
+// completely different figures -- exactly the kind of thing you want to tune
+// by hand instead of editing a number and pressing Run forty times.
+//
+// When you like what you see, copy the panel's values back into the code.
+// Click the panel's header to fold it; HideTweaks() hides it (before a
+// SaveFrame(), say). The values live in your own fields, so the ⚡ Hot Reload
+// button keeps them too.
+public class MySketch : Sketch
+{
+    [Tweak(1, 6)] float freqX = 3f;
+    [Tweak(1, 6)] float freqY = 2f;
+    [Tweak(0, 6.2832f)] float phase = 1.5708f;
+    [Tweak(0, 0.01f)] float damping = 0.0025f;
+    [Tweak(200, 6000)] int points = 3000;
+    [Tweak(0.5f, 5)] float weight = 1.2f;
+    [Tweak] bool spin = true;
+    [Tweak(Label = ""ink"")] Color ink = new Color(255, 170, 90);
+
+    private float _angle;
+
+    public override void Setup()
+    {
+        Size(900, 680);
+    }
+
+    public override void Draw()
+    {
+        Background(14, 14, 20);
+
+        if (spin)
+            _angle += 0.003f;
+
+        // Centered in the space left of the panel.
+        float cx = (Width - 256) / 2f;
+        float cy = Height / 2f;
+        float radius = Math.Min(cx, cy) - 30;
+
+        PushMatrix();
+        Translate(cx, cy);
+        Rotate(_angle);
+
+        NoFill();
+        Stroke(ink);
+        StrokeWeight(weight);
+        BeginShape();
+        for (int i = 0; i < points; i++)
+        {
+            float t = i * 0.02f;
+            float decay = (float)Math.Exp(-damping * i);
+            float x = (float)Math.Sin(freqX * t + phase) * decay;
+            float y = (float)Math.Sin(freqY * t) * decay;
+            Vertex(x * radius, y * radius);
+        }
+        EndShape();
+        PopMatrix();
+
+        NoStroke();
+        Fill(150);
+        TextSize(13);
+        Text(""Drag the sliders -- the sketch never restarts"", 20, Height - 20);
+    }
+}";
+
+        private const string NeuralDreams =
+@"// nuget: TensorSharp.Tensors, 2026.10.11
+
+using System;
+using System.Diagnostics;
+using TensorSharp;
+using TensorSharp.Cpu;
+
+// Neural dreams -- a CPPN (Compositional Pattern Producing Network) running
+// on TensorSharp tensors. Every cell on screen is one row of a single batch:
+// its (x, y), its distance to the center and two ""latent"" values z1/z2 go
+// into a small neural network (6 -> 32 -> 32 -> 32 -> 3) whose output IS the
+// color. The weights are random -- nobody trained this network -- and yet a
+// random network over coordinates paints organic, marbled, impossible images.
+//
+// The whole frame is ONE forward pass: 9,216 pixels go through the network
+// as a [9216 x 6] tensor, times [6 x 32], tanh, times [32 x 32], tanh... down
+// to [9216 x 3] colors. That's Ops.Dot() (a real SGEMM) + Ops.Tanh() /
+// Ops.Sigmoid() -- the same building blocks TensorSharp uses to run LLMs, here
+// used as a paintbrush. The label at the bottom shows how long it takes.
+//
+// - Move the mouse: travel through the latent space (z1, z2).
+// - Click: a new random network; the weights morph smoothly into it.
+// - Mouse wheel: zoom in/out of the coordinate plane.
+// - Space: pause time.  S: save a frame as PNG.
+//
+// Note: only fully managed TensorSharp ops are used here (Dot, Tanh, Sigmoid).
+// Some ops (Sin, Cos, the Random* fillers...) call into a native CpuOps
+// library the NuGet package doesn't ship, so the weights are generated with
+// plain C# and copied in with SetElementsAsFloat().
+public class MySketch : Sketch
+{
+    private const int Grid = 96;                 // 96 x 96 cells = one batch of 9,216 rows
+    private const int Batch = Grid * Grid;
+    private const int Inputs = 6;                // x, y, r, z1, z2, bias
+    private const int Hidden = 32;
+    private const int Outputs = 3;               // r, g, b
+    private const float MorphSeconds = 1.6f;
+
+    private static readonly int[] LayerIn  = { Inputs, Hidden, Hidden, Hidden };
+    private static readonly int[] LayerOut = { Hidden, Hidden, Hidden, Outputs };
+    private static readonly int Layers = LayerIn.Length;
+
+    private readonly IAllocator _cpu = new CpuAllocator(BlasEnum.DotNet);
+    private Tensor _input = null!;
+    private readonly Tensor[] _weights = new Tensor[4];
+    private readonly Tensor[] _activations = new Tensor[4];
+
+    private float[][] _from = null!;             // weights we're morphing away from
+    private float[][] _to = null!;               // weights we're morphing into
+    private readonly float[][] _blend = new float[4][];
+    private float _morph = 1f;                   // 0 -> 1 during a morph
+
+    private readonly float[] _inputData = new float[Batch * Inputs];
+    private int _seed;
+    private int _generation = 1;
+    private float _zoom = 1.6f;
+    private float _time;
+    private bool _paused;
+    private long _lastMillis;
+    private float _forwardMs;
+    private readonly Stopwatch _watch = new Stopwatch();
+
+    public override void Setup()
+    {
+        Size(672, 672);
+
+        _input = new Tensor(_cpu, DType.Float32, Batch, Inputs);
+        for (int l = 0; l < Layers; l++)
+        {
+            _weights[l] = new Tensor(_cpu, DType.Float32, LayerIn[l], LayerOut[l]);
+            _activations[l] = new Tensor(_cpu, DType.Float32, Batch, LayerOut[l]);
+            _blend[l] = new float[LayerIn[l] * LayerOut[l]];
+        }
+
+        _seed = Environment.TickCount & 0x7fffffff;
+        _from = RandomNetwork(_seed);
+        _to = _from;
+        _lastMillis = Millis();
+    }
+
+    public override void Draw()
+    {
+        long now = Millis();
+        float dt = Math.Min(0.1f, (now - _lastMillis) / 1000f);
+        _lastMillis = now;
+        if (!_paused)
+            _time += dt;
+        if (_morph < 1f)
+            _morph = Math.Min(1f, _morph + dt / MorphSeconds);
+
+        // 1. Inputs: one row per cell -> [Batch x 6]
+        float mx = Map(MouseX, 0, Width, -1.2f, 1.2f);
+        float my = Map(MouseY, 0, Height, -1.2f, 1.2f);
+        float z1 = MathF.Sin(_time * 0.37f) * 0.7f + mx;
+        float z2 = MathF.Cos(_time * 0.23f) * 0.7f + my;
+
+        int k = 0;
+        for (int gy = 0; gy < Grid; gy++)
+        {
+            float y = ((gy + 0.5f) / Grid * 2f - 1f) * _zoom;
+            for (int gx = 0; gx < Grid; gx++)
+            {
+                float x = ((gx + 0.5f) / Grid * 2f - 1f) * _zoom;
+                _inputData[k++] = x;
+                _inputData[k++] = y;
+                _inputData[k++] = MathF.Sqrt(x * x + y * y);
+                _inputData[k++] = z1;
+                _inputData[k++] = z2;
+                _inputData[k++] = 1f;
+            }
+        }
+        _input.SetElementsAsFloat(_inputData);
+
+        // 2. Weights: smoothstep blend between the old and the new network
+        float t = _morph * _morph * (3f - 2f * _morph);
+        for (int l = 0; l < Layers; l++)
+        {
+            float[] a = _from[l], b = _to[l], w = _blend[l];
+            for (int i = 0; i < w.Length; i++)
+                w[i] = a[i] + (b[i] - a[i]) * t;
+            _weights[l].SetElementsAsFloat(w);
+        }
+
+        // 3. Forward pass -- the whole image in one go
+        _watch.Restart();
+        Tensor h = _input;
+        for (int l = 0; l < Layers; l++)
+        {
+            Ops.Dot(_activations[l], h, _weights[l]);            // [Batch x in] * [in x out]
+            if (l < Layers - 1)
+                Ops.Tanh(_activations[l], _activations[l]);
+            else
+                Ops.Sigmoid(_activations[l], _activations[l]);   // colors in 0..1
+            h = _activations[l];
+        }
+        float[] rgb = h.GetElementsAsFloat(Batch * Outputs);
+        _watch.Stop();
+        _forwardMs = Lerp(_forwardMs, (float)_watch.Elapsed.TotalMilliseconds, 0.1f);
+
+        // 4. Paint
+        NoStroke();
+        float cell = Width / (float)Grid;
+        for (int gy = 0; gy < Grid; gy++)
+        {
+            for (int gx = 0; gx < Grid; gx++)
+            {
+                int i = (gy * Grid + gx) * 3;
+                Fill(rgb[i] * 255f, rgb[i + 1] * 255f, rgb[i + 2] * 255f);
+                Rect(gx * cell, gy * cell, cell + 1, cell + 1);
+            }
+        }
+
+        // 5. HUD
+        Fill(0, 0, 0, 160);
+        Rect(0, Height - 54, Width, 54);
+        Fill(255);
+        TextSize(13);
+        Text($""TensorSharp | net 6-32-32-32-3 | {Batch:N0} pixels in one batch | forward pass {_forwardMs:0.0} ms | generation {_generation}"",
+            14, Height - 32);
+        Fill(200);
+        Text(_paused
+            ? ""PAUSED -- space to resume""
+            : ""move: explore latent space | click: new network | wheel: zoom | space: pause | S: save"",
+            14, Height - 12);
+    }
+
+    public override void MouseClicked()
+    {
+        // Morph from whatever is on screen right now (even mid-morph) into a fresh network.
+        _from = Clone(_blend);
+        _to = RandomNetwork(++_seed);
+        _morph = 0f;
+        _generation++;
+    }
+
+    public override void MouseWheel(float delta)
+    {
+        _zoom = Constrain(_zoom * (1f + delta * 0.08f), 0.3f, 8f);
+    }
+
+    public override void KeyPressed()
+    {
+        if (Key == ' ')
+            _paused = !_paused;
+        else if (Key == 's' || Key == 'S')
+            SaveFrame(""neural-dream-####.png"");
+    }
+
+    // Plain C# Gaussian weights (Box-Muller). Bigger std = sharper, busier patterns.
+    private static float[][] RandomNetwork(int seed)
+    {
+        var rng = new System.Random(seed);
+        var layers = new float[LayerIn.Length][];
+        for (int l = 0; l < layers.Length; l++)
+        {
+            float std = l == 0 ? 1.2f : 1.0f;
+            var w = new float[LayerIn[l] * LayerOut[l]];
+            for (int i = 0; i < w.Length; i++)
+            {
+                double u1 = 1.0 - rng.NextDouble();
+                double u2 = rng.NextDouble();
+                w[i] = (float)(Math.Sqrt(-2.0 * Math.Log(u1)) * Math.Cos(2.0 * Math.PI * u2)) * std;
+            }
+            layers[l] = w;
+        }
+        return layers;
+    }
+
+    private static float[][] Clone(float[][] src)
+    {
+        var copy = new float[src.Length][];
+        for (int l = 0; l < src.Length; l++)
+            copy[l] = (float[])src[l].Clone();
+        return copy;
+    }
+}";
 
         private const string MLColorField =
 @"// nuget: Microsoft.ML, 4.0.2

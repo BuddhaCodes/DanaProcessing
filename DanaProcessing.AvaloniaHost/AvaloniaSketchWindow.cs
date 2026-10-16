@@ -46,6 +46,7 @@ namespace DanaProcessing.AvaloniaHost
 
             Canvas = new AvaloniaSketchCanvas(sketch);
             Content = Canvas;
+            Closed += (_, _) => Canvas.StopSketch(); // the sketch's OnStop(): release cameras, ports, devices
 
             if (windowless)
             {

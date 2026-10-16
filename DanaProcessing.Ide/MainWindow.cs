@@ -59,6 +59,7 @@ namespace DanaProcessing.Ide
         private EditorTab? _runningTab;
         private readonly Button _runButton;
         private readonly Button _hotReloadButton;
+        private readonly Button _applyTweaksButton;
         private readonly Button _runFastButton;
         private readonly Button _agentButton;
         private TextBlock? _wordmark;
@@ -217,6 +218,16 @@ namespace DanaProcessing.Ide
 
             _editorView.ActiveTabChanged += UpdateHotReloadButtonEnabled;
 
+            // Writes what you tuned with the [Tweak] sliders back into the
+            // field initializers. Same "only the running tab" condition as Hot
+            // Reload, so it simply mirrors that button's enabled state.
+            _applyTweaksButton = MirrorEnabled(
+                BuildMenuItem("🎚", Loc.Tr("Aplicar tweaks al código", "Apply tweaks to code"), null, ApplyTweaksToCode),
+                _hotReloadButton);
+            ToolTip.SetTip(_applyTweaksButton, Loc.Tr(
+                "Escribe en el código los valores que ajustaste con los sliders de [Tweak]",
+                "Writes the values you tuned with the [Tweak] sliders into the code"));
+
             // "Como Processing": compila y abre el sketch en su propia ventana,
             // sin tocar el canvas embebido ni el estado de Run/Hot Reload de
             // este -- completamente independiente, para cuando lo que querés
@@ -234,7 +245,7 @@ namespace DanaProcessing.Ide
                 CornerRadius = new CornerRadius(0, runRadius.TopRight, runRadius.BottomRight, 0),
             };
             ToolTip.SetTip(runOptionsButton, Loc.Tr("Más formas de ejecutar", "More ways to run"));
-            AttachMenuFlyout(runOptionsButton, PlacementMode.BottomEdgeAlignedRight, new Control[] { _hotReloadButton, _runFastButton });
+            AttachMenuFlyout(runOptionsButton, PlacementMode.BottomEdgeAlignedRight, new Control[] { _hotReloadButton, _applyTweaksButton, _runFastButton });
 
             var runGroup = new StackPanel
             {
@@ -439,6 +450,11 @@ namespace DanaProcessing.Ide
             _canvas.VerticalAlignment = VerticalAlignment.Center;
             var canvasScroll = new ScrollViewer { Content = _canvas };
 
+            // Rewind bar under the canvas (see TimelineBar / FrameHistory).
+            var timeline = new TimelineBar(_canvas);
+            DockPanel.SetDock(timeline, Dock.Bottom);
+            var canvasArea = new DockPanel { Children = { timeline, canvasScroll } };
+
             _canvasCard = new Border
             {
                 Background = ClayTheme.Surface,
@@ -446,7 +462,7 @@ namespace DanaProcessing.Ide
                 BoxShadow = ClayTheme.ShadowRaised,
                 ClipToBounds = true,
                 Margin = new Avalonia.Thickness(10, 16, 20, 16),
-                Child = canvasScroll
+                Child = canvasArea
             };
             _canvasCard.AddHandler(GotFocusEvent, (_, _) => SetCardFocused(_canvasGlow, true), RoutingStrategies.Bubble);
             _canvasCard.AddHandler(LostFocusEvent, (_, _) => SetCardFocused(_canvasGlow, false), RoutingStrategies.Bubble);
@@ -760,7 +776,11 @@ namespace DanaProcessing.Ide
                 new Avalonia.Animation.DoubleTransition { Property = OpacityProperty, Duration = TimeSpan.FromMilliseconds(220) }
             };
             // Whatever was open (unsaved edits included) comes back next time.
-            Closed += (_, _) => _editorView.SaveSession();
+            Closed += (_, _) =>
+            {
+                _editorView.SaveSession();
+                _canvas.StopSketch(); // the running sketch's OnStop(): release cameras, ports, devices
+            };
 
             Opened += (_, _) =>
             {
@@ -1233,6 +1253,8 @@ namespace DanaProcessing.Ide
             {
                 MirrorEnabled(BuildMenuItem("▶", Loc.Tr("Ejecutar", "Run"), "Ctrl+R", () => _ = RunCurrentSketchAsync()), _runButton),
                 MirrorEnabled(BuildMenuItem("⚡", "Hot reload", "Ctrl+Shift+R", () => _ = HotReloadCurrentSketchAsync()), _hotReloadButton),
+                MirrorEnabled(BuildMenuItem("🎚", Loc.Tr("Aplicar tweaks al código", "Apply tweaks to code"), null, ApplyTweaksToCode), _hotReloadButton),
+                MirrorEnabled(BuildMenuItem("⏺", Loc.Tr("Grabar interacción para el reel (empezar/terminar)", "Record interaction for the reel (start/stop)"), null, ToggleInputRecording), _hotReloadButton),
                 MirrorEnabled(BuildMenuItem("⏩", Loc.Tr("Ejecutar en ventana aparte", "Run in a separate window"), "Ctrl+F5", () => _ = RunInSeparateWindowAsync()), _runFastButton),
                 BuildMenuItem("■", Loc.Tr("Detener sonido", "Stop sound"), "Ctrl+.", StopSound),
                 MenuSeparator(),
@@ -1562,6 +1584,87 @@ namespace DanaProcessing.Ide
         {
             _loadingSpinnerTimer.Stop();
             _loadingSpinner.IsVisible = false;
+        }
+
+        /// <summary>
+        /// Start/stop recording how you play with the running sketch. On stop,
+        /// the recording becomes `// @reel move/drag/click/key` markers at the
+        /// top of the running tab, so "Create reel..." replays exactly that in
+        /// its result part (time 0 = when you started recording). One document
+        /// update: Ctrl+Z removes them.
+        /// </summary>
+        private void ToggleInputRecording()
+        {
+            if (!_canvas.IsRecordingInput)
+            {
+                _canvas.StartRecordingInput();
+                ShowTransientStatus(Loc.Tr(
+                    "⏺ Grabando lo que hacés en el sketch (hasta 30 s)... elegí la misma opción para terminar",
+                    "⏺ Recording what you do in the sketch (up to 30 s)... pick the same option again to stop"));
+                return;
+            }
+
+            var recorded = _canvas.StopRecordingInput();
+            var markers = DanaProcessing.Reels.ReelInputRecorder.ToMarkers(recorded);
+            var tab = _editorView.ActiveTab;
+            if (markers.Count == 0 || tab == null || tab != _runningTab)
+            {
+                ShowTransientStatus(markers.Count == 0
+                    ? Loc.Tr("No se grabó ninguna interacción", "No interaction was recorded")
+                    : Loc.Tr("Volvé a la pestaña que está corriendo para guardar la grabación", "Switch back to the running tab to keep the recording"));
+                return;
+            }
+
+            string nl = tab.Document.Text.Contains("\r\n") ? "\r\n" : "\n";
+            string block = Loc.Tr("// Interacción grabada: el resultado del reel la repite (tiempo 0 = inicio de la grabación).",
+                                  "// Recorded interaction: the reel's result replays it (time 0 = when recording started).")
+                           + nl + string.Join(nl, markers) + nl + nl;
+            using (tab.Document.RunUpdate())
+                tab.Document.Insert(0, block);
+
+            ShowTransientStatus(Loc.Tr(
+                $"{markers.Count} marcadores de reel agregados arriba del sketch -- Ctrl+Z para deshacer",
+                $"{markers.Count} reel markers added at the top of the sketch -- Ctrl+Z to undo"));
+        }
+
+        /// <summary>
+        /// "Apply tweaks to code": reads the running sketch's [Tweak] values and
+        /// rewrites the initializers of the fields whose slider you actually
+        /// moved (TweakSourceRewriter decides which) -- all in one document
+        /// update, so a single Ctrl+Z puts the code back.
+        /// </summary>
+        private void ApplyTweaksToCode()
+        {
+            var tab = _editorView.ActiveTab;
+            if (tab == null || tab != _runningTab)
+                return;
+
+            var values = _canvas.ReadTweakValues();
+            if (values.Count == 0)
+            {
+                ShowTransientStatus(Loc.Tr("Este sketch no tiene campos [Tweak]", "This sketch has no [Tweak] fields"));
+                return;
+            }
+
+            var doc = tab.Document;
+            var edits = TweakSourceRewriter.ComputeEdits(doc.Text, values);
+            if (edits.Count == 0)
+            {
+                ShowTransientStatus(values.Any(v => v.Touched)
+                    ? Loc.Tr("El código ya tiene esos valores", "The code already has those values")
+                    : Loc.Tr("Todavía no moviste ningún slider", "No slider has been moved yet"));
+                return;
+            }
+
+            using (doc.RunUpdate())
+            {
+                foreach (var edit in edits) // already sorted end-to-start, so offsets stay valid
+                    doc.Replace(edit.Start, edit.Length, edit.Text);
+            }
+
+            ShowTransientStatus(Loc.Tr(
+                $"{edits.Count} valor(es) de [Tweak] escritos en el código -- Ctrl+Z para deshacer",
+                $"{edits.Count} [Tweak] value(s) written into the code -- Ctrl+Z to undo"));
         }
 
         /// <summary>Enables the Hot Reload button only while it would actually mean

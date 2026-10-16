@@ -122,7 +122,7 @@ Synths, drums, `.wav` samples, envelopes, filters, and `Amplitude` / `Spectrum()
 | 🧊 **One API, two renderers** | 2D on SkiaSharp, real 3D on OpenGL (Silk.NET) with lights, cameras, materials, custom shaders and 200,000 GPU particles. |
 | 📦 **Any NuGet package as a library** | Put `// nuget: PackageName, 1.2.3` at the top of a sketch and it's downloaded and linked. No `.csproj` to touch. |
 | 🔊 **Live-coded sound** | Live loops, synths, drums and samples, with visuals that react on the beat. |
-| 🗂️ **36 examples, searchable** | From a minimal sketch to orbit cameras, ML.NET models that learn while you click, MIDI/OSC and a live-coded beat. Search by name, topic or a function in the code. |
+| 🗂️ **50+ examples, searchable** | From a minimal sketch to orbit cameras, ML.NET models that learn while you click, a TensorSharp neural network that paints, MIDI/OSC and a live-coded beat. Search by name, topic or a function in the code. |
 | 🚀 **Ship it as an app** | Export any sketch as a single, self-contained, double-clickable executable. |
 | 🌎 **English and Spanish** | The whole interface is localized and switchable from Settings. |
 

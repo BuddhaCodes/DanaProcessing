@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using NuGet.Common;
@@ -18,7 +19,13 @@ namespace DanaProcessing.Ide.Compilation.PackageManagement
     /// <summary>One resolved package's chosen version and the assembly files it
     /// contributes for the current target framework (empty for a metapackage
     /// that only carries transitive dependencies, e.g. no lib/ of its own).</summary>
-    public sealed record ResolvedNuGetPackage(string Id, string Version, IReadOnlyList<string> AssemblyPaths);
+    /// <summary>
+    /// One resolved package: its managed assemblies (lib/, or the
+    /// runtimes/&lt;rid&gt;/lib/ build for this OS when the package has one) and,
+    /// when it ships native code for this OS, the folder those native
+    /// libraries were extracted to (see SketchCompiler's native resolver).
+    /// </summary>
+    public sealed record ResolvedNuGetPackage(string Id, string Version, IReadOnlyList<string> AssemblyPaths, string? NativeDirectory = null);
 
     /// <summary>Everything a sketch's `// nuget:` directives resolved to: every
     /// assembly to add as a Roslyn reference and make loadable at runtime, plus
@@ -28,6 +35,7 @@ namespace DanaProcessing.Ide.Compilation.PackageManagement
     {
         public bool Success => Errors.Count == 0;
         public IEnumerable<string> AllAssemblyPaths => Packages.SelectMany(p => p.AssemblyPaths);
+        public IEnumerable<string> AllNativeDirectories => Packages.Select(p => p.NativeDirectory).OfType<string>();
     }
 
     /// <summary>One nuget.org search hit — enough to render a Visual-Studio-style
@@ -63,6 +71,34 @@ namespace DanaProcessing.Ide.Compilation.PackageManagement
         private static readonly NuGetFramework TargetFramework = NuGetFramework.ParseFolder("net10.0");
         private static readonly FrameworkReducer Reducer = new();
         private static readonly SourceRepository SourceRepo = Repository.Factory.GetCoreV3(SourceUrl);
+
+        /// <summary>
+        /// Runtime identifiers to look under runtimes/ for, most specific first
+        /// (the usual RID fallback: win-x64 -> win, linux-x64 -> linux -> unix,
+        /// osx-arm64 -> osx -> unix). A package's runtimes/&lt;rid&gt;/lib build
+        /// replaces its lib/ one (that's how System.IO.Ports ships its real
+        /// implementation), and runtimes/&lt;rid&gt;/native holds its native
+        /// libraries (ONNX Runtime, SQLite, OpenCV...).
+        /// </summary>
+        private static readonly string[] RidChain = BuildRidChain();
+
+        private static string[] BuildRidChain()
+        {
+            string arch = RuntimeInformation.ProcessArchitecture switch
+            {
+                Architecture.X86 => "x86",
+                Architecture.Arm64 => "arm64",
+                Architecture.Arm => "arm",
+                _ => "x64",
+            };
+            if (OperatingSystem.IsWindows())
+                return new[] { $"win-{arch}", "win" };
+            if (OperatingSystem.IsMacOS())
+                return new[] { $"osx-{arch}", "osx", "unix" };
+            if (OperatingSystem.IsLinux())
+                return new[] { $"linux-{arch}", "linux", "unix" };
+            return Array.Empty<string>();
+        }
 
         private static readonly HashSet<string> SkipIds = new(StringComparer.OrdinalIgnoreCase)
         {
@@ -141,8 +177,8 @@ namespace DanaProcessing.Ide.Compilation.PackageManagement
 
                 try
                 {
-                    var (assemblyPaths, dependencies) = await GetOrDownloadAsync(findResource, cache, logger, id, version, progress, ct);
-                    packages.Add(new ResolvedNuGetPackage(id, version.ToNormalizedString(), assemblyPaths));
+                    var (assemblyPaths, dependencies, nativeDirectory) = await GetOrDownloadAsync(findResource, cache, logger, id, version, progress, ct);
+                    packages.Add(new ResolvedNuGetPackage(id, version.ToNormalizedString(), assemblyPaths, nativeDirectory));
                     foreach (var dep in dependencies)
                         queue.Enqueue((dep.Id, dep.VersionRange?.OriginalString));
                 }
@@ -230,13 +266,17 @@ namespace DanaProcessing.Ide.Compilation.PackageManagement
         /// <see cref="CacheRoot"/> when present (no network at all), otherwise
         /// downloads the .nupkg, extracts its net10.0-nearest lib assemblies and
         /// records its net10.0-nearest dependency group for the caller to enqueue.</summary>
-        private static async Task<(IReadOnlyList<string> AssemblyPaths, IReadOnlyList<PackageDependency> Dependencies)> GetOrDownloadAsync(
+        private static async Task<(IReadOnlyList<string> AssemblyPaths, IReadOnlyList<PackageDependency> Dependencies, string? NativeDirectory)> GetOrDownloadAsync(
             FindPackageByIdResource findResource, SourceCacheContext cache, ILogger logger,
             string id, NuGetVersion version, IProgress<string>? progress, CancellationToken ct)
         {
             var packageDir = Path.Combine(CacheRoot, id.ToLowerInvariant(), version.ToNormalizedString());
             var libDir = Path.Combine(packageDir, "lib");
-            var completeMarker = Path.Combine(packageDir, ".complete");
+            var nativeDir = Path.Combine(packageDir, "native");
+            // "-v2": packages cached before runtimes/ support had no native/ folder
+            // and only the lib/ (possibly "not supported") build -- a new marker
+            // name makes each of them extract once more, the right way.
+            var completeMarker = Path.Combine(packageDir, ".complete-v2");
             var depsFile = Path.Combine(packageDir, "deps.txt");
 
             if (File.Exists(completeMarker))
@@ -245,7 +285,7 @@ namespace DanaProcessing.Ide.Compilation.PackageManagement
                 var cachedDeps = File.Exists(depsFile)
                     ? File.ReadAllLines(depsFile).Select(ParseDepLine).Where(d => d != null).Select(d => d!).ToList()
                     : new List<PackageDependency>();
-                return (cachedAssemblies, cachedDeps);
+                return (cachedAssemblies, cachedDeps, Directory.Exists(nativeDir) ? nativeDir : null);
             }
 
             progress?.Report(Loc.Tr($"Descargando {id} {version.ToNormalizedString()}...", $"Downloading {id} {version.ToNormalizedString()}..."));
@@ -262,6 +302,7 @@ namespace DanaProcessing.Ide.Compilation.PackageManagement
 
             List<string> extracted;
             List<PackageDependency> dependencies;
+            bool hasNative;
             using (var packageStream = File.OpenRead(nupkgPath))
             using (var reader = new PackageArchiveReader(packageStream))
             {
@@ -291,6 +332,10 @@ namespace DanaProcessing.Ide.Compilation.PackageManagement
                     }
                 }
 
+                var allFiles = reader.GetFiles().ToList();
+                ExtractRuntimeAssemblies(reader, allFiles, libDir, extracted);
+                hasNative = ExtractNatives(reader, allFiles, nativeDir);
+
                 var depGroups = nuspec.GetDependencyGroups().ToList();
                 var nearestDeps = Reducer.GetNearest(TargetFramework, depGroups.Select(g => g.TargetFramework));
                 var chosenDepGroup = depGroups.FirstOrDefault(g => g.TargetFramework.Equals(nearestDeps));
@@ -305,7 +350,75 @@ namespace DanaProcessing.Ide.Compilation.PackageManagement
             File.WriteAllLines(depsFile, dependencies.Select(d => $"{d.Id}|{d.VersionRange?.OriginalString}"));
             File.WriteAllText(completeMarker, "");
 
-            return (extracted, dependencies);
+            return (extracted, dependencies, hasNative ? nativeDir : null);
+        }
+
+        /// <summary>
+        /// runtimes/&lt;rid&gt;/lib/&lt;tfm&gt;/*.dll for the most specific RID that has
+        /// any: these REPLACE same-named lib/ assemblies, which in packages like
+        /// System.IO.Ports are only "not supported on this platform" stubs.
+        /// </summary>
+        private static void ExtractRuntimeAssemblies(PackageArchiveReader reader, List<string> allFiles, string libDir, List<string> extracted)
+        {
+            foreach (var rid in RidChain)
+            {
+                string prefix = $"runtimes/{rid}/lib/";
+                var items = allFiles
+                    .Where(f => f.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) && IsLoadableAssembly(f))
+                    .ToList();
+                if (items.Count == 0)
+                    continue;
+
+                // tfm folder name -> parsed framework, so the folder actually chosen can be matched back.
+                var folders = items
+                    .Select(f => f.Substring(prefix.Length).Split('/')[0])
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToDictionary(folder => folder, NuGetFramework.ParseFolder, StringComparer.OrdinalIgnoreCase);
+                var nearest = Reducer.GetNearest(TargetFramework, folders.Values);
+                if (nearest is null)
+                    continue;
+                string chosenFolder = folders.First(kv => kv.Value.Equals(nearest)).Key;
+                string chosenPrefix = prefix + chosenFolder + "/";
+
+                Directory.CreateDirectory(libDir);
+                foreach (var item in items.Where(f => f.StartsWith(chosenPrefix, StringComparison.OrdinalIgnoreCase)
+                                                   && f.IndexOf('/', chosenPrefix.Length) < 0)) // no culture subfolders
+                {
+                    var destPath = Path.Combine(libDir, Path.GetFileName(item));
+                    using (var entryStream = reader.GetStream(item))
+                    using (var destStream = File.Create(destPath))
+                        entryStream.CopyTo(destStream);
+                    extracted.RemoveAll(p => string.Equals(Path.GetFileName(p), Path.GetFileName(item), StringComparison.OrdinalIgnoreCase));
+                    extracted.Add(destPath);
+                }
+                return;
+            }
+        }
+
+        /// <summary>runtimes/&lt;rid&gt;/native/* for the most specific RID that has any, into <paramref name="nativeDir"/>.</summary>
+        private static bool ExtractNatives(PackageArchiveReader reader, List<string> allFiles, string nativeDir)
+        {
+            foreach (var rid in RidChain)
+            {
+                string prefix = $"runtimes/{rid}/native/";
+                var items = allFiles
+                    .Where(f => f.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) && !f.EndsWith("/", StringComparison.Ordinal))
+                    .ToList();
+                if (items.Count == 0)
+                    continue;
+
+                foreach (var item in items)
+                {
+                    var relative = item.Substring(prefix.Length).Replace('/', Path.DirectorySeparatorChar);
+                    var destPath = Path.Combine(nativeDir, relative);
+                    Directory.CreateDirectory(Path.GetDirectoryName(destPath)!);
+                    using var entryStream = reader.GetStream(item);
+                    using var destStream = File.Create(destPath);
+                    entryStream.CopyTo(destStream);
+                }
+                return true;
+            }
+            return false;
         }
 
         private static bool IsLoadableAssembly(string path) =>

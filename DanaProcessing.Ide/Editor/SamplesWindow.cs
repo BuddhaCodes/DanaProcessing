@@ -36,6 +36,9 @@ namespace DanaProcessing.Ide
     {
         private static readonly IBrush Hairline = new SolidColorBrush(Avalonia.Media.Color.Parse("#E8E2DA"));
 
+        // The selected sample running live above its code (see SamplePreview).
+        private readonly SamplePreview _preview = new();
+
         private sealed class Entry
         {
             public required SketchSample Sample { get; init; }
@@ -197,7 +200,7 @@ namespace DanaProcessing.Ide
                 FontSize = 11.5,
                 Margin = new Thickness(0, 16, 0, 6),
             };
-            var detailsTop = new StackPanel { Children = { _detailName, _detailTags, _detailDescription, _codeHeader } };
+            var detailsTop = new StackPanel { Children = { _detailName, _detailTags, _detailDescription, _preview, _codeHeader } };
 
             _code = new SelectableTextBlock
             {
@@ -299,6 +302,7 @@ namespace DanaProcessing.Ide
 
             AddHandler(KeyDownEvent, OnKeyDownTunnel, RoutingStrategies.Tunnel);
             Opened += (_, _) => _search.Focus();
+            Closed += (_, _) => _preview.Stop(); // the previewed sketch's OnStop()
 
             ApplyFilter();
         }
@@ -503,6 +507,7 @@ namespace DanaProcessing.Ide
             }
 
             _selected = entry;
+            _preview.Show(entry?.Sample);
             _details.IsVisible = entry != null;
             _detailsPlaceholder.IsVisible = entry == null;
             if (entry == null)

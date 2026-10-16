@@ -47,8 +47,16 @@ namespace DanaProcessing
         // these so the matching virtual method above actually fires — the same
         // pattern as SetCanvas() in Sketch.cs. ---
 
+        // Each Raise* below first offers the event to the [Tweak] panel (see
+        // Sketch.Tweak.cs); when the panel uses it -- a press on a slider, the
+        // drag that follows, its release and the click right after -- the
+        // sketch's own callback doesn't fire, so dragging a slider never also
+        // paints on the canvas underneath.
+
         internal void RaiseMousePressed(MouseButtonKind button)
         {
+            if (Tweaks.OnPress(this, MouseX, MouseY))
+                return;
             IsMousePressed = true;
             MouseButton = button;
             MousePressed();
@@ -56,6 +64,8 @@ namespace DanaProcessing
 
         internal void RaiseMouseReleased(MouseButtonKind button)
         {
+            if (Tweaks.OnRelease())
+                return;
             IsMousePressed = false;
             MouseButton = button;
             MouseReleased();
@@ -63,12 +73,16 @@ namespace DanaProcessing
 
         internal void RaiseMouseClicked(MouseButtonKind button)
         {
+            if (Tweaks.OnClick())
+                return;
             MouseButton = button;
             MouseClicked();
         }
 
         internal void RaiseMouseMoved()
         {
+            if (Tweaks.OnMove(this, MouseX))
+                return;
             if (IsMousePressed)
                 MouseDragged();
             else

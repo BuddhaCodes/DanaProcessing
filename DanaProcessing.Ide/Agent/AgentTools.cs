@@ -35,6 +35,11 @@ namespace DanaProcessing.Ide.Agent
                 """{"type":"object","properties":{},"required":[]}"""),
 
             new AgentTool(
+                "look_at_canvas",
+                "Saca una captura del frame actual del sketch que está corriendo y te la devuelve como imagen, para que veas cómo se ve de verdad: colores, composición, si aparece algo o no. Corré el sketch con run_sketch antes. Usala para verificar cualquier pedido visual ('que parezca un atardecer', 'no se ve nada') en vez de suponer el resultado. wait_ms (opcional, 0-5000) espera antes de capturar, para que avance una animación.",
+                """{"type":"object","properties":{"wait_ms":{"type":"integer","description":"Milisegundos a esperar antes de capturar (0-5000)."}},"required":[]}"""),
+
+            new AgentTool(
                 "search_docs",
                 "Busca en la referencia de la API de DanaProcessing (métodos de Sketch: dibujo 2D/3D, input, matemática, etc.) entradas que coincidan con una palabra clave, y devuelve su descripción.",
                 """{"type":"object","properties":{"query":{"type":"string","description":"Un nombre de método o palabra clave para buscar, por ejemplo 'PVector' o 'lights'."}},"required":["query"]}"""),
@@ -44,6 +49,9 @@ namespace DanaProcessing.Ide.Agent
         {
             try
             {
+                if (call.Name == "look_at_canvas")
+                    return await LookAtCanvasAsync(call, owner, ct);
+
                 string result = call.Name switch
                 {
                     "read_sketch" => ReadSketch(owner),
@@ -112,6 +120,29 @@ namespace DanaProcessing.Ide.Agent
             }
 
             return "El sketch compiló y corrió sin errores.";
+        }
+
+        private static async Task<AgentToolResult> LookAtCanvasAsync(AgentToolCall call, MainWindow owner, CancellationToken ct)
+        {
+            int waitMs = 0;
+            using (var doc = JsonDocument.Parse(string.IsNullOrWhiteSpace(call.ArgumentsJson) ? "{}" : call.ArgumentsJson))
+            {
+                if (doc.RootElement.TryGetProperty("wait_ms", out var waitEl) && waitEl.ValueKind == JsonValueKind.Number && waitEl.TryGetInt32(out int w))
+                    waitMs = Math.Clamp(w, 0, 5000);
+            }
+            if (waitMs > 0)
+                await Task.Delay(waitMs, ct);
+
+            var capture = owner.Canvas.CaptureFrameAsync();
+            var finished = await Task.WhenAny(capture, Task.Delay(2000, ct));
+            byte[]? jpeg = finished == capture ? await capture : null;
+            if (jpeg is null)
+                return new AgentToolResult(call.Id, "No se pudo capturar el canvas: no se dibujó ningún frame en 2 segundos. ¿Está corriendo el sketch (run_sketch) y el canvas visible en la ventana?");
+
+            string text = $"Captura del frame actual del sketch ({owner.Canvas.SketchWidth}x{owner.Canvas.SketchHeight}, reducida para enviarla).";
+            if (owner.Canvas.HasCrashed)
+                text += $" Ojo: el sketch está detenido por un error en {owner.Canvas.LastCrashContext}() ({owner.Canvas.LastCrashException?.Message}) y la captura muestra ese aviso, no el dibujo.";
+            return new AgentToolResult(call.Id, text, jpeg);
         }
 
         private static string SearchDocs(string argumentsJson)

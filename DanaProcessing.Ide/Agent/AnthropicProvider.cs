@@ -100,11 +100,31 @@ namespace DanaProcessing.Ide.Agent
                         var results = new JsonArray();
                         foreach (var result in message.ToolResults ?? Array.Empty<AgentToolResult>())
                         {
+                            JsonNode resultContent = result.ResultText;
+                            if (result.ImageJpeg is { Length: > 0 } jpeg)
+                            {
+                                // A tool_result can hold image blocks too -- that's how
+                                // look_at_canvas shows the model the running sketch.
+                                resultContent = new JsonArray
+                                {
+                                    new JsonObject { ["type"] = "text", ["text"] = result.ResultText },
+                                    new JsonObject
+                                    {
+                                        ["type"] = "image",
+                                        ["source"] = new JsonObject
+                                        {
+                                            ["type"] = "base64",
+                                            ["media_type"] = "image/jpeg",
+                                            ["data"] = Convert.ToBase64String(jpeg),
+                                        },
+                                    },
+                                };
+                            }
                             results.Add(new JsonObject
                             {
                                 ["type"] = "tool_result",
                                 ["tool_use_id"] = result.ToolCallId,
-                                ["content"] = result.ResultText,
+                                ["content"] = resultContent,
                             });
                         }
                         array.Add(new JsonObject { ["role"] = "user", ["content"] = results });
