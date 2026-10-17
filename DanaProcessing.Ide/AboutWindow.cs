@@ -113,11 +113,11 @@ namespace DanaProcessing.Ide
             buttons.Children.Add(repoButton);
             buttons.Children.Add(closeButton);
 
-            Content = new StackPanel
+            ClayChrome.Apply(this, new StackPanel
             {
                 Margin = new Thickness(26, 24, 26, 20),
                 Children = { header, version, tagline, support, license, buttons },
-            };
+            }, canMinimize: false, canMaximize: false);
         }
 
         private static void OpenRepo()

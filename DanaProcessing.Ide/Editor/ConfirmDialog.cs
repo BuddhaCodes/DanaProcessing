@@ -67,12 +67,12 @@ namespace DanaProcessing.Ide.Editor
                 Children = { cancelButton, confirmButton },
             };
 
-            Content = new StackPanel { Children = { messageText, buttonRow } };
+            ClayChrome.Apply(this, new StackPanel { Children = { messageText, buttonRow } }, canMinimize: false, canMaximize: false);
         }
 
         /// <summary>True if the user picked <paramref name="confirmLabel"/>; false for
         /// <paramref name="cancelLabel"/> or if they closed the window any other way
-        /// (native close button, Alt+F4, etc.) — closing without an explicit choice
+        /// (the title bar's ✕, Alt+F4, etc.) — closing without an explicit choice
         /// defaults to NOT performing the destructive action.</summary>
         public static Task<bool> ShowAsync(
             Window owner, string title, string message,

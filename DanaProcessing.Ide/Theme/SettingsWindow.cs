@@ -163,7 +163,8 @@ namespace DanaProcessing.Ide
             DockPanel.SetDock(navBorder, Dock.Left);
             layout.Children.Add(navBorder);
             layout.Children.Add(right);
-            Content = layout;
+            // The IDE's own title bar, like every other window (not the OS one).
+            ClayChrome.Apply(this, layout, canMinimize: false);
 
             ShowSection(start);
             UpdateRestartNote();

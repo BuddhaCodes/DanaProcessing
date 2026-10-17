@@ -202,7 +202,7 @@ namespace DanaProcessing.Ide.Editor
             rootGrid.Children.Add(bodyGrid);
             rootGrid.Children.Add(footer);
 
-            Content = rootGrid;
+            ClayChrome.Apply(this, rootGrid);
 
             RefreshInstalledList();
             ShowEmptyDetails();

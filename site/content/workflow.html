@@ -10,6 +10,7 @@
 
 <h3 class="entry-title" id="rewind">Real rewind <span class="sig-return">⏸ · ⤺</span></h3>
 <p class="entry-desc">Pause with ⏸ under the canvas, drag the timeline back, and ⤺ <em>continue from here</em>: the sketch goes back to that exact frame — its own fields (lists, arrays, your objects), its random generator and <code class="inline">FrameCount</code> — and runs on from there; the future after it is forgotten. It works after ⚡ Hot Reload too, so you can go back to frame 300 and see what the code you just changed does from there (fields are matched by name).</p>
+<div class="note"><strong>How far back.</strong> About the last 10 seconds. The newest frames are kept exactly as drawn; older ones are compressed in the background, and on a slow machine or a very big sketch the older part keeps fewer frames rather than less time. Rewind shows what the sketch drew: a sketch that only follows the mouse or the microphone looks the same in every frame while you hold still or stay quiet.</div>
 <div class="note"><strong>What comes back and what doesn't.</strong> Snapshots are deep copies taken with the frames — fewer of them when the state is big, none when it's huge (then rewind is visual only). Images, sounds, ports and other outside things are shared, not copied. <code class="inline">Millis()</code> keeps running, and the drawing state (<code class="inline">Fill</code>, <code class="inline">Stroke</code>...) stays as it is now.</div>
 
 <h3 class="entry-title" id="time-machine">Code time machine <span class="sig-return">Ctrl+Shift+H</span></h3>
