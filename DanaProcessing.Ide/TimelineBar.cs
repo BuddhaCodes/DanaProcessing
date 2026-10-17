@@ -114,40 +114,62 @@ namespace DanaProcessing.Ide
                 _canvas.Freeze();
         }
 
+        /// <summary>What the bar shows for a given canvas state (kept pure for the tests).</summary>
+        public readonly record struct View(bool Enabled, bool SliderEnabled, bool Frozen, int Maximum, int Index, string Label);
+
+        public static View Describe(int count, bool frozen, bool stopped, int historyIndex, Func<int, int> frameCountAt)
+        {
+            if (stopped)
+                return new View(false, false, false, Math.Max(0, count - 1), Math.Max(0, count - 1),
+                    Loc.Tr("Detenido", "Stopped"));
+
+            int index = frozen ? Math.Clamp(historyIndex, 0, Math.Max(0, count - 1)) : Math.Max(0, count - 1);
+            string label;
+            if (!frozen)
+            {
+                label = count == 0 ? "" : Loc.Tr($"{count} cuadros para rebobinar", $"{count} frames to rewind");
+            }
+            else
+            {
+                int frame = frameCountAt(index);
+                int behind = Math.Max(0, count - 1 - index);
+                label = behind == 0
+                    ? Loc.Tr($"cuadro {frame} · pausado", $"frame {frame} · paused")
+                    : Loc.Tr($"cuadro {frame} · {behind} atrás", $"frame {frame} · {behind} back");
+            }
+            return new View(true, count > 1, frozen, Math.Max(0, count - 1), index, label);
+        }
+
         private void Refresh()
         {
             _updating = true;
             try
             {
-                int count = _canvas.HistoryCount;
-                bool frozen = _canvas.IsFrozen;
-                int index = frozen ? Math.Clamp(_canvas.HistoryIndex, 0, Math.Max(0, count - 1)) : Math.Max(0, count - 1);
+                var view = Describe(_canvas.HistoryCount, _canvas.IsFrozen, !_canvas.CanRewind, _canvas.HistoryIndex, _canvas.HistoryFrameCount);
 
-                _slider.Maximum = Math.Max(0, count - 1);
-                _slider.Value = index;
-                _slider.IsEnabled = count > 1;
+                _slider.Maximum = view.Maximum;
+                _slider.Value = view.Index;
+                _slider.IsEnabled = view.SliderEnabled;
 
-                _playPause.Content = frozen ? "▶" : "⏸";
-                _resumeHere.IsVisible = frozen;
-                _resumeHere.IsEnabled = frozen && _canvas.CanResumeFromHere;
-                ToolTip.SetTip(_playPause, frozen
+                // Greyed out as a whole while the sketch is stopped: still
+                // readable, but nothing in it takes clicks or focus.
+                if (Child is Control content)
+                {
+                    content.Opacity = view.Enabled ? 1.0 : 0.45;
+                    content.IsHitTestVisible = view.Enabled;
+                }
+                _back.Focusable = _playPause.Focusable = _forward.Focusable = view.Enabled;
+                ToolTip.SetTip(this, view.Enabled ? null : Loc.Tr(
+                    "El sketch está detenido: corrélo (Run) para poder pausar y rebobinar",
+                    "The sketch is stopped: Run it to pause and rewind"));
+
+                _playPause.Content = view.Frozen ? "▶" : "⏸";
+                _resumeHere.IsVisible = view.Frozen;
+                _resumeHere.IsEnabled = view.Frozen && _canvas.CanResumeFromHere;
+                ToolTip.SetTip(_playPause, view.Frozen
                     ? Loc.Tr("Seguir corriendo", "Resume")
                     : Loc.Tr("Pausar y rebobinar", "Pause and rewind"));
-
-                if (!frozen)
-                {
-                    _label.Text = count == 0
-                        ? ""
-                        : Loc.Tr($"{count} cuadros para rebobinar", $"{count} frames to rewind");
-                }
-                else
-                {
-                    int frame = _canvas.HistoryFrameCount(index);
-                    int behind = Math.Max(0, count - 1 - index);
-                    _label.Text = behind == 0
-                        ? Loc.Tr($"cuadro {frame} · pausado", $"frame {frame} · paused")
-                        : Loc.Tr($"cuadro {frame} · {behind} atrás", $"frame {frame} · {behind} back");
-                }
+                _label.Text = view.Label;
             }
             finally
             {

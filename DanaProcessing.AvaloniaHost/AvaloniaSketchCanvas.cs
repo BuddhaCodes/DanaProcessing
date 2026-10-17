@@ -421,6 +421,13 @@ namespace DanaProcessing.AvaloniaHost
                 _stopped = true;
                 StopQuietly(_sketch);
             }
+            // A stopped sketch can't be rewound (nothing runs to show or
+            // continue from): leave rewind, the bar greys out.
+            _frozen = false;
+            _stepOnce = false;
+            _resumeRequest = -1;
+            RaiseHistoryChanged();
+            Dispatcher.UIThread.Post(InvalidateVisual);
         }
 
         private static void StopQuietly(Sketch sketch)
@@ -639,7 +646,7 @@ namespace DanaProcessing.AvaloniaHost
         /// </summary>
         public void ResumeFromHere()
         {
-            if (!_frozen)
+            if (!_frozen || _stopped)
                 return;
             _resumeRequest = Math.Max(0, _historyIndex);
             InvalidateVisual();
@@ -719,9 +726,12 @@ namespace DanaProcessing.AvaloniaHost
         /// <summary>Raised (on the UI thread) when frozen/resumed or the shown frame changes.</summary>
         public event Action? HistoryChanged;
 
+        /// <summary>Whether rewind can be used now: not after Stop (until the next Run).</summary>
+        public bool CanRewind => !_stopped;
+
         public void Freeze()
         {
-            if (_frozen)
+            if (_frozen || _stopped)
                 return;
             _historyIndex = _history.Count - 1;
             _frozen = true;
@@ -741,6 +751,8 @@ namespace DanaProcessing.AvaloniaHost
 
         public void ScrubTo(int index)
         {
+            if (_stopped)
+                return;
             Freeze();
             _historyIndex = Math.Clamp(index, 0, Math.Max(0, _history.Count - 1));
             RaiseHistoryChanged();
@@ -749,6 +761,8 @@ namespace DanaProcessing.AvaloniaHost
 
         public void StepBack()
         {
+            if (_stopped)
+                return;
             Freeze();
             if (_historyIndex > 0)
                 _historyIndex--;
@@ -758,6 +772,8 @@ namespace DanaProcessing.AvaloniaHost
 
         public void StepForward()
         {
+            if (_stopped)
+                return;
             Freeze();
             if (_historyIndex < _history.Count - 1)
                 _historyIndex++;
