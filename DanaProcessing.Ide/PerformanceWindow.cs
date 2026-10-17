@@ -44,6 +44,10 @@ namespace DanaProcessing.Ide
         /// <summary>Ctrl+Up / Ctrl+Down: how dark the band behind the code is.</summary>
         public static double StepOpacity(double current, int direction) =>
             Math.Clamp(Math.Round(current + 0.1 * Math.Sign(direction), 2), MinOpacity, MaxOpacity);
+
+        /// <summary>Ctrl+Shift+Up / Ctrl+Shift+Down: how see-through the code itself is, 20%..100%.</summary>
+        public static double StepCodeOpacity(double current, int direction) =>
+            Math.Clamp(Math.Round(current + 0.1 * Math.Sign(direction), 2), PerformanceSettings.MinCodeOpacity, PerformanceSettings.MaxCodeOpacity);
     }
 
     /// <summary>
@@ -57,12 +61,13 @@ namespace DanaProcessing.Ide
     /// Keys: Ctrl+Enter = Hot Reload (Run if it can't), Ctrl+Shift+Enter = Run,
     /// Ctrl+H = hide/show the code, Ctrl+T = hide/show the [Tweak] sliders,
     /// Ctrl +/- = text size, Ctrl+Up/Down = how dark the band behind the code
-    /// is, Esc = back to the IDE.
+    /// is, Ctrl+Shift+Up/Down = how see-through the code is, Esc = back to the
+    /// IDE. All three start from Settings → Performance mode, and what you
+    /// change here is remembered there (PerformanceSettings).
     /// </summary>
     public sealed class PerformanceWindow : Window
     {
-        private static double _fontSize = PerformanceMode.DefaultFontSize;
-        private static double _opacity = PerformanceMode.DefaultOpacity;
+        private readonly PerformanceSettings _settings = PerformanceSettingsStore.Load();
 
         private readonly Control _canvas;
         private readonly Viewbox _stage;
@@ -95,7 +100,8 @@ namespace DanaProcessing.Ide
             {
                 Document = document,
                 FontFamily = ClayTheme.FontMono,
-                FontSize = _fontSize,
+                FontSize = _settings.FontSize,
+                Opacity = _settings.CodeOpacity,
                 FontWeight = FontWeight.SemiBold,
                 ShowLineNumbers = false,
                 Background = Brushes.Transparent,
@@ -112,7 +118,7 @@ namespace DanaProcessing.Ide
 
             _codeLayer = new Border
             {
-                Background = new SolidColorBrush(Avalonia.Media.Colors.Black, _opacity),
+                Background = new SolidColorBrush(Avalonia.Media.Colors.Black, _settings.BackdropOpacity),
                 Padding = new Thickness(48, 36, 48, 84), // room at the bottom for the status line
                 Child = _code,
             };
@@ -173,8 +179,8 @@ namespace DanaProcessing.Ide
         {
             var (text, isError) = _readStatus();
             string keys = Loc.Tr(
-                "Ctrl+Enter ⚡   Ctrl+Shift+Enter ▶   Ctrl+H código   Ctrl+T sliders   Ctrl +/− tamaño   Ctrl ↑/↓ fondo   Esc salir",
-                "Ctrl+Enter ⚡   Ctrl+Shift+Enter ▶   Ctrl+H code   Ctrl+T sliders   Ctrl +/− size   Ctrl ↑/↓ backdrop   Esc exit");
+                "Ctrl+Enter ⚡   Ctrl+Shift+Enter ▶   Ctrl+H código   Ctrl+T sliders   Ctrl +/− tamaño   Ctrl ↑/↓ fondo   Ctrl+Shift ↑/↓ transparencia   Esc salir",
+                "Ctrl+Enter ⚡   Ctrl+Shift+Enter ▶   Ctrl+H code   Ctrl+T sliders   Ctrl +/− size   Ctrl ↑/↓ backdrop   Ctrl+Shift ↑/↓ transparency   Esc exit");
             _status.Text = string.IsNullOrWhiteSpace(text) ? keys : text + "\n" + keys;
             _status.Foreground = isError
                 ? new SolidColorBrush(Avalonia.Media.Color.FromRgb(255, 130, 110))
@@ -214,18 +220,27 @@ namespace DanaProcessing.Ide
             else if (ctrl && e.Key is Key.OemPlus or Key.Add)
             {
                 e.Handled = true;
-                _code.FontSize = _fontSize = PerformanceMode.StepFontSize(_fontSize, +1);
+                _code.FontSize = _settings.FontSize = PerformanceMode.StepFontSize(_settings.FontSize, +1);
+                PerformanceSettingsStore.Save(_settings);
             }
             else if (ctrl && e.Key is Key.OemMinus or Key.Subtract)
             {
                 e.Handled = true;
-                _code.FontSize = _fontSize = PerformanceMode.StepFontSize(_fontSize, -1);
+                _code.FontSize = _settings.FontSize = PerformanceMode.StepFontSize(_settings.FontSize, -1);
+                PerformanceSettingsStore.Save(_settings);
+            }
+            else if (ctrl && shift && e.Key is Key.Up or Key.Down)
+            {
+                e.Handled = true;
+                _code.Opacity = _settings.CodeOpacity = PerformanceMode.StepCodeOpacity(_settings.CodeOpacity, e.Key == Key.Up ? +1 : -1);
+                PerformanceSettingsStore.Save(_settings);
             }
             else if (ctrl && e.Key is Key.Up or Key.Down)
             {
                 e.Handled = true;
-                _opacity = PerformanceMode.StepOpacity(_opacity, e.Key == Key.Up ? +1 : -1);
-                _codeLayer.Background = new SolidColorBrush(Avalonia.Media.Colors.Black, _opacity);
+                _settings.BackdropOpacity = PerformanceMode.StepOpacity(_settings.BackdropOpacity, e.Key == Key.Up ? +1 : -1);
+                _codeLayer.Background = new SolidColorBrush(Avalonia.Media.Colors.Black, _settings.BackdropOpacity);
+                PerformanceSettingsStore.Save(_settings);
             }
         }
     }

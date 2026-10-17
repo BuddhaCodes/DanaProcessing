@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -57,6 +58,47 @@ namespace DanaProcessing.Ide.Theme
 
         /// <summary>The exact values ClayTheme.cs shipped with, so "Restaurar valores predeterminados" is trivial.</summary>
         public static ThemeSettings Default() => new();
+
+        /// <summary>The six corner radii with the largest value each one's slider allows.</summary>
+        public static readonly (Func<ThemeSettings, double> Get, Action<ThemeSettings, double> Set, double Max)[] Radii =
+        {
+            (t => t.RadiusSmall, (t, v) => t.RadiusSmall = v, 32),
+            (t => t.RadiusMedium, (t, v) => t.RadiusMedium = v, 32),
+            (t => t.RadiusLarge, (t, v) => t.RadiusLarge = v, 40),
+            (t => t.RadiusCard, (t, v) => t.RadiusCard = v, 48),
+            (t => t.RadiusButton, (t, v) => t.RadiusButton = v, 32),
+            (t => t.RadiusChrome, (t, v) => t.RadiusChrome = v, 20),
+        };
+
+        /// <summary>
+        /// The one "Roundness" slider: every radius becomes its default times
+        /// <paramref name="factor"/> (0 = square corners, 1 = as shipped, 2 =
+        /// twice as round), each within its own maximum.
+        /// </summary>
+        public ThemeSettings WithRoundness(double factor)
+        {
+            var copy = Clone();
+            var defaults = Default();
+            factor = Math.Clamp(factor, 0, 2);
+            foreach (var (get, set, max) in Radii)
+                set(copy, Math.Clamp(Math.Round(get(defaults) * factor), 0, max));
+            return copy;
+        }
+
+        /// <summary>Where the "Roundness" slider sits for these radii (their average ratio to the defaults).</summary>
+        public double Roundness
+        {
+            get
+            {
+                var defaults = Default();
+                return Math.Clamp(Radii.Average(r => r.Get(this) / r.Get(defaults)), 0, 2);
+            }
+        }
+
+        /// <summary>True when anything that is baked into controls at startup (radii, fonts) differs.</summary>
+        public bool DiffersInRestartOnlyValues(ThemeSettings other) =>
+            Radii.Any(r => Math.Abs(r.Get(this) - r.Get(other)) > 0.01)
+            || FontDisplay != other.FontDisplay || FontBody != other.FontBody || FontMono != other.FontMono;
 
         public ThemeSettings Clone() => (ThemeSettings)MemberwiseClone();
     }

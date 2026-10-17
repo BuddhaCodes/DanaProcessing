@@ -221,18 +221,15 @@
 <p class="entry-desc">Opt-in, off by default (Settings → Reporte de errores). When enabled, an unhandled exception writes a local crash report; on the next startup, the IDE offers to open a prefilled GitHub issue for it — you review and submit it yourself, nothing is sent automatically or silently. The <strong>Help</strong> menu also has a standing <strong>Report a problem</strong> item for general feedback, with no crash required to use it.</p>
 
 <h2 class="entry-title api" id="settings-window"><code>Settings</code></h2>
-<p class="entry-desc"><strong>Tools → Settings</strong> (<code class="inline">Ctrl+,</code>) opens a Settings window, most of it previewed live where that's possible:</p>
-<div class="table-wrap" role="region" tabindex="0" aria-label="Table: Section, Controls">
+<p class="entry-desc"><strong>Tools → Settings</strong> (<code class="inline">Ctrl+,</code>) opens a Settings window with one short page per topic, picked from the list on the left, so you only see the options you came for. Colors preview live while you choose; nothing is kept until <strong>Save</strong>, and <strong>Cancel</strong> puts everything back. When a change needs a restart (language, corners, fonts) the footer says so and offers <strong>Save and restart</strong>.</p>
+<div class="table-wrap" role="region" tabindex="0" aria-label="Table: Page, Controls">
   <table>
-    <tr><th>Section</th><th>Controls</th></tr>
-    <tr><td>Colors</td><td>Every <code class="inline">ClayTheme</code> color — applied instantly to the running window.</td></tr>
-    <tr><td>Shapes</td><td>Corner radii — take effect on the next app restart.</td></tr>
-    <tr><td>Typography</td><td>Font stacks — take effect on the next app restart.</td></tr>
-    <tr><td>Rendering</td><td>2D antialiasing (supersampling, up to 4×) and 3D antialiasing (MSAA, up to 8×) — applied on the next <strong>Run</strong>, no restart needed.</td></tr>
-    <tr><td>Language</td><td>Switches the entire interface between Spanish and English — takes effect on the next app restart.</td></tr>
-    <tr><td>Updates</td><td>Whether the IDE checks GitHub for a newer release on startup.</td></tr>
-    <tr><td>Reporte de errores</td><td>Opt-in crash reporting (see above) — off by default.</td></tr>
-    <tr><td>Asistente (Agent mode)</td><td>Provider, API key, and model for Agent mode (see above).</td></tr>
+    <tr><th>Page</th><th>Controls</th></tr>
+    <tr><td>General</td><td>Interface language (Spanish or English, on the next start), whether the IDE checks GitHub for a newer release, and opt-in crash reporting (see above, off by default).</td></tr>
+    <tr><td>Appearance</td><td>Six accent colors to pick from, the background and text colors, and one <strong>Roundness</strong> slider for every corner. <strong>Show all</strong> opens the full list: every <code class="inline">ClayTheme</code> color, each corner radius and the font stacks.</td></tr>
+    <tr><td>Running sketches</td><td>2D smoothing (supersampling, up to 4×) and 3D smoothing (MSAA, up to 8×), applied on the next <strong>Run</strong>.</td></tr>
+    <tr><td>Performance mode</td><td>How see-through the code is over the visuals (20–100% visible), how dark the band behind it is, and its size, with a small preview of the stage. The same values change live on stage with the keys in <a href="live.html#performance-mode">Performance mode</a>, and are remembered either way.</td></tr>
+    <tr><td>Assistant</td><td>Provider, API key, and model for Agent mode (see above).</td></tr>
   </table>
 </div>
 
@@ -240,7 +237,7 @@
 <p class="entry-desc">The full IDE shell: editor and canvas side by side on a wide window, a single "Código"/"Resultado" toggle on a narrow one, a custom title bar, status bar, and error panel. A sketch keeps running until you stop it — while you type in the editor, on the "Código" pane of a narrow window, with the IDE minimized — so the visuals stay in step with the music, which never stops either. While the canvas can't be seen its frames are drawn offscreen and show up the moment you look again. To lower the cost while you type, the 2D supersampling drops to 1x until you pause.</p>
 
 <h2 class="entry-title api" id="claytheme"><code>ClayTheme</code></h2>
-<p class="entry-desc">The IDE's visual language — warm off-white surfaces, soft shadows, and an ember-orange accent — driven by the Settings window's Colors section above.</p>
+<p class="entry-desc">The IDE's visual language — warm off-white surfaces, soft shadows, and an ember-orange accent — driven by the Settings window's Appearance page above.</p>
 
 </div>
 <nav class="pager" aria-label="Previous and next topic"><a class="prev" href="workflow.html"><span>← Previous</span><strong>Day-to-day tools</strong></a><a class="next" href="hosting.html"><span>Next →</span><strong>Avalonia host</strong></a></nav>
