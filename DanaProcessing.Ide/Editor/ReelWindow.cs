@@ -9,6 +9,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Controls.Primitives;
@@ -76,6 +77,19 @@ namespace DanaProcessing.Ide
         private readonly Border _howTo;
 
         private readonly ComboBox _formatPicker;
+        private readonly ComboBox _shapePicker;
+        private bool _settingShape;
+
+        /// <summary>The shapes the picker offers, in order (index = SelectedIndex).</summary>
+        public static readonly ReelFormat[] Shapes = { ReelFormat.Vertical, ReelFormat.Square, ReelFormat.Landscape };
+
+        /// <summary>Picker label for a shape: ratio, pixels and where it fits.</summary>
+        public static string ShapeLabel(ReelFormat format) => format switch
+        {
+            ReelFormat.Square => Loc.Tr("Cuadrado 1:1 · 1080×1080", "Square 1:1 · 1080×1080"),
+            ReelFormat.Landscape => Loc.Tr("Horizontal 16:9 · 1920×1080", "Landscape 16:9 · 1920×1080"),
+            _ => Loc.Tr("Vertical 9:16 · 1080×1920", "Vertical 9:16 · 1080×1920"),
+        };
         private readonly Button _exportButton;
         private readonly Button _cancelButton;
         private readonly Button _thumbButton;
@@ -195,12 +209,33 @@ namespace DanaProcessing.Ide
                 },
             };
 
+            // The video's shape. Starts as the code says (// @reel format: ...) and
+            // can be changed here for this preview/export without touching the code.
+            _shapePicker = new ComboBox
+            {
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                ItemsSource = Shapes.Select(ShapeLabel).ToArray(),
+                SelectedIndex = 0,
+                Margin = new Thickness(0, 0, 0, 8),
+            };
+            AutomationProperties.SetName(_shapePicker, Loc.Tr("Forma del video", "Video shape"));
+            ToolTip.SetTip(_shapePicker, Loc.Tr(
+                "9:16 para Reels, Shorts y TikTok · 1:1 para feeds · 16:9 para YouTube, X y Reddit. Empieza como dice el código (// @reel format: ...).",
+                "9:16 for Reels, Shorts and TikTok · 1:1 for feeds · 16:9 for YouTube, X and Reddit. Starts as the code says (// @reel format: ...)."));
+            _shapePicker.SelectionChanged += (_, _) =>
+            {
+                if (_settingShape || _script == null || _shapePicker.SelectedIndex < 0)
+                    return;
+                _script.Format = Shapes[_shapePicker.SelectedIndex];
+                BuildPlayer();
+            };
+
             _formatPicker = new ComboBox
             {
                 HorizontalAlignment = HorizontalAlignment.Stretch,
                 ItemsSource = new[]
                 {
-                    Loc.Tr("MP4 (H.264) — para Reels, Shorts, TikTok", "MP4 (H.264) — for Reels, Shorts, TikTok"),
+                    Loc.Tr("MP4 (H.264), para subir a cualquier red", "MP4 (H.264), for any platform"),
                     Loc.Tr("GIF animado (sin ffmpeg)", "Animated GIF (no ffmpeg needed)"),
                     Loc.Tr("Secuencia de PNG", "PNG sequence"),
                 },
@@ -243,6 +278,7 @@ namespace DanaProcessing.Ide
                     _howTo,
                     new Border { Height = 1, Background = Hairline, Margin = new Thickness(0, 16) },
                     Heading(Loc.Tr("Exportar", "Export")),
+                    _shapePicker,
                     _formatPicker,
                     exportRow,
                     _thumbButton,
@@ -333,6 +369,10 @@ namespace DanaProcessing.Ide
                     _messages.Children.Add(Message("⚠ " + w, WarnBrush));
 
                 _howTo.IsVisible = !_script.ImportsModule || !_script.HasMarkers;
+
+                _settingShape = true;
+                _shapePicker.SelectedIndex = Array.IndexOf(Shapes, _script.Format);
+                _settingShape = false;
 
                 BuildPlayer();
             }

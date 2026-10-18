@@ -181,6 +181,13 @@ namespace DanaProcessing.Ide.Editor
                 new[] { SampleTag.YouTubeSeries, SampleTag.Reels, SampleTag.Basics }),
 
             new SketchSample(
+                Loc.Tr("Promo · 60 s con música", "Promo · 60 s, music included"),
+                Loc.Tr("El video promocional de DanaProcessing, imagen y música, en un solo sketch: un shader, código que se escribe solo, partículas, un ritmo, el modo performance y un cierre, todo cortado en los compases de su propia banda sonora ([LiveLoop]). Sketch > Crear reel lo exporta como MP4 1920×1080 con sonido.",
+                       "DanaProcessing's promo video, picture and music, in one sketch: a shader, code that types itself, particles, a beat, performance mode and an outro, all cut on the bars of its own soundtrack ([LiveLoop]s). Sketch > Create reel exports it as a 1920×1080 MP4 with sound."),
+                DanaPromo,
+                new[] { SampleTag.Reels, SampleTag.Audio, SampleTag.LiveCoding }),
+
+            new SketchSample(
                 Loc.Tr("Sketch mínimo", "Minimal sketch"),
                 Loc.Tr("Setup()/Draw() chico -- un círculo que sigue al mouse, crece mientras mantenés apretado el botón, y cambia de color con cada click.",
                        "A small Setup()/Draw() -- a circle that follows the mouse, grows while you hold the button down, and changes color on each click."),

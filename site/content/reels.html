@@ -27,10 +27,11 @@
   <table>
     <tr><th>marker</th><th>what it does</th></tr>
     <tr><td>title: … / subtitle: …</td><td>Opening title card, also shown as a header over the code cards</td></tr>
-    <tr><td>format: vertical | square | landscape</td><td>1080×1920 (default), 1080×1080 or 1920×1080</td></tr>
+    <tr><td>format: vertical | square | landscape</td><td>1080×1920 (default), 1080×1080 or 1920×1080. The Create reel window starts on this shape and can switch it for an export without touching the code.</td></tr>
     <tr><td>theme: clay | dark | light</td><td>Clay is the IDE's own look (default)</td></tr>
     <tr><td>speed: 55 | slow | normal | fast | turbo</td><td>Typing speed in characters per second. If you don't set it, long scenes speed up to stay reel-sized</td></tr>
     <tr><td>result: 8 caption="…" transition=zoom</td><td>Seconds of live sketch at the end; <code class="inline">result off</code> skips it</td></tr>
+    <tr><td>result: 60 full</td><td>The sketch <em>is</em> the video: it fills the whole frame, with no header, "Result" pill, card or watermark (a different shape is letterboxed on black). For promos, music videos and visualizers; give the sketch the format's size, e.g. <code class="inline">Size(1920, 1080)</code> for landscape.</td></tr>
     <tr><td>outro: … | off</td><td>Closing card text, or none</td></tr>
     <tr><td>fps: 30 · lang: en | es · file: Sketch.cs</td><td>Frame rate, language of the reel's own labels, file name on the code card</td></tr>
     <tr><td>progress: off · linenumbers: off · mouse: off</td><td>Hide the story-style progress bar, the line numbers, or the simulated mouse</td></tr>
@@ -48,6 +49,31 @@
 
 <h3 class="entry-title" id="reel-input">Simulated interaction <span class="sig-return">→ move · drag · click · key</span></h3>
 <p class="entry-desc">During the result part the sketch receives real input events (<code class="inline">MousePressed()</code>, <code class="inline">MouseDragged()</code>, <code class="inline">KeyPressed()</code>…), and the video draws the cursor, click ripples and a keycap. Points are in sketch pixels and times in seconds since the result started: <code class="inline">// @reel move 10,10 -&gt; 200,200 -&gt; 300,50 at=1 dur=2</code>, <code class="inline">// @reel drag 100,100 -&gt; 400,300 at 3s over 1.5s</code>, <code class="inline">// @reel click 300,200 at=2</code>, <code class="inline">// @reel key space at=4</code> (also <code class="inline">enter</code>, arrow keys, or any single character). With no scripted mouse, a sketch that reads the mouse gets a natural-looking path automatically, plus clicks and a drag if it overrides those methods.</p>
+
+<h3 class="entry-title" id="reel-full">A whole video in one sketch <span class="sig-return">→ result: N full</span></h3>
+<p class="entry-desc">With <code class="inline">result: 60 full</code> and no scenes, the reel is just your sketch, edge to edge, with its sound. That's enough for a complete promo: one sketch that changes shot as time goes by and plays its own soundtrack with <code class="inline">[LiveLoop]</code>s. Put <code class="inline">// @reel hide</code> right after <code class="inline">using DanaProcessing.Reels;</code> so none of the code is typed on screen, and <code class="inline">// @reel audio: on</code> so its music is recorded (hidden loops don't count as "makes sound"). Time the shots with <code class="inline">Beat()</code> rather than <code class="inline">Millis()</code>: it follows what you hear, so cuts land on the music. One detail: loops that start from silence put their first downbeat on the next bar line, so <code class="inline">Beat()</code> is 4, not 0, when the music starts. Count from the bar of the first note (<code class="inline">OnNote</code>), as the example does. <em>Examples → Promo · 60 s, music included</em> is DanaProcessing's own promo built this way: open it, then <em>Sketch → Create reel → Export</em>.</p>
+<div class="code-block">
+  <pre><span class="kw">using</span> DanaProcessing.Reels;
+<span class="cm">// @reel hide</span>
+<span class="cm">// @reel format: landscape</span>
+<span class="cm">// @reel result: 61 full</span>
+<span class="cm">// @reel outro: off</span>
+<span class="cm">// @reel audio: on</span>
+<span class="kw">public class</span> <span class="tp">Promo</span> : <span class="tp">Sketch</span>
+{
+    <span class="kw">public override void</span> Setup() { Size(<span class="str">1920</span>, <span class="str">1080</span>); Bpm = <span class="str">120</span>; }
+    <span class="kw">double</span> start = <span class="str">-1</span>;   <span class="cm">// the bar the music started on</span>
+    <span class="kw">bool</span> heard;
+    <span class="kw">public override void</span> OnNote(<span class="tp">NoteEvent</span> e) =&gt; heard = <span class="kw">true</span>;
+    <span class="kw">public override void</span> Draw()
+    {
+        <span class="kw">if</span> (heard &amp;&amp; start &lt; <span class="str">0</span>) start = Math.Floor(Beat() / <span class="str">4</span>) * <span class="str">4</span>;
+        <span class="kw">float</span> seconds = (<span class="kw">float</span>)(Beat() - Math.Max(<span class="str">0</span>, start)) / <span class="str">2</span>;   <span class="cm">// 2 beats a second at 120 BPM</span>
+        <span class="kw">if</span> (seconds &lt; <span class="str">6</span>) Title(); <span class="kw">else</span> Visuals();
+    }
+    <span class="cm">// ...Title(), Visuals() and the [LiveLoop]s that play the music</span>
+}</pre>
+</div>
 
 <h3 class="entry-title" id="reel-export">Export <span class="sig-return">→ MP4 · GIF · PNG</span></h3>
 <p class="entry-desc">The preview window plays the reel and lets you scrub and jump to any part. Export renders frame by frame in video time, not real time, so a heavy sketch still comes out smooth, and <code class="inline">Millis()</code> follows video time. <strong>MP4</strong> (H.264, full resolution) needs <a href="https://www.gyan.dev/ffmpeg/builds/" target="_blank" rel="noopener">ffmpeg</a>; the window finds it or lets you pick it. <strong>GIF</strong> uses DanaProcessing's own encoder and needs nothing else. <strong>PNG</strong> writes one image per frame for your own editor. If the sketch makes sound, it's recorded in step with the video: live loops run in video time, so every beat lands on the same frame as in the preview, and the MP4 gets an AAC track (PNG export drops an <code class="inline">audio.wav</code> next to the frames; GIF has no sound). <strong>YouTube thumbnail…</strong> saves a 1280×720 PNG with the reel's title, a frame of the running sketch and the reel's theme, so the video and its thumbnail match.</p>

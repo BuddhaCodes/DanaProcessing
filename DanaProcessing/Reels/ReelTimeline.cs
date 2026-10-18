@@ -94,7 +94,10 @@ namespace DanaProcessing.Reels
             if (script.ResultSeconds > 0 && sketchFactory != null)
             {
                 _stage = new SketchStage(sketchFactory, script, script.ResultSeconds) { StartsAudio = startAudio };
-                _segments.Add(new ResultSegment(this, _stage) { Transition = script.ResultTransition });
+                // A full-frame result that opens the reel starts on its own first
+                // frame: the sketch is the whole picture, nothing to fade in from.
+                var transition = script.ResultFull && _segments.Count == 0 ? ReelTransition.None : script.ResultTransition;
+                _segments.Add(new ResultSegment(this, _stage) { Transition = transition });
             }
 
             if (script.Outro != "")
@@ -340,7 +343,7 @@ namespace DanaProcessing.Reels
 
         private void DrawBrand(SKCanvas canvas, Segment seg, double local)
         {
-            if (seg is OutroSegment)
+            if (seg is OutroSegment || seg is ResultSegment { Full: true })
                 return;
             var th = Theme;
             using var paint = new SKPaint { IsAntialias = true, Typeface = th.UiBold, TextSize = 26 * S, Color = th.Muted.WithAlpha(190) };
@@ -582,7 +585,10 @@ namespace DanaProcessing.Reels
                 Duration = t.Script.ResultSeconds;
             }
 
-            public override bool ShowsHeader => true;
+            /// <summary>"result: N full": the sketch is the whole picture (see ReelScript.ResultFull).</summary>
+            public bool Full => T.Script.ResultFull;
+
+            public override bool ShowsHeader => !Full;
             public override string Label => "Result";
 
             public override void Draw(SKCanvas canvas, double local)
@@ -590,6 +596,12 @@ namespace DanaProcessing.Reels
                 var th = T.Theme;
                 float S = T.S;
                 _stage.AdvanceTo(Math.Max(0, local));
+
+                if (Full)
+                {
+                    DrawFull(canvas, local);
+                    return;
+                }
 
                 // "▶ Result" pill
                 var label = T.Script.Lang == "es" ? "Resultado" : "Result";
@@ -645,6 +657,33 @@ namespace DanaProcessing.Reels
 
                 DrawInputOverlay(canvas, dest, scale, local);
 
+                T.DrawCaption(canvas, T.Script.ResultCaption, local - 0.3);
+            }
+
+            /// <summary>Full frame: the sketch fitted to the whole video (letterboxed on black if its shape differs), nothing around it.</summary>
+            private void DrawFull(SKCanvas canvas, double local)
+            {
+                float sw = _stage.Width, sh = _stage.Height;
+                float scale = Math.Min(T.Width / sw, T.Height / sh);
+                float dw = sw * scale, dh = sh * scale;
+                var dest = SKRect.Create((T.Width - dw) / 2, (T.Height - dh) / 2, dw, dh);
+                if (dw < T.Width - 0.5f || dh < T.Height - 0.5f)
+                    canvas.Clear(SKColors.Black);
+                using (var image = _stage.Snapshot())
+                {
+                    if (image != null)
+                    {
+                        canvas.Save();
+                        canvas.Translate(dest.Left, dest.Top);
+                        canvas.Scale(scale);
+                        using var smooth = new SKPaint { FilterQuality = SKFilterQuality.High, IsAntialias = true };
+                        canvas.DrawImage(image, 0, 0, smooth);
+                        canvas.Restore();
+                    }
+                }
+                if (_stage.Error != null)
+                    DrawError(canvas, dest, _stage.Error, _stage.ErrorContext);
+                DrawInputOverlay(canvas, dest, scale, local);
                 T.DrawCaption(canvas, T.Script.ResultCaption, local - 0.3);
             }
 

@@ -122,6 +122,13 @@ namespace DanaProcessing.Reels
         /// <summary>Seconds the running sketch is shown at the end. 0 = no result part.</summary>
         public double ResultSeconds { get; set; } = 6;
         public ReelTransition ResultTransition { get; set; } = ReelTransition.Zoom;
+        /// <summary>
+        /// "result: 60 full": the running sketch fills the whole video -- no
+        /// header, "Result" pill, card or watermark around it. For promos,
+        /// music videos and anything that's all picture (pair it with a
+        /// sketch the size of the format, e.g. Size(1920, 1080) for landscape).
+        /// </summary>
+        public bool ResultFull { get; set; }
         public string? ResultCaption { get; set; }
         public int Fps { get; set; } = 30;
         /// <summary>"en" or "es": language of the few words the reel draws itself ("Result", the outro).</summary>
@@ -244,6 +251,9 @@ namespace DanaProcessing.Reels
                                 script.ResultSeconds = 0;
                             else if (!string.IsNullOrWhiteSpace(first))
                                 script.ResultSeconds = Math.Clamp(ParseNumber(first.TrimEnd('s'), 6, lineNo, script), 0, 120);
+                            if (args.Skip(1).Any(a => a.Equals("full", StringComparison.OrdinalIgnoreCase))
+                                || (opts.TryGetValue("frame", out var rf) && rf.Equals("full", StringComparison.OrdinalIgnoreCase)))
+                                script.ResultFull = true;
                             if (opts.TryGetValue("transition", out var rt))
                                 script.ResultTransition = ParseEnum(rt, ReelTransition.Zoom, lineNo, script, "transition");
                             if (opts.TryGetValue("caption", out var rc))
