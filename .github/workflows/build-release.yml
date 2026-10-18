@@ -36,6 +36,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
     steps:
       - uses: actions/checkout@v4
 
@@ -47,33 +48,19 @@ jobs:
       - name: Restore
         run: dotnet restore DanaProcessing.Ide/DanaProcessing.Ide.csproj
 
+      # Versión de este run y si es pre-release: ver .github/scripts/ci-version.sh
+      # (cada build de CI tiene que ser MAYOR que lo ya publicado -- vpk pack se
+      # niega si no -- y MENOR que el release oficial al que apunta; y sale como
+      # pre-release, así no llega como update ni al botón de descarga del sitio).
       - name: Read version
         id: version
         run: |
           base_version=$(dotnet msbuild DanaProcessing.Ide/DanaProcessing.Ide.csproj -getProperty:Version)
-
+          cut="false"
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ github.event.inputs.cut_release }}" = "true" ]; then
-            # Corte deliberado: la versión del csproj tal cual, sin sufijo --
-            # quien dispara esto a mano ya la bumpeó para este release real.
-            version="$base_version"
-          else
-            # Push normal a master (o un dispatch de prueba sin cut_release):
-            # Velopack necesita versiones siempre crecientes y nunca repetidas
-            # para que el delta y el feed de updates tengan sentido -- a
-            # diferencia del softprops/action-gh-release de antes, donde
-            # pushear dos veces con el MISMO <Version> pisaba el mismo
-            # Release/tag en el lugar. Con vpk eso puede directamente fallar
-            # el job, así que todo push "de iteración" recibe un sufijo de
-            # run number que lo hace único (run_number solo crece, nunca se
-            # repite en todo el historial de Actions del repo).
-            if [[ "$base_version" == *-* ]]; then
-              version="${base_version}.${{ github.run_number }}"
-            else
-              version="${base_version}-ci.${{ github.run_number }}"
-            fi
+            cut="true"
           fi
-
-          echo "version=$version" >> $GITHUB_OUTPUT
+          bash .github/scripts/ci-version.sh "$base_version" "${{ github.run_number }}" "$cut" | tee -a "$GITHUB_OUTPUT"
 
   build-windows:
     needs: read-version
@@ -351,3 +338,4 @@ jobs:
           --releaseName "DanaProcessing IDE v${{ needs.read-version.outputs.version }}"
           --tag v${{ needs.read-version.outputs.version }}
           --token ${{ secrets.GITHUB_TOKEN }}
+          ${{ needs.read-version.outputs.prerelease == 'true' && '--pre' || '' }}

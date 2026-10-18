@@ -7,8 +7,21 @@ IDE checks on startup.
 
 ## Every push to `master`
 
-Builds a pre-release with a unique version (`<Version>-ci.<run>`), so the
-update feed always moves forward. Nothing to do by hand.
+Builds a GitHub **pre-release** with a unique, always-increasing version
+(`.github/scripts/ci-version.sh`). Nothing to do by hand.
+
+| `<Version>` in the csproj | CI builds are | Why |
+|---|---|---|
+| `1.0.0-rc.1` | `1.0.0-rc.1.<run>` | |
+| `1.0.0`, not released yet | `1.0.0-rtm.<run>` | "rtm" sorts after "rc" and before `1.0.0` |
+| `1.0.0`, `v1.0.0` already released | `1.0.1-ci.<run>` | builds toward the next patch |
+
+Each one must be newer than the release `vpk pack` downloads for the delta,
+or it stops with *"There is a release in channel … which is equal or greater"*
+(that's what happened when `1.0.0-ci.49` came after `1.0.0-rc.1.48`: "ci"
+sorts before "rc"). Because they're pre-releases, the IDE's updater never
+offers them and the website's download button never points at them: only a
+cut release reaches users.
 
 ## Cutting a real release (e.g. 1.0.0)
 
