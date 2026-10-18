@@ -222,6 +222,18 @@ h1, h2, h3 { line-height: 1.15; }
 .site-footer p { margin: 0; }
 .site-footer a { color: var(--on-ink); }
 .site-footer nav { display: flex; flex-wrap: wrap; gap: 8px 18px; }
+.footer-link { background: none; border: 0; padding: 0; font: inherit; color: var(--on-ink); text-decoration: underline; cursor: pointer; }
+
+/* Analytics permission (site.js): a card over the bottom of the page, never a wall. */
+.consent { position: fixed; z-index: 40; left: 16px; right: 16px; bottom: 16px; max-width: 620px; margin: 0 auto; padding: 20px 22px; border-radius: var(--radius); background: var(--ink); color: var(--on-ink); box-shadow: 0 18px 50px rgba(19, 32, 42, 0.35); border: 1px solid var(--ink-line); }
+.consent-title { margin: 0 0 6px; font-family: var(--font-display); font-size: 22px; line-height: 1.2; }
+.consent p { margin: 0 0 14px; font-size: 16px; color: var(--on-ink-muted); }
+.consent em { font-style: normal; color: var(--on-ink); }
+.consent-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.consent .btn { min-height: 46px; font-size: 16px; flex: 1 1 180px; cursor: pointer; font-family: inherit; }
+.consent .btn-line { background: none; }
+.consent :focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; }
+body.has-consent { padding-bottom: 230px; }
 
 /* ---------- Topic pages ---------- */
 .topic-hero { background: var(--ink); color: var(--on-ink); }
@@ -347,6 +359,6 @@ h1, h2, h3 { line-height: 1.15; }
 .az-letter .kind { color: var(--muted); font-size: 14px; }
 
 @media print {
-  .site-header, .topics, .topics-toggle, .pager, .support-aside, .site-footer, .code-actions { display: none !important; }
+  .site-header, .topics, .topics-toggle, .pager, .support-aside, .site-footer, .code-actions, .consent { display: none !important; }
   .topic-hero { background: none; color: #000; }
 }

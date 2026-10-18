@@ -142,6 +142,91 @@
     sync();
   });
 
+  // ---------- Analytics: only with permission ----------
+  // The page carries the measurement id but not Google's script. The script
+  // loads only once the visitor says yes; the answer is remembered in this
+  // browser and can be changed any time from "Privacy choices" in the
+  // footer. Browsers sending Global Privacy Control or Do Not Track are
+  // taken as "no" and not asked. Without JavaScript nothing loads at all.
+  var analyticsMeta = document.querySelector('meta[name="dana-analytics"]');
+  var GA_ID = analyticsMeta && analyticsMeta.getAttribute("content");
+  var CONSENT_KEY = "dana-analytics-consent";
+  var readConsent = function () { try { return localStorage.getItem(CONSENT_KEY); } catch (e) { return null; } };
+  var saveConsent = function (v) { try { localStorage.setItem(CONSENT_KEY, v); } catch (e) { /* private mode: ask again next time */ } };
+  var privacySignal = function () {
+    return navigator.globalPrivacyControl === true || navigator.doNotTrack === "1" || window.doNotTrack === "1";
+  };
+  var analyticsLoaded = false;
+  var loadAnalytics = function () {
+    if (!GA_ID) return;
+    window["ga-disable-" + GA_ID] = false;
+    if (analyticsLoaded) return;
+    analyticsLoaded = true;
+    window.dataLayer = window.dataLayer || [];
+    window.gtag = function () { window.dataLayer.push(arguments); };
+    window.gtag("js", new Date());
+    window.gtag("config", GA_ID);
+    var s = document.createElement("script");
+    s.async = true;
+    s.src = "https://www.googletagmanager.com/gtag/js?id=" + encodeURIComponent(GA_ID);
+    document.head.appendChild(s);
+  };
+  var stopAnalytics = function () {
+    if (GA_ID) window["ga-disable-" + GA_ID] = true;
+    // Forget the _ga cookies a previous "yes" left behind.
+    var host = location.hostname;
+    var domains = ["", host, "." + host, "." + host.split(".").slice(-2).join(".")];
+    document.cookie.split(";").forEach(function (c) {
+      var name = c.split("=")[0].trim();
+      if (!/^_ga/.test(name)) return;
+      domains.forEach(function (d) {
+        document.cookie = name + "=; Max-Age=0; path=/" + (d ? "; domain=" + d : "");
+      });
+    });
+  };
+  var banner = null;
+  var closeBanner = function () {
+    if (!banner) return;
+    banner.remove();
+    banner = null;
+    document.body.classList.remove("has-consent");
+  };
+  var answer = function (yes) {
+    saveConsent(yes ? "granted" : "denied");
+    if (yes) loadAnalytics(); else stopAnalytics();
+    closeBanner();
+  };
+  var showBanner = function (focus) {
+    if (banner || !GA_ID) return;
+    banner = document.createElement("section");
+    banner.className = "consent";
+    banner.setAttribute("aria-labelledby", "consent-title");
+    banner.innerHTML =
+      '<h2 id="consent-title" class="consent-title">Can we count your visit?</h2>' +
+      "<p>With your permission, Google Analytics shows us which pages help people learn. No ads, nothing sold, " +
+      "and nothing loads unless you say yes. Change your mind any time in <em>Privacy choices</em>, at the bottom of every page.</p>" +
+      '<div class="consent-actions">' +
+      '<button type="button" class="btn btn-gold" data-consent="yes">Yes, count my visit</button>' +
+      '<button type="button" class="btn btn-line" data-consent="no">No thanks</button>' +
+      "</div>";
+    banner.addEventListener("click", function (e) {
+      var b = e.target.closest && e.target.closest("[data-consent]");
+      if (b) answer(b.getAttribute("data-consent") === "yes");
+    });
+    document.body.appendChild(banner);
+    document.body.classList.add("has-consent");
+    if (focus) banner.querySelector("button").focus();
+  };
+  if (GA_ID) {
+    var consent = readConsent();
+    if (consent === "granted") loadAnalytics();
+    else if (consent !== "denied" && !privacySignal()) showBanner(false);
+    document.querySelectorAll("[data-privacy-choices]").forEach(function (b) {
+      b.hidden = false;
+      b.addEventListener("click", function () { showBanner(true); });
+    });
+  }
+
   // ---------- Copy code ----------
   document.querySelectorAll(".copy-btn").forEach(function (btn) {
     btn.addEventListener("click", function () {

@@ -210,20 +210,20 @@ GROUP_COLORS = {"Start here": "#F4EBDD", "Basics": "#E7B66B", "Drawing": "#FF8A6
                 "Live & generative": "#FF8A6B", "Tooling": "#E7B66B"}
 
 
+# Google Analytics (GA4). The tag is NOT in the page: site.js loads it only
+# after the visitor accepts the banner (and never on a "Global Privacy
+# Control"/"Do Not Track" browser unless they opt in from the footer).
+ANALYTICS_ID = "G-N4ZWC7GN1B"
+
+
 def head(title, description, canonical, root, extra=""):
     return f"""<!DOCTYPE html>
 <html lang="en" data-root="{root}">
 <head>
-<!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-N4ZWC7GN1B"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){{dataLayer.push(arguments);}}
-  gtag('js', new Date());
-  gtag('config', 'G-N4ZWC7GN1B');
-</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- Google Analytics only loads after the visitor says yes (assets/site.js, "Analytics: only with permission"). -->
+<meta name="dana-analytics" content="{ANALYTICS_ID}">
 <title>{esc(title)}</title>
 <meta name="description" content="{esc(description)}">
 <link rel="canonical" href="{canonical}">
@@ -292,6 +292,7 @@ def footer(root):
       <a href="{RELEASES}">Releases</a>
       <a href="{GITHUB}">GitHub</a>
       <a href="{root}index.html#support">Support</a>
+      <button type="button" class="footer-link" data-privacy-choices hidden>Privacy choices</button>
     </nav>
   </div>
 </footer>
