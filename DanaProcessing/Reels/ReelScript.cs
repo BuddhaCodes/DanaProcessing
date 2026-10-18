@@ -137,6 +137,13 @@ namespace DanaProcessing.Reels
         public bool ShowProgress { get; set; } = true;
         public bool ShowLineNumbers { get; set; } = true;
         public ReelMouseMode Mouse { get; set; } = ReelMouseMode.Auto;
+        /// <summary>
+        /// Loudness the exported sound is brought to, in LUFS (-14 = YouTube and
+        /// Spotify's reference; -16 suits podcasts and Apple). Null ("loudness:
+        /// off") keeps the sketch's own level. Peaks stay under -1.5 dBFS either way
+        /// when normalizing.
+        /// </summary>
+        public double? Loudness { get; set; } = -14;
         /// <summary>Record the sketch's sound into the MP4 (and a WAV next to PNG frames). Null = only if the code makes sound.</summary>
         public bool? Audio { get; set; }
         /// <summary>Chance of a typo per word while typing, 0..1 (0 = never, the default). "on" = 0.08.</summary>
@@ -240,6 +247,15 @@ namespace DanaProcessing.Reels
                         case "zoom":
                             script.ZoomMarks = !IsOff(text);
                             break;
+                        case "loudness":
+                        case "lufs":
+                            text ??= args.Count > 0 ? string.Join(" ", args) : null;  // "loudness: -16 LUFS"
+                            if (IsOff(text))
+                                script.Loudness = null;
+                            else
+                                script.Loudness = Math.Clamp(ParseNumber((text ?? "-14").Replace("LUFS", "", StringComparison.OrdinalIgnoreCase).Trim(), -14, lineNo, script), -40, -5);
+                            break;
+
                         case "audio":
                         case "sound":
                             script.Audio = !IsOff(text);
@@ -474,7 +490,7 @@ namespace DanaProcessing.Reels
                 text = string.Join(" ", args);
                 args.Clear();
             }
-            else if (text == null && args.Count == 1 && command is "format" or "theme" or "lang" or "language" or "speed" or "fps" or "mouse" or "audio" or "sound" or "typos" or "mistakes" or "zoom" or "progress" or "linenumbers" or "numbers")
+            else if (text == null && args.Count == 1 && command is "format" or "theme" or "lang" or "language" or "speed" or "fps" or "mouse" or "audio" or "sound" or "loudness" or "lufs" or "typos" or "mistakes" or "zoom" or "progress" or "linenumbers" or "numbers")
             {
                 text = args[0];
                 args.Clear();

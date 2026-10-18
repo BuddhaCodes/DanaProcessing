@@ -118,7 +118,7 @@ namespace DanaProcessing.Reels
                 bool withAudio = o.Kind != ReelExportKind.Gif && script.RecordsAudio && sketchFactory != null && script.ResultSeconds > 0;
                 using var audio = withAudio ? new DanaProcessing.Audio.OfflineAudio() : null;
                 using var timeline = withAudio ? ReelTimeline.BuildWithAudio(script, sketchFactory) : ReelTimeline.Build(script, sketchFactory);
-                var soundtrack = audio != null ? new ReelSoundtrack(audio) : null;
+                var soundtrack = audio != null ? new ReelSoundtrack(audio) { Loudness = script.Loudness } : null;
                 if (o.Kind == ReelExportKind.Gif)
                     timeline.AnimateBackground = false;
                 switch (o.Kind)
@@ -403,6 +403,12 @@ namespace DanaProcessing.Reels
 
         public ReelSoundtrack(DanaProcessing.Audio.OfflineAudio? sketch) => _sketch = sketch;
 
+        /// <summary>Target loudness in LUFS for the written sound (null = as played). See ReelScript.Loudness.</summary>
+        public double? Loudness { get; init; }
+
+        /// <summary>What the last WriteWav() measured and did, for the export's status line.</summary>
+        public (double MeasuredLufs, double GainDb)? LastNormalization { get; private set; }
+
         /// <summary>Lets the sketch's sound catch up with the picture (live loops run in video time).</summary>
         public void RenderUntil(double seconds) => _sketch?.RenderUntil(seconds);
 
@@ -423,6 +429,8 @@ namespace DanaProcessing.Reels
             }
             if (Array.TrueForAll(mix, v => v == 0))
                 return false;
+            if (Loudness is double target)
+                LastNormalization = DanaProcessing.Audio.Loudness.Normalize(mix, rate, target);
             DanaProcessing.Audio.OfflineAudio.WriteWav(path, mix, rate);
             return true;
         }

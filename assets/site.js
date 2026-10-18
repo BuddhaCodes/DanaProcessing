@@ -327,10 +327,12 @@
         });
         var p = byKey(detect());
         var asset = p && find(assets, p);
+        // "v1.0.0" -> "1.0": the button says which version you're getting.
+        var version = String(release.tag_name || "").replace(/^v/, "").replace(/\.0$/, "");
         document.querySelectorAll(".download-primary").forEach(function (a) {
           if (asset) a.href = asset.browser_download_url;
           var label = a.querySelector(".download-primary-label");
-          if (label && p) label.textContent = "Download for " + p.label;
+          if (label && p) label.textContent = "Download " + (version ? version + " " : "") + "for " + p.label;
         });
       })
       .catch(function () { /* keep the links to the releases page */ });

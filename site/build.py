@@ -286,7 +286,7 @@ def header(root, current):
 def footer(root):
     return f"""<footer class="site-footer">
   <div class="wrap">
-    <p>DanaProcessing · v1.0 RC · MIT · stands on the shoulders of <a href="https://processing.org">Processing</a>, <a href="https://p5js.org">p5.js</a> and <a href="https://sonic-pi.net">Sonic Pi</a>.</p>
+    <p>DanaProcessing · v1.0 · MIT · stands on the shoulders of <a href="https://processing.org">Processing</a>, <a href="https://p5js.org">p5.js</a> and <a href="https://sonic-pi.net">Sonic Pi</a>.</p>
     <nav aria-label="Footer">
       <a href="{root}reference/a-z.html">All topics &amp; A–Z</a>
       <a href="{RELEASES}">Releases</a>

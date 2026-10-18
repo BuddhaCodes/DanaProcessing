@@ -60,7 +60,7 @@ Status labels: **Idea** (scoped, not started) · **In progress** · **Shipped**.
 
 ---
 
-## 5. Version 1.0 — Release candidate (1.0.0-rc.1)
+## 5. Version 1.0 (1.0.0)
 
 **The pitch.** Everything above made DanaProcessing interesting; 1.0 is about making it dependable: a frozen API, tests that run on every OS, installers that update themselves, and docs a newcomer can finish in half an hour.
 
