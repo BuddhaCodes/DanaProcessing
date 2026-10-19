@@ -14,14 +14,37 @@ namespace DanaProcessing.Tests.Ide;
 /// </summary>
 public class ReleaseVersionTests
 {
+    /// <summary>
+    /// The bash the workflow's <c>shell: bash</c> steps use. On Windows that's
+    /// Git's: a bare "bash" there starts C:\Windows\System32\bash.exe (WSL),
+    /// because Windows looks in System32 before PATH, and on a runner with no
+    /// Linux distro installed that exits with an error instead of running the script.
+    /// </summary>
+    internal static string? FindBash()
+    {
+        if (!OperatingSystem.IsWindows())
+            return "bash";
+        var candidates = new List<string>();
+        foreach (var dir in (Environment.GetEnvironmentVariable("PATH") ?? "").Split(Path.PathSeparator))
+            if (dir.Contains("Git", StringComparison.OrdinalIgnoreCase))
+                candidates.Add(Path.Combine(dir, "bash.exe"));
+        foreach (var pf in new[] { Environment.GetEnvironmentVariable("ProgramFiles"), Environment.GetEnvironmentVariable("ProgramW6432") })
+            if (!string.IsNullOrEmpty(pf))
+                candidates.Add(Path.Combine(pf, "Git", "bin", "bash.exe"));
+        return candidates.FirstOrDefault(File.Exists);
+    }
+
     private static (string Version, bool Pre)? Run(string csproj, int run, bool cut, bool? released = null)
     {
         var root = DocsExamplesTests.FindSiteRoot();
         var script = root == null ? null : Path.Combine(root, ".github", "scripts", "ci-version.sh");
         if (script == null || !File.Exists(script))
             return null;
-        var psi = new ProcessStartInfo("bash") { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false };
-        psi.ArgumentList.Add(script);
+        var bash = FindBash();
+        if (bash == null)
+            return null; // Windows without Git for Windows
+        var psi = new ProcessStartInfo(bash) { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false };
+        psi.ArgumentList.Add(script.Replace('\\', '/'));   // Git bash takes D:/a/... fine
         psi.ArgumentList.Add(csproj);
         psi.ArgumentList.Add(run.ToString());
         psi.ArgumentList.Add(cut ? "true" : "false");
@@ -30,9 +53,10 @@ public class ReleaseVersionTests
         try { p = Process.Start(psi); }
         catch (System.ComponentModel.Win32Exception) { return null; } // no bash on this machine
         if (p == null) return null;
+        var errors = p.StandardError.ReadToEndAsync();
         string output = p.StandardOutput.ReadToEnd();
         p.WaitForExit();
-        Assert.Equal(0, p.ExitCode);
+        Assert.True(p.ExitCode == 0, $"{bash} {script} exited with {p.ExitCode}: {errors.Result}");
         var values = output.Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(l => l.Trim().Split('=', 2)).ToDictionary(kv => kv[0], kv => kv[1]);
         return (values["version"], values["prerelease"] == "true");
     }
@@ -72,6 +96,19 @@ public class ReleaseVersionTests
             return;
         Assert.True(ci.Value.Pre);
         Assert.False(cut.Value.Pre);
+    }
+
+    [Fact]
+    public void On_windows_it_never_picks_the_wsl_bash_in_system32()
+    {
+        var bash = FindBash();
+        if (!OperatingSystem.IsWindows())
+        {
+            Assert.Equal("bash", bash);
+            return;
+        }
+        if (bash != null)
+            Assert.DoesNotContain("System32", bash, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
