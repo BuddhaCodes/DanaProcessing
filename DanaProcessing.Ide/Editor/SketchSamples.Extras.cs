@@ -65,7 +65,472 @@ namespace DanaProcessing.Ide.Editor
                 AsciiBlackHole,
                 new[] { SampleTag.ThreeD, SampleTag.Text, SampleTag.Audio, SampleTag.Generative }),
 
+            new SketchSample(
+                Loc.Tr("Líquido en ASCII 3D: agua en una caja que podés inclinar", "3D ASCII liquid: water in a box you can tilt"),
+                Loc.Tr("Unas 1.500 partículas de agua simuladas en 3D (relajación de doble densidad, el método de Clavet, Beaudoin y Poulin que usan muchos juegos): cada partícula cuenta cuántas vecinas tiene cerca; si están muy apretadas las empuja y si están muy sueltas las atrae, y eso basta para que se comporte como un líquido con superficie, olas y salpicaduras. Las vecinas se buscan con una grilla, así que el costo crece con la cantidad de partículas y no con su cuadrado. Cada partícula es un glifo en 3D: # en el fondo, ~ en la superficie, puntos y estrellas en la espuma, y más blanca cuanto más rápido va. Arrastrá para inclinar la caja, click para una salpicadura, 1 2 3 cambian de escena (represa que se rompe, una bola que cae en una pileta, dos paredes de agua que chocan), la rueda acerca y A apaga el modo automático.",
+                       "About 1,500 water particles simulated in 3D (double density relaxation, the Clavet, Beaudoin and Poulin method behind many game liquids): each particle counts its close neighbours; too crowded and it pushes them away, too sparse and it pulls them in, and that alone makes it behave like a liquid, with a surface, waves and splashes. Neighbours are found with a grid, so the cost grows with the number of particles, not its square. Each particle is a glyph in 3D: # deep down, ~ on the surface, dots and stars in the spray, whiter the faster it moves. Drag to tilt the box, click for a splash, 1 2 3 switch scenes (a dam break, a ball dropping into a pool, two walls of water colliding), the wheel zooms and A turns auto mode off."),
+                AsciiFluid,
+                new[] { SampleTag.ThreeD, SampleTag.Text, SampleTag.Particles, SampleTag.Interaction }),
+
         };
+
+        private const string AsciiFluid =
+@"// A 3D liquid made of ASCII characters.
+//
+// About 1,500 particles of ""water"" in a glass box, simulated with particle-based
+// fluid dynamics (the ""double density relaxation"" method of Clavet, Beaudoin and
+// Poulin, 2005 -- the trick behind many game liquids):
+//   1. every particle falls and moves on with its velocity;
+//   2. it counts how crowded it is (its density, from the neighbours within one
+//      unit). Too crowded: it pushes its neighbours away; too sparse: it pulls
+//      them in -- that's what makes it a liquid that keeps its volume, with a
+//      surface, instead of sand or gas;
+//   3. the walls push it back in, and its new velocity is just where it ended
+//      up minus where it started.
+// Neighbours are found with a grid: each particle only looks at the 27 cells
+// around it, so the cost grows with the number of particles, not its square.
+//
+// Each particle is drawn as one glyph in 3D, sorted far to near: crowded ones
+// (deep water) are dense glyphs, lonely fast ones (spray and foam) are dots and
+// stars, and the faster it moves the whiter it gets.
+//
+// Drag the mouse: tilt the box (the water sloshes).  Wheel: zoom.
+// Click: kick the water up from below.  1: dam break   2: a ball of water drops into a pool
+// 3: two walls of water collide.  Space: pause.  A: auto mode on/off (it rocks by itself and
+// splashes every few seconds, until you touch it).
+public class AsciiFluid : Sketch
+{
+    // ---- the box (units: one particle's reach, h = 1) ------------------------------------
+    const float BoxX = 14, BoxY = 10, BoxZ = 7;
+    const int MaxParticles = 1800;
+
+    // ---- the fluid -----------------------------------------------------------------------
+    const float Gravity = 0.010f;          // per step²
+    const float Stiffness = 0.08f, NearStiffness = 0.2f;
+    const float Viscosity = 0.08f;
+    const int Substeps = 2;
+    float restDensity = 8;
+
+    int count;
+    readonly float[] px = new float[MaxParticles], py = new float[MaxParticles], pz = new float[MaxParticles];
+    readonly float[] ox = new float[MaxParticles], oy = new float[MaxParticles], oz = new float[MaxParticles];
+    readonly float[] vx = new float[MaxParticles], vy = new float[MaxParticles], vz = new float[MaxParticles];
+    readonly float[] density = new float[MaxParticles];
+
+    // The neighbour grid: particles sorted by cell.
+    const int CX = (int)BoxX + 1, CY = (int)BoxY + 1, CZ = (int)BoxZ + 1;
+    readonly int[] cellOf = new int[MaxParticles], sorted = new int[MaxParticles];
+    readonly int[] cellStart = new int[CX * CY * CZ + 1];
+
+    // ---- the view ------------------------------------------------------------------------
+    PFont mono;
+    float tiltX, tiltZ, autoT, zoom = 1, orbit;
+    bool paused, auto = true;
+    readonly float[] sx = new float[MaxParticles + 400], sy = new float[MaxParticles + 400], ss = new float[MaxParticles + 400];
+    readonly float[] depth = new float[MaxParticles + 400];
+    readonly int[] order = new int[MaxParticles + 400];
+    int scenario = 1;
+
+    public override void Setup()
+    {
+        Size(960, 540);
+        mono = CreateFont(""Consolas"", 32);
+        Scenario(1);
+    }
+
+    // =====================================================================================
+    // Scenarios
+    // =====================================================================================
+    void Scenario(int which)
+    {
+        scenario = which;
+        count = 0;
+        const float s = 0.62f;                       // spacing: about 17 neighbours each
+        if (which == 1)                              // dam break: a block of water against the left wall
+            Block(0.3f, 0.3f, 0.3f, 5.2f, 8.5f, BoxZ - 0.3f, s);
+        else if (which == 2)                         // a shallow pool, and a ball of water above it
+        {
+            Block(0.3f, 0.3f, 0.3f, BoxX - 0.3f, 1.9f, BoxZ - 0.3f, s);
+            Ball(BoxX / 2, 7, BoxZ / 2, 2.6f, s);
+        }
+        else                                         // two walls of water, one at each end
+        {
+            Block(0.3f, 0.3f, 0.3f, 3.4f, 8.5f, BoxZ - 0.3f, s);
+            Block(BoxX - 3.4f, 0.3f, 0.3f, BoxX - 0.3f, 8.5f, BoxZ - 0.3f, s);
+        }
+        // The rest density is what the starting water already has: so it starts at rest.
+        FindNeighbours();
+        Densities();
+        float sum = 0; int n = 0;
+        for (int i = 0; i < count; i++)
+            if (density[i] > 0) { sum += density[i]; n++; }
+        restDensity = n > 0 ? sum / n * 1.05f : 8;
+    }
+
+    void Block(float x0, float y0, float z0, float x1, float y1, float z1, float s)
+    {
+        for (float y = y0; y < y1; y += s)
+            for (float x = x0; x < x1; x += s)
+                for (float z = z0; z < z1; z += s)
+                    Spawn(x + Jitter(), y + Jitter(), z + Jitter());
+    }
+
+    void Ball(float cx, float cy, float cz, float r, float s)
+    {
+        for (float y = -r; y <= r; y += s)
+            for (float x = -r; x <= r; x += s)
+                for (float z = -r; z <= r; z += s)
+                    if (x * x + y * y + z * z <= r * r)
+                        Spawn(cx + x + Jitter(), cy + y + Jitter(), cz + z + Jitter());
+    }
+
+    float Jitter() => Random(-0.02f, 0.02f);
+
+    void Spawn(float x, float y, float z)
+    {
+        if (count >= MaxParticles) return;
+        px[count] = x; py[count] = y; pz[count] = z;
+        vx[count] = vy[count] = vz[count] = 0;
+        count++;
+    }
+
+    // =====================================================================================
+    // The simulation
+    // =====================================================================================
+    void Step(float gx, float gy, float gz)
+    {
+        // 1. Gravity, viscosity (neighbours moving apart or together slow down), move on.
+        for (int i = 0; i < count; i++)
+        {
+            vx[i] += gx; vy[i] += gy; vz[i] += gz;
+        }
+        Viscous();
+        for (int i = 0; i < count; i++)
+        {
+            ox[i] = px[i]; oy[i] = py[i]; oz[i] = pz[i];
+            px[i] += vx[i]; py[i] += vy[i]; pz[i] += vz[i];
+        }
+
+        // 2. Push apart where it's too crowded, pull together where it's too sparse.
+        FindNeighbours();
+        Relax();
+
+        // 3. Walls, then the velocity is simply how far it actually went.
+        for (int i = 0; i < count; i++)
+        {
+            px[i] = Math.Clamp(px[i], 0.05f, BoxX - 0.05f);
+            py[i] = Math.Clamp(py[i], 0.05f, BoxY - 0.05f);
+            pz[i] = Math.Clamp(pz[i], 0.05f, BoxZ - 0.05f);
+            vx[i] = px[i] - ox[i]; vy[i] = py[i] - oy[i]; vz[i] = pz[i] - oz[i];
+        }
+    }
+
+    void FindNeighbours()
+    {
+        System.Array.Clear(cellStart);
+        for (int i = 0; i < count; i++)
+        {
+            int c = Cell(px[i], py[i], pz[i]);
+            cellOf[i] = c;
+            cellStart[c + 1]++;
+        }
+        for (int c = 0; c < CX * CY * CZ; c++) cellStart[c + 1] += cellStart[c];
+        var fill = new int[CX * CY * CZ];
+        for (int i = 0; i < count; i++)
+        {
+            int c = cellOf[i];
+            sorted[cellStart[c] + fill[c]++] = i;
+        }
+    }
+
+    static int Cell(float x, float y, float z)
+    {
+        int cx = Math.Clamp((int)x, 0, CX - 1), cy = Math.Clamp((int)y, 0, CY - 1), cz = Math.Clamp((int)z, 0, CZ - 1);
+        return (cy * CZ + cz) * CX + cx;
+    }
+
+    void Densities()
+    {
+        for (int i = 0; i < count; i++)
+        {
+            float d = 0;
+            int c = cellOf[i], cx = c % CX, cz = c / CX % CZ, cy = c / (CX * CZ);
+            for (int y = Math.Max(0, cy - 1); y <= Math.Min(CY - 1, cy + 1); y++)
+                for (int z = Math.Max(0, cz - 1); z <= Math.Min(CZ - 1, cz + 1); z++)
+                    for (int x = Math.Max(0, cx - 1); x <= Math.Min(CX - 1, cx + 1); x++)
+                    {
+                        int cell = (y * CZ + z) * CX + x;
+                        for (int k = cellStart[cell]; k < cellStart[cell + 1]; k++)
+                        {
+                            int j = sorted[k];
+                            if (j == i) continue;
+                            float dx = px[j] - px[i], dy = py[j] - py[i], dz = pz[j] - pz[i];
+                            float r2 = dx * dx + dy * dy + dz * dz;
+                            if (r2 >= 1) continue;
+                            float q = 1 - MathF.Sqrt(r2);
+                            d += q * q;
+                        }
+                    }
+            density[i] = d;
+        }
+    }
+
+    void Relax()
+    {
+        for (int i = 0; i < count; i++)
+        {
+            // This particle's density (and ""near density"", which keeps particles from clumping).
+            float d = 0, dn = 0;
+            int c = cellOf[i], cx = c % CX, cz = c / CX % CZ, cy = c / (CX * CZ);
+            int y0 = Math.Max(0, cy - 1), y1 = Math.Min(CY - 1, cy + 1);
+            int z0 = Math.Max(0, cz - 1), z1 = Math.Min(CZ - 1, cz + 1);
+            int x0 = Math.Max(0, cx - 1), x1 = Math.Min(CX - 1, cx + 1);
+            for (int y = y0; y <= y1; y++)
+                for (int z = z0; z <= z1; z++)
+                    for (int x = x0; x <= x1; x++)
+                    {
+                        int cell = (y * CZ + z) * CX + x;
+                        for (int k = cellStart[cell]; k < cellStart[cell + 1]; k++)
+                        {
+                            int j = sorted[k];
+                            if (j == i) continue;
+                            float dx = px[j] - px[i], dy = py[j] - py[i], dz = pz[j] - pz[i];
+                            float r2 = dx * dx + dy * dy + dz * dz;
+                            if (r2 >= 1) continue;
+                            float q = 1 - MathF.Sqrt(r2);
+                            d += q * q; dn += q * q * q;
+                        }
+                    }
+            density[i] = d;
+            float pressure = Stiffness * (d - restDensity), near = NearStiffness * dn;
+
+            // Move the neighbours (half) and this particle (the other half), along the line between them.
+            float mx = 0, my = 0, mz = 0;
+            for (int y = y0; y <= y1; y++)
+                for (int z = z0; z <= z1; z++)
+                    for (int x = x0; x <= x1; x++)
+                    {
+                        int cell = (y * CZ + z) * CX + x;
+                        for (int k = cellStart[cell]; k < cellStart[cell + 1]; k++)
+                        {
+                            int j = sorted[k];
+                            if (j == i) continue;
+                            float dx = px[j] - px[i], dy = py[j] - py[i], dz = pz[j] - pz[i];
+                            float r2 = dx * dx + dy * dy + dz * dz;
+                            if (r2 >= 1 || r2 < 1e-8f) continue;
+                            float r = MathF.Sqrt(r2), q = 1 - r;
+                            float push = (pressure * q + near * q * q) * 0.5f / r;
+                            float ddx = dx * push, ddy = dy * push, ddz = dz * push;
+                            px[j] += ddx; py[j] += ddy; pz[j] += ddz;
+                            mx -= ddx; my -= ddy; mz -= ddz;
+                        }
+                    }
+            px[i] += mx; py[i] += my; pz[i] += mz;
+        }
+    }
+
+    void Viscous()
+    {
+        // A light touch of viscosity: neighbours approaching each other lose a bit of that speed.
+        for (int i = 0; i < count; i++)
+        {
+            int c = cellOf[i], cx = c % CX, cz = c / CX % CZ, cy = c / (CX * CZ);
+            for (int y = Math.Max(0, cy - 1); y <= Math.Min(CY - 1, cy + 1); y++)
+                for (int z = Math.Max(0, cz - 1); z <= Math.Min(CZ - 1, cz + 1); z++)
+                    for (int x = Math.Max(0, cx - 1); x <= Math.Min(CX - 1, cx + 1); x++)
+                    {
+                        int cell = (y * CZ + z) * CX + x;
+                        for (int k = cellStart[cell]; k < cellStart[cell + 1]; k++)
+                        {
+                            int j = sorted[k];
+                            if (j <= i) continue;
+                            float dx = px[j] - px[i], dy = py[j] - py[i], dz = pz[j] - pz[i];
+                            float r2 = dx * dx + dy * dy + dz * dz;
+                            if (r2 >= 1 || r2 < 1e-8f) continue;
+                            float r = MathF.Sqrt(r2);
+                            float u = ((vx[i] - vx[j]) * dx + (vy[i] - vy[j]) * dy + (vz[i] - vz[j]) * dz) / r;
+                            if (u <= 0) continue;
+                            float imp = (1 - r) * Viscosity * u * 0.5f / r;
+                            vx[i] -= dx * imp; vy[i] -= dy * imp; vz[i] -= dz * imp;
+                            vx[j] += dx * imp; vy[j] += dy * imp; vz[j] += dz * imp;
+                        }
+                    }
+        }
+    }
+
+    /// <summary>A kick from below: the water over (x, z) jumps up, more in the middle.</summary>
+    void Splash(float x, float z)
+    {
+        for (int i = 0; i < count; i++)
+        {
+            float dx = px[i] - x, dz = pz[i] - z, d2 = dx * dx + dz * dz;
+            if (d2 > 9) continue;
+            float k = 1 - d2 / 9;
+            vy[i] += 0.45f * k;
+            vx[i] += dx * 0.02f * k; vz[i] += dz * 0.02f * k;
+        }
+    }
+
+    // =====================================================================================
+    // Each frame
+    // =====================================================================================
+    public override void Draw()
+    {
+        // The tilt: you drag it, or it rocks by itself.
+        if (auto && !paused)
+        {
+            autoT += 1 / 60f;
+            float a = Smooth(0, 4, autoT);
+            tiltZ = Lerp(tiltZ, Radians(22) * Sin(autoT * 1.1f) * a, 0.06f);
+            tiltX = Lerp(tiltX, Radians(9) * Sin(autoT * 0.63f + 1) * a, 0.06f);
+            // Every 7 seconds something kicks the water up from below.
+            if (autoT > 5 && (int)(autoT / 7) != (int)((autoT - 1 / 60f) / 7))
+                Splash(Random(2, BoxX - 2), Random(1.5f, BoxZ - 1.5f));
+        }
+        // Gravity in the box's own frame: the box is tilted, gravity still points down.
+        float cz = Cos(tiltZ), sz = Sin(tiltZ), cx = Cos(tiltX), sx_ = Sin(tiltX);
+        float gx = -Gravity * sz, gy = -Gravity * cz * cx, gz = Gravity * cz * sx_;
+        if (!paused)
+            for (int s = 0; s < Substeps; s++)
+                Step(gx, gy, gz);
+
+        orbit += paused ? 0 : 0.0025f;
+        Background(5, 7, 16);
+        Render();
+        Hud();
+    }
+
+    // =====================================================================================
+    // Drawing: the box (glyph edges) and every particle, projected and sorted.
+    // =====================================================================================
+    void Render()
+    {
+        // Camera on a slow orbit around the box.
+        float yaw = Radians(-28) + Sin(orbit) * 0.45f, pitch = Radians(24);
+        float dist = 15 / zoom;
+        var eye = new PVector(Sin(yaw) * Cos(pitch) * dist, Sin(pitch) * dist + 1, -Cos(yaw) * Cos(pitch) * dist);
+        var f = new PVector(-eye.X, -eye.Y + 0.5f, -eye.Z).Normalize();
+        var r = f.Cross(new PVector(0, 1, 0)).Normalize();
+        var u = r.Cross(f);
+        float focal = Height / 2f / Tan(Radians(30));
+
+        // Box space -> world: centered, then tilted (Z tilt, then X tilt).
+        float czr = Cos(tiltZ), szr = Sin(tiltZ), cxr = Cos(tiltX), sxr = Sin(tiltX);
+        PVector World(float x, float y, float z)
+        {
+            x -= BoxX / 2; y -= BoxY / 2; z -= BoxZ / 2;
+            float x1 = x * czr - y * szr, y1 = x * szr + y * czr;      // around Z
+            float y2 = y1 * cxr - z * sxr, z2 = y1 * sxr + z * cxr;    // around X
+            return new PVector(x1, y2, z2);
+        }
+
+        int n = 0;
+        bool Project(PVector w, int slot, float scale)
+        {
+            float dx = w.X - eye.X, dy = w.Y - eye.Y, dz = w.Z - eye.Z;
+            float zc = dx * f.X + dy * f.Y + dz * f.Z;
+            if (zc < 0.5f) return false;
+            float xc = dx * r.X + dy * r.Y + dz * r.Z, yc = dx * u.X + dy * u.Y + dz * u.Z;
+            sx[slot] = Width / 2f + focal * xc / zc;
+            sy[slot] = Height / 2f - focal * yc / zc;
+            ss[slot] = Min(focal * scale / zc, 90);
+            depth[n] = -zc;
+            order[n] = slot;
+            n++;
+            return true;
+        }
+
+        for (int i = 0; i < count; i++)
+            Project(World(px[i], py[i], pz[i]), i, 0.95f);
+
+        // The glass: its 12 edges, dotted.
+        int edgeSlot = MaxParticles, e = 0;
+        float[] xs = { 0, BoxX }, ys = { 0, BoxY }, zs = { 0, BoxZ };
+        void Edge(float x0, float y0, float z0, float x1, float y1, float z1)
+        {
+            float len = MathF.Sqrt((x1 - x0) * (x1 - x0) + (y1 - y0) * (y1 - y0) + (z1 - z0) * (z1 - z0));
+            int steps = (int)(len / 0.7f);
+            for (int k = 0; k <= steps && e < 400; k++)
+            {
+                float t = k / (float)steps;
+                if (Project(World(Lerp(x0, x1, t), Lerp(y0, y1, t), Lerp(z0, z1, t)), edgeSlot + e, 0.6f)) e++;
+            }
+        }
+        foreach (var y in ys) foreach (var z in zs) Edge(0, y, z, BoxX, y, z);
+        foreach (var x in xs) foreach (var z in zs) Edge(x, 0, z, x, BoxY, z);
+        foreach (var x in xs) foreach (var y in ys) Edge(x, y, 0, x, y, BoxZ);
+
+        System.Array.Sort(depth, order, 0, n);
+        TextFont(mono, 32);
+        TextAlign(TextAlignH.Center, TextAlignV.Center);
+        for (int q = 0; q < n; q++)
+        {
+            int k = order[q];
+            float z = -depth[q];
+            float fog = Constrain(1.35f - z / 45, 0.35f, 1);
+            float size = ss[k];
+            if (size < 3) continue;
+            TextSize(size < 24 ? MathF.Round(size) : MathF.Round(size / 6) * 6);   // few sizes: Skia's glyph cache hits
+            if (k >= MaxParticles)
+            {
+                Fill(150, 170, 210, 90 * fog);
+                Text(""."", sx[k], sy[k]);
+                continue;
+            }
+            float speed = MathF.Sqrt(vx[k] * vx[k] + vy[k] * vy[k] + vz[k] * vz[k]) * Substeps;
+            float crowd = density[k] / restDensity;                   // ~1 inside the water, low at the surface and in spray
+            float foam = Constrain(speed * 2.2f - 0.15f, 0, 1);
+            // Spray, surface, body: by how crowded it is (the surface has neighbours on one side only).
+            char glyph = crowd < 0.35f ? (foam > 0.35f ? '*' : '.')
+                       : crowd < 0.6f ? (foam > 0.5f ? '+' : '~')
+                       : crowd < 0.78f ? 'o'
+                       : foam > 0.6f ? '%' : '#';
+            // Deep navy at the bottom, brighter blue towards the top, white where it's fast (foam).
+            float up = Constrain(py[k] / 5f, 0, 1);
+            float br = Lerp(0.45f, 1, up) * (crowd < 0.72f ? 1.15f : 1);
+            float r0 = 25 * br, g0 = 95 * br, b0 = 215 * br;
+            Fill(Lerp(r0, 235, foam) * fog, Lerp(g0, 248, foam) * fog, Lerp(b0, 255, foam) * fog, 240);
+            Text(glyph.ToString(), sx[k], sy[k]);
+        }
+    }
+
+    void Hud()
+    {
+        TextFont(mono, 13);
+        TextSize(13);
+        TextAlign(TextAlignH.Left, TextAlignV.Bottom);
+        string[] names = { """", ""dam break"", ""drop into a pool"", ""two walls collide"" };
+        Fill(255, 255, 255, 110);
+        Text($""{count:N0} particles · {names[scenario]}{(paused ? "" · paused"" : """")}{(auto ? "" · auto"" : """")}"", 16, Height - 30);
+        Fill(255, 255, 255, 60);
+        Text(""drag: tilt · click: splash · wheel: zoom · 1 2 3: scenarios · Space: pause · A: auto"", 16, Height - 12);
+    }
+
+    public override void MouseDragged()
+    {
+        auto = false;
+        tiltZ = Constrain(tiltZ - (MouseX - PMouseX) * 0.004f, Radians(-40), Radians(40));
+        tiltX = Constrain(tiltX + (MouseY - PMouseY) * 0.004f, Radians(-30), Radians(30));
+    }
+
+    public override void MouseClicked() => Splash(Random(2, BoxX - 2), Random(1.5f, BoxZ - 1.5f));
+
+    public override void MouseWheel(float delta) => zoom = Constrain(zoom * (delta > 0 ? 1 / 1.1f : 1.1f), 0.6f, 2.5f);
+
+    public override void KeyPressed()
+    {
+        if (Key >= '1' && Key <= '3') { Scenario(Key - '0'); autoT = 0; }
+        else if (Key == ' ') paused = !paused;
+        else if (Key == 'a' || Key == 'A') auto = !auto;
+    }
+
+    static float Smooth(float a, float b, float x)
+    {
+        float k = Math.Clamp((x - a) / (b - a), 0, 1);
+        return k * k * (3 - 2 * k);
+    }
+}
+";
 
         private const string AsciiBlackHole =
 @"// A black hole in ASCII, ray traced in 3D, with a slow cinematic score.
