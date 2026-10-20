@@ -44,7 +44,382 @@ namespace DanaProcessing.Ide.Editor
                 LiveShader,
                 new[] { SampleTag.LiveCoding, SampleTag.Audio, SampleTag.Generative, SampleTag.HotReload }),
 
+            new SketchSample(
+                Loc.Tr("Una IA aprende a escribir en ASCII", "An AI learns to write in ASCII"),
+                Loc.Tr("Una red neuronal chiquita, escrita a mano en C# (sin NuGet ni descargas), aprende en vivo a dibujar la palabra que escribís: arranca en ruido y en unos segundos las letras salen del ASCII. Cada carácter es una pregunta a la red -- ¿cuánta tinta va acá? -- y brilla donde todavía está aprendiendo. Escribí otra palabra y la red desaprende una mientras aprende la otra; el mouse le dobla las entradas, la rueda muestra lo que imagina fuera de la palabra, Tab cambia los caracteres y Enter la hace olvidar todo.",
+                       "A tiny neural network, written by hand in C# (no NuGet, no download), learns live to draw the word you type: it starts as noise and within seconds the letters rise out of the ASCII. Every character is one question to the network -- how much ink goes here? -- and it glows where the network is still learning. Type another word and it unlearns one while it learns the other; the mouse bends its inputs, the wheel shows what it imagines outside the word, Tab switches glyphs and Enter makes it forget everything."),
+                AsciiMind,
+                new[] { SampleTag.MachineLearning, SampleTag.Text, SampleTag.Generative, SampleTag.Interaction }),
+
         };
+
+        private const string AsciiMind =
+@"// A neural network learns to write a word, live, and you watch it think in
+// ASCII.
+//
+// No download and no library: the whole network is the Brain class at the
+// bottom, plain C#. It only knows one thing: given a point (x, y) on the
+// screen, how much ink goes there? It starts with random weights, so the
+// screen is noise. Every frame it looks at a few hundred random points of the
+// word, sees how wrong it was, and nudges its ~2,300 weights a little
+// (backpropagation + Adam). In a few seconds the letters come out of the noise.
+//
+// Each character on screen is one question to the network: the more ink it
+// answers, the denser the glyph. Where its answer is still changing -- where
+// it's learning right now -- the glyph glows.
+//
+// - Type: a new word. The network doesn't start over: it unlearns the old
+//   word while it learns the new one, so one melts into the other.
+// - Enter: forget everything (new random weights) and learn from zero.
+// - Mouse: swirls the network's input around the pointer. The letters bend,
+//   because the network doesn't store a picture -- it's a function of (x, y).
+// - Wheel: zoom out to see what it imagines outside the word.
+// - Tab: other glyphs.  Space: pause the learning.
+public class AsciiMind : Sketch
+{
+    const int Cols = 96, Rows = 30;                  // the ASCII screen
+    const float CellW = 10, CellH = 18;
+    const int SubX = 3, SubY = 5;                    // the word is learned a bit finer than it's shown
+    const int StepsPerFrame = 4, BatchSize = 128;    // how much it practices per frame
+
+    readonly string[] glyphSets = { "" .:-=+*#%@"", "" .oO0@"", "" 01"", "" .,;!|I#"", "" ·•●"" };
+    int glyphSet;
+
+    Brain brain;
+    readonly System.Random rng = new System.Random(7);
+    float[] target;                                  // the word as ink, 0..1, tw x th
+    int tw = Cols * SubX, th = Rows * SubY;
+    string word = ""HOLA"";
+    PFont mono, heavy;
+
+    readonly float[] ink = new float[Cols * Rows];   // the network's last answer for each character
+    readonly float[] glow = new float[Cols * Rows];  // how much that answer moved lately
+    float zoom = 1, shownZoom = 1;
+    bool paused;
+    readonly float[] lossHistory = new float[120];
+    int lossCount;
+
+    // For the HUD (and the tests).
+    public float Loss { get; private set; } = 0.25f;
+    public int Steps { get; private set; }
+    public string Word => word;
+    public float InkAt(int col, int row) => ink[row * Cols + col];
+
+    public override void Setup()
+    {
+        Size(960, 640);
+        mono = CreateFont(""Consolas"", 16);
+        heavy = CreateFont(""Arial Black"", 100);
+        brain = new Brain(rng);
+        Learn(word);
+    }
+
+    /// <summary>Paints the word offscreen and keeps its pixels: that's what the network has to match.</summary>
+    public void Learn(string newWord)
+    {
+        word = newWord.ToUpperInvariant();
+        string text = word.Length == 0 ? ""?"" : word;
+        var pg = CreateGraphics(tw, th);
+        pg.BeginDraw();
+        pg.Background(0);
+        pg.NoStroke();
+        pg.Fill(255);
+        pg.TextFont(heavy);
+        pg.TextAlign(TextAlignH.Center, TextAlignV.Center);
+        // This canvas is squashed like the screen (a character is SubX x SubY
+        // pixels here, CellW x CellH there), so draw the letters stretched to match.
+        float stretch = (SubY / (float)SubX) / (CellH / CellW);
+        pg.TextSize(100);
+        float size = Min(100 * tw * 0.86f / Max(1, pg.TextWidth(text)), th * 0.7f / stretch);
+        pg.TextSize(size);
+        pg.PushMatrix();
+        pg.Translate(tw / 2f, th / 2f);
+        pg.Scale(1, stretch);
+        pg.Text(text, 0, 0);
+        pg.PopMatrix();
+        pg.LoadPixels();
+        target = new float[tw * th];
+        for (int i = 0; i < target.Length; i++)
+            target[i] = pg.Pixels[i].R / 255f;
+        pg.EndDraw();
+        pg.Dispose();
+        // Soft edges: a light blur, so the borders of the letters come out as . : - =
+        Blur(target, tw, th, 2);
+        Blur(target, tw, th, 2);
+    }
+
+    public override void Draw()
+    {
+        Background(8, 9, 20);
+        if (!paused)
+            for (int s = 0; s < StepsPerFrame; s++)
+                Train();
+
+        // Ask the network about half the characters each frame (alternate rows):
+        // the screen still updates 30 times a second and it costs half.
+        shownZoom = Lerp(shownZoom, zoom, 0.12f);
+        bool bend = MouseY > 0 && MouseY < Rows * CellH;
+        float t = Millis() / 1000f;
+        float left = (Width - Cols * CellW) / 2;
+        for (int r = FrameCount % 2; r < Rows; r += 2)
+            for (int c = 0; c < Cols; c++)
+            {
+                float x = (c + 0.5f) / Cols, y = (r + 0.5f) / Rows;
+                if (bend)
+                {
+                    float dx = left + (c + 0.5f) * CellW - MouseX, dy = (r + 0.5f) * CellH - MouseY;
+                    float a = 1.6f * Exp(-(dx * dx + dy * dy) / (2 * 110f * 110f)) * Sin(t * 1.7f);
+                    x += (dx * Cos(a) - dy * Sin(a) - dx) / (Cols * CellW);
+                    y += (dx * Sin(a) + dy * Cos(a) - dy) / (Rows * CellH);
+                }
+                float answer = brain.Think(0.5f + (x - 0.5f) * shownZoom, 0.5f + (y - 0.5f) * shownZoom);
+                int i = r * Cols + c;
+                glow[i] = Max(glow[i] * 0.9f, Abs(answer - ink[i]) * 12);
+                ink[i] = answer;
+            }
+
+        TextFont(mono, 16);
+        TextAlign(TextAlignH.Center, TextAlignV.Center);
+        string glyphs = glyphSets[glyphSet];
+        for (int r = 0; r < Rows; r++)
+            for (int c = 0; c < Cols; c++)
+            {
+                int i = r * Cols + c;
+                float v = ink[i], hot = Min(glow[i], 1);
+                int g = (int)Constrain(v * glyphs.Length, 0, glyphs.Length - 1);
+                if (g == 0 && hot < 0.25f)
+                    continue;
+                if (g == 0) g = 1;
+                // Violet to pink across the screen; where it's learning, it warms up
+                // through red to amber (400 = 40 degrees, one turn later).
+                float hue = 245 + c * 0.8f + 12 * Sin(t * 0.5f + r * 0.15f);
+                FillHSB(Lerp(hue, 400, hot * 0.85f) % 360, 65 - 20 * hot, 28 + 72 * Max(v, hot));
+                Text(glyphs[g].ToString(), left + (c + 0.5f) * CellW, (r + 0.5f) * CellH);
+            }
+
+        DrawHud();
+    }
+
+    /// <summary>One lesson: a batch of random pixels of the word -- guess, compare, nudge every weight.</summary>
+    void Train()
+    {
+        brain.BeginBatch();
+        float sum = 0;
+        for (int b = 0; b < BatchSize; b++)
+        {
+            int px = rng.Next(tw), py = rng.Next(th);
+            sum += brain.Practice((px + 0.5f) / tw, (py + 0.5f) / th, target[py * tw + px]);
+        }
+        brain.EndBatch(BatchSize);
+        Steps++;
+        Loss = Lerp(Loss, sum / BatchSize, 0.05f);
+        if (Steps % 8 == 0)
+            lossHistory[lossCount++ % lossHistory.Length] = Loss;
+    }
+
+    void DrawHud()
+    {
+        float top = Rows * CellH + 20;
+        NoStroke();
+        Fill(255, 255, 255, 10);
+        Rect(0, top - 10, Width, Height - top + 10);
+
+        TextFont(mono, 15);
+        TextAlign(TextAlignH.Left, TextAlignV.Top);
+        Fill(235, 225, 255);
+        Text(word + (FrameCount / 30 % 2 == 0 ? ""_"" : """"), 28, top + 4);
+        Fill(140, 145, 180);
+        Text($""network {Brain.Inputs} → {Brain.Hidden} → {Brain.Hidden} → 1 · {brain.WeightCount:N0} weights · lesson {Steps:N0} · error {Loss:0.0000}{(paused ? "" · paused"" : """")}"", 28, top + 28);
+        Fill(95, 100, 135);
+        Text(""type: new word · Enter: forget · mouse: bend · wheel: zoom · Tab: glyphs · Space: pause"", 28, top + 52);
+
+        // The error, lesson after lesson: it falls as the network learns.
+        float gx = Width - 210, gy = top + 4, gw = 180, gh = 62;
+        NoFill();
+        Stroke(255, 255, 255, 30);
+        StrokeWeight(1);
+        Rect(gx, gy, gw, gh);
+        Stroke(255, 170, 110);
+        StrokeWeight(1.5f);
+        BeginShape();
+        int n = Min(lossCount, lossHistory.Length);
+        for (int k = 0; k < n; k++)
+        {
+            float v = lossHistory[(lossCount - n + k) % lossHistory.Length];
+            Vertex(gx + gw * k / (lossHistory.Length - 1f), gy + gh - Constrain(Sqrt(v / 0.12f), 0, 1) * (gh - 4) - 2);
+        }
+        EndShape();
+        NoStroke();
+    }
+
+    public override void KeyTyped()
+    {
+        if (Key == BACKSPACE)
+        {
+            if (word.Length > 0) Learn(word[..^1]);
+        }
+        else if (Key == ENTER || Key == RETURN)
+        {
+            brain = new Brain(rng);
+            Steps = 0;
+            lossCount = 0;
+        }
+        else if (Key == TAB)
+            glyphSet = (glyphSet + 1) % glyphSets.Length;
+        else if (Key == ' ')
+            paused = !paused;
+        else if (!char.IsControl(Key) && word.Length < 10)
+            Learn(word + Key);
+    }
+
+    public override void MouseWheel(float delta) => zoom = Constrain(zoom * (delta > 0 ? 1.2f : 1 / 1.2f), 0.6f, 8);
+
+    static void Blur(float[] img, int w, int h, int radius)
+    {
+        var tmp = new float[img.Length];
+        for (int y = 0; y < h; y++)
+            for (int x = 0; x < w; x++)
+            {
+                float s = 0; int n = 0;
+                for (int k = -radius; k <= radius; k++)
+                    if (x + k >= 0 && x + k < w) { s += img[y * w + x + k]; n++; }
+                tmp[y * w + x] = s / n;
+            }
+        for (int y = 0; y < h; y++)
+            for (int x = 0; x < w; x++)
+            {
+                float s = 0; int n = 0;
+                for (int k = -radius; k <= radius; k++)
+                    if (y + k >= 0 && y + k < h) { s += tmp[(y + k) * w + x]; n++; }
+                img[y * w + x] = s / n;
+            }
+    }
+
+    /// <summary>
+    /// The whole ""AI"": a small multilayer perceptron, (x, y) -> ink.
+    /// The point first becomes 32 sine waves of random directions and sizes
+    /// (""Fourier features"": a plain network is bad at sharp edges, waves give
+    /// it something to build them with). Then two layers of 24 neurons (tanh)
+    /// and one output (sigmoid, 0..1). Learns by backpropagation, with Adam.
+    /// </summary>
+    public class Brain
+    {
+        public const int Waves = 32, Inputs = Waves * 2, Hidden = 24;
+        readonly float[] waveX = new float[Waves], waveY = new float[Waves];
+        readonly float[] w1 = new float[Inputs * Hidden], b1 = new float[Hidden];   // w1[j * Inputs + i]: input i -> neuron j
+        readonly float[] w2 = new float[Hidden * Hidden], b2 = new float[Hidden];
+        readonly float[] w3 = new float[Hidden];
+        float b3;
+        readonly float[] input = new float[Inputs], h1 = new float[Hidden], h2 = new float[Hidden], d2 = new float[Hidden];
+        // Gradients and Adam's memory, for all the weights in one row: w1 b1 w2 b2 w3 b3.
+        readonly float[] grad, m, v;
+        int lessons;
+
+        public int WeightCount => grad.Length;
+
+        public Brain(System.Random rng)
+        {
+            float Gauss() => (float)(System.Math.Sqrt(-2 * System.Math.Log(1 - rng.NextDouble())) * System.Math.Cos(2 * System.Math.PI * rng.NextDouble()));
+            // Mostly gentle waves, some fast ones (letters are wide but their edges are sharp).
+            // y is squeezed: on screen 1.0 of height is 0.56 of the width.
+            for (int k = 0; k < Waves; k++) { waveX[k] = Gauss() * 10; waveY[k] = Gauss() * 10 * 0.5625f; }
+            for (int k = 0; k < w1.Length; k++) w1[k] = Gauss() / MathF.Sqrt(Inputs);
+            for (int k = 0; k < w2.Length; k++) w2[k] = Gauss() / MathF.Sqrt(Hidden);
+            for (int k = 0; k < w3.Length; k++) w3[k] = Gauss() / MathF.Sqrt(Hidden);
+            int n = w1.Length + Hidden + w2.Length + Hidden + Hidden + 1;
+            grad = new float[n]; m = new float[n]; v = new float[n];
+        }
+
+        float Forward(float x, float y)
+        {
+            x = x * 2 - 1; y = y * 2 - 1;
+            for (int k = 0; k < Waves; k++)
+            {
+                float a = waveX[k] * x + waveY[k] * y;
+                input[2 * k] = MathF.Sin(a);
+                input[2 * k + 1] = MathF.Cos(a);
+            }
+            for (int j = 0; j < Hidden; j++)
+            {
+                float s = b1[j];
+                int row = j * Inputs;
+                for (int i = 0; i < Inputs; i++) s += w1[row + i] * input[i];
+                h1[j] = MathF.Tanh(s);
+            }
+            for (int j = 0; j < Hidden; j++)
+            {
+                float s = b2[j];
+                int row = j * Hidden;
+                for (int i = 0; i < Hidden; i++) s += w2[row + i] * h1[i];
+                h2[j] = MathF.Tanh(s);
+            }
+            float o = b3;
+            for (int i = 0; i < Hidden; i++) o += w3[i] * h2[i];
+            return 1 / (1 + MathF.Exp(-o));
+        }
+
+        /// <summary>How much ink the network thinks is at (x, y), both 0..1 across the screen.</summary>
+        public float Think(float x, float y) => Forward(x, y);
+
+        public void BeginBatch() => System.Array.Clear(grad);
+
+        /// <summary>Guesses one point, adds to every weight's gradient how it should move, returns the squared error.</summary>
+        public float Practice(float x, float y, float want)
+        {
+            float got = Forward(x, y);
+            float err = got - want;
+            float dOut = err * got * (1 - got);          // through the sigmoid
+            int gw1 = 0, gb1 = w1.Length, gw2 = gb1 + Hidden, gb2 = gw2 + w2.Length, gw3 = gb2 + Hidden, gb3 = gw3 + Hidden;
+            grad[gb3] += dOut;
+            for (int j = 0; j < Hidden; j++)
+            {
+                grad[gw3 + j] += dOut * h2[j];
+                d2[j] = dOut * w3[j] * (1 - h2[j] * h2[j]);
+            }
+            for (int j = 0; j < Hidden; j++)
+            {
+                float d = d2[j];
+                grad[gb2 + j] += d;
+                int row = j * Hidden;
+                for (int i = 0; i < Hidden; i++) grad[gw2 + row + i] += d * h1[i];
+            }
+            for (int i = 0; i < Hidden; i++)
+            {
+                float s = 0;
+                for (int j = 0; j < Hidden; j++) s += d2[j] * w2[j * Hidden + i];
+                float d = s * (1 - h1[i] * h1[i]);
+                grad[gb1 + i] += d;
+                int row = i * Inputs;
+                for (int k = 0; k < Inputs; k++) grad[gw1 + row + k] += d * input[k];
+            }
+            return err * err;
+        }
+
+        /// <summary>Adam: every weight steps against its average gradient, scaled by how noisy that gradient has been.</summary>
+        public void EndBatch(int batchSize, float rate = 0.003f)
+        {
+            lessons++;
+            float c1 = 1 - MathF.Pow(0.9f, lessons), c2 = 1 - MathF.Pow(0.999f, lessons);
+            int at = 0;
+            Step(w1); Step(b1); Step(w2); Step(b2); Step(w3);
+            float[] last = { b3 };
+            Step(last);
+            b3 = last[0];
+
+            void Step(float[] weights)
+            {
+                for (int i = 0; i < weights.Length; i++, at++)
+                {
+                    float g = grad[at] / batchSize;
+                    m[at] = 0.9f * m[at] + 0.1f * g;
+                    v[at] = 0.999f * v[at] + 0.001f * g * g;
+                    weights[i] -= rate * (m[at] / c1) / (MathF.Sqrt(v[at] / c2) + 1e-7f);
+                }
+            }
+        }
+    }
+}
+";
 
         private const string SerialArduino =
 @"// nuget: System.IO.Ports, 10.0.12
