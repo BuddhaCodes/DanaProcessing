@@ -60,8 +60,8 @@ namespace DanaProcessing.Ide.Editor
 
             new SketchSample(
                 Loc.Tr("Agujero negro en ASCII 3D, con música de película", "A 3D ASCII black hole, with a film score"),
-                Loc.Tr("Cada carácter es un rayo de luz trazado hacia atrás desde la cámara y curvado por la gravedad (la ecuación de un rayo en la geometría de Schwarzschild, paso a paso). Por eso se ve la parte de atrás del disco de gas doblada por encima y por debajo de la sombra, y el lado que gira hacia vos más brillante y más blanco (efecto Doppler). La cámara alterna dos tomas, una por vuelta de la canción: una llega desde lejos, baja al plano del disco y lo rodea; la otra arranca pegada al agujero y se aleja en espiral, pasando por debajo del disco. Todo con una banda sonora lenta hecha con [LiveLoop]: un reloj que no para, un órgano que crece, un drone grave y un latido. Espacio congela la cámara, C cambia de toma, la rueda acerca o aleja, H oculta los textos.",
-                       "Every character is a ray of light traced backwards from the camera and bent by gravity (the equation of a light ray in Schwarzschild geometry, stepped through). That's why you see the far side of the gas disk bent over and under the shadow, and the side spinning towards you brighter and whiter (Doppler beaming). The camera takes turns between two shots, one per pass of the song: one comes in from far away, sinks to the disk's plane and circles it; the other starts right next to the hole and spirals out, passing under the disk. All over a slow score made of [LiveLoop]s: a clock that never stops, a swelling organ, a low drone and a heartbeat. Space freezes the camera, C switches shot, the wheel moves closer or farther, H hides the labels."),
+                Loc.Tr("Cada carácter es un rayo de luz trazado hacia atrás desde la cámara y curvado por la gravedad (la ecuación de un rayo en la geometría de Schwarzschild, paso a paso). Por eso se ve la parte de atrás del disco de gas doblada por encima y por debajo de la sombra, y el lado que gira hacia vos más brillante y más blanco (efecto Doppler). La cámara llega desde lejos, baja al plano del disco y lo rodea, mientras suena una orquesta hecha con sintetizadores en ocho [LiveLoop]: cuerdas, cellos, un piano que persigue su propio eco, coro, órgano, timbales y un reloj que no para. El disco brilla más a medida que la música crece. Espacio congela la cámara, la rueda acerca o aleja, H oculta los textos.",
+                       "Every character is a ray of light traced backwards from the camera and bent by gravity (the equation of a light ray in Schwarzschild geometry, stepped through). That's why you see the far side of the gas disk bent over and under the shadow, and the side spinning towards you brighter and whiter (Doppler beaming). The camera comes in from far away, sinks to the disk's plane and circles it, while an orchestra made of synths plays in eight [LiveLoop]s: strings, cellos, a piano chasing its own echo, choir, organ, timpani and a clock that never stops. The disk glows brighter as the music grows. Space freezes the camera, the wheel moves closer or farther, H hides the labels."),
                 AsciiBlackHole,
                 new[] { SampleTag.ThreeD, SampleTag.Text, SampleTag.Audio, SampleTag.Generative }),
 
@@ -81,15 +81,13 @@ namespace DanaProcessing.Ide.Editor
 // The bending is why you see the disk's far side arching OVER and UNDER the
 // shadow: light from behind the hole is bent around it towards you.
 //
-// The camera has two shots, one per pass of the song: ""approach"" drifts in
-// from far away, sinks to the plane of the disk and circles; ""escape"" starts
-// right next to the hole and spirals out, dipping under the disk on the way.
-// The music is five [LiveLoop]s: a clock that never stops ticking,
-// an organ that swells, a low drone, a repeating figure high up and a
-// heartbeat-like pulse, 32 bars at 72 BPM, looping.
+// The camera drifts in from far away, sinks to the plane of the disk and
+// circles it, while an orchestra made of synths plays: strings, cellos, a
+// piano figure chasing its own echo, choir, pipe organ, timpani and a clock
+// that never stops ticking -- eight [LiveLoop]s, 32 bars at 76 BPM, looping.
+// The disk glows brighter as the music grows.
 //
-// Space: freeze the camera.  C: switch shot.  H: hide the labels.
-// Wheel: closer / farther.
+// Space: freeze the camera.  H: hide the labels.  Wheel: closer / farther.
 public class AsciiBlackHole : Sketch
 {
     // ---- the screen -------------------------------------------------------------
@@ -110,14 +108,14 @@ public class AsciiBlackHole : Sketch
 
     // ---- the camera ---------------------------------------------------------------------
     double musicStart = -1;
-    bool heardMusic, frozen, labels = true, otherShot;
+    bool heardMusic, frozen, labels = true;
     float frozenFor, zoomOut = 1;
     double lastBeat;
 
     public override void Setup()
     {
         Size(960, 540);
-        Bpm = 72;
+        Bpm = 76;
         mono = CreateFont(""Consolas"", 15);
 
         // Gas: arcs of brighter and darker gas. Noise sampled around circles, so it wraps
@@ -300,96 +298,92 @@ public class AsciiBlackHole : Sketch
     }
 
     // =================================================================================
-    // The camera: two shots, taking turns with each pass of the 32-bar song.
+    // The camera: comes in from far away, sinks to the disk's plane, circles.
     // =================================================================================
-    bool Escaping(float beat) => ((int)(beat / 128) % 2 == 1) != otherShot;
-
-    (PVector, PVector) Camera(float beat) => Escaping(beat) ? Escape(beat % 128) : Approach(beat);
-
-    /// <summary>Comes in from far away, sinks to the disk's plane, circles.</summary>
-    (PVector, PVector) Approach(float beat)
+    (PVector, PVector) Camera(float beat)
     {
-        float b = beat % 128;
-        float approach = Smooth(0, 40, b);
+        float b = beat % 128;                                       // the 32-bar song
+        float approach = Smooth(0, 26, b);
         float dist = Lerp(44, 13.5f, approach) * zoomOut;
-        // Tilt above the disk: high at first, almost edge-on in the middle (the classic
-        // view, the far side of the disk bent over the top), then rising a little again.
-        float tilt = Lerp(28, 4, Smooth(8, 56, b)) + 9 * Smooth(88, 120, b);
-        float around = Radians(-20 + beat * 0.9f);                 // a slow orbit that never stops
+        // Tilt above the disk: high at first, almost edge-on by the climax (the classic
+        // view, the far side of the disk bent over the top), rising a little at the end.
+        float tilt = Lerp(28, 4, Smooth(4, 36, b)) + 9 * Smooth(92, 124, b);
+        float around = Radians(-20 + beat * 1.4f);                  // an orbit that never stops
         float el = Radians(tilt);
         var eye = new PVector(Cos(around) * Cos(el) * dist, Sin(el) * dist, Sin(around) * Cos(el) * dist);
         return (eye, new PVector(0, 0, 0));
     }
 
-    /// <summary>
-    /// Starts right next to the hole (the shadow fills the screen) and spirals out:
-    /// it swings round the hole the other way, dips under the disk (you see it from
-    /// below, bent the other way) and climbs high above it as it leaves.
-    /// </summary>
-    (PVector, PVector) Escape(float b)
-    {
-        float away = Smooth(6, 124, b);
-        float dist = Lerp(6.2f, 50, away * away) * zoomOut;          // slow at first, then faster
-        float around = Radians(150 - 290 * Smooth(0, 128, b));        // a long curve, against the gas' spin
-        float tilt = Lerp(14, -11, Smooth(0, 48, b)) + Lerp(0, 41, Smooth(48, 128, b));
-        float el = Radians(tilt);
-        var eye = new PVector(Cos(around) * Cos(el) * dist, Sin(el) * dist, Sin(around) * Cos(el) * dist);
-        // Up close the hole sits a little off-center; it drifts to the middle as we leave.
-        var side = new PVector(-Sin(around), 0, Cos(around));
-        float off = 2.2f * (1 - away);
-        return (eye, new PVector(side.X * off, 0.4f * (1 - away), side.Z * off));
-    }
+    /// <summary>How loud the orchestra is in this bar, 0..1: the disk glows with it.</summary>
+    static float Dynamics(int bar) =>
+        bar < 4 ? 0.15f :
+        bar < 12 ? 0.4f :
+        bar < 16 ? 0.4f + 0.6f * (bar - 11) / 4f :     // the build
+        bar < 28 ? 1f :
+        0.4f - 0.1f * (bar - 28);                       // after
 
     float Swell(float beat)
     {
         int bar = (int)(beat / 4) % 32;
-        return bar >= 16 && bar < 28 ? 1 : bar >= 8 ? 0.5f : 0.2f;
+        // In the climax the disk also throbs with the timpani's heartbeat.
+        return Dynamics(bar) + (bar >= 16 && bar < 28 ? Pulse(4, 4) * 0.5f : 0);
     }
 
     void Labels(double song, PVector eye)
     {
         int bar = (int)(song / 4) % 32;
+        string part = bar < 4 ? ""the void"" : bar < 12 ? ""the pull"" : bar < 16 ? ""the build"" : bar < 28 ? ""the horizon"" : ""after"";
         float d = Sqrt(eye.X * eye.X + eye.Y * eye.Y + eye.Z * eye.Z);
         TextFont(mono, 13);
         TextAlign(TextAlignH.Left, TextAlignV.Bottom);
         Fill(255, 255, 255, 100);
-        string shot = Escaping((float)song - frozenFor) ? ""escape"" : ""approach"";
-        Text($""bar {bar + 1}/32 · {shot} · distance {d:0.0} horizon radii{(frozen ? "" · camera frozen"" : """")}"", 14, Height - 26);
+        Text($""bar {bar + 1}/32 · {part} · distance {d:0.0} horizon radii{(frozen ? "" · camera frozen"" : """")}"", 14, Height - 26);
         Fill(255, 255, 255, 55);
-        Text(""Space: freeze camera · C: switch shot · wheel: closer/farther · H: hide labels"", 14, Height - 9);
+        Text(""Space: freeze camera · wheel: closer/farther · H: hide labels"", 14, Height - 9);
     }
 
     public override void KeyPressed()
     {
         if (Key == ' ') frozen = !frozen;
         else if (Key == 'h' || Key == 'H') labels = !labels;
-        else if (Key == 'c' || Key == 'C') otherShot = !otherShot;
     }
 
     public override void MouseWheel(float delta) => zoomOut = Constrain(zoomOut * (delta > 0 ? 1.1f : 1 / 1.1f), 0.6f, 2.5f);
 
     // =================================================================================
-    // The score: 72 BPM, 32 bars, A minor. Bars 0-7: clock and drone. 8-15: the organ
-    // comes in. 16-27: everything, swelling. 28-31: back to the clock alone.
+    // The score: 76 BPM, 32 bars in A minor, looping. An orchestra made of synths:
+    //   bars 0-3    the void:    a clock, a low drone, a high shimmer
+    //   bars 4-11   the pull:    a piano figure (with its echo) and soft strings
+    //   bars 12-15  the build:   strings and cellos grow, timpani roll, a rising wind
+    //   bars 16-27  the horizon: everything -- organ, choir, timpani like a heartbeat
+    //   bars 28-31  after:       one last chord, the piano alone, the clock
+    // Each chord lasts two bars: Am F C G | Dm F Esus4 E.
     // =================================================================================
-    int clockBar, organBar, droneBar, figureBar, pulseBar;
-
-    static readonly string[][] Organ =
+    static readonly string[][] Harmony =
     {
         new[] { ""A2"", ""E3"", ""A3"", ""C4"", ""E4"" },     // Am
         new[] { ""F2"", ""C3"", ""A3"", ""C4"", ""F4"" },     // F
-        new[] { ""D2"", ""A2"", ""F3"", ""A3"", ""D4"" },     // Dm
-        new[] { ""E2"", ""B2"", ""G#3"", ""B3"", ""E4"" },    // E
+        new[] { ""C3"", ""G3"", ""C4"", ""E4"", ""G4"" },     // C
+        new[] { ""G2"", ""D3"", ""B3"", ""D4"", ""G4"" },     // G
+        new[] { ""D3"", ""A3"", ""D4"", ""F4"", ""A4"" },     // Dm
+        new[] { ""F2"", ""C3"", ""A3"", ""C4"", ""F4"" },     // F
+        new[] { ""E2"", ""B2"", ""E3"", ""A3"", ""B3"" },     // Esus4: holds its breath...
+        new[] { ""E2"", ""B2"", ""G#3"", ""B3"", ""E4"" },    // E: ...and leans back home
     };
+
+    static string[] ChordAt(int bar) => Harmony[(bar / 2) % Harmony.Length];
+
+    int clockBar, droneBar, stringBar, celloBar, pianoBar, choirBar, organBar, timpaniBar;
 
     [LiveLoop]
     async Task Clock()
     {
         int bar = clockBar++ % 32;
-        // The tick that never stops: every beat, the off-beat a little softer.
+        // The tick that never stops; it steps back a little when the orchestra is loud.
+        double soft = bar >= 16 && bar < 28 ? 0.6 : 1;
         for (int i = 0; i < 8; i++)
         {
-            Sample(""hat"", amp: i % 2 == 0 ? 0.20 : 0.08, rate: 1.6, pan: -0.3);
+            Sample(""hat"", amp: (i % 2 == 0 ? 0.20 : 0.08) * soft, rate: 1.6, pan: -0.3);
             await Sleep(0.5);
         }
     }
@@ -398,62 +392,148 @@ public class AsciiBlackHole : Sketch
     async Task Drone()
     {
         int bar = droneBar++ % 32;
-        string root = Organ[(bar / 2) % 4][0];
         if (bar % 2 == 0)
         {
-            Play(root, amp: 0.30, attack: 2.5, sustain: 3, release: 3, synth: Synth.Sine);
-            Play(Notes.Parse(root) + 12, amp: 0.08, attack: 3, sustain: 2, release: 3, cutoff: 60, synth: Synth.Saw);
+            double root = Notes.Parse(ChordAt(bar)[0]) - (bar >= 16 && bar < 28 ? 12 : 0);
+            Play(root, amp: bar < 4 ? 0.15 : bar >= 16 && bar < 28 ? 0.26 : 0.2, attack: 2, sustain: 4, release: 3, synth: Synth.Sine);
+            if (bar < 4)   // the void: a faint shimmer of high harmonics
+                foreach (int up in new[] { 31, 36, 40 })
+                    Play(root + up, amp: 0.025, attack: 3, sustain: 2, release: 3, pan: up % 2 == 0 ? 0.5 : -0.5, synth: Synth.Triangle);
         }
         await Sleep(4);
     }
 
     [LiveLoop]
-    async Task Swells()
+    async Task Strings()
+    {
+        int bar = stringBar++ % 32;
+        float dyn = Dynamics(bar);
+        if (bar >= 4 && bar % 2 == 0 && bar < 30)
+        {
+            // A section: each note played by two saws a hair out of tune with each other,
+            // so they beat slowly against each other like a row of violins. Louder = brighter.
+            var chord = ChordAt(bar);
+            bool last = bar == 28;                  // the last chord rings out
+            for (int k = 1; k < chord.Length; k++)
+            {
+                double note = Notes.Parse(chord[k]) + 12;
+                foreach (double detune in new[] { -0.08, 0.08 })
+                    Play(note + detune, amp: 0.012 + 0.05 * dyn, attack: 2, sustain: last ? 8 : 5, release: last ? 6 : 3,
+                         cutoff: 72 + 22 * dyn, pan: detune * 4, synth: Synth.Saw);
+            }
+        }
+        await Sleep(4);
+    }
+
+    [LiveLoop]
+    async Task Cellos()
+    {
+        int bar = celloBar++ % 32;
+        // Half notes that walk under the strings: root, fifth, third, root.
+        var chord = ChordAt(bar);
+        // chord[0] is the root, chord[1] the fifth, chord[3] the third (an octave down here).
+        double[] walk = bar % 2 == 0
+            ? new double[] { Notes.Parse(chord[0]), Notes.Parse(chord[1]) }
+            : new double[] { Notes.Parse(chord[3]) - 12, Notes.Parse(chord[0]) };
+        foreach (double note in walk)
+        {
+            if (bar >= 8 && bar < 29)
+            {
+                float dyn = Dynamics(bar);
+                Play(note, amp: 0.10 + 0.10 * dyn, attack: 0.25, sustain: 1.4, release: 0.6, cutoff: 66 + 14 * dyn, synth: Synth.Saw);
+            }
+            await Sleep(2);
+        }
+    }
+
+    [LiveLoop]
+    async Task Piano()
+    {
+        int bar = pianoBar++ % 32;
+        // Eight notes a bar, rising and falling through the chord, and an echo three
+        // sixteenths behind on the other side -- the figure seems to chase itself.
+        var chord = ChordAt(bar);
+        int[] shape = { 2, 3, 4, 3, 2, 4, 3, 4 };
+        bool plays = bar >= 4 && bar != 15;      // one bar of silence before the horizon
+        double amp = bar >= 16 && bar < 28 ? 0.12 : 0.15;
+        for (int s = 0; s < 16; s++)
+        {
+            if (plays)
+            {
+                if (s % 2 == 0)
+                    Play(Notes.Parse(chord[shape[s / 2]]) + 12, amp: amp, release: 1.2, pan: 0.25, synth: Synth.Pluck);
+                if (s >= 3 && (s - 3) % 2 == 0)
+                    Play(Notes.Parse(chord[shape[(s - 3) / 2]]) + 12, amp: amp * 0.35, release: 1.0, pan: -0.45, synth: Synth.Pluck);
+            }
+            await Sleep(0.25);
+        }
+    }
+
+    [LiveLoop]
+    async Task Choir()
+    {
+        int bar = choirBar++ % 32;
+        // High voices on the third and fifth, only at the horizon.
+        if (bar >= 16 && bar < 28 && bar % 2 == 0)
+        {
+            var chord = ChordAt(bar);
+            foreach (int k in new[] { 3, 4 })
+            {
+                double note = Notes.Parse(chord[k]) + 12;
+                Play(note, amp: 0.05, attack: 2.5, sustain: 4, release: 2.5, pan: k == 3 ? -0.3 : 0.3, synth: Synth.Triangle);
+                Play(note + 0.05, amp: 0.035, attack: 3, sustain: 3.5, release: 2.5, pan: k == 3 ? 0.3 : -0.3, synth: Synth.Sine);
+            }
+        }
+        await Sleep(4);
+    }
+
+    [LiveLoop]
+    async Task Organ()
     {
         int bar = organBar++ % 32;
-        if (bar >= 8 && bar < 28 && bar % 2 == 0)
-        {
-            bool full = bar >= 16;
-            foreach (var note in Organ[(bar / 2) % 4])
+        // The pipe organ: squares in octaves, slow to open, at the horizon only.
+        if (bar >= 16 && bar < 28 && bar % 2 == 0)
+            foreach (var note in ChordAt(bar))
             {
-                // Organ: a square and its octave, slow to open, long to fade.
-                Play(note, amp: full ? 0.09 : 0.05, attack: 1.5, sustain: 4.5, release: 2.5, cutoff: full ? 86 : 74, synth: Synth.Square);
-                Play(Notes.Parse(note) + 12, amp: full ? 0.045 : 0.02, attack: 2, sustain: 4, release: 2.5, cutoff: 80, synth: Synth.Triangle);
+                Play(note, amp: 0.055, attack: 1.2, sustain: 5, release: 2.5, cutoff: 84, synth: Synth.Square);
+                Play(Notes.Parse(note) + 12, amp: 0.03, attack: 1.6, sustain: 4.5, release: 2.5, cutoff: 90, synth: Synth.Square);
             }
-        }
+        // The final chord: everything rings out over A.
+        if (bar == 28)
+            foreach (var note in Harmony[0])
+                Play(note, amp: 0.05, attack: 0.3, sustain: 4, release: 8, cutoff: 80, synth: Synth.Square);
         await Sleep(4);
     }
 
     [LiveLoop]
-    async Task Figure()
+    async Task Timpani()
     {
-        int bar = figureBar++ % 32;
-        // A small figure high up, eight notes per bar, climbing through the chord.
-        var chord = Organ[(bar / 2) % 4];
-        int[] shape = { 2, 3, 4, 3, 2, 4, 3, 4 };
-        for (int i = 0; i < 8; i++)
+        int bar = timpaniBar++ % 32;
+        if (bar >= 12 && bar < 16)
         {
-            if (bar >= 4 && bar < 30)
+            // The build: a roll that gets faster and louder, with a wind rising under it in the last bar.
+            if (bar == 15)
+                Play(48, amp: 0.10, attack: 3.8, release: 0.3, cutoff: 96, synth: Synth.Noise);
+            int perBeat = bar < 14 ? 2 : bar == 14 ? 4 : 6;
+            for (int i = 0; i < 4 * perBeat; i++)
             {
-                double note = Notes.Parse(chord[shape[i]]) + 12;
-                double amp = bar < 16 ? 0.05 : 0.08;
-                Play(note, amp: amp * (i % 2 == 0 ? 1 : 0.7), attack: 0.02, release: 0.9, pan: i % 2 == 0 ? 0.3 : -0.1, synth: Synth.Triangle);
+                double grow = (bar - 12 + i / (4.0 * perBeat)) / 4;
+                Sample(""kick"", amp: 0.15 + 0.45 * grow, rate: 0.55);
+                await Sleep(1.0 / perBeat);
             }
-            await Sleep(0.5);
         }
-    }
-
-    [LiveLoop]
-    async Task Heartbeat()
-    {
-        int bar = pulseBar++ % 32;
-        // A low heartbeat on 1 and the ""and"" of 1, only in the big middle part.
-        if (bar >= 16 && bar < 28)
+        else if (bar >= 16 && bar < 28)
         {
-            Sample(""kick"", amp: 0.55, rate: 0.7);
+            // The horizon: a heartbeat, and a big hit at the start of every chord.
+            Sample(""kick"", amp: bar % 2 == 0 ? 0.9 : 0.6, rate: 0.55);
             await Sleep(0.5);
-            Sample(""kick"", amp: 0.30, rate: 0.7);
+            Sample(""kick"", amp: 0.35, rate: 0.6);
             await Sleep(3.5);
+        }
+        else if (bar == 28)
+        {
+            Sample(""kick"", amp: 0.9, rate: 0.5);     // the last chord lands
+            await Sleep(4);
         }
         else
             await Sleep(4);
