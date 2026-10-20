@@ -65,7 +65,449 @@ namespace DanaProcessing.Ide.Editor
                 AsciiBlackHole,
                 new[] { SampleTag.ThreeD, SampleTag.Text, SampleTag.Audio, SampleTag.Generative }),
 
+            new SketchSample(
+                Loc.Tr("Tu clip en ASCII 3D: la nube se arma en video", "Your clip in 3D ASCII: the cloud assembles into video"),
+                Loc.Tr("Cualquier video convertido en un volumen de caracteres. Empezás dentro de una nube de glifos; la cámara mira alrededor y retrocede, y los glifos vuelan a su lugar hasta formar el clip, reproduciéndose. No es una pantalla plana: cada carácter está a una profundidad (lo claro adelante, lo oscuro atrás, lo más brillante en columnitas), así que cuando la cámara se abre de costado se ve el grosor. Poné tus cuadros en Documentos/DanaClip/frames (y opcionalmente audio.wav, que suena sincronizado); en los comentarios están los comandos de ffmpeg. Los cuadros se cargan de a poco, sin congelar el arranque. Sin carpeta, muestra una animación propia y una canción hecha con [LiveLoop]. Espacio congela la cámara, R recarga, H oculta los textos.",
+                       "Any video turned into a volume of characters. You start inside a cloud of glyphs; the camera looks around and backs away, and the glyphs fly into place until they form the clip, playing. It isn't a flat screen: every character sits at a depth (light in front, dark behind, the brightest in little columns), so when the camera swings to the side you see its thickness. Put your frames in Documents/DanaClip/frames (and optionally audio.wav, played in sync); the ffmpeg commands are in the comments. Frames load a few at a time, so the start never freezes. Without a folder it shows its own animation and a song made with [LiveLoop]s. Space freezes the camera, R reloads, H hides the labels."),
+                AsciiClip3D,
+                new[] { SampleTag.ThreeD, SampleTag.Text, SampleTag.Images, SampleTag.Audio }),
+
         };
+
+        private const string AsciiClip3D =
+@"// Any video, as a 3D volume of ASCII characters.
+//
+// You start inside a cloud of floating glyphs. The camera looks around and
+// backs away, and as it does the glyphs fly into place: the cloud becomes the
+// clip, playing. It isn't a flat screen -- every character sits at a depth
+// (bright parts closer to you, dark parts further back, the brightest ones
+// extruded into short columns), so when the camera swings to the side you see
+// the picture has thickness. Then the camera dives back in, the clip scatters
+// into a cloud again, and it all loops.
+//
+// YOUR CLIP: put it in a folder (ClipDir below; by default Documents/DanaClip):
+//     frames/0001.png, 0002.png ...   the pictures, in order
+//     audio.wav                       optional: its sound, played in sync
+// From any video, with ffmpeg:
+//     ffmpeg -i video.mp4 -vf ""fps=30,scale=192:-2"" frames/%04d.png
+//     ffmpeg -i video.mp4 -vn -ac 2 -ar 48000 audio.wav
+// Without frames it plays a built-in animation; without audio.wav, a little
+// disco song made with [LiveLoop]s starts when the picture comes together.
+//
+// Space: freeze the camera.  H: hide the labels.  R: reload the clip.
+public class AsciiClip3D : Sketch
+{
+    // ---- settings --------------------------------------------------------------------
+    static readonly string ClipDir = System.IO.Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), ""DanaClip"");
+    const float ClipFps = 30;          // the fps you extracted the frames at
+    const int GH = 54;                 // characters from top to bottom (the width follows the clip's shape)
+    const float Gap = 0.5f;            // world units between characters
+    const float Thickness = 9;         // how deep the picture is, front (white) to back (black)
+    const float InsideSeconds = 11, DiveSeconds = 6;
+    const string Glyphs = "" .:-=+*#%@"";
+
+    // ---- the clip ----------------------------------------------------------------------
+    string[] files = System.Array.Empty<string>();
+    readonly List<PImage> frames = new();
+    SampleBuffer audio;
+    string status = """";
+
+    // ---- the field ---------------------------------------------------------------------
+    int GW, PicW, PicH, cells;
+    const int S = 2;                   // clip pixels averaged per character, each way
+    PGraphics pic;
+    PFont mono;
+    float[] lum, chaosX, chaosY, chaosZ, delay, depth, sx, sy, ss;
+    int[] order, glyphOf;
+    Color[] tint;
+    char[] noiseGlyph;
+    int[] itemCell; float[] itemBack;  // what gets drawn: a cell, and how far behind its face (extrusion)
+
+    // ---- time ----------------------------------------------------------------------------
+    float camSeconds, revealSeconds = 20;
+    bool frozen, labels = true, musicOn, wasRevealing;
+    long lastMillis, revealStartMillis;
+    int padBar, bassBar, leadBar, drumBar;
+
+    public override void Setup()
+    {
+        Size(960, 540);
+        Bpm = 116;
+        mono = CreateFont(""Consolas"", 32);
+        FindClip();
+        BuildField(16f / 9f);
+        lastMillis = Millis();
+    }
+
+    // =====================================================================================
+    // Loading: the file list now, the pictures a few per frame (no frozen start).
+    // =====================================================================================
+    void FindClip()
+    {
+        frames.Clear();
+        audio = null;
+        files = System.Array.Empty<string>();
+        string dir = System.IO.Path.Combine(ClipDir, ""frames"");
+        if (!Directory.Exists(dir))
+        {
+            status = $""no clip in {dir} -- playing the built-in animation"";
+            return;
+        }
+        files = Directory.GetFiles(dir, ""*.png"").OrderBy(f => f, StringComparer.Ordinal).ToArray();
+        string wav = System.IO.Path.Combine(ClipDir, ""audio.wav"");
+        if (File.Exists(wav))
+        {
+            try { audio = LoadSample(wav); }
+            catch (Exception e) { status = ""audio.wav: "" + e.Message; }
+        }
+    }
+
+    bool Loading => frames.Count < files.Length;
+    bool HasClip => files.Length > 0 && !Loading;
+    float ClipSeconds => HasClip ? frames.Count / ClipFps : 8;
+
+    void LoadSome()
+    {
+        var start = Millis();
+        while (Loading && Millis() - start < 12)          // ~12 ms of loading per frame
+        {
+            frames.Add(LoadImage(files[frames.Count]));
+            if (frames.Count == 1)
+                BuildField(frames[0].Width / (float)frames[0].Height);
+        }
+        if (!Loading && files.Length > 0)
+            status = $""{frames.Count} frames ({ClipSeconds:0.0} s)"" + (audio != null ? $"" + audio.wav ({audio.Duration:0.0} s)"" : "" -- no audio.wav, playing the disco loops"");
+    }
+
+    /// <summary>Sizes everything for a clip of this shape, and scatters the cloud.</summary>
+    void BuildField(float aspect)
+    {
+        // Characters are about twice as tall as wide on screen in the clip's terms, but here
+        // they're laid out in a square grid in 3D, so: one cell per (aspect) pixels across.
+        GW = Math.Clamp((int)MathF.Round(GH * aspect), 16, 140);
+        cells = GW * GH;
+        PicW = GW * S; PicH = GH * S;
+        pic?.Dispose();
+        pic = CreateGraphics(PicW, PicH);
+        lum = new float[cells]; tint = new Color[cells]; glyphOf = new int[cells];
+        chaosX = new float[cells]; chaosY = new float[cells]; chaosZ = new float[cells]; delay = new float[cells];
+        noiseGlyph = new char[cells];
+        int maxItems = cells * 3;
+        depth = new float[maxItems]; order = new int[maxItems]; itemCell = new int[maxItems]; itemBack = new float[maxItems];
+        sx = new float[maxItems]; sy = new float[maxItems]; ss = new float[maxItems];
+        for (int i = 0; i < cells; i++)
+        {
+            // The cloud: a ball around the start position, denser in the middle.
+            float u = Hash(i), v = Hash(i + 7919), w = Hash(i + 104729);
+            float th = u * TWO_PI, ph = Acos(2 * v - 1), rad = 3 + 14 * Pow(w, 0.6f);
+            chaosX[i] = Sin(ph) * Cos(th) * rad;
+            chaosY[i] = Cos(ph) * rad * 0.6f;
+            chaosZ[i] = Sin(ph) * Sin(th) * rad;
+            // Assembly order: the middle of the picture first, the edges last, with some jitter.
+            int col = i % GW, row = i / GW;
+            float dx = (col - GW / 2f) / GW, dy = (row - GH / 2f) / GH;
+            delay[i] = Constrain(Sqrt(dx * dx + dy * dy) * 1.3f + Hash(i + 31337) * 0.25f, 0, 1);
+            noiseGlyph[i] = Glyphs[2 + (int)(Hash(i + 4242) * (Glyphs.Length - 2))];
+        }
+    }
+
+    // =====================================================================================
+    // Each frame
+    // =====================================================================================
+    public override void Draw()
+    {
+        long now = Millis();
+        float dt = (now - lastMillis) / 1000f;
+        lastMillis = now;
+        if (Loading) LoadSome();
+
+        // The reveal lasts as long as the sound (or two passes of the clip, at least 16 s).
+        revealSeconds = audio != null ? (float)audio.Duration : Max(16, ClipSeconds * 2);
+        float cycle = InsideSeconds + revealSeconds + DiveSeconds;
+        if (!frozen) camSeconds = (camSeconds + dt) % cycle;
+        float s = camSeconds;
+
+        // Phase changes: entering the reveal starts the clip and its sound from the top.
+        bool revealing = s >= InsideSeconds && s < InsideSeconds + revealSeconds;
+        if (revealing && !wasRevealing)
+        {
+            revealStartMillis = now - (long)((s - InsideSeconds) * 1000);
+            if (audio != null && HasClip) Sample(audio, amp: 0.9);
+        }
+        wasRevealing = revealing;
+        musicOn = revealing && (audio == null || !HasClip);
+
+        float clipT = revealing ? (now - revealStartMillis) / 1000f : 0;
+        PaintPicture(clipT);
+
+        var (eye, look, assembled) = Camera(s);
+        Background(4, 3, 12);
+        DrawField(eye, look, assembled, now / 1000f);
+        if (labels) Labels(s, revealing, clipT);
+    }
+
+    void PaintPicture(float clipT)
+    {
+        pic.BeginDraw();
+        if (HasClip)
+        {
+            int index = (int)(clipT * ClipFps) % frames.Count;
+            pic.Image(frames[index], 0, 0, PicW, PicH);
+        }
+        else
+            PaintDemo(clipT);
+        pic.LoadPixels();
+        var px = pic.Pixels;
+        for (int r = 0; r < GH; r++)
+            for (int c = 0; c < GW; c++)
+            {
+                int R = 0, G = 0, B = 0;
+                for (int dy = 0; dy < S; dy++)
+                    for (int dx = 0; dx < S; dx++)
+                    {
+                        var p = px[(r * S + dy) * PicW + c * S + dx];
+                        R += p.R; G += p.G; B += p.B;
+                    }
+                int i = r * GW + c, n = S * S;
+                lum[i] = (0.3f * R + 0.55f * G + 0.15f * B) / (n * 255f);
+                tint[i] = Color(R / n, G / n, B / n);
+                glyphOf[i] = (int)Constrain(Sqrt(lum[i]) * Glyphs.Length, 1, Glyphs.Length - 1);
+            }
+        pic.EndDraw();
+    }
+
+    /// <summary>The built-in clip, for when there's no folder: rings, a rotating word, a beat.</summary>
+    void PaintDemo(float t)
+    {
+        pic.Background(12, 8, 30);
+        pic.NoFill();
+        for (int k = 0; k < 7; k++)
+        {
+            float r = ((t * 30 + k * 22) % 154);
+            pic.StrokeWeight(3);
+            pic.StrokeHSB((200 + k * 25 + t * 40) % 360, 70, 100);
+            pic.Circle(PicW / 2f, PicH / 2f, r);
+        }
+        pic.NoStroke();
+        pic.PushMatrix();
+        pic.Translate(PicW / 2f, PicH / 2f);
+        pic.Rotate(Sin(t * 0.8f) * 0.35f);
+        pic.Scale(1 + 0.08f * Sin(t * PI * 116 / 60));
+        pic.Fill(255, 240, 220);
+        pic.TextFont(mono, 34);
+        pic.TextAlign(TextAlignH.Center, TextAlignV.Center);
+        pic.Text(""DANA"", 0, 0);
+        pic.PopMatrix();
+    }
+
+    // =====================================================================================
+    // The camera: inside the cloud -> back away while it assembles -> swing round to show
+    // the depth -> dive back in as it scatters. Starts and ends at the same spot.
+    // =====================================================================================
+    (PVector Eye, PVector Look, float Assembled) Camera(float s)
+    {
+        float worldW = GW * Gap, hfov = 2 * Atan(Tan(Radians(30)) * Width / (float)Height);
+        float far = worldW / 2 / Tan(hfov / 2) * 1.2f + Thickness;   // the whole picture fits, front included
+
+        if (s < InsideSeconds)
+        {
+            // Looking around inside the cloud, drifting backwards.
+            float k = s / InsideSeconds;
+            float yaw = Radians(150) * Sin(PI * k), pitch = Radians(18) * Sin(TWO_PI * k);
+            var eye = new PVector(0, 0.3f, -5 * Smooth(0.4f, 1, k));
+            var dir = new PVector(Sin(yaw) * Cos(pitch), Sin(pitch), Cos(yaw) * Cos(pitch));
+            return (eye, PVector.Add(eye, dir), 0);
+        }
+        s -= InsideSeconds;
+        if (s < revealSeconds)
+        {
+            // Pull back to see the whole picture as it assembles, then swing to one side
+            // and the other, slowly, so the depth shows; back to the front to finish.
+            float pull = Smooth(0, 4, s);
+            float u = Constrain((s - 4) / Max(1, revealSeconds - 6), 0, 1);
+            float swing = Radians(38) * Sin(TWO_PI * u) * Smooth(0, 0.12f, u) * (1 - Smooth(0.88f, 1, u));
+            float d = Lerp(5, far, pull);
+            var eye = new PVector(-Sin(swing) * d, 0.3f + 2.5f * Sin(PI * u) * pull, -Cos(swing) * d);
+            return (eye, new PVector(0, 0, 0), Smooth(0.5f, 5, s));
+        }
+        s -= revealSeconds;
+        {
+            // Dive back in; the picture scatters into the cloud again.
+            float k = Smooth(0, DiveSeconds, s);
+            var eye = new PVector(0, 0.3f, Lerp(-far, 0, k));
+            return (eye, PVector.Add(eye, new PVector(0, 0, 1)), 1 - Smooth(0.2f, 0.8f, k));
+        }
+    }
+
+    void DrawField(PVector eye, PVector look, float assembled, float time)
+    {
+        var f = PVector.Sub(look, eye).Normalize();
+        var right = f.Cross(new PVector(0, 1, 0)).Normalize();
+        var up = right.Cross(f);
+        float focal = Height / 2f / Tan(Radians(30));
+        int n = 0;
+        float spin = time * 0.08f, cs = Cos(spin), sn = Sin(spin);
+
+        for (int i = 0; i < cells; i++)
+        {
+            int col = i % GW, row = i / GW;
+            // Where it sits in the picture (x mirrored so it reads right from the front).
+            float px = ((GW - 1) / 2f - col) * Gap, py = ((GH - 1) / 2f - row) * Gap;
+            float pz = (0.45f - lum[i]) * Thickness;
+            // Where it floats in the cloud (the cloud turns slowly).
+            float cx = chaosX[i] * cs - chaosZ[i] * sn, cz = chaosX[i] * sn + chaosZ[i] * cs;
+            float cy = chaosY[i] + Sin(time * 0.7f + i * 0.13f) * 0.4f;
+            // Each one flies in on its own schedule, along a curve.
+            float a = Smooth(delay[i] * 0.55f, delay[i] * 0.55f + 0.45f, assembled);
+            float swirl = (1 - a) * 2.2f;
+            float bx = Lerp(cx, px, a), bz = Lerp(cz, pz, a);
+            float wx = bx * Cos(swirl) - bz * Sin(swirl), wz = bx * Sin(swirl) + bz * Cos(swirl);
+            float wy = Lerp(cy, py, a);
+            // The brightest characters get one or two copies behind them: little columns.
+            int copies = a > 0.9f ? (lum[i] > 0.75f ? 3 : lum[i] > 0.5f ? 2 : 1) : 1;
+            for (int k = 0; k < copies; k++)
+            {
+                float back = k * 0.9f;
+                float dx = wx - eye.X, dy = wy - eye.Y, dz = wz + back - eye.Z;
+                float zc = dx * f.X + dy * f.Y + dz * f.Z;
+                if (zc < 0.5f) continue;
+                float xc = dx * right.X + dy * right.Y + dz * right.Z;
+                float yc = dx * up.X + dy * up.Y + dz * up.Z;
+                float size = focal * Gap * 1.05f / zc;
+                float x = Width / 2f + focal * xc / zc, y = Height / 2f - focal * yc / zc;
+                if (size < 1.6f || x < -size || x > Width + size || y < -size || y > Height + size) continue;
+                sx[n] = x; sy[n] = y; ss[n] = Min(size, 140);
+                itemCell[n] = i; itemBack[n] = k;
+                depth[n] = -zc;
+                order[n] = n;
+                n++;
+            }
+        }
+        System.Array.Sort(depth, order, 0, n);
+
+        TextFont(mono, 32);
+        TextAlign(TextAlignH.Center, TextAlignV.Center);
+        for (int q = 0; q < n; q++)
+        {
+            int k = order[q], i = itemCell[k];
+            float z = -depth[q];
+            float a = Smooth(delay[i] * 0.55f, delay[i] * 0.55f + 0.45f, assembled);
+            float v = lum[i];
+            var c = tint[i];
+            // In the cloud: cool blues; in place: the clip's own color. Copies behind are dimmer.
+            float r = Lerp(60 + 80 * Hash(i + 3), c.R * 1.25f + 10, a);
+            float g = Lerp(100 + 50 * Hash(i + 5), c.G * 1.25f + 10, a);
+            float b = Lerp(150 + 80 * Hash(i + 9), c.B * 1.25f + 20, a);
+            float fade = Constrain((z - 0.5f) / 2.5f, 0, 1) * (itemBack[k] == 0 ? 1 : 0.45f / itemBack[k]);
+            float presence = a < 0.5f ? 0.85f : 0.4f + 0.6f * Min(1, v * 2.2f + 0.3f);
+            Fill(Min(255, r), Min(255, g), Min(255, b), 255 * fade * presence);
+            float size = ss[k];
+            TextSize(size < 24 ? MathF.Round(size) : MathF.Round(size / 6) * 6);   // few sizes: Skia's glyph cache hits
+            char glyph = a < 0.5f ? noiseGlyph[i] : Glyphs[glyphOf[i]];
+            Text(glyph.ToString(), sx[k], sy[k]);
+        }
+    }
+
+    void Labels(float s, bool revealing, float clipT)
+    {
+        TextFont(mono, 13);
+        TextSize(13);
+        TextAlign(TextAlignH.Left, TextAlignV.Bottom);
+        Fill(255, 255, 255, 120);
+        string where = s < InsideSeconds ? ""inside the cloud"" : revealing ? $""the clip · {clipT:0.0} s"" : ""diving back in"";
+        if (Loading) where = $""loading frames {frames.Count}/{files.Length}"";
+        Text($""{where}  ·  {status}{(frozen ? ""  ·  camera frozen"" : """")}"", 16, Height - 30);
+        Fill(255, 255, 255, 60);
+        Text($""Space: freeze camera  ·  H: hide labels  ·  R: reload  ·  clip folder: {ClipDir}"", 16, Height - 12);
+    }
+
+    public override void KeyPressed()
+    {
+        if (Key == ' ') frozen = !frozen;
+        else if (Key == 'h' || Key == 'H') labels = !labels;
+        else if (Key == 'r' || Key == 'R') { FindClip(); camSeconds = 0; wasRevealing = false; }
+    }
+
+    static float Smooth(float a, float b, float x)
+    {
+        float k = Math.Clamp((x - a) / (b - a), 0, 1);
+        return k * k * (3 - 2 * k);
+    }
+
+    static float Hash(int n)
+    {
+        unchecked
+        {
+            uint x = (uint)n;
+            x ^= x >> 16; x *= 0x7feb352d; x ^= x >> 15; x *= 0x846ca68b; x ^= x >> 16;
+            return (x & 0xFFFFFF) / 16777215f;
+        }
+    }
+
+    // =====================================================================================
+    // The fallback song (when there's no audio.wav): an original disco loop at 116 BPM,
+    // playing only while the picture is together. Fmaj7 - Em7 - Dm7 - Cmaj7.
+    // =====================================================================================
+    static readonly string[][] Chords =
+    {
+        new[] { ""F3"", ""A3"", ""C4"", ""E4"" }, new[] { ""E3"", ""G3"", ""B3"", ""D4"" },
+        new[] { ""D3"", ""F3"", ""A3"", ""C4"" }, new[] { ""C3"", ""E3"", ""G3"", ""B3"" },
+    };
+    static readonly string[] Roots = { ""F2"", ""E2"", ""D2"", ""C2"" };
+
+    [LiveLoop]
+    async Task Pad()
+    {
+        if (!musicOn) { padBar = 0; await Sleep(1); return; }
+        foreach (var note in Chords[padBar++ % 4])
+            Play(note, amp: 0.06, attack: 0.3, sustain: 2.6, release: 1, cutoff: 88, synth: Synth.Saw);
+        await Sleep(4);
+    }
+
+    [LiveLoop]
+    async Task Bass()
+    {
+        if (!musicOn) { bassBar = 0; await Sleep(1); return; }
+        double root = Notes.Parse(Roots[bassBar++ % 4]);
+        for (int i = 0; i < 8; i++)
+        {
+            Play(root + (i % 2 == 1 ? 12 : 0), amp: 0.24, release: 0.2, cutoff: 76, res: 0.3, synth: Synth.Saw);
+            await Sleep(0.5);
+        }
+    }
+
+    [LiveLoop]
+    async Task Lead()
+    {
+        if (!musicOn) { leadBar = 0; await Sleep(1); return; }
+        (string Note, double Beats)[] climb = { (""E5"", 0.5), (""G5"", 0.5), (""A5"", 1), (""G5"", 0.5), (""E5"", 0.5), (""D5"", 1) };
+        (string Note, double Beats)[] home = { (""C5"", 0.5), (""D5"", 0.5), (""E5"", 1.5), ("""", 0.5), (""G4"", 0.5), (""A4"", 0.5) };
+        foreach (var (note, beats) in leadBar++ % 2 == 0 ? climb : home)
+        {
+            if (note != """")
+                Play(note, amp: 0.09, release: beats * 0.45, cutoff: 96, pan: -0.15, synth: Synth.Square);
+            await Sleep(beats);
+        }
+    }
+
+    [LiveLoop]
+    async Task Kit()
+    {
+        if (!musicOn) { drumBar = 0; await Sleep(1); return; }
+        drumBar++;
+        for (int beat = 0; beat < 4; beat++)
+        {
+            Sample(""kick"", amp: 0.85);
+            if (beat % 2 == 1) Sample(""snare"", amp: 0.5);
+            Sample(""hat"", amp: 0.1, pan: 0.2);
+            await Sleep(0.5);
+            Sample(""hat"", amp: 0.28, pan: 0.25);
+            await Sleep(0.5);
+        }
+    }
+}
+";
 
         private const string AsciiBlackHole =
 @"// A black hole in ASCII, ray traced in 3D, with a slow cinematic score.
