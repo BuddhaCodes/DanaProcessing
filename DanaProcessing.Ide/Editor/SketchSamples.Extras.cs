@@ -52,9 +52,9 @@ namespace DanaProcessing.Ide.Editor
                 new[] { SampleTag.MachineLearning, SampleTag.Text, SampleTag.Generative, SampleTag.Interaction }),
 
             new SketchSample(
-                Loc.Tr("Disco ASCII en 3D: la cámara se aleja y aparece un bailarín", "3D ASCII disco: the camera pulls back and a dancer appears"),
-                Loc.Tr("Estás parado en el medio de un campo 3D de caracteres ASCII que flotan y laten con la música. La cámara mira alrededor, camina, sube y gira, y después se aleja bien arriba: desde lejos el campo resulta ser una pantalla, y los caracteres juntos son un bailarín en una pista de disco, bailando la canción que sonó todo el tiempo. Todo es código: el bailarín se dibuja en un PGraphics cada frame, la cámara 3D es matemática simple (vectores y división por la distancia) y la canción son cinco [LiveLoop] a 116 BPM. Espacio congela la cámara, H oculta los textos.",
-                       "You're standing in the middle of a 3D field of ASCII characters that float and throb with the music. The camera looks around, walks, climbs and circles, then pulls far up: from there the field turns out to be a screen, and all the characters together are a dancer on a disco floor, dancing to the song that's been playing all along. It's all code: the dancer is drawn on a PGraphics every frame, the 3D camera is plain math (vectors and a divide by distance) and the song is five [LiveLoop]s at 116 BPM. Space freezes the camera, H hides the labels."),
+                Loc.Tr("Disco ASCII en 3D: empezás adentro del bailarín", "3D ASCII disco: you start inside the dancer"),
+                Loc.Tr("Una disco hecha solo de caracteres, y cada uno tiene su X, Y y Z: un bailarín estatua de 20 unidades de alto (el torso más grueso que los brazos, redondeado, así que de costado se ve su volumen), una pista de baldosas cuyas luces suben con el bombo y una onda que sale de sus pies, dos reflectores que son haces de puntos en el aire, una bola de espejos de glifos que gira y polvo flotando a todas las alturas. La cámara arranca adentro del pecho del bailarín -- solo glifos alrededor --, sale caminando, y recién al alejarse se ve dónde estabas; después lo rodea y vuelve a entrar. El bailarín se dibuja en un PGraphics cada frame, la cámara 3D es matemática simple y la canción son cinco [LiveLoop] a 116 BPM. Espacio congela la cámara, H oculta los textos.",
+                       "A disco made only of characters, each with its own X, Y and Z: a statue dancer 20 units tall (the torso thicker than the arms, rounded, so from the side you see its volume), a floor of tiles whose lights rise with the kick and a ripple running from its feet, two spotlights that are beams of dots in the air, a turning mirror ball of glyphs and dust floating at every height. The camera starts inside the dancer's chest -- just glyphs all around --, walks out, and only as it backs away do you see where you were; then it circles the dancer and dives back in. The dancer is drawn on a PGraphics every frame, the 3D camera is plain math and the song is five [LiveLoop]s at 116 BPM. Space freezes the camera, H hides the labels."),
                 AsciiDisco,
                 new[] { SampleTag.ThreeD, SampleTag.Text, SampleTag.Audio, SampleTag.Animation }),
 
@@ -65,449 +65,7 @@ namespace DanaProcessing.Ide.Editor
                 AsciiBlackHole,
                 new[] { SampleTag.ThreeD, SampleTag.Text, SampleTag.Audio, SampleTag.Generative }),
 
-            new SketchSample(
-                Loc.Tr("Tu clip en ASCII 3D: la nube se arma en video", "Your clip in 3D ASCII: the cloud assembles into video"),
-                Loc.Tr("Cualquier video convertido en un volumen de caracteres. Empezás dentro de una nube de glifos; la cámara mira alrededor y retrocede, y los glifos vuelan a su lugar hasta formar el clip, reproduciéndose. No es una pantalla plana: cada carácter está a una profundidad (lo claro adelante, lo oscuro atrás, lo más brillante en columnitas), así que cuando la cámara se abre de costado se ve el grosor. Poné tus cuadros en Documentos/DanaClip/frames (y opcionalmente audio.wav, que suena sincronizado); en los comentarios están los comandos de ffmpeg. Los cuadros se cargan de a poco, sin congelar el arranque. Sin carpeta, muestra una animación propia y una canción hecha con [LiveLoop]. Espacio congela la cámara, R recarga, H oculta los textos.",
-                       "Any video turned into a volume of characters. You start inside a cloud of glyphs; the camera looks around and backs away, and the glyphs fly into place until they form the clip, playing. It isn't a flat screen: every character sits at a depth (light in front, dark behind, the brightest in little columns), so when the camera swings to the side you see its thickness. Put your frames in Documents/DanaClip/frames (and optionally audio.wav, played in sync); the ffmpeg commands are in the comments. Frames load a few at a time, so the start never freezes. Without a folder it shows its own animation and a song made with [LiveLoop]s. Space freezes the camera, R reloads, H hides the labels."),
-                AsciiClip3D,
-                new[] { SampleTag.ThreeD, SampleTag.Text, SampleTag.Images, SampleTag.Audio }),
-
         };
-
-        private const string AsciiClip3D =
-@"// Any video, as a 3D volume of ASCII characters.
-//
-// You start inside a cloud of floating glyphs. The camera looks around and
-// backs away, and as it does the glyphs fly into place: the cloud becomes the
-// clip, playing. It isn't a flat screen -- every character sits at a depth
-// (bright parts closer to you, dark parts further back, the brightest ones
-// extruded into short columns), so when the camera swings to the side you see
-// the picture has thickness. Then the camera dives back in, the clip scatters
-// into a cloud again, and it all loops.
-//
-// YOUR CLIP: put it in a folder (ClipDir below; by default Documents/DanaClip):
-//     frames/0001.png, 0002.png ...   the pictures, in order
-//     audio.wav                       optional: its sound, played in sync
-// From any video, with ffmpeg:
-//     ffmpeg -i video.mp4 -vf ""fps=30,scale=192:-2"" frames/%04d.png
-//     ffmpeg -i video.mp4 -vn -ac 2 -ar 48000 audio.wav
-// Without frames it plays a built-in animation; without audio.wav, a little
-// disco song made with [LiveLoop]s starts when the picture comes together.
-//
-// Space: freeze the camera.  H: hide the labels.  R: reload the clip.
-public class AsciiClip3D : Sketch
-{
-    // ---- settings --------------------------------------------------------------------
-    static readonly string ClipDir = System.IO.Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), ""DanaClip"");
-    const float ClipFps = 30;          // the fps you extracted the frames at
-    const int GH = 54;                 // characters from top to bottom (the width follows the clip's shape)
-    const float Gap = 0.5f;            // world units between characters
-    const float Thickness = 9;         // how deep the picture is, front (white) to back (black)
-    const float InsideSeconds = 11, DiveSeconds = 6;
-    const string Glyphs = "" .:-=+*#%@"";
-
-    // ---- the clip ----------------------------------------------------------------------
-    string[] files = System.Array.Empty<string>();
-    readonly List<PImage> frames = new();
-    SampleBuffer audio;
-    string status = """";
-
-    // ---- the field ---------------------------------------------------------------------
-    int GW, PicW, PicH, cells;
-    const int S = 2;                   // clip pixels averaged per character, each way
-    PGraphics pic;
-    PFont mono;
-    float[] lum, chaosX, chaosY, chaosZ, delay, depth, sx, sy, ss;
-    int[] order, glyphOf;
-    Color[] tint;
-    char[] noiseGlyph;
-    int[] itemCell; float[] itemBack;  // what gets drawn: a cell, and how far behind its face (extrusion)
-
-    // ---- time ----------------------------------------------------------------------------
-    float camSeconds, revealSeconds = 20;
-    bool frozen, labels = true, musicOn, wasRevealing;
-    long lastMillis, revealStartMillis;
-    int padBar, bassBar, leadBar, drumBar;
-
-    public override void Setup()
-    {
-        Size(960, 540);
-        Bpm = 116;
-        mono = CreateFont(""Consolas"", 32);
-        FindClip();
-        BuildField(16f / 9f);
-        lastMillis = Millis();
-    }
-
-    // =====================================================================================
-    // Loading: the file list now, the pictures a few per frame (no frozen start).
-    // =====================================================================================
-    void FindClip()
-    {
-        frames.Clear();
-        audio = null;
-        files = System.Array.Empty<string>();
-        string dir = System.IO.Path.Combine(ClipDir, ""frames"");
-        if (!Directory.Exists(dir))
-        {
-            status = $""no clip in {dir} -- playing the built-in animation"";
-            return;
-        }
-        files = Directory.GetFiles(dir, ""*.png"").OrderBy(f => f, StringComparer.Ordinal).ToArray();
-        string wav = System.IO.Path.Combine(ClipDir, ""audio.wav"");
-        if (File.Exists(wav))
-        {
-            try { audio = LoadSample(wav); }
-            catch (Exception e) { status = ""audio.wav: "" + e.Message; }
-        }
-    }
-
-    bool Loading => frames.Count < files.Length;
-    bool HasClip => files.Length > 0 && !Loading;
-    float ClipSeconds => HasClip ? frames.Count / ClipFps : 8;
-
-    void LoadSome()
-    {
-        var start = Millis();
-        while (Loading && Millis() - start < 12)          // ~12 ms of loading per frame
-        {
-            frames.Add(LoadImage(files[frames.Count]));
-            if (frames.Count == 1)
-                BuildField(frames[0].Width / (float)frames[0].Height);
-        }
-        if (!Loading && files.Length > 0)
-            status = $""{frames.Count} frames ({ClipSeconds:0.0} s)"" + (audio != null ? $"" + audio.wav ({audio.Duration:0.0} s)"" : "" -- no audio.wav, playing the disco loops"");
-    }
-
-    /// <summary>Sizes everything for a clip of this shape, and scatters the cloud.</summary>
-    void BuildField(float aspect)
-    {
-        // Characters are about twice as tall as wide on screen in the clip's terms, but here
-        // they're laid out in a square grid in 3D, so: one cell per (aspect) pixels across.
-        GW = Math.Clamp((int)MathF.Round(GH * aspect), 16, 140);
-        cells = GW * GH;
-        PicW = GW * S; PicH = GH * S;
-        pic?.Dispose();
-        pic = CreateGraphics(PicW, PicH);
-        lum = new float[cells]; tint = new Color[cells]; glyphOf = new int[cells];
-        chaosX = new float[cells]; chaosY = new float[cells]; chaosZ = new float[cells]; delay = new float[cells];
-        noiseGlyph = new char[cells];
-        int maxItems = cells * 3;
-        depth = new float[maxItems]; order = new int[maxItems]; itemCell = new int[maxItems]; itemBack = new float[maxItems];
-        sx = new float[maxItems]; sy = new float[maxItems]; ss = new float[maxItems];
-        for (int i = 0; i < cells; i++)
-        {
-            // The cloud: a ball around the start position, denser in the middle.
-            float u = Hash(i), v = Hash(i + 7919), w = Hash(i + 104729);
-            float th = u * TWO_PI, ph = Acos(2 * v - 1), rad = 3 + 14 * Pow(w, 0.6f);
-            chaosX[i] = Sin(ph) * Cos(th) * rad;
-            chaosY[i] = Cos(ph) * rad * 0.6f;
-            chaosZ[i] = Sin(ph) * Sin(th) * rad;
-            // Assembly order: the middle of the picture first, the edges last, with some jitter.
-            int col = i % GW, row = i / GW;
-            float dx = (col - GW / 2f) / GW, dy = (row - GH / 2f) / GH;
-            delay[i] = Constrain(Sqrt(dx * dx + dy * dy) * 1.3f + Hash(i + 31337) * 0.25f, 0, 1);
-            noiseGlyph[i] = Glyphs[2 + (int)(Hash(i + 4242) * (Glyphs.Length - 2))];
-        }
-    }
-
-    // =====================================================================================
-    // Each frame
-    // =====================================================================================
-    public override void Draw()
-    {
-        long now = Millis();
-        float dt = (now - lastMillis) / 1000f;
-        lastMillis = now;
-        if (Loading) LoadSome();
-
-        // The reveal lasts as long as the sound (or two passes of the clip, at least 16 s).
-        revealSeconds = audio != null ? (float)audio.Duration : Max(16, ClipSeconds * 2);
-        float cycle = InsideSeconds + revealSeconds + DiveSeconds;
-        if (!frozen) camSeconds = (camSeconds + dt) % cycle;
-        float s = camSeconds;
-
-        // Phase changes: entering the reveal starts the clip and its sound from the top.
-        bool revealing = s >= InsideSeconds && s < InsideSeconds + revealSeconds;
-        if (revealing && !wasRevealing)
-        {
-            revealStartMillis = now - (long)((s - InsideSeconds) * 1000);
-            if (audio != null && HasClip) Sample(audio, amp: 0.9);
-        }
-        wasRevealing = revealing;
-        musicOn = revealing && (audio == null || !HasClip);
-
-        float clipT = revealing ? (now - revealStartMillis) / 1000f : 0;
-        PaintPicture(clipT);
-
-        var (eye, look, assembled) = Camera(s);
-        Background(4, 3, 12);
-        DrawField(eye, look, assembled, now / 1000f);
-        if (labels) Labels(s, revealing, clipT);
-    }
-
-    void PaintPicture(float clipT)
-    {
-        pic.BeginDraw();
-        if (HasClip)
-        {
-            int index = (int)(clipT * ClipFps) % frames.Count;
-            pic.Image(frames[index], 0, 0, PicW, PicH);
-        }
-        else
-            PaintDemo(clipT);
-        pic.LoadPixels();
-        var px = pic.Pixels;
-        for (int r = 0; r < GH; r++)
-            for (int c = 0; c < GW; c++)
-            {
-                int R = 0, G = 0, B = 0;
-                for (int dy = 0; dy < S; dy++)
-                    for (int dx = 0; dx < S; dx++)
-                    {
-                        var p = px[(r * S + dy) * PicW + c * S + dx];
-                        R += p.R; G += p.G; B += p.B;
-                    }
-                int i = r * GW + c, n = S * S;
-                lum[i] = (0.3f * R + 0.55f * G + 0.15f * B) / (n * 255f);
-                tint[i] = Color(R / n, G / n, B / n);
-                glyphOf[i] = (int)Constrain(Sqrt(lum[i]) * Glyphs.Length, 1, Glyphs.Length - 1);
-            }
-        pic.EndDraw();
-    }
-
-    /// <summary>The built-in clip, for when there's no folder: rings, a rotating word, a beat.</summary>
-    void PaintDemo(float t)
-    {
-        pic.Background(12, 8, 30);
-        pic.NoFill();
-        for (int k = 0; k < 7; k++)
-        {
-            float r = ((t * 30 + k * 22) % 154);
-            pic.StrokeWeight(3);
-            pic.StrokeHSB((200 + k * 25 + t * 40) % 360, 70, 100);
-            pic.Circle(PicW / 2f, PicH / 2f, r);
-        }
-        pic.NoStroke();
-        pic.PushMatrix();
-        pic.Translate(PicW / 2f, PicH / 2f);
-        pic.Rotate(Sin(t * 0.8f) * 0.35f);
-        pic.Scale(1 + 0.08f * Sin(t * PI * 116 / 60));
-        pic.Fill(255, 240, 220);
-        pic.TextFont(mono, 34);
-        pic.TextAlign(TextAlignH.Center, TextAlignV.Center);
-        pic.Text(""DANA"", 0, 0);
-        pic.PopMatrix();
-    }
-
-    // =====================================================================================
-    // The camera: inside the cloud -> back away while it assembles -> swing round to show
-    // the depth -> dive back in as it scatters. Starts and ends at the same spot.
-    // =====================================================================================
-    (PVector Eye, PVector Look, float Assembled) Camera(float s)
-    {
-        float worldW = GW * Gap, hfov = 2 * Atan(Tan(Radians(30)) * Width / (float)Height);
-        float far = worldW / 2 / Tan(hfov / 2) * 1.2f + Thickness;   // the whole picture fits, front included
-
-        if (s < InsideSeconds)
-        {
-            // Looking around inside the cloud, drifting backwards.
-            float k = s / InsideSeconds;
-            float yaw = Radians(150) * Sin(PI * k), pitch = Radians(18) * Sin(TWO_PI * k);
-            var eye = new PVector(0, 0.3f, -5 * Smooth(0.4f, 1, k));
-            var dir = new PVector(Sin(yaw) * Cos(pitch), Sin(pitch), Cos(yaw) * Cos(pitch));
-            return (eye, PVector.Add(eye, dir), 0);
-        }
-        s -= InsideSeconds;
-        if (s < revealSeconds)
-        {
-            // Pull back to see the whole picture as it assembles, then swing to one side
-            // and the other, slowly, so the depth shows; back to the front to finish.
-            float pull = Smooth(0, 4, s);
-            float u = Constrain((s - 4) / Max(1, revealSeconds - 6), 0, 1);
-            float swing = Radians(38) * Sin(TWO_PI * u) * Smooth(0, 0.12f, u) * (1 - Smooth(0.88f, 1, u));
-            float d = Lerp(5, far, pull);
-            var eye = new PVector(-Sin(swing) * d, 0.3f + 2.5f * Sin(PI * u) * pull, -Cos(swing) * d);
-            return (eye, new PVector(0, 0, 0), Smooth(0.5f, 5, s));
-        }
-        s -= revealSeconds;
-        {
-            // Dive back in; the picture scatters into the cloud again.
-            float k = Smooth(0, DiveSeconds, s);
-            var eye = new PVector(0, 0.3f, Lerp(-far, 0, k));
-            return (eye, PVector.Add(eye, new PVector(0, 0, 1)), 1 - Smooth(0.2f, 0.8f, k));
-        }
-    }
-
-    void DrawField(PVector eye, PVector look, float assembled, float time)
-    {
-        var f = PVector.Sub(look, eye).Normalize();
-        var right = f.Cross(new PVector(0, 1, 0)).Normalize();
-        var up = right.Cross(f);
-        float focal = Height / 2f / Tan(Radians(30));
-        int n = 0;
-        float spin = time * 0.08f, cs = Cos(spin), sn = Sin(spin);
-
-        for (int i = 0; i < cells; i++)
-        {
-            int col = i % GW, row = i / GW;
-            // Where it sits in the picture (x mirrored so it reads right from the front).
-            float px = ((GW - 1) / 2f - col) * Gap, py = ((GH - 1) / 2f - row) * Gap;
-            float pz = (0.45f - lum[i]) * Thickness;
-            // Where it floats in the cloud (the cloud turns slowly).
-            float cx = chaosX[i] * cs - chaosZ[i] * sn, cz = chaosX[i] * sn + chaosZ[i] * cs;
-            float cy = chaosY[i] + Sin(time * 0.7f + i * 0.13f) * 0.4f;
-            // Each one flies in on its own schedule, along a curve.
-            float a = Smooth(delay[i] * 0.55f, delay[i] * 0.55f + 0.45f, assembled);
-            float swirl = (1 - a) * 2.2f;
-            float bx = Lerp(cx, px, a), bz = Lerp(cz, pz, a);
-            float wx = bx * Cos(swirl) - bz * Sin(swirl), wz = bx * Sin(swirl) + bz * Cos(swirl);
-            float wy = Lerp(cy, py, a);
-            // The brightest characters get one or two copies behind them: little columns.
-            int copies = a > 0.9f ? (lum[i] > 0.75f ? 3 : lum[i] > 0.5f ? 2 : 1) : 1;
-            for (int k = 0; k < copies; k++)
-            {
-                float back = k * 0.9f;
-                float dx = wx - eye.X, dy = wy - eye.Y, dz = wz + back - eye.Z;
-                float zc = dx * f.X + dy * f.Y + dz * f.Z;
-                if (zc < 0.5f) continue;
-                float xc = dx * right.X + dy * right.Y + dz * right.Z;
-                float yc = dx * up.X + dy * up.Y + dz * up.Z;
-                float size = focal * Gap * 1.05f / zc;
-                float x = Width / 2f + focal * xc / zc, y = Height / 2f - focal * yc / zc;
-                if (size < 1.6f || x < -size || x > Width + size || y < -size || y > Height + size) continue;
-                sx[n] = x; sy[n] = y; ss[n] = Min(size, 140);
-                itemCell[n] = i; itemBack[n] = k;
-                depth[n] = -zc;
-                order[n] = n;
-                n++;
-            }
-        }
-        System.Array.Sort(depth, order, 0, n);
-
-        TextFont(mono, 32);
-        TextAlign(TextAlignH.Center, TextAlignV.Center);
-        for (int q = 0; q < n; q++)
-        {
-            int k = order[q], i = itemCell[k];
-            float z = -depth[q];
-            float a = Smooth(delay[i] * 0.55f, delay[i] * 0.55f + 0.45f, assembled);
-            float v = lum[i];
-            var c = tint[i];
-            // In the cloud: cool blues; in place: the clip's own color. Copies behind are dimmer.
-            float r = Lerp(60 + 80 * Hash(i + 3), c.R * 1.25f + 10, a);
-            float g = Lerp(100 + 50 * Hash(i + 5), c.G * 1.25f + 10, a);
-            float b = Lerp(150 + 80 * Hash(i + 9), c.B * 1.25f + 20, a);
-            float fade = Constrain((z - 0.5f) / 2.5f, 0, 1) * (itemBack[k] == 0 ? 1 : 0.45f / itemBack[k]);
-            float presence = a < 0.5f ? 0.85f : 0.4f + 0.6f * Min(1, v * 2.2f + 0.3f);
-            Fill(Min(255, r), Min(255, g), Min(255, b), 255 * fade * presence);
-            float size = ss[k];
-            TextSize(size < 24 ? MathF.Round(size) : MathF.Round(size / 6) * 6);   // few sizes: Skia's glyph cache hits
-            char glyph = a < 0.5f ? noiseGlyph[i] : Glyphs[glyphOf[i]];
-            Text(glyph.ToString(), sx[k], sy[k]);
-        }
-    }
-
-    void Labels(float s, bool revealing, float clipT)
-    {
-        TextFont(mono, 13);
-        TextSize(13);
-        TextAlign(TextAlignH.Left, TextAlignV.Bottom);
-        Fill(255, 255, 255, 120);
-        string where = s < InsideSeconds ? ""inside the cloud"" : revealing ? $""the clip · {clipT:0.0} s"" : ""diving back in"";
-        if (Loading) where = $""loading frames {frames.Count}/{files.Length}"";
-        Text($""{where}  ·  {status}{(frozen ? ""  ·  camera frozen"" : """")}"", 16, Height - 30);
-        Fill(255, 255, 255, 60);
-        Text($""Space: freeze camera  ·  H: hide labels  ·  R: reload  ·  clip folder: {ClipDir}"", 16, Height - 12);
-    }
-
-    public override void KeyPressed()
-    {
-        if (Key == ' ') frozen = !frozen;
-        else if (Key == 'h' || Key == 'H') labels = !labels;
-        else if (Key == 'r' || Key == 'R') { FindClip(); camSeconds = 0; wasRevealing = false; }
-    }
-
-    static float Smooth(float a, float b, float x)
-    {
-        float k = Math.Clamp((x - a) / (b - a), 0, 1);
-        return k * k * (3 - 2 * k);
-    }
-
-    static float Hash(int n)
-    {
-        unchecked
-        {
-            uint x = (uint)n;
-            x ^= x >> 16; x *= 0x7feb352d; x ^= x >> 15; x *= 0x846ca68b; x ^= x >> 16;
-            return (x & 0xFFFFFF) / 16777215f;
-        }
-    }
-
-    // =====================================================================================
-    // The fallback song (when there's no audio.wav): an original disco loop at 116 BPM,
-    // playing only while the picture is together. Fmaj7 - Em7 - Dm7 - Cmaj7.
-    // =====================================================================================
-    static readonly string[][] Chords =
-    {
-        new[] { ""F3"", ""A3"", ""C4"", ""E4"" }, new[] { ""E3"", ""G3"", ""B3"", ""D4"" },
-        new[] { ""D3"", ""F3"", ""A3"", ""C4"" }, new[] { ""C3"", ""E3"", ""G3"", ""B3"" },
-    };
-    static readonly string[] Roots = { ""F2"", ""E2"", ""D2"", ""C2"" };
-
-    [LiveLoop]
-    async Task Pad()
-    {
-        if (!musicOn) { padBar = 0; await Sleep(1); return; }
-        foreach (var note in Chords[padBar++ % 4])
-            Play(note, amp: 0.06, attack: 0.3, sustain: 2.6, release: 1, cutoff: 88, synth: Synth.Saw);
-        await Sleep(4);
-    }
-
-    [LiveLoop]
-    async Task Bass()
-    {
-        if (!musicOn) { bassBar = 0; await Sleep(1); return; }
-        double root = Notes.Parse(Roots[bassBar++ % 4]);
-        for (int i = 0; i < 8; i++)
-        {
-            Play(root + (i % 2 == 1 ? 12 : 0), amp: 0.24, release: 0.2, cutoff: 76, res: 0.3, synth: Synth.Saw);
-            await Sleep(0.5);
-        }
-    }
-
-    [LiveLoop]
-    async Task Lead()
-    {
-        if (!musicOn) { leadBar = 0; await Sleep(1); return; }
-        (string Note, double Beats)[] climb = { (""E5"", 0.5), (""G5"", 0.5), (""A5"", 1), (""G5"", 0.5), (""E5"", 0.5), (""D5"", 1) };
-        (string Note, double Beats)[] home = { (""C5"", 0.5), (""D5"", 0.5), (""E5"", 1.5), ("""", 0.5), (""G4"", 0.5), (""A4"", 0.5) };
-        foreach (var (note, beats) in leadBar++ % 2 == 0 ? climb : home)
-        {
-            if (note != """")
-                Play(note, amp: 0.09, release: beats * 0.45, cutoff: 96, pan: -0.15, synth: Synth.Square);
-            await Sleep(beats);
-        }
-    }
-
-    [LiveLoop]
-    async Task Kit()
-    {
-        if (!musicOn) { drumBar = 0; await Sleep(1); return; }
-        drumBar++;
-        for (int beat = 0; beat < 4; beat++)
-        {
-            Sample(""kick"", amp: 0.85);
-            if (beat % 2 == 1) Sample(""snare"", amp: 0.5);
-            Sample(""hat"", amp: 0.1, pan: 0.2);
-            await Sleep(0.5);
-            Sample(""hat"", amp: 0.28, pan: 0.25);
-            await Sleep(0.5);
-        }
-    }
-}
-";
 
         private const string AsciiBlackHole =
 @"// A black hole in ASCII, ray traced in 3D, with a slow cinematic score.
@@ -989,67 +547,84 @@ public class AsciiBlackHole : Sketch
 ";
 
         private const string AsciiDisco =
-@"// A 3D field of ASCII characters, and you're standing in the middle of it.
+@"// A disco in 3D, built only from ASCII characters, and you start INSIDE the dancer.
 //
-// The camera looks around, walks, climbs and orbits, and then pulls far
-// away and up -- and from up there the field turns out to be a screen: the
-// characters, all together, are a dancer on a disco floor, dancing to the
-// song that's been playing the whole time.
+// Every character has its own X, Y and Z:
+// - the dancer is a statue of glyphs, 20 units tall, standing in the middle of
+//   the room. Its body is thicker than its arms (more layers in Z), so from the
+//   side you see it has volume;
+// - the floor is a grid of glyph tiles on the ground; the lit ones rise up with
+//   the kick, and a ripple runs out from the dancer's feet;
+// - two spotlights are beams of dots hanging in the air, a mirror ball of glyphs
+//   turns above, and dust floats everywhere at every height.
+// The camera starts inside the statue's chest -- just glyphs all around -- looks
+// around, walks out, and only when it backs away do you see what you were in.
+// Then it circles the dancer and dives back in.
 //
 // Everything is DanaProcessing and code:
-// - The picture: every frame a small dancer is drawn on an offscreen
-//   PGraphics (lines and circles, posed from Beat()), and each pixel pair
-//   becomes one character of the field: its brightness picks the glyph
-//   ("" .:-=+*#%@"") and how high it floats, its color is the glyph's color.
-// - The 3D: a tiny camera in plain math (position + where it looks ->
-//   right/up/forward vectors -> perspective divide). Every character is
-//   placed in 3D, sorted far to near and drawn with Text() at the size its
-//   distance gives it.
-// - The music: five [LiveLoop]s (pad, bass, lead, drums, hats) at 116 BPM, a
-//   32-bar song that loops. The camera path is timed in beats of that song.
+// - the dancer is drawn each frame on an offscreen PGraphics (lines and circles
+//   posed from Beat()), plus a second one in grays that says how thick each part is;
+// - the 3D is a tiny camera in plain math: every glyph is projected, sorted far
+//   to near and drawn with Text() at the size its distance gives it;
+// - the music is five [LiveLoop]s (pad, bass, lead, drums, hats) at 116 BPM,
+//   32 bars that loop; the camera path is timed in beats of that song.
 //
 // Space: freeze the camera (the music goes on).  H: hide the labels.
 public class AsciiDisco : Sketch
 {
-    // ---- the field ----------------------------------------------------------
-    const int GW = 96, GH = 54;                 // characters across and deep
-    const int PicW = GW * 2, PicH = GH * 2;     // the dancer is drawn 2x finer, then averaged
+    // ---- the dancer: pictures -> statue -------------------------------------------------
+    const int GW = 96, GH = 54;                 // statue cells across and up (from 2x2 pixels each)
+    const int PicW = GW * 2, PicH = GH * 2;
+    const float Cell = 0.42f;                   // world size of one statue cell
     const string Glyphs = "" .:-=+*#%@"";
-
-    PGraphics pic;
-    readonly float[] lum = new float[GW * GH];
+    PGraphics pic, thick;
+    readonly float[] lum = new float[GW * GH], body = new float[GW * GH];
     readonly Color[] tint = new Color[GW * GH];
+
+    // ---- the room ----------------------------------------------------------------------
+    const int FloorW = 64, FloorD = 44;         // floor glyphs, 1 unit apart
+    const float FloorZ = 4;                     // the floor's center is a bit behind the dancer
+    readonly PVector[] dust = new PVector[260];
+    readonly PVector[] ball = new PVector[150];
+    static readonly PVector BallAt = new PVector(0, 27, 6);
+
+    // ---- what gets drawn this frame: one entry per glyph ------------------------------
+    const int MaxItems = 16000;
+    readonly float[] ix = new float[MaxItems], iy = new float[MaxItems], iz = new float[MaxItems];
+    readonly int[] icolor = new int[MaxItems];  // packed RGB
+    readonly float[] ialpha = new float[MaxItems];
+    readonly char[] iglyph = new char[MaxItems];
+    readonly float[] depth = new float[MaxItems], sx = new float[MaxItems], sy = new float[MaxItems], ss = new float[MaxItems];
+    readonly int[] order = new int[MaxItems];
+    int items;
     PFont mono;
 
-    // ---- the camera -----------------------------------------------------------
+    // ---- the camera -----------------------------------------------------------------------
     const float FovY = 60;
     const int SongBeats = 128;                  // 32 bars, then it all loops
-    readonly float[] depth = new float[GW * GH];
-    readonly int[] order = new int[GW * GH];
-    readonly float[] sx = new float[GW * GH], sy = new float[GW * GH], ss = new float[GW * GH];
     float frozenFor;                            // beats the camera spent frozen
     bool frozen, labels = true;
     double lastBeat;
 
-    // Where the camera is and what it looks at, at a beat of the song.
-    // Catmull-Rom through these: smooth, no stops.
+    // Where the camera is and what it looks at, at a beat of the song (Catmull-Rom through
+    // these: smooth, no stops). The dancer stands at x = 0, z = 0, facing -z, chest at y = 9.
     static readonly (float Beat, PVector Pos, PVector Look)[] Path =
     {
-        (0,   new PVector(0, 1.4f, 0),     new PVector(0, 1.6f, 12)),    // in the middle, looking ahead
-        (12,  new PVector(0, 1.4f, 0),     new PVector(12, 1.2f, 2)),    // turn to the right
-        (22,  new PVector(-6, 1.8f, -3),   new PVector(10, 0.6f, 6)),    // step back and sideways
-        (32,  new PVector(-12, 3.5f, 6),   new PVector(6, 0, -4)),       // up a little, looking across
-        (42,  new PVector(-6, 9, 18),      new PVector(0, 0, 0)),        // climbing, circling
-        (50,  new PVector(16, 16, 14),     new PVector(0, 0, 0)),
-        (58,  new PVector(22, 32, -10),    new PVector(0, 0, 0)),
-        (66,  new PVector(0, 52, -9),      new PVector(0, 0, 0.5f)),     // way up: the field is a screen
-        (100, new PVector(0, 54, -8),      new PVector(0, 0, 0.5f)),     // ...and stays there a while
-        (110, new PVector(10, 18, -18),    new PVector(0, 1, 2)),        // dive back in
-        (120, new PVector(2, 2.5f, -6),    new PVector(0, 1.6f, 8)),
-        (128, new PVector(0, 1.4f, 0),     new PVector(0, 1.6f, 12)),    // = beat 0: the loop closes
+        (0,   new PVector(0, 9.5f, 0.2f),    new PVector(0, 9.5f, 10)),    // inside the chest
+        (12,  new PVector(0.5f, 9.5f, 0.2f), new PVector(10, 8, 2)),       // look around in there
+        (22,  new PVector(0, 7, -1.5f),      new PVector(-4, 14, 6)),      // ...and up
+        (32,  new PVector(-5, 4, -9),        new PVector(0, 9, 0)),        // step out, still too close to tell
+        (44,  new PVector(6, 4, -20),        new PVector(0, 9, 0)),        // backing away
+        (56,  new PVector(0, 8, -34),        new PVector(0, 9.5f, 0)),     // there it is
+        (72,  new PVector(-24, 11, -24),     new PVector(0, 9, 0)),        // around to its side: it has depth
+        (88,  new PVector(-30, 18, 8),       new PVector(0, 8, 2)),
+        (100, new PVector(14, 24, -30),      new PVector(0, 8, 0)),        // up high, the whole room
+        (112, new PVector(1, 10.5f, -15),    new PVector(0, 9.5f, 0)),     // and straight back in, through the chest
+        (122, new PVector(0, 9.5f, -2.5f),   new PVector(0, 9.5f, 8)),
+        (128, new PVector(0, 9.5f, 0.2f),    new PVector(0, 9.5f, 10)),    // = beat 0: the loop closes
     };
 
-    // ---- the song ---------------------------------------------------------------
+    // ---- the song ---------------------------------------------------------------------------
     double musicStart = -1;
     bool heardMusic;
     int padBar, bassBar, leadBar, drumBar, hatBar;
@@ -1074,7 +649,15 @@ public class AsciiDisco : Sketch
         Bpm = 116;
         mono = CreateFont(""Consolas"", 32);
         pic = CreateGraphics(PicW, PicH);
-        for (int i = 0; i < order.Length; i++) order[i] = i;
+        thick = CreateGraphics(PicW, PicH);
+        for (int k = 0; k < dust.Length; k++)
+            dust[k] = new PVector((Hash(k) - 0.5f) * 60, 1 + Hash(k + 500) * 26, (Hash(k + 900) - 0.5f) * 44 + FloorZ);
+        // The mirror ball: points spread evenly over a sphere (a Fibonacci spiral).
+        for (int k = 0; k < ball.Length; k++)
+        {
+            float y = 1 - 2 * (k + 0.5f) / ball.Length, r = Sqrt(1 - y * y), a = k * 2.39996f;
+            ball[k] = new PVector(Cos(a) * r, y, Sin(a) * r);
+        }
     }
 
     public override void OnNote(NoteEvent e) => heardMusic = true;
@@ -1095,97 +678,42 @@ public class AsciiDisco : Sketch
         double song = SongBeat();
         if (frozen) frozenFor += (float)(song - lastBeat);
         lastBeat = song;
+        float beat = (float)song;
+        int bar = (int)(beat / 4) % 32;
+        float kick = Drums(bar) ? Pulse(1, 5) : 0;
 
-        PaintDancer((float)song);
+        items = 0;
+        PoseDancer(beat);
+        AddStatue(kick);
+        AddFloor(beat, bar, kick);
+        AddBeams(beat, kick);
+        AddBall(beat, kick);
+        AddDust(beat);
+
         Background(6, 4, 14);
-        DrawField((float)(song - frozenFor), (float)song);
+        Render((float)(song - frozenFor));
         if (labels) DrawLabels(song);
     }
 
-    // ===========================================================================
-    // The picture: a dancer on a disco floor, posed from the beat.
-    // ===========================================================================
-    void PaintDancer(float beat)
+    // =========================================================================================
+    // The dancer: drawn flat, twice (its colors, and how thick each part is), then stood up.
+    // =========================================================================================
+    void PoseDancer(float beat)
     {
-        int bar = (int)(beat / 4) % 32;
-        float kick = Drums(bar) ? Pulse(1, 5) : 0;
-        pic.BeginDraw();
-        pic.Background(26, 12, 52);
-        pic.NoStroke();
-
-        // A purple haze behind the dancer, breathing with the kick.
-        for (int k = 9; k >= 1; k--)
-        {
-            pic.Fill(90 + 12 * k * kick, 40, 150, 30);
-            pic.Ellipse(PicW / 2f, PicH * 0.55f, k * 22 * (1 + 0.08f * kick), k * 13);
-        }
-        // Little lights from the mirror ball, drifting across the room.
-        for (int k = 0; k < 40; k++)
-        {
-            float a = k * 2.39996f + beat * 0.25f;
-            float x = PicW / 2f + Cos(a) * (20 + (k * 37) % 90), y = 14 + ((k * 53) % 60) + Sin(a) * 6;
-            pic.FillHSB((k * 31 + beat * 20) % 360, 50, 100, 120 + 100 * Sin(beat * PI + k));
-            pic.Circle(x, y, 2.2f);
-        }
-
-        // Two spotlights sweeping, crossing on the downbeats.
-        for (int s = 0; s < 2; s++)
-        {
-            float a = Sin(beat * PI / 8 + s * PI) * 0.6f;
-            float ox = s == 0 ? 30 : PicW - 30;
-            float tx = PicW / 2f + Sin(a + beat * 0.2f) * 70, ty = PicH - 18;
-            pic.Fill(s == 0 ? 255 : 120, s == 0 ? 90 : 200, s == 0 ? 200 : 255, 60 + 60 * kick);
-            pic.Triangle(ox, -4, tx - 22, ty, tx + 22, ty);
-        }
-
-        // The floor: tiles that light up with the beat, one color per bar.
-        int tilesX = 12, tilesY = 3;
-        float floorTop = PicH - 22;
-        for (int ty = 0; ty < tilesY; ty++)
-            for (int tx = 0; tx < tilesX; tx++)
-            {
-                bool lit = ((tx + ty + (int)beat) % 3 == 0) && Drums(bar);
-                float hue = (bar * 47 + tx * 20 + ty * 60) % 360;
-                if (lit) pic.FillHSB(hue, 70, 55 + 45 * kick);
-                else pic.Fill(28, 20, 52);
-                float w = PicW / (float)tilesX;
-                pic.Rect(tx * w + 1, floorTop + ty * 7.5f + 1, w - 2, 6);
-            }
-
-        // The mirror ball, top right: facets that turn.
-        float ballX = PicW * 0.8f, ballY = 9;
-        pic.Fill(200, 200, 220);
-        pic.Circle(ballX, ballY, 15);
-        for (int k = 0; k < 6; k++)
-        {
-            float fx = ballX - 6 + ((k * 2 + (int)(beat * 2)) % 6) * 2.2f;
-            pic.Fill(255, 255, 255);
-            pic.Rect(fx, ballY - 4 + (k % 3) * 3, 1.6f, 1.6f);
-        }
-        // A neon sign in the corner.
-        pic.TextFont(mono, 15);
-        pic.TextAlign(TextAlignH.Left, TextAlignV.Top);
-        pic.Fill(255, 80, 180, Drums(bar) && (int)(beat * 2) % 8 == 7 ? 90 : 255);
-        pic.Text(""DANA"", 8, 6);
-
-        // The dancer, feet on the floor at (0, 0). One of four moves, each lasting two bars.
-        pic.PushMatrix();
-        pic.Translate(PicW / 2f, floorTop);
-        pic.Scale(1.25f);
         float step = Sin(beat * PI);                    // a side step every beat
         float bounce = Abs(Sin(beat * PI)) * 3;
         float hipX = step * 5, hipY = -26 + bounce;
         float neckX = hipX - step * 2, neckY = hipY - 26;
         int move = (int)(beat / 8) % 4;
-        float ph = beat * PI;                           // half a cycle per beat
+        float ph = beat * PI;
 
-        // Arms: (shoulder angle, elbow angle) for each side; angles in radians, 0 = pointing right, up is -PI/2.
+        // Arms: (shoulder angle, elbow angle) per side; radians, 0 = pointing right, up = -PI/2.
         (float s, float e) left, right;
         switch (move)
         {
             case 0:  // pump: fists go up one at a time
-                left = (-PI * 0.75f + Max(0, Sin(ph)) * -0.9f, -PI * 0.5f);
-                right = (-PI * 0.25f + Max(0, -Sin(ph)) * 0.9f * -1, -PI * 0.5f);
+                left = (-PI * 0.75f - Max(0, Sin(ph)) * 0.9f, -PI * 0.5f);
+                right = (-PI * 0.25f - Max(0, -Sin(ph)) * 0.9f, -PI * 0.5f);
                 break;
             case 1:  // point: one arm up to the corner, then down across
                 bool up = Sin(ph / 2) > 0;
@@ -1202,120 +730,272 @@ public class AsciiDisco : Sketch
                 break;
         }
 
-        pic.StrokeCap(StrokeCapKind.Round);
-        // Legs: knees bend in turn.
-        pic.Stroke(90, 200, 255);
-        pic.StrokeWeight(5);
-        for (int side = -1; side <= 1; side += 2)
+        // Same figure on both canvases: `pic` in color, `thick` in grays (white = thickest).
+        foreach (var g in new[] { pic, thick })
         {
-            float bend = Max(0, side * step) * 6;
-            float kneeX = hipX + side * 6 + side * bend * 0.4f, kneeY = hipY + 12 - bend * 0.3f;
-            pic.Line(hipX + side * 3, hipY, kneeX, kneeY);
-            pic.Line(kneeX, kneeY, hipX + side * 9, -1);
+            bool colors = g == pic;
+            g.BeginDraw();
+            g.Background(0);
+            g.PushMatrix();
+            g.Translate(PicW / 2f, PicH - 2);
+            g.Scale(1.4f);
+            g.StrokeCap(StrokeCapKind.Round);
+            // Legs: knees bend in turn.
+            if (colors) g.Stroke(90, 200, 255); else g.Stroke(150);
+            g.StrokeWeight(5);
+            for (int side = -1; side <= 1; side += 2)
+            {
+                float bend = Max(0, side * step) * 6;
+                float kneeX = hipX + side * 6 + side * bend * 0.4f, kneeY = hipY + 12 - bend * 0.3f;
+                g.Line(hipX + side * 3, hipY, kneeX, kneeY);
+                g.Line(kneeX, kneeY, hipX + side * 9, -1);
+            }
+            // Body.
+            if (colors) g.Stroke(255, 120, 190); else g.Stroke(255);
+            g.StrokeWeight(9);
+            g.Line(hipX, hipY - 2, neckX, neckY + 4);
+            // Arms.
+            if (colors) g.Stroke(255, 200, 150); else g.Stroke(110);
+            g.StrokeWeight(4);
+            Arm(g, neckX - 4, neckY + 3, left);
+            Arm(g, neckX + 4, neckY + 3, right);
+            // Head, with shades.
+            g.NoStroke();
+            if (colors) g.Fill(255, 215, 170); else g.Fill(220);
+            g.Circle(neckX, neckY - 6, 13);
+            if (colors) { g.Fill(40, 230, 255); g.Rect(neckX - 6, neckY - 8, 12, 3); }
+            g.PopMatrix();
+            g.LoadPixels();
+            var px = g.Pixels;
+            for (int r = 0; r < GH; r++)
+                for (int c = 0; c < GW; c++)
+                {
+                    int R = 0, G = 0, B = 0;
+                    for (int dy = 0; dy < 2; dy++)
+                        for (int dx = 0; dx < 2; dx++)
+                        {
+                            var p = px[(r * 2 + dy) * PicW + c * 2 + dx];
+                            R += p.R; G += p.G; B += p.B;
+                        }
+                    int i = r * GW + c;
+                    if (colors)
+                    {
+                        lum[i] = (0.3f * R + 0.55f * G + 0.15f * B) / (4 * 255f);
+                        tint[i] = Color(R / 4, G / 4, B / 4);
+                    }
+                    else
+                        body[i] = R / (4 * 255f);
+                }
+            g.EndDraw();
         }
-        // Body.
-        pic.Stroke(255, 120, 190);
-        pic.StrokeWeight(9);
-        pic.Line(hipX, hipY - 2, neckX, neckY + 4);
-        // Arms.
-        pic.Stroke(255, 200, 150);
-        pic.StrokeWeight(4);
-        Arm(neckX - 4, neckY + 3, left);
-        Arm(neckX + 4, neckY + 3, right);
-        // Head, with shades.
-        pic.NoStroke();
-        pic.Fill(255, 215, 170);
-        pic.Circle(neckX, neckY - 6, 13);
-        pic.Fill(40, 230, 255);
-        pic.Rect(neckX - 6, neckY - 8, 12, 3);
-        pic.PopMatrix();
+        // Blurred, the thickness is greatest along the middle of each limb and fades
+        // towards its edges: so the statue comes out rounded, not cut from a flat sheet.
+        // (A small box blur by hand, on the 96 x 54 grid: much cheaper than Filter(Blur).)
+        BoxBlur(body, GW, GH);
+        BoxBlur(body, GW, GH);
+    }
 
-        pic.LoadPixels();
-        var px = pic.Pixels;
+    readonly float[] blurTmp = new float[GW * GH];
+
+    void BoxBlur(float[] a, int w, int h)
+    {
+        for (int y = 0; y < h; y++)
+            for (int x = 0; x < w; x++)
+            {
+                float s = 0; int n = 0;
+                for (int k = -1; k <= 1; k++)
+                    if (x + k >= 0 && x + k < w) { s += a[y * w + x + k]; n++; }
+                blurTmp[y * w + x] = s / n;
+            }
+        for (int y = 0; y < h; y++)
+            for (int x = 0; x < w; x++)
+            {
+                float s = 0; int n = 0;
+                for (int k = -1; k <= 1; k++)
+                    if (y + k >= 0 && y + k < h) { s += blurTmp[(y + k) * w + x]; n++; }
+                a[y * w + x] = s / n;
+            }
+    }
+
+    static void Arm(PGraphics g, float x, float y, (float s, float e) a)
+    {
+        const float upper = 11, fore = 10;
+        float ex = x + MathF.Cos(a.s) * upper, ey = y + MathF.Sin(a.s) * upper;
+        g.Line(x, y, ex, ey);
+        g.Line(ex, ey, ex + MathF.Cos(a.e) * fore, ey + MathF.Sin(a.e) * fore);
+    }
+
+    /// <summary>Every cell the dancer covers becomes a short row of glyphs in Z: 1 to 5 deep.</summary>
+    void AddStatue(float kick)
+    {
         for (int r = 0; r < GH; r++)
             for (int c = 0; c < GW; c++)
             {
-                int R = 0, G = 0, B = 0;
-                for (int dy = 0; dy < 2; dy++)
-                    for (int dx = 0; dx < 2; dx++)
-                    {
-                        var p = px[(r * 2 + dy) * PicW + c * 2 + dx];
-                        R += p.R; G += p.G; B += p.B;
-                    }
                 int i = r * GW + c;
-                lum[i] = (0.3f * R + 0.55f * G + 0.15f * B) / (4 * 255f);
-                tint[i] = Color(R / 4, G / 4, B / 4);
+                float v = lum[i];
+                if (v < 0.08f) continue;
+                float x = (GW / 2f - c - 0.5f) * Cell;                  // mirrored: it faces the camera at -z
+                float y = (GH - r - 0.5f) * Cell;
+                int layers = 1 + (int)MathF.Round(body[i] * 9);         // up to 10 deep in the torso, 2-4 in the arms
+                var col = tint[i];
+                float glow = 1.15f + 0.4f * kick;
+                int rgb = Pack(col.R * glow + 20, col.G * glow + 15, col.B * glow + 25);
+                int g = (int)Constrain(Sqrt(v) * Glyphs.Length, 2, Glyphs.Length - 1);
+                for (int k = 0; k < layers; k++)
+                {
+                    float z = (k - (layers - 1) / 2f) * Cell * 1.1f;
+                    bool face = k == 0 || k == layers - 1;
+                    // The surfaces get the dense glyphs, the inside lighter ones.
+                    Add(x, y, z, face ? Glyphs[g] : Glyphs[Math.Max(2, g - 3)], rgb, face ? 1 : 0.55f);
+                }
             }
-        pic.EndDraw();
     }
 
-    void Arm(float x, float y, (float s, float e) a)
+    /// <summary>The dance floor: tiles of glyphs; lit tiles rise with the kick, a ripple runs from the feet.</summary>
+    void AddFloor(float beat, int bar, float kick)
     {
-        const float upper = 11, fore = 10;
-        float ex = x + Cos(a.s) * upper, ey = y + Sin(a.s) * upper;
-        pic.Line(x, y, ex, ey);
-        pic.Line(ex, ey, ex + Cos(a.e) * fore, ey + Sin(a.e) * fore);
+        for (int fz = 0; fz < FloorD; fz++)
+            for (int fx = 0; fx < FloorW; fx++)
+            {
+                float x = fx - FloorW / 2f + 0.5f, z = fz - FloorD / 2f + 0.5f + FloorZ;
+                int tx = (int)Math.Floor(x / 5), tz = (int)Math.Floor(z / 5);
+                bool lit = Drums(bar) && (((tx + tz + (int)beat) % 3 + 3) % 3 == 0);
+                bool edge = ((fx + 1000) % 5 == 0) || ((fz + 1000) % 5 == 0);
+                float dist = Sqrt(x * x + z * z);
+                float ripple = Max(0, Sin(dist * 0.45f - beat * PI)) * (0.15f + 0.5f * kick) * Exp(-dist * 0.04f);
+                if (lit)
+                {
+                    float hue = ((bar * 47 + tx * 20 + tz * 60) % 360 + 360) % 360;
+                    var c = HsbRgb(hue, 75, 100);
+                    float h = 0.2f + 1.4f * kick + ripple;
+                    Add(x, h, z, edge ? '=' : '#', c, 0.95f);
+                    if (h > 0.8f) Add(x, h - 0.7f, z, '+', c, 0.5f);           // lit tiles are blocks, not decals
+                }
+                else
+                    Add(x, ripple, z, edge ? '-' : '.', Pack(70, 55, 120), edge ? 0.6f : 0.35f);
+            }
     }
 
-    // ===========================================================================
-    // The 3D: every character placed in space, seen from the camera.
-    // ===========================================================================
-    void DrawField(float camBeat, float song)
+    /// <summary>Two spotlights: dotted beams from the ceiling, sweeping across the floor.</summary>
+    void AddBeams(float beat, float kick)
+    {
+        for (int s = 0; s < 2; s++)
+        {
+            var from = new PVector(s == 0 ? -22 : 22, 30, 14);
+            float a = beat * PI / 8 + s * PI;
+            var to = new PVector(Sin(a) * 14, 0, Cos(a * 0.7f) * 9 + 2);
+            int rgb = s == 0 ? Pack(255, 110, 210) : Pack(120, 210, 255);
+            for (int k = 0; k < 46; k++)
+            {
+                float t = k / 45f;
+                // A cone: the beam widens towards the floor.
+                float spread = t * 2.2f, ang = k * 2.39996f;
+                Add(Lerp(from.X, to.X, t) + Cos(ang) * spread, Lerp(from.Y, to.Y, t), Lerp(from.Z, to.Z, t) + Sin(ang) * spread,
+                    k % 3 == 0 ? ':' : '.', rgb, 0.25f + 0.35f * kick);
+            }
+        }
+    }
+
+    /// <summary>The mirror ball: a sphere of glyphs turning, its facets catching the light.</summary>
+    void AddBall(float beat, float kick)
+    {
+        float spin = beat * 0.4f, cs = Cos(spin), sn = Sin(spin);
+        for (int k = 0; k < ball.Length; k++)
+        {
+            var p = ball[k];
+            float x = p.X * cs - p.Z * sn, z = p.X * sn + p.Z * cs;
+            bool flash = Hash(k + (int)(beat * 4) * 131) > 0.9f;
+            Add(BallAt.X + x * 2.4f, BallAt.Y + p.Y * 2.4f, BallAt.Z + z * 2.4f, flash ? '@' : '#',
+                flash ? Pack(255, 255, 255) : Pack(170, 175, 200), flash ? 1 : 0.7f);
+        }
+    }
+
+    /// <summary>Dust in the air, at every height, drifting round the dancer.</summary>
+    void AddDust(float beat)
+    {
+        float turn = beat * 0.03f;
+        for (int k = 0; k < dust.Length; k++)
+        {
+            var p = dust[k];
+            float a = turn * (0.5f + Hash(k + 77));
+            float x = p.X * Cos(a) - (p.Z - FloorZ) * Sin(a), z = p.X * Sin(a) + (p.Z - FloorZ) * Cos(a) + FloorZ;
+            float y = p.Y + Sin(beat * 0.5f + k) * 0.6f;
+            Add(x, y, z, k % 7 == 0 ? '*' : k % 3 == 0 ? '+' : '.', HsbRgb((k * 37) % 360, 35, 100), 0.55f);
+        }
+    }
+
+    void Add(float x, float y, float z, char glyph, int rgb, float alpha)
+    {
+        if (items >= MaxItems) return;
+        ix[items] = x; iy[items] = y; iz[items] = z;
+        iglyph[items] = glyph; icolor[items] = rgb; ialpha[items] = alpha;
+        items++;
+    }
+
+    static int Pack(float r, float g, float b) =>
+        ((int)Math.Clamp(r, 0, 255) << 16) | ((int)Math.Clamp(g, 0, 255) << 8) | (int)Math.Clamp(b, 0, 255);
+
+    static int HsbRgb(float h, float s, float v)
+    {
+        s /= 100; v /= 100;
+        float c = v * s, hp = h / 60 % 6, x = c * (1 - MathF.Abs(hp % 2 - 1)), m = v - c;
+        (float r, float g, float b) = hp < 1 ? (c, x, 0f) : hp < 2 ? (x, c, 0f) : hp < 3 ? (0f, c, x) : hp < 4 ? (0f, x, c) : hp < 5 ? (x, 0f, c) : (c, 0f, x);
+        return Pack((r + m) * 255, (g + m) * 255, (b + m) * 255);
+    }
+
+    static float Hash(int n)
+    {
+        unchecked
+        {
+            uint x = (uint)n;
+            x ^= x >> 16; x *= 0x7feb352d; x ^= x >> 15; x *= 0x846ca68b; x ^= x >> 16;
+            return (x & 0xFFFFFF) / 16777215f;
+        }
+    }
+
+    // =========================================================================================
+    // The camera: project every glyph, sort far to near, draw.
+    // =========================================================================================
+    void Render(float camBeat)
     {
         var (eye, look) = CameraAt(camBeat);
-        // Camera axes: forward, right, up.
         var f = PVector.Sub(look, eye).Normalize();
-        // ""Up"" is the sky when we look ahead, and the far edge of the field (+z) when we
-        // look down at it -- with the sky as up, looking straight down would spin the picture.
-        float down = Constrain(-f.Y * 1.4f - 0.3f, 0, 1);
-        var upHint = new PVector(0, 1 - down, down);
-        var r = f.Cross(upHint).Normalize();
+        var r = f.Cross(new PVector(0, 1, 0)).Normalize();
         var u = r.Cross(f);
         float focal = Height / 2f / Tan(Radians(FovY) / 2);
-        float kick = Drums((int)(song / 4) % 32) ? Pulse(1, 4) : 0;
 
         int n = 0;
-        for (int row = 0; row < GH; row++)
-            for (int col = 0; col < GW; col++)
-            {
-                int i = row * GW + col;
-                float v = lum[i];
-                // Column -> x (mirrored, so from above the picture isn't), row -> z.
-                float wx = GW / 2f - col - 0.5f, wz = GH / 2f - row - 0.5f;
-                float ring = Sin(Sqrt(wx * wx + wz * wz) * 0.35f - song * PI) * 0.35f;
-                float wy = 0.2f + v * 4.5f + ring * (0.3f + kick);
-                float dx = wx - eye.X, dy = wy - eye.Y, dz = wz - eye.Z;
-                float zc = dx * f.X + dy * f.Y + dz * f.Z;
-                if (zc < 0.35f) continue;                         // behind us, or in our face
-                float xc = dx * r.X + dy * r.Y + dz * r.Z;
-                float yc = dx * u.X + dy * u.Y + dz * u.Z;
-                float size = focal * 0.95f / zc;
-                float x = Width / 2f + focal * xc / zc, y = Height / 2f - focal * yc / zc;
-                if (size < 2.5f || x < -size || x > Width + size || y < -size || y > Height + size) continue;
-                sx[i] = x; sy[i] = y; ss[i] = Min(size, 120);
-                depth[n] = -zc;                                   // far first
-                order[n] = i;
-                n++;
-            }
+        for (int k = 0; k < items; k++)
+        {
+            float dx = ix[k] - eye.X, dy = iy[k] - eye.Y, dz = iz[k] - eye.Z;
+            float zc = dx * f.X + dy * f.Y + dz * f.Z;
+            if (zc < 0.3f) continue;                                  // behind us, or in our face
+            float xc = dx * r.X + dy * r.Y + dz * r.Z;
+            float yc = dx * u.X + dy * u.Y + dz * u.Z;
+            float size = focal * 0.6f / zc;
+            float x = Width / 2f + focal * xc / zc, y = Height / 2f - focal * yc / zc;
+            if (size < 2.5f || x < -size || x > Width + size || y < -size || y > Height + size) continue;
+            sx[k] = x; sy[k] = y; ss[k] = Min(size, 120);
+            depth[n] = -zc;                                           // far first
+            order[n] = k;
+            n++;
+        }
         System.Array.Sort(depth, order, 0, n);
 
         TextFont(mono, 32);
         TextAlign(TextAlignH.Center, TextAlignV.Center);
-        for (int k = 0; k < n; k++)
+        for (int q = 0; q < n; q++)
         {
-            int i = order[k];
-            float v = lum[i];
-            int g = (int)Constrain(Sqrt(v) * Glyphs.Length, 1, Glyphs.Length - 1);   // sqrt: the dark room still shows : and -
-            float z = -depth[k];
-            // Close characters fade in (no wall of glyphs on the lens), far ones dim a little.
-            float alpha = 255 * Constrain((z - 0.35f) / 2.5f, 0, 1) * (0.55f + 0.45f * Min(1, v * 3 + 0.2f));
-            var c = tint[i];
-            float lift = 1 + 0.6f * kick * v;
-            Fill(Min(255, c.R * 1.5f * lift + 25), Min(255, c.G * 1.5f * lift + 20), Min(255, c.B * 1.5f * lift + 40), alpha);
+            int k = order[q];
+            float z = -depth[q];
+            // Close glyphs fade in (no wall of characters on the lens); far ones fade into the dark.
+            float alpha = 255 * ialpha[k] * Constrain((z - 0.3f) / 2f, 0, 1) * Constrain(1.25f - z / 90, 0.35f, 1);
+            int c = icolor[k];
+            Fill((c >> 16) & 255, (c >> 8) & 255, c & 255, alpha);
             // Whole-pixel sizes (steps of 6 when big): Skia caches each glyph per
             // size, so a few sizes draw ~5x faster than thousands of slightly different ones.
-            TextSize(ss[i] < 24 ? MathF.Round(ss[i]) : MathF.Round(ss[i] / 6) * 6);
-            Text(Glyphs[g].ToString(), sx[i], sy[i]);
+            TextSize(ss[k] < 24 ? MathF.Round(ss[k]) : MathF.Round(ss[k] / 6) * 6);
+            Text(iglyph[k].ToString(), sx[k], sy[k]);
         }
     }
 
@@ -1328,9 +1008,6 @@ public class AsciiDisco : Sketch
         int k0 = Math.Max(0, k - 1), k3 = Math.Min(Path.Length - 1, k + 2);
         var eye = CatmullRom(Path[k0].Pos, Path[k].Pos, Path[k + 1].Pos, Path[k3].Pos, t);
         var look = CatmullRom(Path[k0].Look, Path[k].Look, Path[k + 1].Look, Path[k3].Look, t);
-        // Up top, sway gently with the music so the ""screen"" breathes.
-        float high = Constrain((eye.Y - 30) / 20, 0, 1);
-        eye.X += Sin(beat * PI / 8) * 3 * high;
         return (eye, look);
     }
 
@@ -1350,7 +1027,7 @@ public class AsciiDisco : Sketch
         TextSize(13);
         TextAlign(TextAlignH.Left, TextAlignV.Bottom);
         Fill(255, 255, 255, 110);
-        Text($""bar {bar + 1}/32 · {part}{(frozen ? "" · camera frozen"" : """")}"", 16, Height - 30);
+        Text($""bar {bar + 1}/32 · {part} · {items:N0} glyphs in 3D{(frozen ? "" · camera frozen"" : """")}"", 16, Height - 30);
         Fill(255, 255, 255, 60);
         Text(""Space: freeze camera · H: hide labels"", 16, Height - 12);
     }
