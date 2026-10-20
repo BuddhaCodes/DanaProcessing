@@ -58,7 +58,381 @@ namespace DanaProcessing.Ide.Editor
                 AsciiDisco,
                 new[] { SampleTag.ThreeD, SampleTag.Text, SampleTag.Audio, SampleTag.Animation }),
 
+            new SketchSample(
+                Loc.Tr("Agujero negro en ASCII 3D, con música de película", "A 3D ASCII black hole, with a film score"),
+                Loc.Tr("Cada carácter es un rayo de luz trazado hacia atrás desde la cámara y curvado por la gravedad (la ecuación de un rayo en la geometría de Schwarzschild, paso a paso). Por eso se ve la parte de atrás del disco de gas doblada por encima y por debajo de la sombra, y el lado que gira hacia vos más brillante y más blanco (efecto Doppler). La cámara llega desde lejos, baja al plano del disco y lo rodea, con una banda sonora lenta hecha con [LiveLoop]: un reloj que no para, un órgano que crece, un drone grave y un latido. Espacio congela la cámara, la rueda acerca o aleja, H oculta los textos.",
+                       "Every character is a ray of light traced backwards from the camera and bent by gravity (the equation of a light ray in Schwarzschild geometry, stepped through). That's why you see the far side of the gas disk bent over and under the shadow, and the side spinning towards you brighter and whiter (Doppler beaming). The camera comes in from far away, sinks to the disk's plane and circles it, over a slow score made of [LiveLoop]s: a clock that never stops, a swelling organ, a low drone and a heartbeat. Space freezes the camera, the wheel moves closer or farther, H hides the labels."),
+                AsciiBlackHole,
+                new[] { SampleTag.ThreeD, SampleTag.Text, SampleTag.Audio, SampleTag.Generative }),
+
         };
+
+        private const string AsciiBlackHole =
+@"// A black hole in ASCII, ray traced in 3D, with a slow cinematic score.
+//
+// Every character on screen is a ray of light traced backwards from the
+// camera. Near the black hole the rays bend: in Schwarzschild's geometry a
+// light ray's path obeys  p'' = -1.5 h² p / |p|^5  (h = how much it swings
+// around the hole), so we just step that equation. Then, for each ray:
+// - it falls in (r < 1, the event horizon): black, no character;
+// - it crosses the disk of hot gas around the hole: that glow, brighter on
+//   the side spinning towards us (Doppler beaming), hotter near the middle;
+// - it escapes: whatever star lies in the direction it ended up going.
+// The bending is why you see the disk's far side arching OVER and UNDER the
+// shadow: light from behind the hole is bent around it towards you.
+//
+// The camera drifts in from far away, sinks to the plane of the disk and
+// circles. The music is five [LiveLoop]s: a clock that never stops ticking,
+// an organ that swells, a low drone, a repeating figure high up and a
+// heartbeat-like pulse, 32 bars at 72 BPM, looping.
+//
+// Space: freeze the camera.  H: hide the labels.  Wheel: closer / farther.
+public class AsciiBlackHole : Sketch
+{
+    // ---- the screen -------------------------------------------------------------
+    const int Cols = 120, Rows = 36;
+    const float CellW = 8, CellH = 15;
+    const string Ramp = "" .,:;-~=+*xX#%&@$"";       // the gas, faint to blazing
+    const string StarGlyphs = "".+*"";
+
+    PFont mono;
+    readonly float[] glow = new float[Cols * Rows];   // 0..1 brightness of each ray
+    readonly float[] heat = new float[Cols * Rows];   // 0 = star / cool gas, 1 = hottest gas
+    readonly float[] blue = new float[Cols * Rows];   // Doppler: >0 coming at us, <0 going away
+
+    // ---- the physics (units: the event horizon has radius 1) ------------------------
+    const float DiskIn = 3, DiskOut = 11;             // the disk, from the innermost stable orbit outward
+    float[,] swirl;                                   // the gas texture: [radius bin, angle bin]
+    const int SwirlR = 64, SwirlA = 256;
+
+    // ---- the camera ---------------------------------------------------------------------
+    double musicStart = -1;
+    bool heardMusic, frozen, labels = true;
+    float frozenFor, zoomOut = 1;
+    double lastBeat;
+
+    public override void Setup()
+    {
+        Size(960, 540);
+        Bpm = 72;
+        mono = CreateFont(""Consolas"", 15);
+
+        // Gas: arcs of brighter and darker gas. Noise sampled around circles, so it wraps
+        // seamlessly; the angle is stretched so the clumps come out as long streaks.
+        swirl = new float[SwirlR, SwirlA];
+        for (int ri = 0; ri < SwirlR; ri++)
+            for (int ai = 0; ai < SwirlA; ai++)
+            {
+                float a = ai * TWO_PI / SwirlA, r = ri / (float)SwirlR;
+                float n = Noise(r * 14 + Cos(a) * 1.6f, Sin(a) * 1.6f + r * 3) * 0.7f
+                        + Noise(r * 40 + Cos(a) * 4, Sin(a) * 4) * 0.3f;
+                swirl[ri, ai] = Constrain((n - 0.3f) * 2.2f, 0, 1);
+            }
+    }
+
+    public override void OnNote(NoteEvent e) => heardMusic = true;
+
+    double SongBeat()
+    {
+        double b = Beat();
+        if (heardMusic && musicStart < 0)
+            musicStart = Math.Floor(b / 4 + 1e-6) * 4;
+        if (musicStart < 0)
+            return Millis() > 2500 ? b : 0;
+        return Math.Max(0, b - musicStart);
+    }
+
+    public override void Draw()
+    {
+        double song = SongBeat();
+        if (frozen) frozenFor += (float)(song - lastBeat);
+        lastBeat = song;
+        float camBeat = (float)song - frozenFor;
+        float t = Millis() / 1000f;
+
+        var (eye, look) = Camera(camBeat);
+        Trace(eye, look, t, FrameCount % 2);             // half the rows each frame: 30 full pictures a second
+
+        Background(0);
+        TextFont(mono, 15);
+        TextAlign(TextAlignH.Center, TextAlignV.Center);
+        float swell = Swell((float)song);
+        for (int r = 0; r < Rows; r++)
+            for (int c = 0; c < Cols; c++)
+            {
+                int i = r * Cols + c;
+                float v = glow[i];
+                if (v < 0.03f) continue;
+                float h = heat[i];
+                char glyph;
+                if (h <= 0)
+                {
+                    glyph = StarGlyphs[(int)Constrain(v * StarGlyphs.Length, 0, StarGlyphs.Length - 1)];
+                    Fill(190, 205, 255, 255 * Min(1, v * 1.5f + 0.2f));    // a star
+                }
+                else
+                {
+                    // Gas: deep red outside, orange, then white-hot inside; the side coming at us bluer-white.
+                    float d = blue[i];
+                    float red = 255, green = Constrain(70 + 200 * h + 60 * d, 40, 255), bl = Constrain(20 + 230 * h * h + 120 * d, 10, 255);
+                    float k = 0.45f + 0.55f * Min(1, v * (1.2f + 0.5f * swell));
+                    Fill(red * k, green * k, bl * k);
+                    glyph = Ramp[(int)Constrain(Sqrt(v) * Ramp.Length, 1, Ramp.Length - 1)];
+                }
+                Text(glyph.ToString(), (c + 0.5f) * CellW, (r + 0.5f) * CellH);
+            }
+
+        if (labels) Labels(song, eye);
+    }
+
+    // =================================================================================
+    // Ray tracing
+    // =================================================================================
+    void Trace(PVector eye, PVector look, float t, int parity)
+    {
+        var f = PVector.Sub(look, eye).Normalize();
+        var right = f.Cross(new PVector(0, 1, 0)).Normalize();
+        var up = right.Cross(f);
+        float tanHalf = Tan(Radians(50) / 2);
+        float aspect = Cols * CellW / (Rows * CellH);
+
+        for (int r = parity; r < Rows; r += 2)
+            for (int c = 0; c < Cols; c++)
+            {
+                float sx = ((c + 0.5f) / Cols * 2 - 1) * tanHalf * aspect;
+                float sy = (1 - (r + 0.5f) / Rows * 2) * tanHalf;
+                float dx = f.X + right.X * sx + up.X * sy, dy = f.Y + right.Y * sx + up.Y * sy, dz = f.Z + right.Z * sx + up.Z * sy;
+                float dl = Sqrt(dx * dx + dy * dy + dz * dz);
+                dx /= dl; dy /= dl; dz /= dl;
+                Ray(eye.X, eye.Y, eye.Z, dx, dy, dz, t, r * Cols + c);
+            }
+    }
+
+    void Ray(float px, float py, float pz, float vx, float vy, float vz, float t, int i)
+    {
+        // h² = |p x v|²: constant along the ray; it sets how hard the hole pulls it sideways.
+        float cx = py * vz - pz * vy, cy = pz * vx - px * vz, cz = px * vy - py * vx;
+        float h2 = cx * cx + cy * cy + cz * cz;
+        float light = 0, hot = 0, shift = 0, seen = 1;  // seen: how much of what's behind still gets through
+        float start = Sqrt(px * px + py * py + pz * pz);
+
+        // Far from the hole the ray is a straight line: skip the stepping.
+        bool straight = h2 > 22 * 22;
+        for (int step = 0; step < (straight ? 1 : 260); step++)
+        {
+            float r2 = px * px + py * py + pz * pz, rr = Sqrt(r2);
+            float dt = straight ? 1e6f : Constrain(0.08f * rr, 0.04f, 1.2f);
+            if (straight)
+            {
+                // Straight line: does it cross the disk plane ahead of us?
+                if (vy != 0 && py * vy < 0)
+                {
+                    float k = -py / vy;
+                    Disk(px + vx * k, pz + vz * k, vx, vy, vz, t, ref light, ref hot, ref shift, ref seen);
+                }
+                break;
+            }
+            if (rr < 1) { seen = 0; break; }                                  // fell in
+            if (rr > start + 2 && px * vx + py * vy + pz * vz > 0) break;       // on its way out
+
+            float a = -1.5f * h2 / (r2 * r2 * rr);
+            vx += px * a * dt; vy += py * a * dt; vz += pz * a * dt;
+            float nx = px + vx * dt, ny = py + vy * dt, nz = pz + vz * dt;
+            if (py * ny < 0)                                                    // crossed the disk plane
+            {
+                float k = py / (py - ny);
+                Disk(px + (nx - px) * k, pz + (nz - pz) * k, vx, vy, vz, t, ref light, ref hot, ref shift, ref seen);
+                if (seen < 0.02f) break;
+            }
+            px = nx; py = ny; pz = nz;
+        }
+
+        if (seen > 0.02f)
+        {
+            // Escaped: a star, if there's one in that direction.
+            float vl = Sqrt(vx * vx + vy * vy + vz * vz);
+            // The sky is cut in tiny cells (~a third of a character); a few of them hold a star.
+            int sx = (int)Math.Floor(vx / vl * 400), sy = (int)Math.Floor(vy / vl * 400), sz = (int)Math.Floor(vz / vl * 400);
+            uint hsh = (uint)(sx * 73856093 ^ sy * 19349663 ^ sz * 83492791);
+            hsh ^= hsh >> 13; hsh *= 0x5bd1e995; hsh ^= hsh >> 15;
+            float s = (hsh & 0xffff) / 65535f;
+            if (s > 0.9965f)
+                light += seen * (0.25f + (s - 0.9965f) / 0.0035f * 0.75f);
+        }
+        glow[i] = Min(1, light);
+        heat[i] = hot;
+        blue[i] = shift;
+    }
+
+    /// <summary>A ray going through the disk at (x, 0, z): adds the gas' glow, and the gas hides what's behind it.</summary>
+    void Disk(float x, float z, float vx, float vy, float vz, float t, ref float light, ref float hot, ref float shift, ref float seen)
+    {
+        float r = Sqrt(x * x + z * z);
+        if (r < DiskIn || r > DiskOut) return;
+        // The gas orbits: inner rings faster (Kepler), so the streaks wind up over time.
+        float omega = 0.45f / (r * Sqrt(r));
+        float angle = Atan2(z, x) - omega * t * 6;
+        int ai = (int)((angle / TWO_PI % 1 + 1) % 1 * SwirlA) % SwirlA;
+        int ri = (int)Constrain((r - DiskIn) / (DiskOut - DiskIn) * SwirlR, 0, SwirlR - 1);
+        float edge = Smooth(DiskIn, DiskIn + 0.6f, r) * (1 - Smooth(DiskOut - 3, DiskOut, r));
+        float temp = Pow(DiskIn / r, 1.6f);                                   // hotter inside
+        // Doppler: the orbital velocity (counterclockwise seen from above) against the
+        // direction to the camera (-v). Coming at us: brighter and bluer.
+        float speed = Sqrt(0.5f / r);
+        float tx = -z / r, tz = x / r;
+        float vl = Sqrt(vx * vx + vy * vy + vz * vz);
+        float towards = -(tx * vx + tz * vz) / vl * speed;                     // -0.4 .. 0.4
+        float beam = Pow(1 / Max(0.2f, 1 - towards), 3);
+        float gas = edge * (0.35f + 0.65f * swirl[ri, ai]);
+        float add = seen * gas * temp * beam * 1.5f;
+        light += add;
+        if (add > 0.02f && hot == 0) { hot = Constrain(temp * beam * 0.8f, 0.05f, 1); shift = Constrain(towards * 2.5f, -1, 1); }
+        seen *= 1 - Constrain(gas * 0.9f, 0, 0.92f);
+    }
+
+    static float Smooth(float a, float b, float x)
+    {
+        float k = Math.Clamp((x - a) / (b - a), 0, 1);
+        return k * k * (3 - 2 * k);
+    }
+
+    // =================================================================================
+    // The camera: comes in from far away, sinks to the disk's plane, circles.
+    // =================================================================================
+    (PVector, PVector) Camera(float beat)
+    {
+        float b = beat % 128;                                       // the 32-bar song
+        float approach = Smooth(0, 40, b);
+        float dist = Lerp(44, 13.5f, approach) * zoomOut;
+        // Tilt above the disk: high at first, almost edge-on in the middle (the classic
+        // view, the far side of the disk bent over the top), then rising a little again.
+        float tilt = Lerp(28, 4, Smooth(8, 56, b)) + 9 * Smooth(88, 120, b);
+        float around = Radians(-20 + beat * 0.9f);                 // a slow orbit that never stops
+        float el = Radians(tilt);
+        var eye = new PVector(Cos(around) * Cos(el) * dist, Sin(el) * dist, Sin(around) * Cos(el) * dist);
+        // Look a little off-center while far away, then right at it.
+        var look = new PVector(0, 0, 0);
+        return (eye, look);
+    }
+
+    float Swell(float beat)
+    {
+        int bar = (int)(beat / 4) % 32;
+        return bar >= 16 && bar < 28 ? 1 : bar >= 8 ? 0.5f : 0.2f;
+    }
+
+    void Labels(double song, PVector eye)
+    {
+        int bar = (int)(song / 4) % 32;
+        float d = Sqrt(eye.X * eye.X + eye.Y * eye.Y + eye.Z * eye.Z);
+        TextFont(mono, 13);
+        TextAlign(TextAlignH.Left, TextAlignV.Bottom);
+        Fill(255, 255, 255, 100);
+        Text($""bar {bar + 1}/32 · distance {d:0.0} horizon radii{(frozen ? "" · camera frozen"" : """")}"", 14, Height - 26);
+        Fill(255, 255, 255, 55);
+        Text(""Space: freeze camera · wheel: closer/farther · H: hide labels"", 14, Height - 9);
+    }
+
+    public override void KeyPressed()
+    {
+        if (Key == ' ') frozen = !frozen;
+        else if (Key == 'h' || Key == 'H') labels = !labels;
+    }
+
+    public override void MouseWheel(float delta) => zoomOut = Constrain(zoomOut * (delta > 0 ? 1.1f : 1 / 1.1f), 0.6f, 2.5f);
+
+    // =================================================================================
+    // The score: 72 BPM, 32 bars, A minor. Bars 0-7: clock and drone. 8-15: the organ
+    // comes in. 16-27: everything, swelling. 28-31: back to the clock alone.
+    // =================================================================================
+    int clockBar, organBar, droneBar, figureBar, pulseBar;
+
+    static readonly string[][] Organ =
+    {
+        new[] { ""A2"", ""E3"", ""A3"", ""C4"", ""E4"" },     // Am
+        new[] { ""F2"", ""C3"", ""A3"", ""C4"", ""F4"" },     // F
+        new[] { ""D2"", ""A2"", ""F3"", ""A3"", ""D4"" },     // Dm
+        new[] { ""E2"", ""B2"", ""G#3"", ""B3"", ""E4"" },    // E
+    };
+
+    [LiveLoop]
+    async Task Clock()
+    {
+        int bar = clockBar++ % 32;
+        // The tick that never stops: every beat, the off-beat a little softer.
+        for (int i = 0; i < 8; i++)
+        {
+            Sample(""hat"", amp: i % 2 == 0 ? 0.20 : 0.08, rate: 1.6, pan: -0.3);
+            await Sleep(0.5);
+        }
+    }
+
+    [LiveLoop]
+    async Task Drone()
+    {
+        int bar = droneBar++ % 32;
+        string root = Organ[(bar / 2) % 4][0];
+        if (bar % 2 == 0)
+        {
+            Play(root, amp: 0.30, attack: 2.5, sustain: 3, release: 3, synth: Synth.Sine);
+            Play(Notes.Parse(root) + 12, amp: 0.08, attack: 3, sustain: 2, release: 3, cutoff: 60, synth: Synth.Saw);
+        }
+        await Sleep(4);
+    }
+
+    [LiveLoop]
+    async Task Swells()
+    {
+        int bar = organBar++ % 32;
+        if (bar >= 8 && bar < 28 && bar % 2 == 0)
+        {
+            bool full = bar >= 16;
+            foreach (var note in Organ[(bar / 2) % 4])
+            {
+                // Organ: a square and its octave, slow to open, long to fade.
+                Play(note, amp: full ? 0.09 : 0.05, attack: 1.5, sustain: 4.5, release: 2.5, cutoff: full ? 86 : 74, synth: Synth.Square);
+                Play(Notes.Parse(note) + 12, amp: full ? 0.045 : 0.02, attack: 2, sustain: 4, release: 2.5, cutoff: 80, synth: Synth.Triangle);
+            }
+        }
+        await Sleep(4);
+    }
+
+    [LiveLoop]
+    async Task Figure()
+    {
+        int bar = figureBar++ % 32;
+        // A small figure high up, eight notes per bar, climbing through the chord.
+        var chord = Organ[(bar / 2) % 4];
+        int[] shape = { 2, 3, 4, 3, 2, 4, 3, 4 };
+        for (int i = 0; i < 8; i++)
+        {
+            if (bar >= 4 && bar < 30)
+            {
+                double note = Notes.Parse(chord[shape[i]]) + 12;
+                double amp = bar < 16 ? 0.05 : 0.08;
+                Play(note, amp: amp * (i % 2 == 0 ? 1 : 0.7), attack: 0.02, release: 0.9, pan: i % 2 == 0 ? 0.3 : -0.1, synth: Synth.Triangle);
+            }
+            await Sleep(0.5);
+        }
+    }
+
+    [LiveLoop]
+    async Task Heartbeat()
+    {
+        int bar = pulseBar++ % 32;
+        // A low heartbeat on 1 and the ""and"" of 1, only in the big middle part.
+        if (bar >= 16 && bar < 28)
+        {
+            Sample(""kick"", amp: 0.55, rate: 0.7);
+            await Sleep(0.5);
+            Sample(""kick"", amp: 0.30, rate: 0.7);
+            await Sleep(3.5);
+        }
+        else
+            await Sleep(4);
+    }
+}
+";
 
         private const string AsciiDisco =
 @"// A 3D field of ASCII characters, and you're standing in the middle of it.
