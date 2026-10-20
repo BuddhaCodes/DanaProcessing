@@ -60,8 +60,8 @@ namespace DanaProcessing.Ide.Editor
 
             new SketchSample(
                 Loc.Tr("Agujero negro en ASCII 3D, con música de película", "A 3D ASCII black hole, with a film score"),
-                Loc.Tr("Cada carácter es un rayo de luz trazado hacia atrás desde la cámara y curvado por la gravedad (la ecuación de un rayo en la geometría de Schwarzschild, paso a paso). Por eso se ve la parte de atrás del disco de gas doblada por encima y por debajo de la sombra, y el lado que gira hacia vos más brillante y más blanco (efecto Doppler). La cámara llega desde lejos, baja al plano del disco y lo rodea, con una banda sonora lenta hecha con [LiveLoop]: un reloj que no para, un órgano que crece, un drone grave y un latido. Espacio congela la cámara, la rueda acerca o aleja, H oculta los textos.",
-                       "Every character is a ray of light traced backwards from the camera and bent by gravity (the equation of a light ray in Schwarzschild geometry, stepped through). That's why you see the far side of the gas disk bent over and under the shadow, and the side spinning towards you brighter and whiter (Doppler beaming). The camera comes in from far away, sinks to the disk's plane and circles it, over a slow score made of [LiveLoop]s: a clock that never stops, a swelling organ, a low drone and a heartbeat. Space freezes the camera, the wheel moves closer or farther, H hides the labels."),
+                Loc.Tr("Cada carácter es un rayo de luz trazado hacia atrás desde la cámara y curvado por la gravedad (la ecuación de un rayo en la geometría de Schwarzschild, paso a paso). Por eso se ve la parte de atrás del disco de gas doblada por encima y por debajo de la sombra, y el lado que gira hacia vos más brillante y más blanco (efecto Doppler). La cámara alterna dos tomas, una por vuelta de la canción: una llega desde lejos, baja al plano del disco y lo rodea; la otra arranca pegada al agujero y se aleja en espiral, pasando por debajo del disco. Todo con una banda sonora lenta hecha con [LiveLoop]: un reloj que no para, un órgano que crece, un drone grave y un latido. Espacio congela la cámara, C cambia de toma, la rueda acerca o aleja, H oculta los textos.",
+                       "Every character is a ray of light traced backwards from the camera and bent by gravity (the equation of a light ray in Schwarzschild geometry, stepped through). That's why you see the far side of the gas disk bent over and under the shadow, and the side spinning towards you brighter and whiter (Doppler beaming). The camera takes turns between two shots, one per pass of the song: one comes in from far away, sinks to the disk's plane and circles it; the other starts right next to the hole and spirals out, passing under the disk. All over a slow score made of [LiveLoop]s: a clock that never stops, a swelling organ, a low drone and a heartbeat. Space freezes the camera, C switches shot, the wheel moves closer or farther, H hides the labels."),
                 AsciiBlackHole,
                 new[] { SampleTag.ThreeD, SampleTag.Text, SampleTag.Audio, SampleTag.Generative }),
 
@@ -81,12 +81,15 @@ namespace DanaProcessing.Ide.Editor
 // The bending is why you see the disk's far side arching OVER and UNDER the
 // shadow: light from behind the hole is bent around it towards you.
 //
-// The camera drifts in from far away, sinks to the plane of the disk and
-// circles. The music is five [LiveLoop]s: a clock that never stops ticking,
+// The camera has two shots, one per pass of the song: ""approach"" drifts in
+// from far away, sinks to the plane of the disk and circles; ""escape"" starts
+// right next to the hole and spirals out, dipping under the disk on the way.
+// The music is five [LiveLoop]s: a clock that never stops ticking,
 // an organ that swells, a low drone, a repeating figure high up and a
 // heartbeat-like pulse, 32 bars at 72 BPM, looping.
 //
-// Space: freeze the camera.  H: hide the labels.  Wheel: closer / farther.
+// Space: freeze the camera.  C: switch shot.  H: hide the labels.
+// Wheel: closer / farther.
 public class AsciiBlackHole : Sketch
 {
     // ---- the screen -------------------------------------------------------------
@@ -107,7 +110,7 @@ public class AsciiBlackHole : Sketch
 
     // ---- the camera ---------------------------------------------------------------------
     double musicStart = -1;
-    bool heardMusic, frozen, labels = true;
+    bool heardMusic, frozen, labels = true, otherShot;
     float frozenFor, zoomOut = 1;
     double lastBeat;
 
@@ -297,11 +300,16 @@ public class AsciiBlackHole : Sketch
     }
 
     // =================================================================================
-    // The camera: comes in from far away, sinks to the disk's plane, circles.
+    // The camera: two shots, taking turns with each pass of the 32-bar song.
     // =================================================================================
-    (PVector, PVector) Camera(float beat)
+    bool Escaping(float beat) => ((int)(beat / 128) % 2 == 1) != otherShot;
+
+    (PVector, PVector) Camera(float beat) => Escaping(beat) ? Escape(beat % 128) : Approach(beat);
+
+    /// <summary>Comes in from far away, sinks to the disk's plane, circles.</summary>
+    (PVector, PVector) Approach(float beat)
     {
-        float b = beat % 128;                                       // the 32-bar song
+        float b = beat % 128;
         float approach = Smooth(0, 40, b);
         float dist = Lerp(44, 13.5f, approach) * zoomOut;
         // Tilt above the disk: high at first, almost edge-on in the middle (the classic
@@ -310,9 +318,26 @@ public class AsciiBlackHole : Sketch
         float around = Radians(-20 + beat * 0.9f);                 // a slow orbit that never stops
         float el = Radians(tilt);
         var eye = new PVector(Cos(around) * Cos(el) * dist, Sin(el) * dist, Sin(around) * Cos(el) * dist);
-        // Look a little off-center while far away, then right at it.
-        var look = new PVector(0, 0, 0);
-        return (eye, look);
+        return (eye, new PVector(0, 0, 0));
+    }
+
+    /// <summary>
+    /// Starts right next to the hole (the shadow fills the screen) and spirals out:
+    /// it swings round the hole the other way, dips under the disk (you see it from
+    /// below, bent the other way) and climbs high above it as it leaves.
+    /// </summary>
+    (PVector, PVector) Escape(float b)
+    {
+        float away = Smooth(6, 124, b);
+        float dist = Lerp(6.2f, 50, away * away) * zoomOut;          // slow at first, then faster
+        float around = Radians(150 - 290 * Smooth(0, 128, b));        // a long curve, against the gas' spin
+        float tilt = Lerp(14, -11, Smooth(0, 48, b)) + Lerp(0, 41, Smooth(48, 128, b));
+        float el = Radians(tilt);
+        var eye = new PVector(Cos(around) * Cos(el) * dist, Sin(el) * dist, Sin(around) * Cos(el) * dist);
+        // Up close the hole sits a little off-center; it drifts to the middle as we leave.
+        var side = new PVector(-Sin(around), 0, Cos(around));
+        float off = 2.2f * (1 - away);
+        return (eye, new PVector(side.X * off, 0.4f * (1 - away), side.Z * off));
     }
 
     float Swell(float beat)
@@ -328,15 +353,17 @@ public class AsciiBlackHole : Sketch
         TextFont(mono, 13);
         TextAlign(TextAlignH.Left, TextAlignV.Bottom);
         Fill(255, 255, 255, 100);
-        Text($""bar {bar + 1}/32 · distance {d:0.0} horizon radii{(frozen ? "" · camera frozen"" : """")}"", 14, Height - 26);
+        string shot = Escaping((float)song - frozenFor) ? ""escape"" : ""approach"";
+        Text($""bar {bar + 1}/32 · {shot} · distance {d:0.0} horizon radii{(frozen ? "" · camera frozen"" : """")}"", 14, Height - 26);
         Fill(255, 255, 255, 55);
-        Text(""Space: freeze camera · wheel: closer/farther · H: hide labels"", 14, Height - 9);
+        Text(""Space: freeze camera · C: switch shot · wheel: closer/farther · H: hide labels"", 14, Height - 9);
     }
 
     public override void KeyPressed()
     {
         if (Key == ' ') frozen = !frozen;
         else if (Key == 'h' || Key == 'H') labels = !labels;
+        else if (Key == 'c' || Key == 'C') otherShot = !otherShot;
     }
 
     public override void MouseWheel(float delta) => zoomOut = Constrain(zoomOut * (delta > 0 ? 1.1f : 1 / 1.1f), 0.6f, 2.5f);
