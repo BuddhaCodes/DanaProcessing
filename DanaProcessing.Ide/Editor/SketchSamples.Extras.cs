@@ -60,8 +60,8 @@ namespace DanaProcessing.Ide.Editor
 
             new SketchSample(
                 Loc.Tr("Agujero negro en ASCII 3D, con música de película", "A 3D ASCII black hole, with a film score"),
-                Loc.Tr("Cada carácter es un rayo de luz trazado hacia atrás desde la cámara y curvado por la gravedad (la ecuación de un rayo en la geometría de Schwarzschild, paso a paso). Por eso se ve la parte de atrás del disco de gas doblada por encima y por debajo de la sombra, y el lado que gira hacia vos más brillante y más blanco (efecto Doppler). La cámara llega desde lejos, baja al plano del disco y lo rodea, mientras suena una orquesta hecha con sintetizadores en ocho [LiveLoop]: cuerdas, cellos, un piano que persigue su propio eco, coro, órgano, timbales y un reloj que no para. El disco brilla más a medida que la música crece. Espacio congela la cámara, la rueda acerca o aleja, H oculta los textos.",
-                       "Every character is a ray of light traced backwards from the camera and bent by gravity (the equation of a light ray in Schwarzschild geometry, stepped through). That's why you see the far side of the gas disk bent over and under the shadow, and the side spinning towards you brighter and whiter (Doppler beaming). The camera comes in from far away, sinks to the disk's plane and circles it, while an orchestra made of synths plays in eight [LiveLoop]s: strings, cellos, a piano chasing its own echo, choir, organ, timpani and a clock that never stops. The disk glows brighter as the music grows. Space freezes the camera, the wheel moves closer or farther, H hides the labels."),
+                Loc.Tr("Cada carácter es un rayo de luz trazado hacia atrás desde la cámara y curvado por la gravedad (la ecuación de un rayo en la geometría de Schwarzschild, paso a paso). Por eso se ve la parte de atrás del disco de gas doblada por encima y por debajo de la sombra, y el lado que gira hacia vos más brillante y más blanco (efecto Doppler). La cámara llega desde lejos, baja al plano del disco y lo rodea acercándose cada vez más, y al final se aleja despacio hasta donde empezó, mientras suena una orquesta hecha con sintetizadores en ocho [LiveLoop]: cuerdas, cellos, un piano que persigue su propio eco, coro, órgano, timbales y un reloj que no para. El disco brilla más a medida que la música crece. Espacio congela la cámara, la rueda acerca o aleja, H oculta los textos.",
+                       "Every character is a ray of light traced backwards from the camera and bent by gravity (the equation of a light ray in Schwarzschild geometry, stepped through). That's why you see the far side of the gas disk bent over and under the shadow, and the side spinning towards you brighter and whiter (Doppler beaming). The camera comes in from far away, sinks to the disk's plane and circles it ever closer, then slowly pulls back out to where it began, while an orchestra made of synths plays in eight [LiveLoop]s: strings, cellos, a piano chasing its own echo, choir, organ, timpani and a clock that never stops. The disk glows brighter as the music grows. Space freezes the camera, the wheel moves closer or farther, H hides the labels."),
                 AsciiBlackHole,
                 new[] { SampleTag.ThreeD, SampleTag.Text, SampleTag.Audio, SampleTag.Generative }),
 
@@ -298,16 +298,21 @@ public class AsciiBlackHole : Sketch
     }
 
     // =================================================================================
-    // The camera: comes in from far away, sinks to the disk's plane, circles.
+    // The camera: one continuous move per pass of the song, ending where it began
+    // (same place, standing still), so the loop never jumps.
     // =================================================================================
     (PVector, PVector) Camera(float beat)
     {
         float b = beat % 128;                                       // the 32-bar song
-        float approach = Smooth(0, 26, b);
-        float dist = Lerp(44, 13.5f, approach) * zoomOut;
+        // In from far away, then a slow creep closer all through the build and the horizon...
+        float dist = Lerp(44, 14, Smooth(0, 40, b)) - 4.5f * Smooth(36, 108, b);
         // Tilt above the disk: high at first, almost edge-on by the climax (the classic
-        // view, the far side of the disk bent over the top), rising a little at the end.
-        float tilt = Lerp(28, 4, Smooth(4, 36, b)) + 9 * Smooth(92, 124, b);
+        // view, the far side of the disk bent over the top).
+        float tilt = Lerp(28, 4, Smooth(4, 40, b));
+        // ...and in ""after"", a long pull back up and out to where it started.
+        float leave = Smooth(108, 128, b);
+        dist = Lerp(dist, 44, leave) * zoomOut;
+        tilt = Lerp(tilt, 28, leave);
         float around = Radians(-20 + beat * 1.4f);                  // an orbit that never stops
         float el = Radians(tilt);
         var eye = new PVector(Cos(around) * Cos(el) * dist, Sin(el) * dist, Sin(around) * Cos(el) * dist);
