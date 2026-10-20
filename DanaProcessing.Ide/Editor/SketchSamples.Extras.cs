@@ -51,7 +51,477 @@ namespace DanaProcessing.Ide.Editor
                 AsciiMind,
                 new[] { SampleTag.MachineLearning, SampleTag.Text, SampleTag.Generative, SampleTag.Interaction }),
 
+            new SketchSample(
+                Loc.Tr("Disco ASCII en 3D: la cámara se aleja y aparece un bailarín", "3D ASCII disco: the camera pulls back and a dancer appears"),
+                Loc.Tr("Estás parado en el medio de un campo 3D de caracteres ASCII que flotan y laten con la música. La cámara mira alrededor, camina, sube y gira, y después se aleja bien arriba: desde lejos el campo resulta ser una pantalla, y los caracteres juntos son un bailarín en una pista de disco, bailando la canción que sonó todo el tiempo. Todo es código: el bailarín se dibuja en un PGraphics cada frame, la cámara 3D es matemática simple (vectores y división por la distancia) y la canción son cinco [LiveLoop] a 116 BPM. Espacio congela la cámara, H oculta los textos.",
+                       "You're standing in the middle of a 3D field of ASCII characters that float and throb with the music. The camera looks around, walks, climbs and circles, then pulls far up: from there the field turns out to be a screen, and all the characters together are a dancer on a disco floor, dancing to the song that's been playing all along. It's all code: the dancer is drawn on a PGraphics every frame, the 3D camera is plain math (vectors and a divide by distance) and the song is five [LiveLoop]s at 116 BPM. Space freezes the camera, H hides the labels."),
+                AsciiDisco,
+                new[] { SampleTag.ThreeD, SampleTag.Text, SampleTag.Audio, SampleTag.Animation }),
+
         };
+
+        private const string AsciiDisco =
+@"// A 3D field of ASCII characters, and you're standing in the middle of it.
+//
+// The camera looks around, walks, climbs and orbits, and then pulls far
+// away and up -- and from up there the field turns out to be a screen: the
+// characters, all together, are a dancer on a disco floor, dancing to the
+// song that's been playing the whole time.
+//
+// Everything is DanaProcessing and code:
+// - The picture: every frame a small dancer is drawn on an offscreen
+//   PGraphics (lines and circles, posed from Beat()), and each pixel pair
+//   becomes one character of the field: its brightness picks the glyph
+//   ("" .:-=+*#%@"") and how high it floats, its color is the glyph's color.
+// - The 3D: a tiny camera in plain math (position + where it looks ->
+//   right/up/forward vectors -> perspective divide). Every character is
+//   placed in 3D, sorted far to near and drawn with Text() at the size its
+//   distance gives it.
+// - The music: five [LiveLoop]s (pad, bass, lead, drums, hats) at 116 BPM, a
+//   32-bar song that loops. The camera path is timed in beats of that song.
+//
+// Space: freeze the camera (the music goes on).  H: hide the labels.
+public class AsciiDisco : Sketch
+{
+    // ---- the field ----------------------------------------------------------
+    const int GW = 96, GH = 54;                 // characters across and deep
+    const int PicW = GW * 2, PicH = GH * 2;     // the dancer is drawn 2x finer, then averaged
+    const string Glyphs = "" .:-=+*#%@"";
+
+    PGraphics pic;
+    readonly float[] lum = new float[GW * GH];
+    readonly Color[] tint = new Color[GW * GH];
+    PFont mono;
+
+    // ---- the camera -----------------------------------------------------------
+    const float FovY = 60;
+    const int SongBeats = 128;                  // 32 bars, then it all loops
+    readonly float[] depth = new float[GW * GH];
+    readonly int[] order = new int[GW * GH];
+    readonly float[] sx = new float[GW * GH], sy = new float[GW * GH], ss = new float[GW * GH];
+    float frozenFor;                            // beats the camera spent frozen
+    bool frozen, labels = true;
+    double lastBeat;
+
+    // Where the camera is and what it looks at, at a beat of the song.
+    // Catmull-Rom through these: smooth, no stops.
+    static readonly (float Beat, PVector Pos, PVector Look)[] Path =
+    {
+        (0,   new PVector(0, 1.4f, 0),     new PVector(0, 1.6f, 12)),    // in the middle, looking ahead
+        (12,  new PVector(0, 1.4f, 0),     new PVector(12, 1.2f, 2)),    // turn to the right
+        (22,  new PVector(-6, 1.8f, -3),   new PVector(10, 0.6f, 6)),    // step back and sideways
+        (32,  new PVector(-12, 3.5f, 6),   new PVector(6, 0, -4)),       // up a little, looking across
+        (42,  new PVector(-6, 9, 18),      new PVector(0, 0, 0)),        // climbing, circling
+        (50,  new PVector(16, 16, 14),     new PVector(0, 0, 0)),
+        (58,  new PVector(22, 32, -10),    new PVector(0, 0, 0)),
+        (66,  new PVector(0, 52, -9),      new PVector(0, 0, 0.5f)),     // way up: the field is a screen
+        (100, new PVector(0, 54, -8),      new PVector(0, 0, 0.5f)),     // ...and stays there a while
+        (110, new PVector(10, 18, -18),    new PVector(0, 1, 2)),        // dive back in
+        (120, new PVector(2, 2.5f, -6),    new PVector(0, 1.6f, 8)),
+        (128, new PVector(0, 1.4f, 0),     new PVector(0, 1.6f, 12)),    // = beat 0: the loop closes
+    };
+
+    // ---- the song ---------------------------------------------------------------
+    double musicStart = -1;
+    bool heardMusic;
+    int padBar, bassBar, leadBar, drumBar, hatBar;
+
+    static readonly string[][] Chords =
+    {
+        new[] { ""F3"", ""A3"", ""C4"", ""E4"" },   // Fmaj7
+        new[] { ""E3"", ""G3"", ""B3"", ""D4"" },   // Em7
+        new[] { ""D3"", ""F3"", ""A3"", ""C4"" },   // Dm7
+        new[] { ""C3"", ""E3"", ""G3"", ""B3"" },   // Cmaj7
+    };
+    static readonly string[] Roots = { ""F2"", ""E2"", ""D2"", ""C2"" };
+
+    // Sections, in bars of the 32-bar song.
+    static bool Drums(int bar) => bar >= 4 && bar < 28;
+    static bool Full(int bar) => bar >= 12 && bar < 28;
+    static bool Lead(int bar) => bar >= 16 && bar < 28;
+
+    public override void Setup()
+    {
+        Size(960, 540);
+        Bpm = 116;
+        mono = CreateFont(""Consolas"", 32);
+        pic = CreateGraphics(PicW, PicH);
+        for (int i = 0; i < order.Length; i++) order[i] = i;
+    }
+
+    public override void OnNote(NoteEvent e) => heardMusic = true;
+
+    /// <summary>Beats since the song started (the loops wait for the next bar to start; no sound at all: since Run).</summary>
+    double SongBeat()
+    {
+        double b = Beat();
+        if (heardMusic && musicStart < 0)
+            musicStart = Math.Floor(b / 4 + 1e-6) * 4;
+        if (musicStart < 0)
+            return Millis() > 2500 ? b : 0;
+        return Math.Max(0, b - musicStart);
+    }
+
+    public override void Draw()
+    {
+        double song = SongBeat();
+        if (frozen) frozenFor += (float)(song - lastBeat);
+        lastBeat = song;
+
+        PaintDancer((float)song);
+        Background(6, 4, 14);
+        DrawField((float)(song - frozenFor), (float)song);
+        if (labels) DrawLabels(song);
+    }
+
+    // ===========================================================================
+    // The picture: a dancer on a disco floor, posed from the beat.
+    // ===========================================================================
+    void PaintDancer(float beat)
+    {
+        int bar = (int)(beat / 4) % 32;
+        float kick = Drums(bar) ? Pulse(1, 5) : 0;
+        pic.BeginDraw();
+        pic.Background(26, 12, 52);
+        pic.NoStroke();
+
+        // A purple haze behind the dancer, breathing with the kick.
+        for (int k = 9; k >= 1; k--)
+        {
+            pic.Fill(90 + 12 * k * kick, 40, 150, 30);
+            pic.Ellipse(PicW / 2f, PicH * 0.55f, k * 22 * (1 + 0.08f * kick), k * 13);
+        }
+        // Little lights from the mirror ball, drifting across the room.
+        for (int k = 0; k < 40; k++)
+        {
+            float a = k * 2.39996f + beat * 0.25f;
+            float x = PicW / 2f + Cos(a) * (20 + (k * 37) % 90), y = 14 + ((k * 53) % 60) + Sin(a) * 6;
+            pic.FillHSB((k * 31 + beat * 20) % 360, 50, 100, 120 + 100 * Sin(beat * PI + k));
+            pic.Circle(x, y, 2.2f);
+        }
+
+        // Two spotlights sweeping, crossing on the downbeats.
+        for (int s = 0; s < 2; s++)
+        {
+            float a = Sin(beat * PI / 8 + s * PI) * 0.6f;
+            float ox = s == 0 ? 30 : PicW - 30;
+            float tx = PicW / 2f + Sin(a + beat * 0.2f) * 70, ty = PicH - 18;
+            pic.Fill(s == 0 ? 255 : 120, s == 0 ? 90 : 200, s == 0 ? 200 : 255, 60 + 60 * kick);
+            pic.Triangle(ox, -4, tx - 22, ty, tx + 22, ty);
+        }
+
+        // The floor: tiles that light up with the beat, one color per bar.
+        int tilesX = 12, tilesY = 3;
+        float floorTop = PicH - 22;
+        for (int ty = 0; ty < tilesY; ty++)
+            for (int tx = 0; tx < tilesX; tx++)
+            {
+                bool lit = ((tx + ty + (int)beat) % 3 == 0) && Drums(bar);
+                float hue = (bar * 47 + tx * 20 + ty * 60) % 360;
+                if (lit) pic.FillHSB(hue, 70, 55 + 45 * kick);
+                else pic.Fill(28, 20, 52);
+                float w = PicW / (float)tilesX;
+                pic.Rect(tx * w + 1, floorTop + ty * 7.5f + 1, w - 2, 6);
+            }
+
+        // The mirror ball, top right: facets that turn.
+        float ballX = PicW * 0.8f, ballY = 9;
+        pic.Fill(200, 200, 220);
+        pic.Circle(ballX, ballY, 15);
+        for (int k = 0; k < 6; k++)
+        {
+            float fx = ballX - 6 + ((k * 2 + (int)(beat * 2)) % 6) * 2.2f;
+            pic.Fill(255, 255, 255);
+            pic.Rect(fx, ballY - 4 + (k % 3) * 3, 1.6f, 1.6f);
+        }
+        // A neon sign in the corner.
+        pic.TextFont(mono, 15);
+        pic.TextAlign(TextAlignH.Left, TextAlignV.Top);
+        pic.Fill(255, 80, 180, Drums(bar) && (int)(beat * 2) % 8 == 7 ? 90 : 255);
+        pic.Text(""DANA"", 8, 6);
+
+        // The dancer, feet on the floor at (0, 0). One of four moves, each lasting two bars.
+        pic.PushMatrix();
+        pic.Translate(PicW / 2f, floorTop);
+        pic.Scale(1.25f);
+        float step = Sin(beat * PI);                    // a side step every beat
+        float bounce = Abs(Sin(beat * PI)) * 3;
+        float hipX = step * 5, hipY = -26 + bounce;
+        float neckX = hipX - step * 2, neckY = hipY - 26;
+        int move = (int)(beat / 8) % 4;
+        float ph = beat * PI;                           // half a cycle per beat
+
+        // Arms: (shoulder angle, elbow angle) for each side; angles in radians, 0 = pointing right, up is -PI/2.
+        (float s, float e) left, right;
+        switch (move)
+        {
+            case 0:  // pump: fists go up one at a time
+                left = (-PI * 0.75f + Max(0, Sin(ph)) * -0.9f, -PI * 0.5f);
+                right = (-PI * 0.25f + Max(0, -Sin(ph)) * 0.9f * -1, -PI * 0.5f);
+                break;
+            case 1:  // point: one arm up to the corner, then down across
+                bool up = Sin(ph / 2) > 0;
+                right = up ? (-PI * 0.3f, -PI * 0.35f) : (PI * 0.25f, PI * 0.35f);
+                left = (PI * 0.7f, PI * 0.6f);
+                break;
+            case 2:  // wave: both arms up, swaying
+                left = (-PI * 0.62f + Sin(ph) * 0.25f, -PI * 0.55f + Sin(ph) * 0.3f);
+                right = (-PI * 0.38f + Sin(ph) * 0.25f, -PI * 0.45f + Sin(ph) * 0.3f);
+                break;
+            default: // roll: forearms circling in front of the chest
+                left = (PI * 0.85f, -PI * 0.1f + Sin(ph * 2) * 0.8f);
+                right = (PI * 0.15f, PI * 1.1f + Cos(ph * 2) * 0.8f);
+                break;
+        }
+
+        pic.StrokeCap(StrokeCapKind.Round);
+        // Legs: knees bend in turn.
+        pic.Stroke(90, 200, 255);
+        pic.StrokeWeight(5);
+        for (int side = -1; side <= 1; side += 2)
+        {
+            float bend = Max(0, side * step) * 6;
+            float kneeX = hipX + side * 6 + side * bend * 0.4f, kneeY = hipY + 12 - bend * 0.3f;
+            pic.Line(hipX + side * 3, hipY, kneeX, kneeY);
+            pic.Line(kneeX, kneeY, hipX + side * 9, -1);
+        }
+        // Body.
+        pic.Stroke(255, 120, 190);
+        pic.StrokeWeight(9);
+        pic.Line(hipX, hipY - 2, neckX, neckY + 4);
+        // Arms.
+        pic.Stroke(255, 200, 150);
+        pic.StrokeWeight(4);
+        Arm(neckX - 4, neckY + 3, left);
+        Arm(neckX + 4, neckY + 3, right);
+        // Head, with shades.
+        pic.NoStroke();
+        pic.Fill(255, 215, 170);
+        pic.Circle(neckX, neckY - 6, 13);
+        pic.Fill(40, 230, 255);
+        pic.Rect(neckX - 6, neckY - 8, 12, 3);
+        pic.PopMatrix();
+
+        pic.LoadPixels();
+        var px = pic.Pixels;
+        for (int r = 0; r < GH; r++)
+            for (int c = 0; c < GW; c++)
+            {
+                int R = 0, G = 0, B = 0;
+                for (int dy = 0; dy < 2; dy++)
+                    for (int dx = 0; dx < 2; dx++)
+                    {
+                        var p = px[(r * 2 + dy) * PicW + c * 2 + dx];
+                        R += p.R; G += p.G; B += p.B;
+                    }
+                int i = r * GW + c;
+                lum[i] = (0.3f * R + 0.55f * G + 0.15f * B) / (4 * 255f);
+                tint[i] = Color(R / 4, G / 4, B / 4);
+            }
+        pic.EndDraw();
+    }
+
+    void Arm(float x, float y, (float s, float e) a)
+    {
+        const float upper = 11, fore = 10;
+        float ex = x + Cos(a.s) * upper, ey = y + Sin(a.s) * upper;
+        pic.Line(x, y, ex, ey);
+        pic.Line(ex, ey, ex + Cos(a.e) * fore, ey + Sin(a.e) * fore);
+    }
+
+    // ===========================================================================
+    // The 3D: every character placed in space, seen from the camera.
+    // ===========================================================================
+    void DrawField(float camBeat, float song)
+    {
+        var (eye, look) = CameraAt(camBeat);
+        // Camera axes: forward, right, up.
+        var f = PVector.Sub(look, eye).Normalize();
+        // ""Up"" is the sky when we look ahead, and the far edge of the field (+z) when we
+        // look down at it -- with the sky as up, looking straight down would spin the picture.
+        float down = Constrain(-f.Y * 1.4f - 0.3f, 0, 1);
+        var upHint = new PVector(0, 1 - down, down);
+        var r = f.Cross(upHint).Normalize();
+        var u = r.Cross(f);
+        float focal = Height / 2f / Tan(Radians(FovY) / 2);
+        float kick = Drums((int)(song / 4) % 32) ? Pulse(1, 4) : 0;
+
+        int n = 0;
+        for (int row = 0; row < GH; row++)
+            for (int col = 0; col < GW; col++)
+            {
+                int i = row * GW + col;
+                float v = lum[i];
+                // Column -> x (mirrored, so from above the picture isn't), row -> z.
+                float wx = GW / 2f - col - 0.5f, wz = GH / 2f - row - 0.5f;
+                float ring = Sin(Sqrt(wx * wx + wz * wz) * 0.35f - song * PI) * 0.35f;
+                float wy = 0.2f + v * 4.5f + ring * (0.3f + kick);
+                float dx = wx - eye.X, dy = wy - eye.Y, dz = wz - eye.Z;
+                float zc = dx * f.X + dy * f.Y + dz * f.Z;
+                if (zc < 0.35f) continue;                         // behind us, or in our face
+                float xc = dx * r.X + dy * r.Y + dz * r.Z;
+                float yc = dx * u.X + dy * u.Y + dz * u.Z;
+                float size = focal * 0.95f / zc;
+                float x = Width / 2f + focal * xc / zc, y = Height / 2f - focal * yc / zc;
+                if (size < 2.5f || x < -size || x > Width + size || y < -size || y > Height + size) continue;
+                sx[i] = x; sy[i] = y; ss[i] = Min(size, 120);
+                depth[n] = -zc;                                   // far first
+                order[n] = i;
+                n++;
+            }
+        System.Array.Sort(depth, order, 0, n);
+
+        TextFont(mono, 32);
+        TextAlign(TextAlignH.Center, TextAlignV.Center);
+        for (int k = 0; k < n; k++)
+        {
+            int i = order[k];
+            float v = lum[i];
+            int g = (int)Constrain(Sqrt(v) * Glyphs.Length, 1, Glyphs.Length - 1);   // sqrt: the dark room still shows : and -
+            float z = -depth[k];
+            // Close characters fade in (no wall of glyphs on the lens), far ones dim a little.
+            float alpha = 255 * Constrain((z - 0.35f) / 2.5f, 0, 1) * (0.55f + 0.45f * Min(1, v * 3 + 0.2f));
+            var c = tint[i];
+            float lift = 1 + 0.6f * kick * v;
+            Fill(Min(255, c.R * 1.5f * lift + 25), Min(255, c.G * 1.5f * lift + 20), Min(255, c.B * 1.5f * lift + 40), alpha);
+            // Whole-pixel sizes (steps of 6 when big): Skia caches each glyph per
+            // size, so a few sizes draw ~5x faster than thousands of slightly different ones.
+            TextSize(ss[i] < 24 ? MathF.Round(ss[i]) : MathF.Round(ss[i] / 6) * 6);
+            Text(Glyphs[g].ToString(), sx[i], sy[i]);
+        }
+    }
+
+    (PVector Eye, PVector Look) CameraAt(float beat)
+    {
+        float b = ((beat % SongBeats) + SongBeats) % SongBeats;
+        int k = 0;
+        while (k < Path.Length - 2 && Path[k + 1].Beat <= b) k++;
+        float t = (b - Path[k].Beat) / (Path[k + 1].Beat - Path[k].Beat);
+        int k0 = Math.Max(0, k - 1), k3 = Math.Min(Path.Length - 1, k + 2);
+        var eye = CatmullRom(Path[k0].Pos, Path[k].Pos, Path[k + 1].Pos, Path[k3].Pos, t);
+        var look = CatmullRom(Path[k0].Look, Path[k].Look, Path[k + 1].Look, Path[k3].Look, t);
+        // Up top, sway gently with the music so the ""screen"" breathes.
+        float high = Constrain((eye.Y - 30) / 20, 0, 1);
+        eye.X += Sin(beat * PI / 8) * 3 * high;
+        return (eye, look);
+    }
+
+    static PVector CatmullRom(PVector p0, PVector p1, PVector p2, PVector p3, float t)
+    {
+        float t2 = t * t, t3 = t2 * t;
+        float F(float a, float b, float c, float d) =>
+            0.5f * (2 * b + (-a + c) * t + (2 * a - 5 * b + 4 * c - d) * t2 + (-a + 3 * b - 3 * c + d) * t3);
+        return new PVector(F(p0.X, p1.X, p2.X, p3.X), F(p0.Y, p1.Y, p2.Y, p3.Y), F(p0.Z, p1.Z, p2.Z, p3.Z));
+    }
+
+    void DrawLabels(double song)
+    {
+        int bar = (int)(song / 4) % 32;
+        string part = bar < 4 ? ""intro"" : bar < 12 ? ""groove"" : bar < 16 ? ""build"" : bar < 28 ? ""chorus"" : ""breakdown"";
+        TextFont(mono, 13);
+        TextSize(13);
+        TextAlign(TextAlignH.Left, TextAlignV.Bottom);
+        Fill(255, 255, 255, 110);
+        Text($""bar {bar + 1}/32 · {part}{(frozen ? "" · camera frozen"" : """")}"", 16, Height - 30);
+        Fill(255, 255, 255, 60);
+        Text(""Space: freeze camera · H: hide labels"", 16, Height - 12);
+    }
+
+    public override void KeyPressed()
+    {
+        if (Key == ' ') frozen = !frozen;
+        else if (Key == 'h' || Key == 'H') labels = !labels;
+    }
+
+    // ===========================================================================
+    // The song: 116 BPM, 32 bars, looping. Fmaj7 - Em7 - Dm7 - Cmaj7.
+    // ===========================================================================
+    [LiveLoop]
+    async Task Pad()
+    {
+        int bar = padBar++ % 32;
+        foreach (var note in Chords[bar % 4])
+            Play(note, amp: Full(bar) ? 0.06 : 0.09, attack: 0.4, sustain: 2.6, release: 1.0,
+                 cutoff: Full(bar) ? 90 : 80, pan: 0, synth: Synth.Saw);
+        await Sleep(4);
+    }
+
+    [LiveLoop]
+    async Task Bass()
+    {
+        int bar = bassBar++ % 32;
+        double root = Notes.Parse(Roots[bar % 4]);
+        for (int i = 0; i < 8; i++)
+        {
+            // Disco octaves: low, high, low, high...
+            if (Drums(bar))
+                Play(root + (i % 2 == 1 ? 12 : 0), amp: 0.26, release: 0.22, cutoff: 76, res: 0.3, synth: Synth.Saw);
+            else if (i == 0)
+                Play(root, amp: 0.18, release: 1.6, cutoff: 64, synth: Synth.Triangle);
+            await Sleep(0.5);
+        }
+    }
+
+    [LiveLoop]
+    async Task Lead()
+    {
+        int bar = leadBar++ % 32;
+        // A two-bar hook: the first bar climbs, the second one comes home.
+        (string Note, double Beats)[] climb = { (""E5"", 0.5), (""G5"", 0.5), (""A5"", 1), (""G5"", 0.5), (""E5"", 0.5), (""D5"", 1) };
+        (string Note, double Beats)[] home = { (""C5"", 0.5), (""D5"", 0.5), (""E5"", 1.5), ("""", 0.5), (""G4"", 0.5), (""A4"", 0.5) };
+        var phrase = bar % 2 == 0 ? climb : home;
+        // Every fourth bar answers an octave lower, for variety.
+        int shift = bar % 8 == 7 ? -12 : 0;
+        foreach (var (note, beats) in phrase)
+        {
+            if (Lead(bar) && note != """")
+            {
+                double n = Notes.Parse(note) + shift;
+                Play(n, amp: 0.10, attack: 0.01, release: beats * 0.45, cutoff: 96, pan: -0.15, synth: Synth.Square);
+                Play(n + 12, amp: 0.035, release: beats * 0.6, pan: 0.25, synth: Synth.Triangle);   // a soft octave on top
+            }
+            await Sleep(beats);
+        }
+    }
+
+    [LiveLoop]
+    async Task Kit()
+    {
+        int bar = drumBar++ % 32;
+        for (int beat = 0; beat < 4; beat++)
+        {
+            if (Drums(bar))
+                Sample(""kick"", amp: 0.9);
+            if (Full(bar) && beat % 2 == 1)
+                Sample(""snare"", amp: 0.55);
+            // The build: snare rolls getting faster in the last bar before the chorus.
+            if (bar == 15)
+            {
+                int hits = beat < 2 ? 2 : 4;
+                for (int h = 0; h < hits; h++)
+                {
+                    Sample(""snare"", amp: 0.25 + 0.1 * beat);
+                    await Sleep(1.0 / hits);
+                }
+                continue;
+            }
+            await Sleep(1);
+        }
+    }
+
+    [LiveLoop]
+    async Task Hats()
+    {
+        int bar = hatBar++ % 32;
+        for (int i = 0; i < 8; i++)
+        {
+            if (Drums(bar))
+                Sample(""hat"", amp: i % 2 == 1 ? (Full(bar) ? 0.32 : 0.22) : 0.1, pan: 0.25);
+            await Sleep(0.5);
+        }
+    }
+}
+";
 
         private const string AsciiMind =
 @"// A neural network learns to write a word, live, and you watch it think in
