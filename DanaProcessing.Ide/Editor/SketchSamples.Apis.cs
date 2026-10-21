@@ -30,6 +30,12 @@ namespace DanaProcessing.Ide.Editor
                        "Pick a country on the world map and the sketch lays a grid of about 2,000 points over it (closer together for small countries, farther apart for big ones), keeps the ones inside its outline and asks Open Topo Data for their heights: 100 points per call, one a second as the API asks, each call kept on disk for a month. The country appears flat with its real shape and rises piece by piece as the heights arrive, as a mesh with atlas colors and hill shading. C draws contour lines (marching squares) at their height and S saves them with the border as a plotter-ready SVG with BeginRaw(file, plotter: true). M goes back to the map, R picks a random country, Up/Down exaggerate the heights."),
                 TerrainAnywhere,
                 new[] { SampleTag.Data, SampleTag.ThreeD, SampleTag.Generative, SampleTag.Interaction }),
+            new SketchSample(
+                Loc.Tr("Un país vivo: relieve, clima y agua", "A living country: relief, weather and water"),
+                Loc.Tr("Elegí un país y aparece su relieve en detalle (unas 180 alturas a lo largo, leídas de los tiles de terreno de AWS/Mapzen con img.Pixels), con el clima real de Open-Meteo para ~25 puntos: temperatura, nubes, lluvia y viento ahora y hora por hora durante 48 horas, que se reproducen solas. Las nubes flotan y derivan con el viento, llueve donde dice el pronóstico y el agua cae sobre el terreno: una simulación de \"tubos virtuales\" la hace correr cuesta abajo, formar ríos, llenar lagos y salir al mar, mientras el sol evapora más donde hace calor. Hacé clic en la tierra para soltar un lago, D desata un diluvio, L cambia la capa (relieve, temperatura, lluvia), , y . mueven las horas, W seca todo, M vuelve al mapa y R elige un país al azar.",
+                       "Pick a country and its relief appears in detail (about 180 heights along it, read from AWS/Mapzen terrain tiles with img.Pixels), with the real weather from Open-Meteo for ~25 points: temperature, clouds, rain and wind now and hour by hour for 48 hours, which play by themselves. Clouds float and drift with the wind, it rains where the forecast says, and the water lands on the terrain: a \"virtual pipes\" simulation makes it run downhill, form rivers, fill lakes and drain to the sea, while the sun evaporates more where it's hot. Click the land to drop a lake, D unleashes a deluge, L switches layers (relief, temperature, rain), , and . move through the hours, W dries everything, M goes back to the map and R picks a random country."),
+                LivingCountry,
+                new[] { SampleTag.Data, SampleTag.ThreeD, SampleTag.Generative, SampleTag.Interaction }),
         };
 
         private const string StormFromAbove =
@@ -1434,6 +1440,901 @@ public class TerrainAnywhere : Sketch
         var all = countriesReq.Value.Features;
         var f = all[(int)Random(all.Count)];
         Choose(f, float.NaN, float.NaN);
+    }
+}
+";
+
+        private const string LivingCountry =
+@"// A living country: its relief in detail, its weather right now and for the next two days,
+// and water that falls as the real rain and runs downhill into rivers and lakes.
+//
+// Pick a country on the world map. Three free, keyless sources load in the background:
+// - the relief: Terrain Tiles on AWS (Mapzen's ""terrarium"" PNGs), a height in every pixel
+//   -- (red * 256 + green + blue / 256) - 32768 meters -- read with img.Pixels. About
+//   180 heights along the country's longest side, for its real outline.
+// - the weather: Open-Meteo, one call for ~25 points over the country: temperature,
+//   clouds, rain and wind now, and hour by hour for 48 hours.
+// - the outlines: Natural Earth.
+//
+// The water is a ""virtual pipes"" simulation: every cell holds some water and pushes it to
+// its four neighbors through pipes, more the steeper the water surface. Rain adds water
+// where the forecast says it rains (a lot faster than real life, so you see it), the sun
+// takes some back (more where it's hot), and it drains out at the coast and the borders.
+// Rivers find the valleys by themselves; lakes fill the basins.
+//
+// Click the land: drop a lake there.  D: a five-second deluge everywhere.
+// L: layer -- relief / temperature / rain.  Space: pause.  , and .: hour back / forward.
+// M (or the little map): the world.  R: a random country.  Drag: turn.  Wheel: zoom.
+// Up/Down: heights.  W: empty the water.
+public class LivingCountry : Sketch
+{
+    // ---- settings -----------------------------------------------------------------------
+    const int Cells = 180;                       // grid points along the country's longest side
+    const float W = 60;                          // that side, in world units
+    const float RainSpeed = 0.0004f;             // world units of water per second, per mm/h of rain
+    const string CountriesUrl = ""https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_admin_0_countries.geojson"";
+
+    // ---- the world map ------------------------------------------------------------------
+    Request<GeoMap> countriesReq;
+    PGraphics worldMap;
+    float mapY = 70;
+    GeoFeature hover, country;
+    bool picking = true;
+
+    // ---- the chosen country -------------------------------------------------------------
+    readonly List<(float[] Lat, float[] Lon)> outline = new();
+    float lat0, lon0, minLat, maxLat, minLon, maxLon, kmX, kmZ, scale, dLat, dLon;
+    int nx, ny;
+    bool[] inside, drawn;                        // in the country / drawn (inside or touching it)
+    float[] meters;                              // terrain height (m), NaN until its tile is in
+    long[] arrivedAt;
+    int tileZoom, tx0, ty0, tilesW, tilesH;
+    Request<PImage>[] tiles;
+    bool[] tileRead;
+    int heightsIn;
+    float hi = 1;
+
+    // ---- the weather --------------------------------------------------------------------
+    Request<JSONArray> weatherReq;
+    readonly List<(float Lat, float Lon)> stations = new();
+    float[][] hourTemp, hourRain, hourCloud;     // [station][hour]
+    int[][] hourCode;
+    string[] hourTimes;
+    int nowHour;                                 // the forecast's index of the current hour
+    float hour;                                  // the hour being shown (fractional: it plays)
+    float windKmh, windFromDeg;
+    bool weatherRead;
+    float[] temp, rain, cloud;                   // per grid cell, at the shown hour
+    int fieldsForHour = -1;
+    float tMin, tMax, rainMax;
+
+    // ---- the water ----------------------------------------------------------------------
+    float[] b;                                   // terrain height, world units
+    float[] d;                                   // water depth, world units
+    float[] fE, fW, fN, fS;                      // flow through each cell's four pipes
+    float cs;                                    // cell size, world units
+    float deluge;                                // seconds of deluge left
+
+    // ---- view ---------------------------------------------------------------------------
+    PFont font;
+    int layer;                                   // 0 relief, 1 temperature, 2 rain
+    float yaw = -0.5f, pitch = 0.8f, zoom = 1, heightMul = 1, ex = -1;
+    float animT;
+    bool paused;
+    float pressX, pressY;
+    float[] sx, sy;                              // each grid point on screen (for clicks)
+    readonly PointCloud clouds = new();
+
+    public override void Setup()
+    {
+        Size(1000, 640);
+        font = CreateFont(""Segoe UI"", 14);
+        countriesReq = RequestGeoJSON(CountriesUrl, cacheFor: TimeSpan.FromDays(365));
+    }
+
+    // =====================================================================================
+    // Choosing a country: its main piece and the islands near it, then a grid over it
+    // =====================================================================================
+    void Choose(GeoFeature f, float clickLat, float clickLon)
+    {
+        country = f;
+        picking = false;
+        outline.Clear();
+        GeoRing main = null; float best = -1;
+        foreach (var ring in f.Rings)
+        {
+            if (ring.IsHole) continue;
+            if (InRing(ring.Lat, ring.Lon, clickLat, clickLon)) { main = ring; break; }
+            float area = Area(ring);
+            if (area > best) { best = area; main = ring; }
+        }
+        if (main == null) return;
+        var (mLat0, mLat1, mLon0, mLon1) = Box(main.Lat, main.Lon);
+        float mainLon = (mLon0 + mLon1) / 2;
+        float reach = Math.Max(1.5f, 0.4f * Math.Max(mLat1 - mLat0, mLon1 - mLon0));
+        foreach (var ring in f.Rings)
+        {
+            var (a0, a1, o0, o1) = Box(ring.Lat, ring.Lon);
+            float shift = 360 * MathF.Round((mainLon - (o0 + o1) / 2) / 360);   // across the date line
+            if (a1 < mLat0 - reach || a0 > mLat1 + reach || o1 + shift < mLon0 - reach || o0 + shift > mLon1 + reach) continue;
+            var lon = (float[])ring.Lon.Clone();
+            for (int i = 0; i < lon.Length; i++) lon[i] += shift;
+            outline.Add((ring.Lat, lon));
+        }
+
+        minLat = minLon = float.MaxValue; maxLat = maxLon = float.MinValue;
+        foreach (var (la, lo) in outline)
+        {
+            var (a0, a1, o0, o1) = Box(la, lo);
+            minLat = Math.Min(minLat, a0); maxLat = Math.Max(maxLat, a1);
+            minLon = Math.Min(minLon, o0); maxLon = Math.Max(maxLon, o1);
+        }
+        float padLat = (maxLat - minLat) * 0.03f + 0.02f, padLon = (maxLon - minLon) * 0.03f + 0.02f;
+        minLat -= padLat; maxLat += padLat; minLon -= padLon; maxLon += padLon;
+        lat0 = (minLat + maxLat) / 2; lon0 = (minLon + maxLon) / 2;
+        kmX = 111.32f * MathF.Cos(lat0 * MathF.PI / 180); kmZ = 110.57f;
+        float wKm = (maxLon - minLon) * kmX, hKm = (maxLat - minLat) * kmZ;
+        scale = W / Math.Max(wKm, hKm);
+        float spacing = Math.Max(wKm, hKm) / (Cells - 1);
+        nx = Math.Max(3, (int)MathF.Round(wKm / spacing) + 1);
+        ny = Math.Max(3, (int)MathF.Round(hKm / spacing) + 1);
+        dLon = (maxLon - minLon) / (nx - 1); dLat = (maxLat - minLat) / (ny - 1);
+        cs = spacing * scale;
+
+        Mask();
+        int n = nx * ny;
+        meters = new float[n]; Array.Fill(meters, float.NaN);
+        arrivedAt = new long[n];
+        b = new float[n]; d = new float[n];
+        fE = new float[n]; fW = new float[n]; fN = new float[n]; fS = new float[n];
+        temp = new float[n]; rain = new float[n]; cloud = new float[n];
+        sx = new float[n]; sy = new float[n];
+        heightsIn = 0; hi = 1; ex = -1;
+        RequestTiles();
+        RequestWeather();
+    }
+
+    /// <summary>
+    /// Which grid points are inside the country, row by row: where each row crosses the
+    /// outline, sorted, every other stretch is inside (much faster than testing each point).
+    /// </summary>
+    void Mask()
+    {
+        inside = new bool[nx * ny];
+        var xs = new List<float>();
+        for (int r = 0; r < ny; r++)
+        {
+            float lat = minLat + r * dLat;
+            xs.Clear();
+            foreach (var (la, lo) in outline)
+                for (int i = 0, j = la.Length - 1; i < la.Length; j = i++)
+                    if ((la[i] > lat) != (la[j] > lat))
+                        xs.Add(lo[i] + (lat - la[i]) / (la[j] - la[i]) * (lo[j] - lo[i]));
+            xs.Sort();
+            for (int k = 0; k + 1 < xs.Count; k += 2)
+            {
+                int c0 = Math.Max(0, (int)MathF.Ceiling((xs[k] - minLon) / dLon));
+                int c1 = Math.Min(nx - 1, (int)MathF.Floor((xs[k + 1] - minLon) / dLon));
+                for (int c = c0; c <= c1; c++) inside[r * nx + c] = true;
+            }
+        }
+        drawn = new bool[nx * ny];
+        for (int r = 0; r < ny; r++)
+            for (int c = 0; c < nx; c++)
+                for (int dr = -1; dr <= 1 && !drawn[r * nx + c]; dr++)
+                    for (int dc = -1; dc <= 1; dc++)
+                    {
+                        int rr = r + dr, cc = c + dc;
+                        if (rr >= 0 && cc >= 0 && rr < ny && cc < nx && inside[rr * nx + cc]) { drawn[r * nx + c] = true; break; }
+                    }
+    }
+
+    static float Area(GeoRing ring)
+    {
+        float a = 0;
+        for (int i = 0, j = ring.Count - 1; i < ring.Count; j = i++)
+            a += (ring.Lon[j] - ring.Lon[i]) * (ring.Lat[j] + ring.Lat[i]);
+        return Math.Abs(a) * MathF.Cos(ring.Lat[0] * MathF.PI / 180);
+    }
+
+    static (float, float, float, float) Box(float[] la, float[] lo)
+    {
+        float a0 = float.MaxValue, a1 = float.MinValue, o0 = float.MaxValue, o1 = float.MinValue;
+        for (int i = 0; i < la.Length; i++)
+        {
+            a0 = Math.Min(a0, la[i]); a1 = Math.Max(a1, la[i]);
+            o0 = Math.Min(o0, lo[i]); o1 = Math.Max(o1, lo[i]);
+        }
+        return (a0, a1, o0, o1);
+    }
+
+    static bool InRing(float[] la, float[] lo, float lat, float lon)
+    {
+        bool inside = false;
+        for (int i = 0, j = la.Length - 1; i < la.Length; j = i++)
+            if ((la[i] > lat) != (la[j] > lat) && lon < (lo[j] - lo[i]) * (lat - la[i]) / (la[j] - la[i]) + lo[i])
+                inside = !inside;
+        return inside;
+    }
+
+    // =====================================================================================
+    // The relief: terrain tiles, Web Mercator like every web map
+    // =====================================================================================
+    static float TileX(float lon, int z) => (lon + 180) / 360 * (1 << z);
+    static float TileY(float lat, int z)
+    {
+        double r = Math.Clamp(lat, -85, 85) * Math.PI / 180;
+        return (float)((1 - Math.Log(Math.Tan(r) + 1 / Math.Cos(r)) / Math.PI) / 2 * (1 << z));
+    }
+
+    string TileUrl(int z, int x, int y) => $""https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png"";
+
+    void RequestTiles()
+    {
+        // The deepest zoom whose tiles over the country are 16 or fewer (plenty for 180 points).
+        for (tileZoom = 10; tileZoom > 1; tileZoom--)
+        {
+            tx0 = (int)MathF.Floor(TileX(minLon, tileZoom)); ty0 = (int)MathF.Floor(TileY(maxLat, tileZoom));
+            tilesW = (int)MathF.Floor(TileX(maxLon, tileZoom)) - tx0 + 1;
+            tilesH = (int)MathF.Floor(TileY(minLat, tileZoom)) - ty0 + 1;
+            if (tilesW * tilesH <= 16) break;
+        }
+        tiles = new Request<PImage>[tilesW * tilesH];
+        tileRead = new bool[tiles.Length];
+        int n = 1 << tileZoom;
+        for (int t = 0; t < tiles.Length; t++)
+        {
+            int x = ((tx0 + t % tilesW) % n + n) % n, y = ty0 + t / tilesW;
+            if (y >= 0 && y < n) tiles[t] = RequestPImage(TileUrl(tileZoom, x, y), cacheFor: TimeSpan.FromDays(90));
+        }
+    }
+
+    void ReadTiles()
+    {
+        for (int t = 0; t < tiles.Length; t++)
+        {
+            if (tileRead[t] || tiles[t] == null || !tiles[t].Done) continue;
+            tileRead[t] = true;
+            if (!tiles[t].Ready) continue;
+            var img = tiles[t].Value;
+            img.LoadPixels();
+            var px = img.Pixels;
+            int size = img.Width;
+            float Height(int x, int y)
+            {
+                var c = px[Math.Clamp(y, 0, size - 1) * size + Math.Clamp(x, 0, size - 1)];
+                return c.R * 256f + c.G + c.B / 256f - 32768;              // terrarium encoding
+            }
+            int tileX = tx0 + t % tilesW, tileY = ty0 + t / tilesW;
+            for (int i = 0; i < nx * ny; i++)
+            {
+                if (!drawn[i]) continue;
+                float lat = minLat + i / nx * dLat, lon = minLon + i % nx * dLon;
+                float fx = (TileX(lon, tileZoom) - tileX) * size - 0.5f, fy = (TileY(lat, tileZoom) - tileY) * size - 0.5f;
+                if (fx < -0.5f || fy < -0.5f || fx >= size - 0.5f || fy >= size - 0.5f) continue;
+                int x0 = (int)MathF.Floor(fx), y0 = (int)MathF.Floor(fy);
+                float ax = fx - x0, ay = fy - y0;
+                float h = Lerp(Lerp(Height(x0, y0), Height(x0 + 1, y0), ax), Lerp(Height(x0, y0 + 1), Height(x0 + 1, y0 + 1), ax), ay);
+                meters[i] = inside[i] ? h : Math.Max(h, 0);
+                arrivedAt[i] = Millis();
+                heightsIn++;
+                if (inside[i]) hi = Math.Max(hi, h);
+            }
+        }
+    }
+
+    // =====================================================================================
+    // The weather: one call for ~25 points, now and hour by hour
+    // =====================================================================================
+    void RequestWeather()
+    {
+        stations.Clear();
+        weatherRead = false; hourTemp = null; fieldsForHour = -1;
+        for (int i = 0; i < 6; i++)
+            for (int j = 0; j < 6; j++)
+            {
+                float la = minLat + (maxLat - minLat) * (i + 0.5f) / 6, lo = minLon + (maxLon - minLon) * (j + 0.5f) / 6;
+                int r = (int)MathF.Round((la - minLat) / dLat), c = (int)MathF.Round((lo - minLon) / dLon);
+                if (inside[Math.Clamp(r, 0, ny - 1) * nx + Math.Clamp(c, 0, nx - 1)]) stations.Add((la, lo));
+            }
+        while (stations.Count < 2) stations.Add((lat0, lon0));    // two or more: the API answers with a list
+        var inv = System.Globalization.CultureInfo.InvariantCulture;
+        string lats = string.Join("","", stations.Select(s => s.Lat.ToString(""0.###"", inv)));
+        string lons = string.Join("","", stations.Select(s => (((s.Lon + 540) % 360) - 180).ToString(""0.###"", inv)));
+        weatherReq = RequestJSONArray($""https://api.open-meteo.com/v1/forecast?latitude={lats}&longitude={lons}"" +
+            ""&current=temperature_2m,wind_speed_10m,wind_direction_10m&hourly=temperature_2m,precipitation,cloud_cover,weather_code"" +
+            ""&forecast_days=3&timezone=GMT&wind_speed_unit=kmh"", cacheFor: TimeSpan.FromMinutes(30));
+    }
+
+    void ReadWeather()
+    {
+        if (weatherRead || weatherReq == null || !weatherReq.Done) return;
+        weatherRead = true;
+        if (!weatherReq.Ready) return;
+        var list = weatherReq.Value;
+        int s = Math.Min(list.Size(), stations.Count);
+        hourTemp = new float[s][]; hourRain = new float[s][]; hourCloud = new float[s][]; hourCode = new int[s][];
+        float wsum = 0, wx = 0, wz = 0;
+        for (int k = 0; k < s; k++)
+        {
+            var o = list.GetJSONObject(k);
+            var h = o.GetJSONObject(""hourly"");
+            var times = h.GetJSONArray(""time"");
+            int count = times.Size();
+            hourTemp[k] = Floats(h.GetJSONArray(""temperature_2m""), count);
+            hourRain[k] = Floats(h.GetJSONArray(""precipitation""), count);
+            hourCloud[k] = Floats(h.GetJSONArray(""cloud_cover""), count);
+            var codes = h.GetJSONArray(""weather_code"");
+            hourCode[k] = new int[count];
+            for (int i = 0; i < count; i++) hourCode[k][i] = codes.GetInt(i);
+            if (k == 0)
+            {
+                hourTimes = new string[count];
+                for (int i = 0; i < count; i++) hourTimes[i] = times.GetString(i);
+                string now = o.GetJSONObject(""current"").GetString(""time"");
+                nowHour = Math.Max(0, Array.FindIndex(hourTimes, t => now.Length >= 13 && t.StartsWith(now.Substring(0, 13))));
+                hour = nowHour;
+            }
+            // The wind: the average over the stations, as a vector.
+            var cur = o.GetJSONObject(""current"");
+            float sp = cur.GetFloat(""wind_speed_10m""), dir = Radians(cur.GetFloat(""wind_direction_10m""));
+            wx += sp * Sin(dir); wz += sp * Cos(dir); wsum++;
+        }
+        windKmh = Mag(wx, wz) / Math.Max(1, wsum);
+        windFromDeg = (Degrees(Atan2(wx, wz)) + 360) % 360;
+    }
+
+    static float[] Floats(JSONArray a, int count)
+    {
+        var f = new float[count];
+        for (int i = 0; i < count && i < a.Size(); i++) f[i] = a.GetFloat(i);
+        return f;
+    }
+
+    /// <summary>The weather on the grid at the shown hour: each cell weighs the stations by 1 / distance².</summary>
+    void Fields()
+    {
+        int h = (int)hour;
+        if (hourTemp == null || h == fieldsForHour) return;
+        fieldsForHour = h;
+        tMin = float.MaxValue; tMax = float.MinValue; rainMax = 0;
+        for (int i = 0; i < nx * ny; i++)
+        {
+            if (!drawn[i]) continue;
+            float la = minLat + i / nx * dLat, lo = minLon + i % nx * dLon;
+            float wsum = 0, t = 0, r = 0, c = 0;
+            for (int k = 0; k < hourTemp.Length; k++)
+            {
+                float dx = (lo - stations[k].Lon) * kmX, dz = (la - stations[k].Lat) * kmZ;
+                float w = 1 / (dx * dx + dz * dz + 25);
+                int hh = Math.Min(h, hourTemp[k].Length - 1);
+                t += w * hourTemp[k][hh]; r += w * hourRain[k][hh]; c += w * hourCloud[k][hh];
+                wsum += w;
+            }
+            temp[i] = t / wsum; rain[i] = r / wsum; cloud[i] = c / wsum;
+            if (inside[i]) { tMin = Math.Min(tMin, temp[i]); tMax = Math.Max(tMax, temp[i]); rainMax = Math.Max(rainMax, rain[i]); }
+        }
+    }
+
+    // =====================================================================================
+    // The water: virtual pipes
+    // =====================================================================================
+    void Simulate(float dt)
+    {
+        const float g = 9.8f, damping = 0.995f;
+        int n = nx * ny;
+        float area = cs * cs;
+        // Sources and sinks: rain, the sun, the sea.
+        for (int i = 0; i < n; i++)
+        {
+            if (!inside[i]) { d[i] = 0; continue; }
+            float mmh = (hourTemp != null ? rain[i] : 0) + (deluge > 0 ? 40 : 0);
+            d[i] += mmh * RainSpeed * dt;
+            float evaporate = (0.0003f + 0.00003f * Math.Max(0, temp[i])) * dt;
+            d[i] = Math.Max(0, d[i] - evaporate);
+        }
+        // Each pipe's flow grows with the difference of water surface across it.
+        for (int r = 0; r < ny; r++)
+            for (int c = 0; c < nx; c++)
+            {
+                int i = r * nx + c;
+                if (!inside[i]) { fE[i] = fW[i] = fN[i] = fS[i] = 0; continue; }
+                float h = b[i] + d[i];
+                float Pipe(float f, int j) => j < 0 ? 0 : Math.Max(0, f * damping + dt * g * cs * (h - b[j] - d[j]));
+                fE[i] = Pipe(fE[i], c + 1 < nx ? i + 1 : -1);
+                fW[i] = Pipe(fW[i], c > 0 ? i - 1 : -1);
+                fN[i] = Pipe(fN[i], r + 1 < ny ? i + nx : -1);
+                fS[i] = Pipe(fS[i], r > 0 ? i - nx : -1);
+                float out1 = (fE[i] + fW[i] + fN[i] + fS[i]) * dt;
+                if (out1 > d[i] * area && out1 > 0)
+                {
+                    float k = d[i] * area / out1;                // never send more than the cell has
+                    fE[i] *= k; fW[i] *= k; fN[i] *= k; fS[i] *= k;
+                }
+            }
+        for (int r = 0; r < ny; r++)
+            for (int c = 0; c < nx; c++)
+            {
+                int i = r * nx + c;
+                if (!inside[i]) continue;
+                float inflow = (c > 0 ? fE[i - 1] : 0) + (c + 1 < nx ? fW[i + 1] : 0) + (r > 0 ? fN[i - nx] : 0) + (r + 1 < ny ? fS[i + nx] : 0);
+                float outflow = fE[i] + fW[i] + fN[i] + fS[i];
+                d[i] = Math.Max(0, d[i] + dt * (inflow - outflow) / area);
+            }
+    }
+
+    // =====================================================================================
+    // Each frame
+    // =====================================================================================
+    public override void Draw()
+    {
+        Background(8, 12, 20);
+        if (!countriesReq.Ready) { Centered(""countries: "" + countriesReq.Status); return; }
+        if (worldMap == null) BuildWorldMap();
+        if (picking) { DrawPicker(); return; }
+
+        ReadTiles();
+        ReadWeather();
+        Fields();
+        float dt = 1 / 60f;
+        if (!paused)
+        {
+            animT += dt;
+            if (hourTemp != null) hour = Math.Min(hour + dt / 4, hourTimes.Length - 1);   // 4 s per forecast hour
+            deluge = Math.Max(0, deluge - dt);
+            for (int k = 0; k < 3; k++) Simulate(dt);
+        }
+
+        // Terrain heights in world units, rising as they arrive; the exaggeration eases in.
+        float target = Math.Clamp(0.09f * W / (Math.Max(hi, 300) / 1000 * scale), 1, 120) * heightMul;
+        ex = ex < 0 ? target : Lerp(ex, target, 0.08f);
+        float k1 = scale * ex / 1000;
+        for (int i = 0; i < nx * ny; i++)
+        {
+            if (!drawn[i]) continue;
+            float m = float.IsNaN(meters[i]) ? 0 : meters[i];
+            float t = Math.Clamp((Millis() - arrivedAt[i]) / 900f, 0, 1);
+            b[i] = m * k1 * (float.IsNaN(meters[i]) ? 0 : 1 - (1 - t) * (1 - t) * (1 - t));
+        }
+
+        var view = View3D.Orbit(yaw, pitch, 62 / zoom, new PVector(0, 1.5f, 0), 45);
+        DrawLand(view);
+        DrawSky(view);
+        DrawBorder(view);
+        Hud();
+        Legend();
+        MiniMap();
+    }
+
+    PVector World(int i, float y) =>
+        new PVector((minLon + i % nx * dLon - lon0) * kmX * scale, y, (minLat + i / nx * dLat - lat0) * kmZ * scale);
+
+    /// <summary>
+    /// The terrain and its water, as one batch of triangles. No depth sorting: walking the
+    /// grid from the side far from the camera to the near side paints a height field in the
+    /// right order; each cell's water is drawn right over its ground.
+    /// </summary>
+    void DrawLand(View3D view)
+    {
+        int n = nx * ny;
+        var wsx = new float[n]; var wsy = new float[n];
+        var ground = new Color[n]; var water = new Color[n];
+        var light = new PVector(-0.55f, 0.75f, 0.45f);
+        light.Normalize();
+        float top = Math.Max(hi, 400);
+        for (int i = 0; i < n; i++)
+        {
+            if (!drawn[i]) continue;
+            var p = view.Project(World(i, b[i]), Width, Height);
+            sx[i] = p.X; sy[i] = p.Y;
+            int c = i % nx, r = i / nx;
+            float hl = b[c > 0 ? i - 1 : i], hr = b[c + 1 < nx ? i + 1 : i], hd = b[r > 0 ? i - nx : i], hu = b[r + 1 < ny ? i + nx : i];
+            var nrm = new PVector(-(hr - hl) / (2 * cs), 1, -(hu - hd) / (2 * cs));
+            nrm.Normalize();
+            float lit = 0.35f + 0.8f * Math.Max(0, nrm.X * light.X + nrm.Y * light.Y + nrm.Z * light.Z);
+            Color baseColor = float.IsNaN(meters[i]) ? Color(38, 52, 72)
+                : layer == 1 && hourTemp != null ? TempColor(temp[i])
+                : layer == 2 && hourTemp != null ? RainColor(rain[i], meters[i], top)
+                : Hypsometric(meters[i], top);
+            ground[i] = Color(Math.Min(255, baseColor.R * lit), Math.Min(255, baseColor.G * lit), Math.Min(255, baseColor.B * lit), inside[i] ? 255 : 120);
+            if (d[i] > 0.003f)
+            {
+                var q = view.Project(World(i, b[i] + d[i]), Width, Height);
+                wsx[i] = q.X; wsy[i] = q.Y;
+                float deep = Math.Clamp(d[i] / 0.5f, 0, 1);
+                float speed = Math.Clamp((fE[i] + fW[i] + fN[i] + fS[i]) / (cs * Math.Max(d[i], 0.02f)) * 0.6f, 0, 1);
+                water[i] = Color(Lerp(Lerp(110, 25, deep), 235, speed * 0.6f), Lerp(Lerp(185, 85, deep), 245, speed * 0.6f), Lerp(Lerp(240, 175, deep), 255, speed * 0.6f),
+                                 Lerp(120, 225, deep));
+            }
+            else { wsx[i] = sx[i]; wsy[i] = sy[i]; water[i] = Color(90, 170, 240, 0); }
+        }
+
+        // Far to near: which way that is depends on where the camera is.
+        var eye = view.Eye;
+        bool rowsUp = eye.Z < 0, colsUp = eye.X < 0;       // camera south -> start with the north rows
+        NoStroke();
+        BeginShape(ShapeKind.Triangles);
+        for (int rr = 0; rr < ny - 1; rr++)
+        {
+            int r = rowsUp ? ny - 2 - rr : rr;
+            for (int cc = 0; cc < nx - 1; cc++)
+            {
+                int c = colsUp ? nx - 2 - cc : cc;
+                int a = r * nx + c, e = a + 1, f = a + nx, g = f + 1;
+                if (!drawn[a] || !drawn[e] || !drawn[f] || !drawn[g]) continue;
+                if (!inside[a] && !inside[e] && !inside[f] && !inside[g]) continue;
+                Fill(ground[a]); Vertex(sx[a], sy[a]); Fill(ground[e]); Vertex(sx[e], sy[e]); Fill(ground[g]); Vertex(sx[g], sy[g]);
+                Fill(ground[a]); Vertex(sx[a], sy[a]); Fill(ground[g]); Vertex(sx[g], sy[g]); Fill(ground[f]); Vertex(sx[f], sy[f]);
+                if (water[a].A + water[e].A + water[f].A + water[g].A == 0) continue;
+                Fill(water[a]); Vertex(wsx[a], wsy[a]); Fill(water[e]); Vertex(wsx[e], wsy[e]); Fill(water[g]); Vertex(wsx[g], wsy[g]);
+                Fill(water[a]); Vertex(wsx[a], wsy[a]); Fill(water[g]); Vertex(wsx[g], wsy[g]); Fill(water[f]); Vertex(wsx[f], wsy[f]);
+            }
+        }
+        EndShape();
+    }
+
+    /// <summary>Clouds where the forecast has them, drifting with the wind; rain under the rainy ones.</summary>
+    void DrawSky(View3D view)
+    {
+        if (hourTemp == null && deluge <= 0) return;
+        clouds.Clear();
+        float to = Radians(windFromDeg + 180);
+        float drift = windKmh / 30f * animT;                     // world units the clouds have moved
+        float dx = Sin(to) * drift, dz = Cos(to) * drift;
+        float lean = Math.Min(windKmh, 60) / 60f * 0.5f;
+        float skyY = Math.Max(hi, 400) / 1000 * scale * ex + 4;
+        float spanX = (maxLon - minLon) * kmX * scale, spanZ = (maxLat - minLat) * kmZ * scale;
+        var streaks = new List<(float, float, float, float)>();
+        int lattice = 52;
+        for (int a = 0; a < lattice; a++)
+            for (int c = 0; c < lattice; c++)
+            {
+                // A cloud slot fixed to the air, moved by the wind and wrapped around the country.
+                float h1 = Hash(a * 977 + c), h2 = Hash(a * 131 + c * 7 + 3);
+                float x = Wrap((c + h1) / lattice * spanX + dx, spanX) - spanX / 2;
+                float z = Wrap((a + h2) / lattice * spanZ + dz, spanZ) - spanZ / 2;
+                int col = (int)MathF.Round((x / (kmX * scale) + lon0 - minLon) / dLon), row = (int)MathF.Round((z / (kmZ * scale) + lat0 - minLat) / dLat);
+                if (col < 0 || row < 0 || col >= nx || row >= ny) continue;
+                int i = row * nx + col;
+                if (!drawn[i]) continue;
+                float cover = deluge > 0 ? 100 : cloud[i];
+                if (h1 * 100 > cover) continue;
+                float wet = deluge > 0 ? 40 : rain[i];
+                float dark = Math.Clamp(wet / 4, 0, 1);
+                float y = skyY + h2 * 2;
+                clouds.Add(x, y, z, Color(Lerp(235, 120, dark), Lerp(240, 130, dark), Lerp(250, 150, dark), 60 + 90 * dark), 0.9f + 0.9f * h2);
+                // Rain: a few streaks per rainy cloud, falling to the ground.
+                int drops = wet > 0.1f ? 1 + (int)Math.Min(3, wet / 2) : 0;
+                for (int k = 0; k < drops; k++)
+                {
+                    float ph = Hash(a * 31 + c * 17 + k);
+                    float fall = (animT * 0.9f + ph) % 1;
+                    float yy = y * (1 - fall);
+                    float px = x + (ph - 0.5f) * 1.2f - Sin(to) * lean * (y - yy), pz = z + (Hash(k + c) - 0.5f) * 1.2f - Cos(to) * lean * (y - yy);
+                    var p = view.Project(new PVector(px, yy, pz), Width, Height);
+                    var q = view.Project(new PVector(px + Sin(to) * lean, yy + 1.2f, pz + Cos(to) * lean), Width, Height);
+                    if (p.Depth > 0.5f && q.Depth > 0.5f) streaks.Add((p.X, p.Y, q.X, q.Y));
+                }
+            }
+        StrokeWeight(1);
+        Stroke(170, 205, 255, 150);
+        BeginShape(ShapeKind.Lines);
+        foreach (var (x0, y0, x1, y1) in streaks) { Vertex(x0, y0); Vertex(x1, y1); }
+        EndShape();
+        Points(clouds, view);
+    }
+
+    static float Wrap(float v, float m) => ((v % m) + m) % m;
+
+    void DrawBorder(View3D view)
+    {
+        var segs = new List<(float, float, float, float)>();
+        foreach (var (la, lo) in outline)
+        {
+            int step = Math.Max(1, la.Length / 1500);
+            (float X, float Y, float Depth) prev = default;
+            for (int i = 0; i <= la.Length; i += step)
+            {
+                int j = Math.Min(i, la.Length - 1);
+                int c = Math.Clamp((int)MathF.Round((lo[j] - minLon) / dLon), 0, nx - 1), r = Math.Clamp((int)MathF.Round((la[j] - minLat) / dLat), 0, ny - 1);
+                float y = b[r * nx + c] + 0.05f;
+                var p = view.Project(new PVector((lo[j] - lon0) * kmX * scale, y, (la[j] - lat0) * kmZ * scale), Width, Height);
+                if (i > 0 && p.Depth > 0.5f && prev.Depth > 0.5f) segs.Add((prev.X, prev.Y, p.X, p.Y));
+                prev = p;
+            }
+        }
+        StrokeWeight(1.2f);
+        Stroke(255, 255, 255, 140);
+        BeginShape(ShapeKind.Lines);
+        foreach (var (x0, y0, x1, y1) in segs) { Vertex(x0, y0); Vertex(x1, y1); }
+        EndShape();
+    }
+
+    // ---- colors ---------------------------------------------------------------------------
+    Color Hypsometric(float h, float top)
+    {
+        float k = Math.Clamp(top / 4500, 0.25f, 1);
+        (float H, int R, int G, int B)[] stops =
+        {
+            (0, 60, 130, 85), (250, 105, 160, 90), (700, 190, 185, 110), (1400, 175, 130, 80),
+            (2300, 140, 110, 95), (3300, 205, 205, 210), (4500, 250, 250, 255),
+        };
+        return Ramp(stops, h, k);
+    }
+
+    Color TempColor(float t)
+    {
+        (float H, int R, int G, int B)[] stops =
+        {
+            (-20, 120, 60, 200), (-5, 90, 140, 235), (5, 120, 210, 230), (15, 150, 220, 120),
+            (25, 245, 200, 70), (33, 235, 100, 50), (42, 170, 30, 60),
+        };
+        return Ramp(stops, t, 1);
+    }
+
+    Color RainColor(float mmh, float meters, float top)
+    {
+        var g = Hypsometric(meters, top);
+        float gray = (g.R + g.G + g.B) / 3f * 0.6f;
+        float k = Math.Clamp(mmh / 8, 0, 1);
+        return mmh < 0.05f ? Color(gray, gray, gray) : Color(Lerp(gray, 60, k), Lerp(gray + 30, 120, k), Lerp(gray + 60, 255, k));
+    }
+
+    Color Ramp((float H, int R, int G, int B)[] stops, float v, float k)
+    {
+        for (int s = 1; s < stops.Length; s++)
+        {
+            float h1 = stops[s].H * k;
+            if (v <= h1 || s == stops.Length - 1)
+            {
+                float h0 = stops[s - 1].H * k;
+                float t = Math.Clamp((v - h0) / Math.Max(1e-3f, h1 - h0), 0, 1);
+                return Color(Lerp(stops[s - 1].R, stops[s].R, t), Lerp(stops[s - 1].G, stops[s].G, t), Lerp(stops[s - 1].B, stops[s].B, t));
+            }
+        }
+        return Color(255, 255, 255);
+    }
+
+    static float Hash(int n)
+    {
+        unchecked
+        {
+            uint x = (uint)n * 747796405u + 2891336453u;
+            x = ((x >> (int)((x >> 28) + 4)) ^ x) * 277803737u;
+            return ((x >> 22) ^ x) / 4294967296f;
+        }
+    }
+
+    // =====================================================================================
+    // The world map
+    // =====================================================================================
+    void BuildWorldMap()
+    {
+        worldMap = CreateGraphics(Width, Width / 2);
+        worldMap.BeginDraw();
+        worldMap.Background(10, 16, 28);
+        worldMap.Stroke(255, 255, 255, 18);
+        for (int lo = -180; lo <= 180; lo += 30) worldMap.Line((lo + 180) / 360f * Width, 0, (lo + 180) / 360f * Width, Width / 2);
+        for (int la = -60; la <= 60; la += 30) worldMap.Line(0, (90 - la) / 180f * Width / 2, Width, (90 - la) / 180f * Width / 2);
+        worldMap.Fill(48, 70, 92);
+        worldMap.Stroke(110, 140, 170);
+        worldMap.StrokeWeight(0.5f);
+        foreach (var f in countriesReq.Value.Features) Shape(worldMap, f, Width, Width / 2, 0, 0);
+        worldMap.EndDraw();
+    }
+
+    static void Shape(GraphicsContext g, GeoFeature f, float w, float h, float x, float y)
+    {
+        foreach (var ring in f.Rings)
+        {
+            if (ring.IsHole) continue;
+            g.BeginShape();
+            for (int i = 0; i < ring.Count; i++)
+            {
+                var (px, py) = Geo.Equirectangular(ring.Lat[i], ring.Lon[i], w, h);
+                g.Vertex(x + px, y + py);
+            }
+            g.EndShape(true);
+        }
+    }
+
+    void DrawPicker()
+    {
+        Image(worldMap, 0, mapY);
+        hover = null;
+        if (MouseY > mapY && MouseY < mapY + Width / 2)
+        {
+            var (la, lo) = Geo.FromEquirectangular(MouseX, MouseY - mapY, Width, Width / 2);
+            hover = countriesReq.Value.FeatureAt(la, lo);
+        }
+        if (hover != null)
+        {
+            Fill(255, 200, 90); Stroke(255, 240, 200); StrokeWeight(1);
+            Shape(this, hover, Width, Width / 2, 0, mapY);
+        }
+        TextFont(font, 22);
+        TextAlign(TextAlignH.Left, TextAlignV.Top);
+        Fill(235, 240, 255);
+        Text(hover?.Name ?? ""Pick a country"", 20, 16);
+        TextFont(font, 13);
+        Fill(170, 185, 215);
+        Text(hover != null ? ""click: its relief, its weather and its water"" : ""click any country · R: a random one"", 20, 46);
+        TextAlign(TextAlignH.Left, TextAlignV.Bottom);
+        Fill(255, 255, 255, 60);
+        Text(""Relief: Terrain Tiles on AWS (Mapzen) · Weather: Open-Meteo · Borders: Natural Earth"", 20, Height - 14);
+    }
+
+    void MiniMap()
+    {
+        float mw = 200, mh = 100, mx = Width - mw - 16, my = 16;
+        Tint(255, 255, 255, 200);
+        Image(worldMap, mx, my, mw, mh);
+        NoTint();
+        Fill(255, 200, 90); NoStroke();
+        Shape(this, country, mw, mh, mx, my);
+        NoFill(); Stroke(255, 255, 255, 60); StrokeWeight(1);
+        Rect(mx, my, mw, mh, 4);
+    }
+
+    // =====================================================================================
+    // Text on screen
+    // =====================================================================================
+    void Centered(string s)
+    {
+        TextFont(font, 16);
+        TextAlign(TextAlignH.Center, TextAlignV.Center);
+        Fill(170, 185, 215);
+        Text(s, Width / 2, Height / 2);
+    }
+
+    void Hud()
+    {
+        TextFont(font, 22);
+        TextAlign(TextAlignH.Left, TextAlignV.Top);
+        Fill(235, 240, 255);
+        Text(country.Name, 20, 16);
+        TextFont(font, 13);
+        Fill(170, 185, 215);
+        int total = 0; foreach (bool v in drawn) if (v) total++;
+        float y = 46;
+        if (heightsIn < total)
+        {
+            int done = 0; foreach (var t in tiles) if (t == null || t.Done) done++;
+            Text($""relief: {done}/{tiles.Length} tiles (zoom {tileZoom})"", 20, y); y += 20;
+        }
+        else
+        {
+            Text($""up to {hi:N0} m  ·  a height every {dLon * kmX:0.#} km  ·  heights x{ex:0.#}"", 20, y); y += 20;
+        }
+        if (hourTemp != null)
+        {
+            int h = (int)hour;
+            var when = DateTime.Parse(hourTimes[h], System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.AssumeUniversal).ToLocalTime();
+            string rel = h == nowHour ? ""now"" : h > nowHour ? $""in {h - nowHour} h"" : $""{nowHour - h} h ago"";
+            Fill(235, 240, 255);
+            Text($""{when:ddd HH:00} ({rel})  ·  {Condition(h)}"", 20, y); y += 20;
+            Fill(170, 185, 215);
+            Text($""{tMin:0}° to {tMax:0}°C  ·  rain up to {rainMax:0.#} mm/h  ·  wind {windKmh:0} km/h from {Compass(windFromDeg)}"", 20, y); y += 20;
+        }
+        else Text(""weather: "" + (weatherReq?.Status ?? ""...""), 20, y);
+        if (deluge > 0) { Fill(140, 200, 255); Text(""DELUGE!"", 20, y + 4); }
+        else if (paused) { Fill(255, 210, 120); Text(""PAUSED"", 20, y + 4); }
+        else if (hourTemp != null && rainMax < 0.1f && WaterVolume() < 0.5f)
+        {
+            Fill(150, 220, 255);
+            Text(""no rain here now: D for a deluge, or click the land to drop a lake"", 20, y + 4);
+        }
+        TextAlign(TextAlignH.Left, TextAlignV.Bottom);
+        Fill(255, 255, 255, 90);
+        Text(""click: drop water · D: deluge · L: layer · Space: pause · , .: hours · W: dry · M: world · R: random · drag: turn · wheel: zoom · Up/Down: heights"", 20, Height - 14);
+        Fill(255, 255, 255, 60);
+        Text(""Relief: Terrain Tiles on AWS (Mapzen) · Weather: Open-Meteo · Borders: Natural Earth"", 20, Height - 32);
+    }
+
+    void Legend()
+    {
+        if (layer == 0 || hourTemp == null) return;
+        float x = Width - 216, y = 140, w = 200;
+        for (int i = 0; i < w; i++)
+        {
+            float t = i / (w - 1);
+            Stroke(layer == 1 ? TempColor(Lerp(-10, 40, t)) : RainColor(t * 10, 0, 1000));
+            Line(x + i, y, x + i, y + 10);
+        }
+        NoStroke();
+        Fill(200, 210, 230);
+        TextFont(font, 11);
+        TextAlign(TextAlignH.Left, TextAlignV.Top);
+        Text(layer == 1 ? ""-10 °C"" : ""0"", x, y + 14);
+        TextAlign(TextAlignH.Right, TextAlignV.Top);
+        Text(layer == 1 ? ""40 °C  temperature"" : ""10 mm/h  rain"", x + w, y + 14);
+    }
+
+    string Condition(int h)
+    {
+        // The most common weather code over the stations at that hour, in words.
+        var counts = new Dictionary<int, int>();
+        foreach (var codes in hourCode) { int c = codes[Math.Min(h, codes.Length - 1)]; counts[c] = counts.GetValueOrDefault(c) + 1; }
+        int code = counts.OrderByDescending(kv => kv.Value).First().Key;
+        return code switch
+        {
+            0 => ""clear sky"", 1 => ""mostly clear"", 2 => ""partly cloudy"", 3 => ""overcast"",
+            45 or 48 => ""fog"", >= 51 and <= 57 => ""drizzle"", >= 61 and <= 67 => ""rain"",
+            >= 71 and <= 77 => ""snow"", >= 80 and <= 82 => ""showers"", 85 or 86 => ""snow showers"",
+            >= 95 => ""thunderstorms"", _ => ""—"",
+        };
+    }
+
+    float WaterVolume() { float v = 0; for (int i = 0; i < d.Length; i++) v += d[i]; return v * cs * cs; }
+
+    static string Compass(float deg) => new[] { ""N"", ""NE"", ""E"", ""SE"", ""S"", ""SW"", ""W"", ""NW"" }[(int)Math.Round(((deg % 360) + 360) % 360 / 45) % 8];
+
+    // =====================================================================================
+    // Input
+    // =====================================================================================
+    public override void MousePressed() { pressX = MouseX; pressY = MouseY; }
+
+    public override void MouseReleased()
+    {
+        if (Dist(pressX, pressY, MouseX, MouseY) > 5 || !countriesReq.Ready) return;   // a drag, not a click
+        if (picking)
+        {
+            if (MouseY < mapY || MouseY > mapY + Width / 2) return;
+            var (la, lo) = Geo.FromEquirectangular(MouseX, MouseY - mapY, Width, Width / 2);
+            var f = countriesReq.Value.FeatureAt(la, lo);
+            if (f != null) Choose(f, la, lo);
+        }
+        else if (MouseX > Width - 216 && MouseY < 116) picking = true;
+        else DropWater(MouseX, MouseY);
+    }
+
+    /// <summary>The grid point drawn nearest the click gets a mound of water: it runs downhill from there.</summary>
+    void DropWater(float x, float y)
+    {
+        int best = -1; float bestD = 30 * 30;
+        for (int i = 0; i < nx * ny; i++)
+        {
+            if (!inside[i]) continue;
+            float dd = (sx[i] - x) * (sx[i] - x) + (sy[i] - y) * (sy[i] - y);
+            if (dd < bestD) { bestD = dd; best = i; }
+        }
+        if (best < 0) return;
+        int bc = best % nx, br = best / nx, radius = Math.Max(3, nx / 30);
+        for (int r = br - radius; r <= br + radius; r++)
+            for (int c = bc - radius; c <= bc + radius; c++)
+            {
+                if (r < 0 || c < 0 || r >= ny || c >= nx || !inside[r * nx + c]) continue;
+                float k = 1 - Dist(c, r, bc, br) / radius;
+                if (k > 0) d[r * nx + c] += 1.2f * k * k;
+            }
+    }
+
+    public override void MouseDragged()
+    {
+        if (picking) return;
+        yaw -= (MouseX - PMouseX) * 0.008f;
+        pitch = Constrain(pitch - (MouseY - PMouseY) * 0.008f, 0.15f, 1.5f);
+    }
+
+    public override void MouseWheel(float delta) => zoom = Constrain(zoom * (delta > 0 ? 1 / 1.1f : 1.1f), 0.5f, 6);
+
+    public override void KeyPressed()
+    {
+        if (Key == 'm' || Key == 'M' || Key == '\t') { if (country != null) picking = !picking; }
+        else if ((Key == 'r' || Key == 'R') && countriesReq.Ready)
+        {
+            var all = countriesReq.Value.Features;
+            Choose(all[(int)Random(all.Count)], float.NaN, float.NaN);
+        }
+        else if (picking) return;
+        else if (Key == ' ') paused = !paused;
+        else if (Key == 'd' || Key == 'D') deluge = 5;
+        else if (Key == 'w' || Key == 'W') { Array.Clear(d); Array.Clear(fE); Array.Clear(fW); Array.Clear(fN); Array.Clear(fS); }
+        else if (Key == 'l' || Key == 'L') layer = (layer + 1) % 3;
+        else if (Key == '.' && hourTimes != null) hour = Math.Min(hourTimes.Length - 1, (int)hour + 1);
+        else if (Key == ',' && hourTimes != null) hour = Math.Max(0, (int)hour - 1);
+        else if (KeyCode == UP) heightMul = Math.Min(4, heightMul * 1.25f);
+        else if (KeyCode == DOWN) heightMul = Math.Max(0.25f, heightMul / 1.25f);
     }
 }
 ";
