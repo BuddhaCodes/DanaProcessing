@@ -85,6 +85,63 @@ namespace DanaProcessing
             }
         }
 
+        // =====================================================================
+        // Pixels -- https://processing.org/reference/PImage_loadPixels_.html,
+        // PImage_pixels.html, PImage_updatePixels_.html, PImage_get_.html,
+        // PImage_set_.html. Same rules as the canvas's own: LoadPixels() takes
+        // a snapshot into Pixels (row-major, index = y * Width + x),
+        // UpdatePixels() writes your edits back.
+        // =====================================================================
+
+        private Color[]? _pixels;
+
+        /// <summary>Reads this image's pixels into <see cref="Pixels"/>, like Processing's img.loadPixels(). Any format (grayscale, BGRA...) comes out as plain colors.</summary>
+        public void LoadPixels()
+        {
+            if (!IsLoaded)
+                throw new InvalidOperationException("La imagen todavía se está cargando (IsLoaded es false).");
+            _pixels = PixelIO.Read(Bitmap);
+        }
+
+        /// <summary>The pixels read by LoadPixels(), row-major (index = y * Width + x), like Processing's img.pixels[].</summary>
+        public Color[] Pixels => _pixels ?? throw new InvalidOperationException("Pixels no está disponible — llama a LoadPixels() primero.");
+
+        /// <summary>Writes <see cref="Pixels"/> back into the image, like Processing's img.updatePixels().</summary>
+        public void UpdatePixels()
+        {
+            if (_pixels == null)
+                throw new InvalidOperationException("UpdatePixels() llamado sin un LoadPixels() previo.");
+            var updated = PixelIO.ToBitmap(_pixels, Width, Height);
+            Bitmap.Dispose();
+            Bitmap = updated;
+        }
+
+        /// <summary>The color at (x, y), like Processing's img.get(x, y); transparent outside the image. For many reads, LoadPixels() once and index Pixels instead.</summary>
+        public Color Get(int x, int y)
+        {
+            if (!IsLoaded || x < 0 || y < 0 || x >= Width || y >= Height)
+                return new Color(SKColors.Transparent);
+            if (_pixels != null)
+                return _pixels[y * Width + x];
+            return new Color(Bitmap.GetPixel(x, y));
+        }
+
+        /// <summary>Sets one pixel, like Processing's img.set(x, y, c); ignored outside the image. Also updates Pixels if they're loaded.</summary>
+        public void Set(int x, int y, Color c)
+        {
+            if (!IsLoaded || x < 0 || y < 0 || x >= Width || y >= Height)
+                return;
+            if (Bitmap.ColorType != SKColorType.Rgba8888 && Bitmap.ColorType != SKColorType.Bgra8888)
+            {
+                var converted = PixelIO.ToBitmap(PixelIO.Read(Bitmap), Width, Height);
+                Bitmap.Dispose();
+                Bitmap = converted;
+            }
+            Bitmap.SetPixel(x, y, c.Skia);
+            if (_pixels != null)
+                _pixels[y * Width + x] = c;
+        }
+
         public void Dispose() => Bitmap.Dispose();
     }
 }

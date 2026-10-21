@@ -40,6 +40,7 @@
       "title": "Data & math",
       "pages": [
         "files-data",
+        "geo",
         "utilities",
         "math",
         "pvector",

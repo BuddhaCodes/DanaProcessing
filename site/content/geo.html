@@ -1,0 +1,92 @@
+<!--meta {"title": "Maps & globes", "nav": "Maps & globes", "summary": "Latitude and longitude on a globe or a flat map, distances and circles on the Earth, GeoJSON (countries, earthquakes, routes) from a file or a URL, and a 3D point cloud to draw tens of thousands of dots at once.", "tags": ["geo", "map", "globe", "geojson", "latitude", "longitude", "point cloud", "view3d"]} -->
+<p class="section-intro">Latitude and longitude on a globe or a flat map, distances and circles on the Earth, GeoJSON (countries, earthquakes, routes) from a file or a URL, and a 3D point cloud to draw tens of thousands of dots at once. Angles are in degrees, distances in km.</p>
+
+<h3 class="entry-title" id="geo-tosphere">Geo.ToSphere(lat, lon, radius) <span class="sig-return">→ PVector</span> · Geo.FromSphere(p) <span class="sig-return">→ (Lat, Lon)</span></h3>
+<p class="entry-desc">A place as a point on a ball centered on the origin, and back. x points east, y north (up), and longitude 0 faces -z, so a camera on the -z axis looks at Africa and Europe.</p>
+
+<h3 class="entry-title" id="geo-distance">Geo.DistanceKm(lat1, lon1, lat2, lon2) · Geo.Destination(lat, lon, bearing, km) · Geo.Circle(lat, lon, km, segments)</h3>
+<p class="entry-desc">The great-circle distance between two places; where you end up going <code class="inline">km</code> along a compass bearing (0 north, 90 east); and the ring of places <code class="inline">km</code> away from a point — an earthquake's reach, a city's radius — ready to draw with <code class="inline">ToSphere()</code> or <code class="inline">Equirectangular()</code>.</p>
+
+<h3 class="entry-title" id="geo-equirectangular">Geo.Equirectangular(lat, lon, w, h) <span class="sig-return">→ (X, Y)</span> · Geo.FromEquirectangular(x, y, w, h)</h3>
+<p class="entry-desc">The simplest flat world map: longitude -180..180 left to right, latitude 90..-90 top to bottom. Most world textures (elevation, night lights, clouds) use it, so it's also how to read one of those images at a place.</p>
+
+<h3 class="entry-title" id="geo-fibonacci">Geo.FibonacciSphere(count) <span class="sig-return">→ PVector[]</span></h3>
+<p class="entry-desc"><code class="inline">count</code> points spread evenly over a unit sphere — the classic dotted globe. <code class="inline">FromSphere()</code> gives each one's latitude and longitude.</p>
+
+<h3 class="entry-title" id="geojson">LoadGeoJSON(pathOrUrl) · RequestGeoJSON(pathOrUrl, cacheFor) <span class="sig-return">→ GeoMap</span></h3>
+<p class="entry-desc">A GeoJSON file (a FeatureCollection, a Feature or a bare geometry) as <code class="inline">GeoFeature</code>s. Each has its <code class="inline">Points</code> (lat, lon and the third value: altitude, or depth for earthquakes), its <code class="inline">Rings</code> (polygon outlines, holes marked, and lines), its properties through <code class="inline">Text("key")</code> and <code class="inline">Number("key")</code>, and <code class="inline">Contains(lat, lon)</code>. <code class="inline">map.FeatureAt(lat, lon)</code> says which one a place is in — which country, with a countries file.</p>
+
+<h3 class="entry-title" id="view3d">class View3D · View3D.Orbit(yaw, pitch, distance) · view.Project(p, w, h) <span class="sig-return">→ (X, Y, Depth)</span></h3>
+<p class="entry-desc">A camera for 3D on the 2D canvas: where it is, what it looks at, how wide it sees. <code class="inline">Project()</code> gives a point's screen position and depth (0 or less: behind the camera) — for drawing anything there, placing a label or hit-testing the mouse. x right, y up, z away from you, the same axes as <code class="inline">Geo.ToSphere()</code>.</p>
+
+<h3 class="entry-title" id="pointcloud">class PointCloud · cloud.Add(x, y, z, color, size) · Points(cloud, view)</h3>
+<p class="entry-desc">Many colored points drawn in a single batch: tens of thousands at the cost of a few hundred <code class="inline">Circle()</code> calls. Sorted far to near by default; set <code class="inline">OccluderCenter</code>/<code class="inline">OccluderRadius</code> to hide the ones behind a ball (the far side of a globe). Sizes are in world units unless <code class="inline">SizeInWorld = false</code>.</p>
+
+<h3 class="entry-title" id="geo-example">Runnable example</h3>
+<p class="entry-desc">A complete sketch using this section. <strong>Test in Dana</strong> opens it in the IDE, or paste it into a new tab and press Run.</p>
+<div class="code-block">
+  <pre id="geo-example-code"><span class="cm">// A dotted globe: 20,000 points in one batch, a few cities, and the</span>
+<span class="cm">// 1,000 km around the one under the mouse. Drag to turn it.</span>
+<span class="kw">public</span> <span class="kw">class</span> Globe : <span class="tp">Sketch</span>
+{
+    <span class="kw">readonly</span> <span class="tp">PointCloud</span> cloud = <span class="kw">new</span>();
+    <span class="kw">readonly</span> <span class="tp">PVector</span>[] dots = <span class="tp">Geo</span>.FibonacciSphere(20000);
+    <span class="kw">float</span> yaw = -0.3f, pitch = 0.4f;
+    (<span class="kw">string</span> Name, <span class="kw">float</span> Lat, <span class="kw">float</span> Lon)[] cities =
+        { ("Havana", 23.1f, -82.4f), ("Madrid", 40.4f, -3.7f), ("Lagos", 6.5f, 3.4f), ("Cairo", 30.0f, 31.2f) };
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup()
+    {
+        Size(700, 500);
+        cloud.OccluderRadius = 9.9f;          // hide the far side of the ball
+    }
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        Background(8, 12, 24);
+        <span class="kw">var</span> view = <span class="tp">View3D</span>.Orbit(yaw, pitch, 28);
+        cloud.Clear();
+        <span class="kw">foreach</span> (<span class="kw">var</span> d <span class="kw">in</span> dots)
+        {
+            <span class="kw">var</span> (lat, lon) = <span class="tp">Geo</span>.FromSphere(d);
+            <span class="kw">bool</span> grid = Abs(lat % 30) &lt; 1 || Abs(lon % 30) &lt; 1;
+            cloud.Add(<span class="tp">PVector</span>.Mult(d, 10), grid ? Color(90, 160, 220) : Color(40, 60, 100), 0.08f);
+        }
+        Points(cloud, view);
+
+        <span class="kw">foreach</span> (<span class="kw">var</span> c <span class="kw">in</span> cities)
+        {
+            <span class="kw">var</span> (x, y, depth) = view.Project(<span class="tp">Geo</span>.ToSphere(c.Lat, c.Lon, 10), Width, Height);
+            <span class="kw">if</span> (depth &gt; 28) <span class="kw">continue</span>;         // behind the globe
+            <span class="kw">bool</span> near = Dist(MouseX, MouseY, x, y) &lt; 12;
+            <span class="kw">if</span> (near)
+            {
+                NoFill();
+                Stroke(255, 200, 80);
+                BeginShape();
+                <span class="kw">foreach</span> (<span class="kw">var</span> (la, lo) <span class="kw">in</span> <span class="tp">Geo</span>.Circle(c.Lat, c.Lon, 1000))
+                {
+                    <span class="kw">var</span> p = view.Project(<span class="tp">Geo</span>.ToSphere(la, lo, 10.02f), Width, Height);
+                    Vertex(p.X, p.Y);
+                }
+                EndShape();
+            }
+            NoStroke();
+            Fill(255, 200, 80);
+            Circle(x, y, 8);
+            Fill(255);
+            Text($"{c.Name}  ({<span class="tp">Geo</span>.DistanceKm(c.Lat, c.Lon, 23.1f, -82.4f):N0} km from Havana)", x + 8, y - 8);
+        }
+    }
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> MouseDragged()
+    {
+        yaw -= (MouseX - PMouseX) * 0.01f;
+        pitch = Constrain(pitch + (MouseY - PMouseY) * 0.01f, -1.4f, 1.4f);
+    }
+}</pre>
+  <button class="dana-test-btn" data-target="geo-example-code" title="Run in DanaProcessing IDE">
+    <i class="ph-bold ph-play"></i>
+    <span class="dana-test-label">Test in Dana</span>
+  </button>
+</div>

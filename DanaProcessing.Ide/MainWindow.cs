@@ -1649,7 +1649,7 @@ namespace DanaProcessing.Ide
                 _outputText.Text = "";
             }
 
-            return SketchCompiler.Compile(source, extraReferences);
+            return SketchCompiler.Compile(source, extraReferences, optimize: RenderingSettingsStore.Load().OptimizeCode);
         }
 
         private void StartLoadingSpinner()

@@ -27,6 +27,10 @@ namespace DanaProcessing.Ide.Theme
         /// Renderer3DBackend.Create's own remark.</summary>
         public int MsaaSamples3D { get; set; } = 4;
 
+        /// <summary>Compile sketches with the C# optimizer: heavy math runs up to ~2x faster, but
+        /// the line marked when a sketch crashes can be a little off. Off by default.</summary>
+        public bool OptimizeCode { get; set; }
+
         public static RenderingSettings Default() => new();
 
         public RenderingSettings Clone() => (RenderingSettings)MemberwiseClone();

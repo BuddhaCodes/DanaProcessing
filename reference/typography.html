@@ -86,6 +86,7 @@
 <li><a href="typography.html" aria-current="page">Typography</a>
 <ul class="on-this-page" aria-label="On this page">
 <li><a href="#textsize"><code>TextSize · TextFont</code></a></li>
+<li><a href="#textsizesnap"><code>TextSizeSnap</code></a></li>
 <li><a href="#createfont"><code>CreateFont</code></a></li>
 <li><a href="#loadfont"><code>LoadFont</code></a></li>
 <li><a href="#pfont"><code>class PFont</code></a></li>
@@ -109,6 +110,7 @@
 </ul></div>
 <div class="topic-group"><h2>Data &amp; math</h2><ul>
 <li><a href="files-data.html">Files &amp; data</a></li>
+<li><a href="geo.html">Maps &amp; globes</a></li>
 <li><a href="utilities.html">Conversion &amp; utilities</a></li>
 <li><a href="math.html">Math &amp; trig</a></li>
 <li><a href="pvector.html">PVector</a></li>
@@ -141,10 +143,13 @@
 </ul></div>
 <p class="topics-all"><a href="a-z.html">All topics &amp; A–Z index</a></p></nav>
   <div class="topic-main">
-<details class="on-this-page-mobile"><summary>On this page · 10 entries</summary><ul><li><a href="#textsize"><code>TextSize · TextFont</code></a></li><li><a href="#createfont"><code>CreateFont</code></a></li><li><a href="#loadfont"><code>LoadFont</code></a></li><li><a href="#pfont"><code>class PFont</code></a></li><li><a href="#textalign"><code>TextAlign</code></a></li><li><a href="#textmode"><code>TextMode</code></a></li><li><a href="#textleading"><code>TextLeading</code></a></li><li><a href="#textwidth"><code>TextWidth · TextAscent · TextDescent</code></a></li><li><a href="#text"><code>Text</code></a></li><li><a href="#typography-example">Runnable example</a></li></ul></details>
+<details class="on-this-page-mobile"><summary>On this page · 11 entries</summary><ul><li><a href="#textsize"><code>TextSize · TextFont</code></a></li><li><a href="#textsizesnap"><code>TextSizeSnap</code></a></li><li><a href="#createfont"><code>CreateFont</code></a></li><li><a href="#loadfont"><code>LoadFont</code></a></li><li><a href="#pfont"><code>class PFont</code></a></li><li><a href="#textalign"><code>TextAlign</code></a></li><li><a href="#textmode"><code>TextMode</code></a></li><li><a href="#textleading"><code>TextLeading</code></a></li><li><a href="#textwidth"><code>TextWidth · TextAscent · TextDescent</code></a></li><li><a href="#text"><code>Text</code></a></li><li><a href="#typography-example">Runnable example</a></li></ul></details>
 <div class="doc">
 <h2 class="entry-title api" id="textsize"><code>TextSize · TextFont</code></h2><ul class="sigs" aria-label="Signatures"><li><code>TextSize(<span class="tp">float</span> size)</code></li><li><code>TextFont(<span class="tp">string?</span> path, <span class="tp">float?</span> size = null)</code></li><li><code>TextFont(<span class="tp">PFont</span> font, <span class="tp">float?</span> size = null)</code></li></ul>
 <p class="entry-desc"><code class="inline">TextFont(null)</code> resets to the default typeface. The <code class="inline">string</code> overload loads a font file directly; the <code class="inline">PFont</code> overload activates a font previously obtained via <code class="inline">CreateFont</code>/<code class="inline">LoadFont</code> and reuses its size unless you override it.</p>
+
+<h2 class="entry-title api" id="textsizesnap"><code>TextSizeSnap</code></h2><ul class="sigs" aria-label="Signatures"><li><code>TextSizeSnap(<span class="tp">float</span> step)</code></li></ul>
+<p class="entry-desc">Rounds every text size to a multiple of <code class="inline">step</code> pixels (0, the default, turns it off). Skia renders each glyph once per size and reuses it; thousands of characters each at a slightly different size — a 3D field of glyphs, text that zooms — reuse nothing and draw several times slower. <code class="inline">TextSizeSnap(1)</code> makes the sizes repeat and looks the same.</p>
 
 <h2 class="entry-title api" id="createfont"><code>CreateFont</code></h2><ul class="sigs" aria-label="Signatures"><li><code>CreateFont(<span class="tp">string</span> fontFamily, <span class="tp">float</span> size) <span class="sig-return">→ PFont</span></code></li></ul>
 <p class="entry-desc">Creates a font from an installed system font family, like Processing's <code class="inline">createFont(name, size)</code>. Unknown family names silently fall back to the system default rather than throwing.</p>

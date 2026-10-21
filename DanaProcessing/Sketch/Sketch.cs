@@ -435,9 +435,11 @@ namespace DanaProcessing
         // is shared logic in GraphicsContext.
         // =====================================================================
 
-        /// <summary>Loads an image from disk. Throws if the file doesn't exist or isn't a decodable image.</summary>
+        /// <summary>Loads an image from disk or a URL (http/https, blocking until it's downloaded), like Processing's loadImage(). Throws if it doesn't exist or isn't a decodable image.</summary>
         public PImage LoadImage(string path)
         {
+            if (Web.IsUrl(path))
+                return LoadImage(Web.Get(path));
             path = ResolveInputPath(path);
             var bitmap = SKBitmap.Decode(path);
             if (bitmap == null)
@@ -445,18 +447,6 @@ namespace DanaProcessing
             return new PImage(bitmap);
         }
 
-        /// <summary>
-        /// Starts loading an image on a background thread and returns
-        /// immediately, like Processing's requestImage(). The returned
-        /// PImage has IsLoaded == false (and Width/Height read as 0) until
-        /// the background decode finishes, at which point it silently swaps
-        /// in the real bitmap — check IsLoaded (or watch for Width/Height
-        /// becoming nonzero) in Draw() before using it, the same way a
-        /// Processing sketch checks img.width != 0. A decode failure leaves
-        /// the placeholder permanently unloaded and logs the error via
-        /// DanaLogger, rather than throwing on a background thread where
-        /// nothing could catch it.
-        /// </summary>
         /// <summary>
         /// Decodes an image already in memory (PNG, JPEG, BMP, GIF, WebP...) --
         /// a webcam frame, a download, a resource. Throws if the bytes aren't an
@@ -476,8 +466,32 @@ namespace DanaProcessing
             return new PImage(bitmap);
         }
 
+        /// <summary>
+        /// Starts loading an image (a file or a URL) on a background thread and returns
+        /// immediately, like Processing's requestImage(). The returned
+        /// PImage has IsLoaded == false (and Width/Height read as 0) until
+        /// the background decode finishes, at which point it silently swaps
+        /// in the real bitmap — check IsLoaded (or watch for Width/Height
+        /// becoming nonzero) in Draw() before using it, the same way a
+        /// Processing sketch checks img.width != 0. A decode failure leaves
+        /// the placeholder permanently unloaded and logs the error via
+        /// DanaLogger, rather than throwing on a background thread where
+        /// nothing could catch it. (RequestPImage() does the same with
+        /// progress, errors you can read, and a disk cache.)
+        /// </summary>
         public PImage RequestImage(string path)
         {
+            if (Web.IsUrl(path))
+            {
+                var pending = PImage.CreatePlaceholder();
+                var request = RequestPImage(path);
+                System.Threading.Tasks.Task.Run(async () =>
+                {
+                    while (!request.Done) await System.Threading.Tasks.Task.Delay(20);
+                    if (request.Ready) pending.ReplaceBitmap(request.Value.Bitmap);
+                });
+                return pending;
+            }
             path = ResolveInputPath(path);
             var placeholder = PImage.CreatePlaceholder();
             System.Threading.Tasks.Task.Run(() =>
@@ -516,32 +530,32 @@ namespace DanaProcessing
         // the JSONObject/JSONArray/XML/Table types themselves.
         // =====================================================================
 
-        /// <summary>Reads a text file as an array of lines, like Processing's loadStrings().</summary>
-        public string[] LoadStrings(string path) => File.ReadAllLines(ResolveInputPath(path));
+        /// <summary>Reads a text file -- or a URL, blocking until it's downloaded -- as an array of lines, like Processing's loadStrings().</summary>
+        public string[] LoadStrings(string path) => SplitLines(ReadText(path));
 
         /// <summary>Writes an array of lines to a text file, one per line, like Processing's saveStrings().</summary>
         public void SaveStrings(string path, string[] lines) => File.WriteAllLines(PrepareOutput(path), lines);
 
-        /// <summary>Reads a file's raw bytes, like Processing's loadBytes().</summary>
-        public byte[] LoadBytes(string path) => File.ReadAllBytes(ResolveInputPath(path));
+        /// <summary>Reads a file's (or a URL's) raw bytes, like Processing's loadBytes().</summary>
+        public byte[] LoadBytes(string path) => ReadBytes(path);
 
         /// <summary>Writes raw bytes to a file, like Processing's saveBytes().</summary>
         public void SaveBytes(string path, byte[] data) => File.WriteAllBytes(PrepareOutput(path), data);
 
         /// <summary>Loads a JSON file as a JSONObject, like Processing's loadJSONObject(path). Throws if the file's top-level value isn't a JSON object — use LoadJSONArray() for a file whose top level is an array.</summary>
-        public JSONObject LoadJSONObject(string path) => JSONObject.Load(ResolveInputPath(path));
+        public JSONObject LoadJSONObject(string path) => JSONObject.Parse(ReadText(path));
 
         /// <summary>Writes a JSONObject to a file, pretty-printed, like Processing's saveJSONObject(json, path).</summary>
         public void SaveJSONObject(JSONObject json, string path) => json.Save(PrepareOutput(path));
 
         /// <summary>Loads a JSON file as a JSONArray, like Processing's loadJSONArray(path).</summary>
-        public JSONArray LoadJSONArray(string path) => JSONArray.Load(ResolveInputPath(path));
+        public JSONArray LoadJSONArray(string path) => JSONArray.Parse(ReadText(path));
 
         /// <summary>Writes a JSONArray to a file, pretty-printed, like Processing's saveJSONArray(json, path).</summary>
         public void SaveJSONArray(JSONArray json, string path) => json.Save(PrepareOutput(path));
 
         /// <summary>Loads an XML file, like Processing's loadXML(path).</summary>
-        public XML LoadXML(string path) => XML.Load(ResolveInputPath(path));
+        public XML LoadXML(string path) => XML.Parse(ReadText(path));
 
         /// <summary>Writes an XML element (and its children) to a file, like Processing's saveXML(xml, path).</summary>
         public void SaveXML(XML xml, string path) => xml.Save(PrepareOutput(path));
@@ -557,7 +571,7 @@ namespace DanaProcessing
 
 
         /// <summary>Loads a CSV file as a Table, like Processing's loadTable(path, options). `options` supports "header" for a first line naming the columns.</summary>
-        public Table LoadTable(string path, string options = "") => Table.LoadCsv(ResolveInputPath(path), options);
+        public Table LoadTable(string path, string options = "") => Table.ParseCsv(ReadText(path), options);
 
         /// <summary>Writes a Table to a CSV file, like Processing's saveTable(table, path).</summary>
         public void SaveTable(Table table, string path) => table.SaveCsv(PrepareOutput(path));
@@ -576,8 +590,8 @@ namespace DanaProcessing
         // Utility functions (Processing-style)
         // =====================================================================
 
-        public float Random(float max) => (float)(Rng.NextDouble() * max);
-        public float Random(float min, float max) => min + (float)(Rng.NextDouble() * (max - min));
+        public float Random(float max) => (float)(NextDouble() * max);
+        public float Random(float min, float max) => min + (float)(NextDouble() * (max - min));
 
         public float Map(float value, float start1, float stop1, float start2, float stop2) =>
             start2 + (stop2 - start2) * ((value - start1) / (stop1 - start1));

@@ -25,6 +25,17 @@ namespace DanaProcessing
         private int _seed;
         private bool _seeded;
 
+        // System.Random isn't safe to share between threads: a sketch that also calls
+        // Random() from a Thread() or a download callback could corrupt it (and then get
+        // only zeros). Every draw goes through this lock; uncontended it costs nanoseconds.
+        private readonly object _rngLock = new();
+
+        private double NextDouble()
+        {
+            lock (_rngLock)
+                return Rng.NextDouble();
+        }
+
         private Random Rng
         {
             get
@@ -100,8 +111,8 @@ namespace DanaProcessing
                 return cached;
             }
 
-            double u1 = 1.0 - Rng.NextDouble(); // (0, 1], avoids log(0)
-            double u2 = Rng.NextDouble();
+            double u1 = 1.0 - NextDouble(); // (0, 1], avoids log(0)
+            double u2 = NextDouble();
             double mag = Math.Sqrt(-2.0 * Math.Log(u1));
 
             _spareGaussian = (float)(mag * Math.Sin(2.0 * Math.PI * u2));

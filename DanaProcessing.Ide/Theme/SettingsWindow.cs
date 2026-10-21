@@ -330,6 +330,9 @@ namespace DanaProcessing.Ide
             page.Children.Add(Row(Loc.Tr("Suavizado 3D", "3D smoothing"),
                 Combo(Msaa3DOptions, _rendering.MsaaSamples3D, v => _rendering.MsaaSamples3D = v, Loc.Tr("Suavizado 3D", "3D smoothing")),
                 Loc.Tr("Para sketches con Renderer3D (MSAA).", "For Renderer3D sketches (MSAA).")));
+            page.Children.Add(Check(Loc.Tr("Código optimizado (más rápido)", "Optimized code (faster)"), _rendering.OptimizeCode, v => _rendering.OptimizeCode = v,
+                Loc.Tr("Compila el sketch con el optimizador de C#: las cuentas pesadas (simulaciones, miles de partículas) corren hasta 2 veces más rápido. A cambio, cuando el sketch falla, la línea que se marca puede quedar corrida. Para depurar, dejalo apagado.",
+                       "Compiles the sketch with the C# optimizer: heavy math (simulations, thousands of particles) runs up to 2x faster. In exchange, when the sketch crashes, the line it marks can be a little off. Leave it off while debugging.")));
             page.Children.Add(ResetButton(Loc.Tr("Volver a los valores recomendados", "Back to the recommended values"), () => _rendering = RenderingSettings.Default()));
             return page;
         }

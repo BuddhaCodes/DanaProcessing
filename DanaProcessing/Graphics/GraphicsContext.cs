@@ -119,6 +119,9 @@ namespace DanaProcessing
         /// <summary>Called at the top of every method that touches Canvas. Base implementation is a no-op.</summary>
         protected virtual void EnsureReady() { }
 
+        /// <summary>Before reading pixels back (LoadPixels, Get): by default the same as EnsureReady(); a PGraphics allows it after EndDraw() too, like Processing.</summary>
+        protected virtual void EnsureReadable() => EnsureReady();
+
         private bool _disposed;
 
         // =====================================================================
@@ -577,6 +580,25 @@ namespace DanaProcessing
                 Canvas.DrawRect(rect, _fillPaint);
             if (_strokeEnabled)
                 Canvas.DrawRect(rect, _strokePaint);
+        }
+
+        /// <summary>A rectangle with rounded corners of radius <paramref name="r"/>, like Processing's rect(a, b, c, d, r). Subject to RectMode() like Rect().</summary>
+        public void Rect(float a, float b, float c, float d, float r) => Rect(a, b, c, d, r, r, r, r);
+
+        /// <summary>A rectangle with a different radius per corner (top-left, top-right, bottom-right, bottom-left), like Processing's rect(a, b, c, d, tl, tr, br, bl).</summary>
+        public void Rect(float a, float b, float c, float d, float tl, float tr, float br, float bl)
+        {
+            EnsureReady();
+            var rect = ResolveRectMode(_rectMode, a, b, c, d);
+            // Like Processing: no radius can be more than half the shorter side.
+            float max = Math.Min(rect.Width, rect.Height) / 2;
+            SKPoint R(float v) { v = Math.Clamp(v, 0, max); return new SKPoint(v, v); }
+            using var rounded = new SKRoundRect();
+            rounded.SetRectRadii(rect, new[] { R(tl), R(tr), R(br), R(bl) });
+            if (_fillEnabled)
+                Canvas.DrawRoundRect(rounded, _fillPaint);
+            if (_strokeEnabled)
+                Canvas.DrawRoundRect(rounded, _strokePaint);
         }
 
         /// <summary>Draws a rect with equal width and height, like Processing's square() — a plain alias, still subject to the current RectMode().</summary>
@@ -1294,7 +1316,20 @@ namespace DanaProcessing
         private TextAlignV _textAlignV = TextAlignV.Baseline;
         private float? _textLeading;
 
-        public void TextSize(float size) => _textPaint.TextSize = size;
+        public void TextSize(float size) => _textPaint.TextSize = SnapTextSize(size);
+
+        private float _textSizeSnap;
+
+        /// <summary>
+        /// Rounds every text size to a multiple of <paramref name="step"/> pixels (0, the default,
+        /// turns it off). Skia keeps each glyph rendered once per size; a 3D field of thousands
+        /// of characters, each at a slightly different size, never reuses anything and draws
+        /// several times slower. TextSizeSnap(1) makes those sizes repeat (and looks the same).
+        /// </summary>
+        public void TextSizeSnap(float step) => _textSizeSnap = Math.Max(0, step);
+
+        private float SnapTextSize(float size) =>
+            _textSizeSnap > 0 && size > _textSizeSnap ? MathF.Round(size / _textSizeSnap) * _textSizeSnap : size;
 
         public void TextAlign(TextAlignH horiz, TextAlignV vert = TextAlignV.Baseline)
         {
@@ -1339,20 +1374,26 @@ namespace DanaProcessing
                 ?? throw new InvalidOperationException($"No se pudo cargar la fuente: '{path}'. Verifica la ruta y el formato.");
             _textPaint.Typeface = _ownedTypeface;
             if (size.HasValue)
-                _textPaint.TextSize = size.Value;
+                _textPaint.TextSize = SnapTextSize(size.Value);
         }
 
         /// <summary>Sets the current font from a PFont previously obtained via LoadFont()/CreateFont(), like Processing's textFont(font, size). If size is omitted, uses the size the PFont was created/loaded at.</summary>
         public void TextFont(PFont font, float? size = null)
         {
             _textPaint.Typeface = font.Typeface;
-            _textPaint.TextSize = size ?? font.Size;
+            _textPaint.TextSize = SnapTextSize(size ?? font.Size);
         }
 
         /// <summary>Draws text at (x, y), per the current TextAlign. Multi-line strings ('\n') are split and spaced using the current TextLeading.</summary>
         public void Text(string text, float x, float y)
         {
             EnsureReady();
+            if (text.IndexOf('\n') < 0)
+            {
+                // The common case -- one line, often one character -- without the Split().
+                Canvas.DrawText(text, ResolveTextX(x, text), ResolveTextY(y), _textPaint);
+                return;
+            }
             var lines = text.Split('\n');
             float leading = _textLeading ?? _textPaint.FontSpacing;
 
@@ -1629,13 +1670,9 @@ namespace DanaProcessing
         /// <summary>Reads this canvas's pixels into the Pixels array so they can be inspected/modified directly, like Processing's loadPixels(). Call UpdatePixels() afterward to push any edits back to the canvas — Pixels itself is just an in-memory snapshot until then.</summary>
         public void LoadPixels()
         {
-            EnsureReady();
+            EnsureReadable();
             using var pixmap = PeekPixelsOrThrow();
-            var pixels = new Color[Width * Height];
-            for (int y = 0; y < Height; y++)
-                for (int x = 0; x < Width; x++)
-                    pixels[y * Width + x] = new Color(pixmap.GetPixelColor(x, y));
-            _pixels = pixels;
+            _pixels = PixelIO.Read(pixmap);
         }
 
         /// <summary>Pixel data loaded by LoadPixels(), indexed row-major (index = y * Width + x), like Processing's pixels[] array. Throws if LoadPixels() hasn't been called (or was called before the canvas was resized) — this deliberately doesn't auto-load, so you always know whether you're looking at a fresh read or edits you made since.</summary>
@@ -1660,7 +1697,7 @@ namespace DanaProcessing
         /// <summary>Reads the color at (x, y) straight from the canvas — no LoadPixels() needed, like Processing's get(x, y). Out-of-bounds coordinates return transparent black, matching Processing.</summary>
         public Color Get(int x, int y)
         {
-            EnsureReady();
+            EnsureReadable();
             if (x < 0 || y < 0 || x >= Width || y >= Height)
                 return new Color(SKColors.Transparent);
             using var pixmap = PeekPixelsOrThrow();
@@ -1670,7 +1707,7 @@ namespace DanaProcessing
         /// <summary>Grabs a rectangular region of the canvas as a standalone PImage, like Processing's get(x, y, w, h). Coordinates that fall outside the canvas come back transparent rather than throwing, matching Processing's own tolerant behavior here.</summary>
         public PImage Get(int x, int y, int w, int h)
         {
-            EnsureReady();
+            EnsureReadable();
             using var pixmap = PeekPixelsOrThrow();
             var info = new SKImageInfo(w, h, SKColorType.Rgba8888, SKAlphaType.Unpremul);
             var bitmap = new SKBitmap(info);

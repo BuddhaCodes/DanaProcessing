@@ -57,6 +57,14 @@ namespace DanaProcessing
                 throw new InvalidOperationException("Llamada de dibujo fuera de BeginDraw()/EndDraw().");
         }
 
+        /// <summary>Reading pixels (LoadPixels, Pixels, Get) also works after EndDraw(), like Processing: the buffer keeps what was drawn.</summary>
+        protected override void EnsureReadable()
+        {
+            ThrowIfDisposed();
+            if (_drawing)
+                Canvas.Flush();
+        }
+
         private void ThrowIfDisposed()
         {
             if (_disposed)

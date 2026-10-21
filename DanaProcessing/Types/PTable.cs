@@ -98,10 +98,13 @@ namespace DanaProcessing
         }
 
         /// <summary>Loads a CSV file into a Table, like Processing's loadTable(path, "header"). `options` supports "header" (first line names the columns) — pass "" for a plain headerless CSV.</summary>
-        public static Table LoadCsv(string path, string options = "")
+        public static Table LoadCsv(string path, string options = "") => ParseCsv(File.ReadAllText(path), options);
+
+        /// <summary>Reads CSV text already in memory (a download, a string) into a Table -- same `options` as LoadCsv().</summary>
+        public static Table ParseCsv(string csv, string options = "")
         {
             var table = new Table { HasHeader = options.Contains("header") };
-            var lines = File.ReadAllLines(path);
+            var lines = csv.Replace("\r\n", "\n").Replace('\r', '\n').Split('\n');
             int start = 0;
             if (table.HasHeader && lines.Length > 0)
             {

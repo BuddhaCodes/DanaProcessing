@@ -241,7 +241,12 @@ namespace DanaProcessing.Ide.Compilation
             }
         }
 
-        public static CompileResult Compile(string sourceCode, IReadOnlyList<MetadataReference>? extraReferences = null)
+        /// <summary>
+        /// Compiles a sketch. <paramref name="optimize"/> turns the C# optimizer on (Settings &gt;
+        /// Running sketches &gt; Optimized code): heavy loops run up to ~2x faster, but the JIT
+        /// then inlines and reorders, so a crash's line number can be off by a little.
+        /// </summary>
+        public static CompileResult Compile(string sourceCode, IReadOnlyList<MetadataReference>? extraReferences = null, bool optimize = false)
         {
             // Both trees need an encoding: emitting a PDB requires it.
             var userTree = CSharpSyntaxTree.ParseText(sourceCode, ParseOptions, path: SketchFileName, encoding: System.Text.Encoding.UTF8);
@@ -255,7 +260,8 @@ namespace DanaProcessing.Ide.Compilation
                 assemblyName: "DanaProcessing.Sketch." + Guid.NewGuid().ToString("N"),
                 syntaxTrees: new[] { userTree, implicitUsingsTree },
                 references: references,
-                options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+                options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary,
+                    optimizationLevel: optimize ? OptimizationLevel.Release : OptimizationLevel.Debug));
 
             using var ms = new MemoryStream();
             using var pdb = new MemoryStream();

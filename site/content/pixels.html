@@ -10,6 +10,9 @@
 <h3 class="entry-title" id="pixels-set">Set(x, y, <span class="tp">Color</span> c) · Set(x, y, <span class="tp">PImage</span> img)</h3>
 <p class="entry-desc">Writes a single pixel or draws an image with pixels copied verbatim — no tint, no blending. Out-of-bounds coordinates are silently ignored.</p>
 
+<h3 class="entry-title" id="pimage-pixels">img.LoadPixels() · img.Pixels <span class="sig-return">→ Color[]</span> · img.UpdatePixels() · img.Get(x, y) · img.Set(x, y, c)</h3>
+<p class="entry-desc">The same for a <code class="inline">PImage</code>, like Processing's <code class="inline">img.pixels</code>: read a loaded image's colors (a heightmap, a palette, a mask) without drawing it anywhere first. Any format comes out as plain colors — a grayscale PNG reads as gray <code class="inline">Color</code>s. A <code class="inline">PGraphics</code> can be read (<code class="inline">pg.LoadPixels()</code>, <code class="inline">pg.Get()</code>) after <code class="inline">EndDraw()</code> too.</p>
+
 <h3 class="entry-title" id="copy">Copy(sx,sy,sw,sh, dx,dy,dw,dh) · Copy(<span class="tp">PImage</span> src, sx,sy,sw,sh, dx,dy,dw,dh)</h3>
 <p class="entry-desc">Copies a region (scaling if source/destination sizes differ) — verbatim, no blending. Without a source image, copies from this same canvas onto itself.</p>
 

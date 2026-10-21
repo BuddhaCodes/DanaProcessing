@@ -2,6 +2,9 @@
 <h3 class="entry-title" id="textsize">TextSize(<span class="tp">float</span> size) · TextFont(<span class="tp">string?</span> path, <span class="tp">float?</span> size = null) · TextFont(<span class="tp">PFont</span> font, <span class="tp">float?</span> size = null)</h3>
 <p class="entry-desc"><code class="inline">TextFont(null)</code> resets to the default typeface. The <code class="inline">string</code> overload loads a font file directly; the <code class="inline">PFont</code> overload activates a font previously obtained via <code class="inline">CreateFont</code>/<code class="inline">LoadFont</code> and reuses its size unless you override it.</p>
 
+<h3 class="entry-title" id="textsizesnap">TextSizeSnap(<span class="tp">float</span> step)</h3>
+<p class="entry-desc">Rounds every text size to a multiple of <code class="inline">step</code> pixels (0, the default, turns it off). Skia renders each glyph once per size and reuses it; thousands of characters each at a slightly different size — a 3D field of glyphs, text that zooms — reuse nothing and draw several times slower. <code class="inline">TextSizeSnap(1)</code> makes the sizes repeat and looks the same.</p>
+
 <h3 class="entry-title" id="createfont">CreateFont(<span class="tp">string</span> fontFamily, <span class="tp">float</span> size) <span class="sig-return">→ PFont</span></h3>
 <p class="entry-desc">Creates a font from an installed system font family, like Processing's <code class="inline">createFont(name, size)</code>. Unknown family names silently fall back to the system default rather than throwing.</p>
 

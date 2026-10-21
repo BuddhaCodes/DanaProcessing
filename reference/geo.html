@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en" data-root="../">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- Google Analytics only loads after the visitor says yes (assets/site.js, "Analytics: only with permission"). -->
+<meta name="dana-analytics" content="G-N4ZWC7GN1B">
+<title>Maps &amp; globes — DanaProcessing reference</title>
+<meta name="description" content="Latitude and longitude on a globe or a flat map, distances and circles on the Earth, GeoJSON (countries, earthquakes, routes) from a file or a URL, and a 3D point cloud to draw tens of thousands of dots at once.">
+<link rel="canonical" href="https://buddhacodes.github.io/DanaProcessing/reference/geo.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="DanaProcessing">
+<meta property="og:title" content="Maps &amp; globes — DanaProcessing reference">
+<meta property="og:description" content="Latitude and longitude on a globe or a flat map, distances and circles on the Earth, GeoJSON (countries, earthquakes, routes) from a file or a URL, and a 3D point cloud to draw tens of thousands of dots at once.">
+<meta property="og:url" content="https://buddhacodes.github.io/DanaProcessing/reference/geo.html">
+<meta property="og:image" content="https://buddhacodes.github.io/DanaProcessing/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://buddhacodes.github.io/DanaProcessing/og-image.png">
+<meta name="theme-color" content="#13202A">
+<link rel="icon" type="image/png" href="../DanaProcessing.Ide/Theme/dana.png">
+<link rel="apple-touch-icon" href="../DanaProcessing.Ide/Theme/dana.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&amp;family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/search-index.js" defer></script>
+<script src="../assets/site.js" defer></script>
+</head>
+<body class="page-topic">
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="bar">
+    <a class="brand" href="../index.html"><svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><circle cx="15" cy="15" r="13" fill="none" stroke="currentColor" stroke-width="2"></circle><circle cx="15" cy="15" r="6" fill="#E7B66B"></circle><circle cx="23" cy="8" r="2.5" fill="#FF8A6B"></circle></svg><span>DanaProcessing</span></a>
+    <button type="button" class="menu-toggle" aria-expanded="false" aria-controls="site-menu">Menu</button>
+    <div class="site-menu" id="site-menu">
+      <nav class="main-nav" aria-label="Main">
+        <a href="../reference/tutorial.html">Learn</a>
+        <a href="../reference/a-z.html" aria-current="page">Reference</a>
+        <a href="../index.html#gallery">Examples</a>
+        <a href="../reference/ide.html">The IDE</a>
+      </nav>
+      <form class="search" role="search" action="../reference/a-z.html">
+        <label class="visually-hidden" for="site-search">Search the documentation</label>
+        <div class="search-box">
+          <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+          <input id="site-search" name="q" type="search" autocomplete="off" placeholder="Search — press /" aria-describedby="search-status" aria-controls="search-results">
+        </div>
+        <p id="search-status" class="visually-hidden" aria-live="polite"></p>
+        <ul id="search-results" class="search-results" hidden></ul>
+      </form>
+      <a class="support-link" href="../index.html#support"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M12 21s-7.5-4.6-9.6-9.4C1 8.2 3.1 4.5 6.8 4.5c2.2 0 3.7 1.3 5.2 3 1.5-1.7 3-3 5.2-3 3.7 0 5.8 3.7 4.4 7.1C19.5 16.4 12 21 12 21z"></path></svg><span>Support Dana</span></a>
+    </div>
+  </div>
+</header>
+<main id="main">
+<div class="topic-hero">
+  <div class="wrap">
+    <div class="topic-hero-text">
+      <nav class="breadcrumb" aria-label="Breadcrumb"><ol><li><a href="a-z.html">Reference</a></li><li>Data &amp; math</li><li aria-current="page">Maps &amp; globes</li></ol></nav>
+      <h1>Maps &amp; globes</h1>
+      <p class="lede">Latitude and longitude on a globe or a flat map, distances and circles on the Earth, GeoJSON (countries, earthquakes, routes) from a file or a URL, and a 3D point cloud to draw tens of thousands of dots at once. Angles are in degrees, distances in km.</p>
+      <p class="tags"><span class="tag">geo</span><span class="tag">map</span><span class="tag">globe</span><span class="tag">geojson</span><span class="tag">latitude</span><span class="tag">longitude</span><span class="tag">point cloud</span><span class="tag">view3d</span></p>
+    </div>
+    <div class="topic-art" aria-hidden="true"><span style="background:#8FD3B6"></span><span></span><span></span><span></span><span></span></div>
+  </div>
+</div>
+<div class="wrap topic-layout">
+  <button type="button" class="topics-toggle" aria-expanded="false" aria-controls="topics">All topics</button>
+<nav class="topics" id="topics" aria-label="Reference topics">
+<div class="topic-group"><h2>Start here</h2><ul>
+<li><a href="intro.html">Overview</a></li>
+<li><a href="tutorial.html">30-minute tutorial</a></li>
+<li><a href="from-processing.html">From Processing / p5.js</a></li>
+</ul></div>
+<div class="topic-group"><h2>Basics</h2><ul>
+<li><a href="structure.html">Sketch structure</a></li>
+<li><a href="input.html">Input &amp; time</a></li>
+</ul></div>
+<div class="topic-group"><h2>Drawing</h2><ul>
+<li><a href="color.html">Color</a></li>
+<li><a href="shape-primitives.html">2D Primitives</a></li>
+<li><a href="shape-custom.html">Custom shapes</a></li>
+<li><a href="typography.html">Typography</a></li>
+<li><a href="transform.html">Transformations</a></li>
+</ul></div>
+<div class="topic-group"><h2>Media</h2><ul>
+<li><a href="image.html">PImage</a></li>
+<li><a href="pgraphics.html">PGraphics</a></li>
+<li><a href="pshape.html">PShape</a></li>
+<li><a href="output.html">Saving output</a></li>
+<li><a href="pixels.html">Pixels</a></li>
+<li><a href="reels.html">Reels</a></li>
+</ul></div>
+<div class="topic-group"><h2>Data &amp; math</h2><ul>
+<li><a href="files-data.html">Files &amp; data</a></li>
+<li><a href="geo.html" aria-current="page">Maps &amp; globes</a>
+<ul class="on-this-page" aria-label="On this page">
+<li><a href="#geo-tosphere"><code>Geo.ToSphere · Geo.FromSphere</code></a></li>
+<li><a href="#geo-distance"><code>Geo.DistanceKm · Geo.Destination · Geo.Circle</code></a></li>
+<li><a href="#geo-equirectangular"><code>Geo.Equirectangular · Geo.FromEquirectangular</code></a></li>
+<li><a href="#geo-fibonacci"><code>Geo.FibonacciSphere</code></a></li>
+<li><a href="#geojson"><code>LoadGeoJSON · RequestGeoJSON</code></a></li>
+<li><a href="#view3d"><code>class View3D · View3D.Orbit · view.Project</code></a></li>
+<li><a href="#pointcloud"><code>class PointCloud · cloud.Add · Points</code></a></li>
+<li><a href="#geo-example">Runnable example</a></li>
+</ul>
+</li>
+<li><a href="utilities.html">Conversion &amp; utilities</a></li>
+<li><a href="math.html">Math &amp; trig</a></li>
+<li><a href="pvector.html">PVector</a></li>
+<li><a href="random-noise.html">Random &amp; noise</a></li>
+<li><a href="collections.html">Collections</a></li>
+</ul></div>
+<div class="topic-group"><h2>3D</h2><ul>
+<li><a href="getting-started-3d.html">Getting started</a></li>
+<li><a href="shape-3d-primitives.html">3D Primitives</a></li>
+<li><a href="transform-3d.html">3D Transformations</a></li>
+<li><a href="camera-3d.html">Camera &amp; Projection</a></li>
+<li><a href="lights-3d.html">Lights</a></li>
+<li><a href="material-3d.html">Material properties</a></li>
+<li><a href="coordinates-3d.html">Coordinates</a></li>
+<li><a href="shape-3d-custom.html">Custom 3D shapes</a></li>
+<li><a href="pshader.html">PShader</a></li>
+</ul></div>
+<div class="topic-group"><h2>Sound</h2><ul>
+<li><a href="audio.html">Live loops &amp; timing</a></li>
+</ul></div>
+<div class="topic-group"><h2>Live &amp; generative</h2><ul>
+<li><a href="live.html">Playing live: MIDI, beat, mic</a></li>
+<li><a href="generative.html">Generative art: seeds, print</a></li>
+<li><a href="workflow.html">Day to day: F3, data/, rewind</a></li>
+</ul></div>
+<div class="topic-group"><h2>Tooling</h2><ul>
+<li><a href="ide.html">The IDE</a></li>
+<li><a href="hosting.html">Avalonia host</a></li>
+<li><a href="enums.html">Enumerations</a></li>
+</ul></div>
+<p class="topics-all"><a href="a-z.html">All topics &amp; A–Z index</a></p></nav>
+  <div class="topic-main">
+<details class="on-this-page-mobile"><summary>On this page · 8 entries</summary><ul><li><a href="#geo-tosphere"><code>Geo.ToSphere · Geo.FromSphere</code></a></li><li><a href="#geo-distance"><code>Geo.DistanceKm · Geo.Destination · Geo.Circle</code></a></li><li><a href="#geo-equirectangular"><code>Geo.Equirectangular · Geo.FromEquirectangular</code></a></li><li><a href="#geo-fibonacci"><code>Geo.FibonacciSphere</code></a></li><li><a href="#geojson"><code>LoadGeoJSON · RequestGeoJSON</code></a></li><li><a href="#view3d"><code>class View3D · View3D.Orbit · view.Project</code></a></li><li><a href="#pointcloud"><code>class PointCloud · cloud.Add · Points</code></a></li><li><a href="#geo-example">Runnable example</a></li></ul></details>
+<div class="doc">
+<h2 class="entry-title api" id="geo-tosphere"><code>Geo.ToSphere · Geo.FromSphere</code></h2><ul class="sigs" aria-label="Signatures"><li><code>Geo.ToSphere(lat, lon, radius) <span class="sig-return">→ PVector</span></code></li><li><code>Geo.FromSphere(p) <span class="sig-return">→ (Lat, Lon)</span></code></li></ul>
+<p class="entry-desc">A place as a point on a ball centered on the origin, and back. x points east, y north (up), and longitude 0 faces -z, so a camera on the -z axis looks at Africa and Europe.</p>
+
+<h2 class="entry-title api" id="geo-distance"><code>Geo.DistanceKm · Geo.Destination · Geo.Circle</code></h2><ul class="sigs" aria-label="Signatures"><li><code>Geo.DistanceKm(lat1, lon1, lat2, lon2)</code></li><li><code>Geo.Destination(lat, lon, bearing, km)</code></li><li><code>Geo.Circle(lat, lon, km, segments)</code></li></ul>
+<p class="entry-desc">The great-circle distance between two places; where you end up going <code class="inline">km</code> along a compass bearing (0 north, 90 east); and the ring of places <code class="inline">km</code> away from a point — an earthquake's reach, a city's radius — ready to draw with <code class="inline">ToSphere()</code> or <code class="inline">Equirectangular()</code>.</p>
+
+<h2 class="entry-title api" id="geo-equirectangular"><code>Geo.Equirectangular · Geo.FromEquirectangular</code></h2><ul class="sigs" aria-label="Signatures"><li><code>Geo.Equirectangular(lat, lon, w, h) <span class="sig-return">→ (X, Y)</span></code></li><li><code>Geo.FromEquirectangular(x, y, w, h)</code></li></ul>
+<p class="entry-desc">The simplest flat world map: longitude -180..180 left to right, latitude 90..-90 top to bottom. Most world textures (elevation, night lights, clouds) use it, so it's also how to read one of those images at a place.</p>
+
+<h2 class="entry-title api" id="geo-fibonacci"><code>Geo.FibonacciSphere</code></h2><ul class="sigs" aria-label="Signatures"><li><code>Geo.FibonacciSphere(count) <span class="sig-return">→ PVector[]</span></code></li></ul>
+<p class="entry-desc"><code class="inline">count</code> points spread evenly over a unit sphere — the classic dotted globe. <code class="inline">FromSphere()</code> gives each one's latitude and longitude.</p>
+
+<h2 class="entry-title api" id="geojson"><code>LoadGeoJSON · RequestGeoJSON</code></h2><ul class="sigs" aria-label="Signatures"><li><code>LoadGeoJSON(pathOrUrl)</code></li><li><code>RequestGeoJSON(pathOrUrl, cacheFor) <span class="sig-return">→ GeoMap</span></code></li></ul>
+<p class="entry-desc">A GeoJSON file (a FeatureCollection, a Feature or a bare geometry) as <code class="inline">GeoFeature</code>s. Each has its <code class="inline">Points</code> (lat, lon and the third value: altitude, or depth for earthquakes), its <code class="inline">Rings</code> (polygon outlines, holes marked, and lines), its properties through <code class="inline">Text("key")</code> and <code class="inline">Number("key")</code>, and <code class="inline">Contains(lat, lon)</code>. <code class="inline">map.FeatureAt(lat, lon)</code> says which one a place is in — which country, with a countries file.</p>
+
+<h2 class="entry-title api" id="view3d"><code>class View3D · View3D.Orbit · view.Project</code></h2><ul class="sigs" aria-label="Signatures"><li><code>class View3D</code></li><li><code>View3D.Orbit(yaw, pitch, distance)</code></li><li><code>view.Project(p, w, h) <span class="sig-return">→ (X, Y, Depth)</span></code></li></ul>
+<p class="entry-desc">A camera for 3D on the 2D canvas: where it is, what it looks at, how wide it sees. <code class="inline">Project()</code> gives a point's screen position and depth (0 or less: behind the camera) — for drawing anything there, placing a label or hit-testing the mouse. x right, y up, z away from you, the same axes as <code class="inline">Geo.ToSphere()</code>.</p>
+
+<h2 class="entry-title api" id="pointcloud"><code>class PointCloud · cloud.Add · Points</code></h2><ul class="sigs" aria-label="Signatures"><li><code>class PointCloud</code></li><li><code>cloud.Add(x, y, z, color, size)</code></li><li><code>Points(cloud, view)</code></li></ul>
+<p class="entry-desc">Many colored points drawn in a single batch: tens of thousands at the cost of a few hundred <code class="inline">Circle()</code> calls. Sorted far to near by default; set <code class="inline">OccluderCenter</code>/<code class="inline">OccluderRadius</code> to hide the ones behind a ball (the far side of a globe). Sizes are in world units unless <code class="inline">SizeInWorld = false</code>.</p>
+
+<h2 class="entry-title" id="geo-example">Runnable example</h2>
+<p class="entry-desc">A complete sketch using this section. <strong>Test in Dana</strong> opens it in the IDE, or paste it into a new tab and press Run.</p>
+<div class="code-block"><div class="code-bar"><span class="code-label">C#</span><div class="code-actions"><button type="button" class="copy-btn" data-target="geo-example-code">Copy code</button><button class="dana-test-btn" data-target="geo-example-code" type="button"><svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M7 4l13 8-13 8z"></path></svg><span class="dana-test-label">Run in Dana</span></button></div></div><pre id="geo-example-code" tabindex="0" aria-label="Code, scrollable"><span class="cm">// A dotted globe: 20,000 points in one batch, a few cities, and the</span>
+<span class="cm">// 1,000 km around the one under the mouse. Drag to turn it.</span>
+<span class="kw">public</span> <span class="kw">class</span> Globe : <span class="tp">Sketch</span>
+{
+    <span class="kw">readonly</span> <span class="tp">PointCloud</span> cloud = <span class="kw">new</span>();
+    <span class="kw">readonly</span> <span class="tp">PVector</span>[] dots = <span class="tp">Geo</span>.FibonacciSphere(20000);
+    <span class="kw">float</span> yaw = -0.3f, pitch = 0.4f;
+    (<span class="kw">string</span> Name, <span class="kw">float</span> Lat, <span class="kw">float</span> Lon)[] cities =
+        { ("Havana", 23.1f, -82.4f), ("Madrid", 40.4f, -3.7f), ("Lagos", 6.5f, 3.4f), ("Cairo", 30.0f, 31.2f) };
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup()
+    {
+        Size(700, 500);
+        cloud.OccluderRadius = 9.9f;          // hide the far side of the ball
+    }
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        Background(8, 12, 24);
+        <span class="kw">var</span> view = <span class="tp">View3D</span>.Orbit(yaw, pitch, 28);
+        cloud.Clear();
+        <span class="kw">foreach</span> (<span class="kw">var</span> d <span class="kw">in</span> dots)
+        {
+            <span class="kw">var</span> (lat, lon) = <span class="tp">Geo</span>.FromSphere(d);
+            <span class="kw">bool</span> grid = Abs(lat % 30) &lt; 1 || Abs(lon % 30) &lt; 1;
+            cloud.Add(<span class="tp">PVector</span>.Mult(d, 10), grid ? Color(90, 160, 220) : Color(40, 60, 100), 0.08f);
+        }
+        Points(cloud, view);
+
+        <span class="kw">foreach</span> (<span class="kw">var</span> c <span class="kw">in</span> cities)
+        {
+            <span class="kw">var</span> (x, y, depth) = view.Project(<span class="tp">Geo</span>.ToSphere(c.Lat, c.Lon, 10), Width, Height);
+            <span class="kw">if</span> (depth &gt; 28) <span class="kw">continue</span>;         // behind the globe
+            <span class="kw">bool</span> near = Dist(MouseX, MouseY, x, y) &lt; 12;
+            <span class="kw">if</span> (near)
+            {
+                NoFill();
+                Stroke(255, 200, 80);
+                BeginShape();
+                <span class="kw">foreach</span> (<span class="kw">var</span> (la, lo) <span class="kw">in</span> <span class="tp">Geo</span>.Circle(c.Lat, c.Lon, 1000))
+                {
+                    <span class="kw">var</span> p = view.Project(<span class="tp">Geo</span>.ToSphere(la, lo, 10.02f), Width, Height);
+                    Vertex(p.X, p.Y);
+                }
+                EndShape();
+            }
+            NoStroke();
+            Fill(255, 200, 80);
+            Circle(x, y, 8);
+            Fill(255);
+            Text($"{c.Name}  ({<span class="tp">Geo</span>.DistanceKm(c.Lat, c.Lon, 23.1f, -82.4f):N0} km from Havana)", x + 8, y - 8);
+        }
+    }
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> MouseDragged()
+    {
+        yaw -= (MouseX - PMouseX) * 0.01f;
+        pitch = Constrain(pitch + (MouseY - PMouseY) * 0.01f, -1.4f, 1.4f);
+    }
+}</pre></div>
+
+</div>
+<nav class="pager" aria-label="Previous and next topic"><a class="prev" href="files-data.html"><span>← Previous</span><strong>Files &amp; data</strong></a><a class="next" href="utilities.html"><span>Next →</span><strong>Conversion &amp; utility functions</strong></a></nav>
+<aside class="support-aside" aria-label="Support the project">
+  <p><strong>Found this useful?</strong> Dana is free and built in spare time — a donation buys more time for docs like this one.</p>
+  <a class="btn btn-ink" href="https://paypal.me/CarlosFernandez934"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M12 21s-7.5-4.6-9.6-9.4C1 8.2 3.1 4.5 6.8 4.5c2.2 0 3.7 1.3 5.2 3 1.5-1.7 3-3 5.2-3 3.7 0 5.8 3.7 4.4 7.1C19.5 16.4 12 21 12 21z"></path></svg><span>Donate via PayPal</span></a>
+</aside>
+
+  </div>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap">
+    <p>DanaProcessing · v1.0 · MIT · stands on the shoulders of <a href="https://processing.org">Processing</a>, <a href="https://p5js.org">p5.js</a> and <a href="https://sonic-pi.net">Sonic Pi</a>.</p>
+    <nav aria-label="Footer">
+      <a href="../reference/a-z.html">All topics &amp; A–Z</a>
+      <a href="https://github.com/BuddhaCodes/DanaProcessing/releases/latest">Releases</a>
+      <a href="https://github.com/BuddhaCodes/DanaProcessing">GitHub</a>
+      <a href="../index.html#support">Support</a>
+      <button type="button" class="footer-link" data-privacy-choices hidden>Privacy choices</button>
+    </nav>
+  </div>
+</footer>
+</body>
+</html>

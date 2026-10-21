@@ -3,6 +3,10 @@
 
 <h3 class="entry-title" id="loadstrings">LoadStrings(<span class="tp">string</span> path) <span class="sig-return">→ string[]</span> · SaveStrings(path, lines)</h3>
 <p class="entry-desc">Reads/writes a text file as an array of lines.</p>
+<p class="entry-desc">Every <code class="inline">Load*()</code> on this page (and <code class="inline">LoadImage</code>) also takes a URL, like in Processing: <code class="inline">LoadStrings("https://...")</code> downloads it and returns the lines. It waits for the download, so do it in <code class="inline">Setup()</code> — or use the <code class="inline">Request*()</code> versions below.</p>
+
+<h3 class="entry-title" id="requesttext">RequestText(pathOrUrl, cacheFor) · RequestStrings · RequestBytes · RequestJSONObject · RequestJSONArray · RequestXML · RequestTable · RequestPImage · RequestGeoJSON <span class="sig-return">→ Request&lt;T&gt;</span></h3>
+<p class="entry-desc">Loads in the background and returns at once, so <code class="inline">Draw()</code> never waits for the network. Check <code class="inline">.Ready</code> before using <code class="inline">.Value</code>; <code class="inline">.Progress</code> (0..1, or -1 when the server doesn't say the size), <code class="inline">.BytesRead</code> and <code class="inline">.Status</code> (<code class="inline">"loading 40%"</code>, <code class="inline">"from cache"</code>, <code class="inline">"failed: HTTP 404"</code>) are there for a loading screen, <code class="inline">.Failed</code>/<code class="inline">.Error</code> when it can't. Pass <code class="inline">cacheFor: TimeSpan.FromDays(30)</code> to keep the download on disk: the next run reads it instantly, and if the network is down later, the older copy is used (<code class="inline">.Stale</code> says so). Every free API in <a href="https://github.com/public-apis/public-apis">public-apis</a> without a key works this way.</p>
 
 <h3 class="entry-title" id="loadbytes">LoadBytes(<span class="tp">string</span> path) <span class="sig-return">→ byte[]</span> · SaveBytes(path, data)</h3>
 <p class="entry-desc">Reads/writes a file's raw bytes.</p>

@@ -85,6 +85,7 @@
 <ul class="on-this-page" aria-label="On this page">
 <li><a href="#rectmode">RectMode / EllipseMode / ShapeMode(ShapeAlignMode mode)</a></li>
 <li><a href="#rect"><code>Rect · Ellipse</code></a></li>
+<li><a href="#rect-rounded"><code>Rect</code></a></li>
 <li><a href="#square"><code>Square</code></a></li>
 <li><a href="#circle"><code>Circle</code></a></li>
 <li><a href="#line"><code>Line · Point</code></a></li>
@@ -112,6 +113,7 @@
 </ul></div>
 <div class="topic-group"><h2>Data &amp; math</h2><ul>
 <li><a href="files-data.html">Files &amp; data</a></li>
+<li><a href="geo.html">Maps &amp; globes</a></li>
 <li><a href="utilities.html">Conversion &amp; utilities</a></li>
 <li><a href="math.html">Math &amp; trig</a></li>
 <li><a href="pvector.html">PVector</a></li>
@@ -144,7 +146,7 @@
 </ul></div>
 <p class="topics-all"><a href="a-z.html">All topics &amp; A–Z index</a></p></nav>
   <div class="topic-main">
-<details class="on-this-page-mobile"><summary>On this page · 13 entries</summary><ul><li><a href="#rectmode">RectMode / EllipseMode / ShapeMode(ShapeAlignMode mode)</a></li><li><a href="#rect"><code>Rect · Ellipse</code></a></li><li><a href="#square"><code>Square</code></a></li><li><a href="#circle"><code>Circle</code></a></li><li><a href="#line"><code>Line · Point</code></a></li><li><a href="#triangle"><code>Triangle · Polygon · Quad</code></a></li><li><a href="#arc"><code>Arc</code></a></li><li><a href="#bezier"><code>Bezier</code></a></li><li><a href="#bezierpoint"><code>BezierPoint · BezierTangent</code></a></li><li><a href="#curve"><code>Curve · CurveTightness</code></a></li><li><a href="#curvepoint"><code>CurvePoint · CurveTangent</code></a></li><li><a href="#bezierdetail"><code>BezierDetail · CurveDetail</code></a></li><li><a href="#shape-primitives-example">Runnable example</a></li></ul></details>
+<details class="on-this-page-mobile"><summary>On this page · 14 entries</summary><ul><li><a href="#rectmode">RectMode / EllipseMode / ShapeMode(ShapeAlignMode mode)</a></li><li><a href="#rect"><code>Rect · Ellipse</code></a></li><li><a href="#rect-rounded"><code>Rect</code></a></li><li><a href="#square"><code>Square</code></a></li><li><a href="#circle"><code>Circle</code></a></li><li><a href="#line"><code>Line · Point</code></a></li><li><a href="#triangle"><code>Triangle · Polygon · Quad</code></a></li><li><a href="#arc"><code>Arc</code></a></li><li><a href="#bezier"><code>Bezier</code></a></li><li><a href="#bezierpoint"><code>BezierPoint · BezierTangent</code></a></li><li><a href="#curve"><code>Curve · CurveTightness</code></a></li><li><a href="#curvepoint"><code>CurvePoint · CurveTangent</code></a></li><li><a href="#bezierdetail"><code>BezierDetail · CurveDetail</code></a></li><li><a href="#shape-primitives-example">Runnable example</a></li></ul></details>
 <div class="doc">
 <h2 class="entry-title" id="rectmode">RectMode / EllipseMode / ShapeMode(<span class="tp">ShapeAlignMode</span> mode)</h2>
 <p class="entry-desc">Sets how the four arguments are interpreted. Default is <code class="inline">Corner</code> for rect and shape, <code class="inline">Center</code> for ellipse.</p>
@@ -161,6 +163,9 @@
 
 <h2 class="entry-title api" id="rect"><code>Rect · Ellipse</code></h2><ul class="sigs" aria-label="Signatures"><li><code>Rect(a, b, c, d)</code></li><li><code>Ellipse(a, b, c, d)</code></li></ul>
 <p class="entry-desc">Draws per the active mode, filled and/or stroked.</p>
+
+<h2 class="entry-title api" id="rect-rounded"><code>Rect</code></h2><ul class="sigs" aria-label="Signatures"><li><code>Rect(a, b, c, d, r)</code></li><li><code>Rect(a, b, c, d, tl, tr, br, bl)</code></li></ul>
+<p class="entry-desc">Rounded corners, like Processing's <code class="inline">rect(x, y, w, h, r)</code>: one radius for all four, or one per corner (top-left, top-right, bottom-right, bottom-left). No radius can be more than half the shorter side.</p>
 
 <h2 class="entry-title api" id="square"><code>Square</code></h2><ul class="sigs" aria-label="Signatures"><li><code>Square(x, y, extent)</code></li></ul>
 <p class="entry-desc">A <code class="inline">Rect</code> with equal width and height — a plain alias, still subject to the current <code class="inline">RectMode()</code>.</p>

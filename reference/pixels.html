@@ -96,6 +96,7 @@
 <li><a href="#loadpixels"><code>LoadPixels · Pixels · UpdatePixels</code></a></li>
 <li><a href="#pixels-get"><code>Get</code></a></li>
 <li><a href="#pixels-set"><code>Set</code></a></li>
+<li><a href="#pimage-pixels"><code>img.LoadPixels · img.Pixels · img.UpdatePixels · img.Get · img.Set</code></a></li>
 <li><a href="#copy"><code>Copy</code></a></li>
 <li><a href="#blend-pixels"><code>Blend</code></a></li>
 <li><a href="#filter"><code>Filter</code></a></li>
@@ -106,6 +107,7 @@
 </ul></div>
 <div class="topic-group"><h2>Data &amp; math</h2><ul>
 <li><a href="files-data.html">Files &amp; data</a></li>
+<li><a href="geo.html">Maps &amp; globes</a></li>
 <li><a href="utilities.html">Conversion &amp; utilities</a></li>
 <li><a href="math.html">Math &amp; trig</a></li>
 <li><a href="pvector.html">PVector</a></li>
@@ -138,7 +140,7 @@
 </ul></div>
 <p class="topics-all"><a href="a-z.html">All topics &amp; A–Z index</a></p></nav>
   <div class="topic-main">
-<details class="on-this-page-mobile"><summary>On this page · 7 entries</summary><ul><li><a href="#loadpixels"><code>LoadPixels · Pixels · UpdatePixels</code></a></li><li><a href="#pixels-get"><code>Get</code></a></li><li><a href="#pixels-set"><code>Set</code></a></li><li><a href="#copy"><code>Copy</code></a></li><li><a href="#blend-pixels"><code>Blend</code></a></li><li><a href="#filter"><code>Filter</code></a></li><li><a href="#pixels-example">Runnable example</a></li></ul></details>
+<details class="on-this-page-mobile"><summary>On this page · 8 entries</summary><ul><li><a href="#loadpixels"><code>LoadPixels · Pixels · UpdatePixels</code></a></li><li><a href="#pixels-get"><code>Get</code></a></li><li><a href="#pixels-set"><code>Set</code></a></li><li><a href="#pimage-pixels"><code>img.LoadPixels · img.Pixels · img.UpdatePixels · img.Get · img.Set</code></a></li><li><a href="#copy"><code>Copy</code></a></li><li><a href="#blend-pixels"><code>Blend</code></a></li><li><a href="#filter"><code>Filter</code></a></li><li><a href="#pixels-example">Runnable example</a></li></ul></details>
 <div class="doc">
 <h2 class="entry-title api" id="loadpixels"><code>LoadPixels · Pixels · UpdatePixels</code></h2><ul class="sigs" aria-label="Signatures"><li><code>LoadPixels()</code></li><li><code>Pixels <span class="sig-return">→ Color[]</span></code></li><li><code>UpdatePixels()</code></li></ul>
 <p class="entry-desc"><code class="inline">LoadPixels()</code> snapshots the canvas into the <code class="inline">Pixels</code> array (row-major, index = <code class="inline">y * Width + x</code>) for reading or editing. <code class="inline">UpdatePixels()</code> writes it back — verbatim, no blending with what was there. <code class="inline">Pixels</code> throws if <code class="inline">LoadPixels()</code> hasn't been called; it deliberately doesn't auto-load, so it's always clear whether you're looking at a fresh read.</p>
@@ -148,6 +150,9 @@
 
 <h2 class="entry-title api" id="pixels-set"><code>Set</code></h2><ul class="sigs" aria-label="Signatures"><li><code>Set(x, y, <span class="tp">Color</span> c)</code></li><li><code>Set(x, y, <span class="tp">PImage</span> img)</code></li></ul>
 <p class="entry-desc">Writes a single pixel or draws an image with pixels copied verbatim — no tint, no blending. Out-of-bounds coordinates are silently ignored.</p>
+
+<h2 class="entry-title api" id="pimage-pixels"><code>img.LoadPixels · img.Pixels · img.UpdatePixels · img.Get · img.Set</code></h2><ul class="sigs" aria-label="Signatures"><li><code>img.LoadPixels()</code></li><li><code>img.Pixels <span class="sig-return">→ Color[]</span></code></li><li><code>img.UpdatePixels()</code></li><li><code>img.Get(x, y)</code></li><li><code>img.Set(x, y, c)</code></li></ul>
+<p class="entry-desc">The same for a <code class="inline">PImage</code>, like Processing's <code class="inline">img.pixels</code>: read a loaded image's colors (a heightmap, a palette, a mask) without drawing it anywhere first. Any format comes out as plain colors — a grayscale PNG reads as gray <code class="inline">Color</code>s. A <code class="inline">PGraphics</code> can be read (<code class="inline">pg.LoadPixels()</code>, <code class="inline">pg.Get()</code>) after <code class="inline">EndDraw()</code> too.</p>
 
 <h2 class="entry-title api" id="copy"><code>Copy</code></h2><ul class="sigs" aria-label="Signatures"><li><code>Copy(sx,sy,sw,sh, dx,dy,dw,dh)</code></li><li><code>Copy(<span class="tp">PImage</span> src, sx,sy,sw,sh, dx,dy,dw,dh)</code></li></ul>
 <p class="entry-desc">Copies a region (scaling if source/destination sizes differ) — verbatim, no blending. Without a source image, copies from this same canvas onto itself.</p>

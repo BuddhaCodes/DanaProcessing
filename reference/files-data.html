@@ -98,6 +98,7 @@
 <li><a href="files-data.html" aria-current="page">Files &amp; data</a>
 <ul class="on-this-page" aria-label="On this page">
 <li><a href="#loadstrings"><code>LoadStrings · SaveStrings</code></a></li>
+<li><a href="#requesttext"><code>RequestText · RequestStrings · RequestBytes · RequestJSONObject · RequestJSONArray · RequestXML · RequestTable · RequestPImage · RequestGeoJSON</code></a></li>
 <li><a href="#loadbytes"><code>LoadBytes · SaveBytes</code></a></li>
 <li><a href="#loadjsonobject"><code>LoadJSONObject · SaveJSONObject · LoadJSONArray · SaveJSONArray</code></a></li>
 <li><a href="#parsejsonobject"><code>ParseJSONObject · ParseJSONArray · ParseXML</code></a></li>
@@ -111,6 +112,7 @@
 <li><a href="#files-data-example">Runnable example</a></li>
 </ul>
 </li>
+<li><a href="geo.html">Maps &amp; globes</a></li>
 <li><a href="utilities.html">Conversion &amp; utilities</a></li>
 <li><a href="math.html">Math &amp; trig</a></li>
 <li><a href="pvector.html">PVector</a></li>
@@ -143,10 +145,14 @@
 </ul></div>
 <p class="topics-all"><a href="a-z.html">All topics &amp; A–Z index</a></p></nav>
   <div class="topic-main">
-<details class="on-this-page-mobile"><summary>On this page · 12 entries</summary><ul><li><a href="#loadstrings"><code>LoadStrings · SaveStrings</code></a></li><li><a href="#loadbytes"><code>LoadBytes · SaveBytes</code></a></li><li><a href="#loadjsonobject"><code>LoadJSONObject · SaveJSONObject · LoadJSONArray · SaveJSONArray</code></a></li><li><a href="#parsejsonobject"><code>ParseJSONObject · ParseJSONArray · ParseXML</code></a></li><li><a href="#loadxml"><code>LoadXML · SaveXML</code></a></li><li><a href="#loadtable"><code>LoadTable · SaveTable</code></a></li><li><a href="#createwriter"><code>CreateWriter · CreateReader</code></a></li><li><a href="#createoutput"><code>CreateOutput · CreateInput</code></a></li><li><a href="#savestream"><code>SaveStream</code></a></li><li><a href="#printwriter"><code>class PrintWriter · class BufferedReader</code></a></li><li><a href="#printarray"><code>PrintArray</code></a></li><li><a href="#files-data-example">Runnable example</a></li></ul></details>
+<details class="on-this-page-mobile"><summary>On this page · 13 entries</summary><ul><li><a href="#loadstrings"><code>LoadStrings · SaveStrings</code></a></li><li><a href="#requesttext"><code>RequestText · RequestStrings · RequestBytes · RequestJSONObject · RequestJSONArray · RequestXML · RequestTable · RequestPImage · RequestGeoJSON</code></a></li><li><a href="#loadbytes"><code>LoadBytes · SaveBytes</code></a></li><li><a href="#loadjsonobject"><code>LoadJSONObject · SaveJSONObject · LoadJSONArray · SaveJSONArray</code></a></li><li><a href="#parsejsonobject"><code>ParseJSONObject · ParseJSONArray · ParseXML</code></a></li><li><a href="#loadxml"><code>LoadXML · SaveXML</code></a></li><li><a href="#loadtable"><code>LoadTable · SaveTable</code></a></li><li><a href="#createwriter"><code>CreateWriter · CreateReader</code></a></li><li><a href="#createoutput"><code>CreateOutput · CreateInput</code></a></li><li><a href="#savestream"><code>SaveStream</code></a></li><li><a href="#printwriter"><code>class PrintWriter · class BufferedReader</code></a></li><li><a href="#printarray"><code>PrintArray</code></a></li><li><a href="#files-data-example">Runnable example</a></li></ul></details>
 <div class="doc">
 <h2 class="entry-title api" id="loadstrings"><code>LoadStrings · SaveStrings</code></h2><ul class="sigs" aria-label="Signatures"><li><code>LoadStrings(<span class="tp">string</span> path) <span class="sig-return">→ string[]</span></code></li><li><code>SaveStrings(path, lines)</code></li></ul>
 <p class="entry-desc">Reads/writes a text file as an array of lines.</p>
+<p class="entry-desc">Every <code class="inline">Load*()</code> on this page (and <code class="inline">LoadImage</code>) also takes a URL, like in Processing: <code class="inline">LoadStrings("https://...")</code> downloads it and returns the lines. It waits for the download, so do it in <code class="inline">Setup()</code> — or use the <code class="inline">Request*()</code> versions below.</p>
+
+<h2 class="entry-title api" id="requesttext"><code>RequestText · RequestStrings · RequestBytes · RequestJSONObject · RequestJSONArray · RequestXML · RequestTable · RequestPImage · RequestGeoJSON</code></h2><ul class="sigs" aria-label="Signatures"><li><code>RequestText(pathOrUrl, cacheFor)</code></li><li><code>RequestStrings</code></li><li><code>RequestBytes</code></li><li><code>RequestJSONObject</code></li><li><code>RequestJSONArray</code></li><li><code>RequestXML</code></li><li><code>RequestTable</code></li><li><code>RequestPImage</code></li><li><code>RequestGeoJSON <span class="sig-return">→ Request&lt;T&gt;</span></code></li></ul>
+<p class="entry-desc">Loads in the background and returns at once, so <code class="inline">Draw()</code> never waits for the network. Check <code class="inline">.Ready</code> before using <code class="inline">.Value</code>; <code class="inline">.Progress</code> (0..1, or -1 when the server doesn't say the size), <code class="inline">.BytesRead</code> and <code class="inline">.Status</code> (<code class="inline">"loading 40%"</code>, <code class="inline">"from cache"</code>, <code class="inline">"failed: HTTP 404"</code>) are there for a loading screen, <code class="inline">.Failed</code>/<code class="inline">.Error</code> when it can't. Pass <code class="inline">cacheFor: TimeSpan.FromDays(30)</code> to keep the download on disk: the next run reads it instantly, and if the network is down later, the older copy is used (<code class="inline">.Stale</code> says so). Every free API in <a href="https://github.com/public-apis/public-apis">public-apis</a> without a key works this way.</p>
 
 <h2 class="entry-title api" id="loadbytes"><code>LoadBytes · SaveBytes</code></h2><ul class="sigs" aria-label="Signatures"><li><code>LoadBytes(<span class="tp">string</span> path) <span class="sig-return">→ byte[]</span></code></li><li><code>SaveBytes(path, data)</code></li></ul>
 <p class="entry-desc">Reads/writes a file's raw bytes.</p>
@@ -218,7 +224,7 @@ Text(Str(row.GetInt(<span class="str">"score"</span>)), <span class="str">110</s
 }</pre></div>
 
 </div>
-<nav class="pager" aria-label="Previous and next topic"><a class="prev" href="reels.html"><span>← Previous</span><strong>Reels: turn a sketch into a video</strong></a><a class="next" href="utilities.html"><span>Next →</span><strong>Conversion &amp; utility functions</strong></a></nav>
+<nav class="pager" aria-label="Previous and next topic"><a class="prev" href="reels.html"><span>← Previous</span><strong>Reels: turn a sketch into a video</strong></a><a class="next" href="geo.html"><span>Next →</span><strong>Maps &amp; globes</strong></a></nav>
 <aside class="support-aside" aria-label="Support the project">
   <p><strong>Found this useful?</strong> Dana is free and built in spare time — a donation buys more time for docs like this one.</p>
   <a class="btn btn-ink" href="https://paypal.me/CarlosFernandez934"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M12 21s-7.5-4.6-9.6-9.4C1 8.2 3.1 4.5 6.8 4.5c2.2 0 3.7 1.3 5.2 3 1.5-1.7 3-3 5.2-3 3.7 0 5.8 3.7 4.4 7.1C19.5 16.4 12 21 12 21z"></path></svg><span>Donate via PayPal</span></a>
