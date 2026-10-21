@@ -13,8 +13,8 @@ namespace DanaProcessing.Ide.Editor
         {
             new SketchSample(
                 Loc.Tr("Terremotos del planeta en vivo (USGS)", "The planet's earthquakes, live (USGS)"),
-                Loc.Tr("Un globo punteado con relieve (las montañas se levantan y tienen sombra) y los países del mundo (bordes y nombres), y cada terremoto de las últimas 24 horas (o de la semana) saliendo de la superficie: la altura es la magnitud y el color la profundidad. Tres descargas gratuitas y sin clave, en hilos aparte y con un panel de carga que muestra el progreso de cada una: el feed en tiempo real del Servicio Geológico de EE.UU. (cada 5 minutos), los contornos de países de Natural Earth y un mapa de elevación de toda la Tierra (los dos últimos una sola vez, guardados en la carpeta temporal). Cada punto del globo es tierra si cae dentro de un país (punto en polígono). Pasá el mouse por un sismo para ver magnitud, profundidad, país, lugar y hora, y el área donde se sintió, con ondas que salen del epicentro. W muestra la semana (los sismos dibujan solos los bordes de las placas), R repite el periodo en 40 segundos con un anillo y un sonido por sismo, E cambia el relieve (plano, normal, exagerado), L oculta los nombres. Sin conexión muestra sismos inventados y lo avisa.",
-                       "A dotted globe with relief (mountains rise and are hill-shaded) and the world's countries (borders and names), and every earthquake of the last 24 hours (or week) standing out of the surface: height is magnitude, color is depth. Three free, keyless downloads on background threads, with a loading panel showing each one's progress: the U.S. Geological Survey's real-time feed (every 5 minutes), Natural Earth's country outlines and an elevation map of the whole Earth (the last two once, kept in the temp folder). Each dot of the globe is land if it falls inside a country (point in polygon). Hover a quake for its magnitude, depth, country, place and time, and the area where it was felt, with waves running out from the epicentre. W shows the week (the quakes trace the plate boundaries by themselves), R replays the period in 40 seconds with a ring and a sound per quake, E switches the relief (flat, normal, dramatic), L hides the names. Offline it shows made-up quakes and says so."),
+                Loc.Tr("Un globo punteado con relieve (las montañas se levantan y tienen sombra) y los países del mundo (bordes y nombres), y cada terremoto de las últimas 24 horas (o de la semana) saliendo de la superficie: la altura es la magnitud y el color la profundidad. Tres descargas gratuitas y sin clave, en hilos aparte y con un panel de carga que muestra el progreso de cada una: el feed en tiempo real del Servicio Geológico de EE.UU. (cada 5 minutos), los contornos de países de Natural Earth y un mapa de elevación de toda la Tierra (los dos últimos una sola vez, guardados en la carpeta temporal). Cada punto del globo es tierra si cae dentro de un país (punto en polígono). Pasá el mouse por un sismo para ver magnitud, profundidad, país, lugar y hora, y el área donde se sintió, con ondas que salen del epicentro hasta donde llegó según su magnitud. W muestra la semana (los sismos dibujan solos los bordes de las placas), R repite el periodo en 40 segundos con un anillo y un sonido por sismo, E cambia el relieve (plano, normal, exagerado), L oculta los nombres. Sin conexión muestra sismos inventados y lo avisa.",
+                       "A dotted globe with relief (mountains rise and are hill-shaded) and the world's countries (borders and names), and every earthquake of the last 24 hours (or week) standing out of the surface: height is magnitude, color is depth. Three free, keyless downloads on background threads, with a loading panel showing each one's progress: the U.S. Geological Survey's real-time feed (every 5 minutes), Natural Earth's country outlines and an elevation map of the whole Earth (the last two once, kept in the temp folder). Each dot of the globe is land if it falls inside a country (point in polygon). Hover a quake for its magnitude, depth, country, place and time, and the area where it was felt, with waves running out from the epicentre as far as its magnitude reached. W shows the week (the quakes trace the plate boundaries by themselves), R replays the period in 40 seconds with a ring and a sound per quake, E switches the relief (flat, normal, dramatic), L hides the names. Offline it shows made-up quakes and says so."),
                 QuakeGlobe,
                 new[] { SampleTag.Data, SampleTag.ThreeD, SampleTag.Audio, SampleTag.Interaction }),
         };
@@ -697,14 +697,14 @@ public class QuakeGlobe : Sketch
         BeginShape();
         foreach (var e in edge) if (e.Front) Vertex(e.X, e.Y);
         EndShape(true);
-        // Its rim, and four waves running out from the epicentre -- past the felt area, fading
-        // as they go (the waves themselves travel much further than anyone notices them).
-        float waveDeg = Math.Max(reachDeg * 2.5f, 5);
+        // Its rim, and four waves running out from the epicentre to it: the bigger the quake,
+        // the further they go (an M7's reach a hundred times an M2's).
+        float waveDeg = reachDeg;
         NoFill();
         for (int w = -1; w < 4; w++)
         {
             float frac = w < 0 ? 1 : (t * 0.5f + w / 4f) % 1;
-            var ring = RingAt(w < 0 ? reachDeg : waveDeg * Math.Max(0.02f, frac));
+            var ring = RingAt(waveDeg * (w < 0 ? 1 : Math.Max(0.02f, frac)));
             Stroke(r, g, b, w < 0 ? 170 : 230 * (1 - frac));
             StrokeWeight(w < 0 ? 1.2f : 2.2f * (1 - frac) + 0.6f);
             for (int k = 1; k < ring.Length; k++)
@@ -756,7 +756,7 @@ public class QuakeGlobe : Sketch
             Text(q.Place.Length > 48 ? q.Place[..48] + ""…"" : q.Place, x + 10, y + 32);
             Text($""{q.Time:ddd dd MMM HH:mm}  ({(DateTime.Now - q.Time).TotalHours:0.0} h ago)"", x + 10, y + 56);
             Fill(255, 220, 160);
-            Text($""felt up to ~{FeltKm(q.Mag):N0} km away (the waves)"", x + 10, y + 80);
+            Text($""felt up to ~{FeltKm(q.Mag):N0} km away (the waves reach that far)"", x + 10, y + 80);
         }
 
         TextAlign(TextAlignH.Left, TextAlignV.Bottom);
@@ -784,9 +784,9 @@ public class QuakeGlobe : Sketch
 
     public override void MouseDragged()
     {
-        // The surface follows the mouse: drag right and the globe turns right, drag down and it tips down.
-        yaw -= (MouseX - PMouseX) * 0.008f;
-        pitch = Constrain(pitch - (MouseY - PMouseY) * 0.008f, -1.3f, 1.3f);
+        // Like grabbing the camera: drag right and you go round to the east, drag down and you rise north.
+        yaw += (MouseX - PMouseX) * 0.008f;
+        pitch = Constrain(pitch + (MouseY - PMouseY) * 0.008f, -1.3f, 1.3f);
     }
 
     public override void MouseWheel(float delta) => zoom = Constrain(zoom * (delta > 0 ? 1 / 1.1f : 1.1f), 0.7f, 2.6f);
