@@ -13,8 +13,8 @@ namespace DanaProcessing.Ide.Editor
         {
             new SketchSample(
                 Loc.Tr("Terremotos del planeta en vivo (USGS)", "The planet's earthquakes, live (USGS)"),
-                Loc.Tr("Un globo punteado con los países del mundo (bordes y nombres) y cada terremoto de las últimas 24 horas (o de la semana) saliendo de la superficie: la altura es la magnitud y el color la profundidad. Dos descargas gratuitas y sin clave, en un hilo aparte: el feed en tiempo real del Servicio Geológico de EE.UU. (cada 5 minutos) y los contornos de países de Natural Earth (una vez, guardados en la carpeta temporal). Cada punto del globo es tierra si cae dentro de un país (punto en polígono). Pasá el mouse por un sismo para ver magnitud, profundidad, país, lugar y hora. W muestra la semana (los sismos dibujan solos los bordes de las placas), R repite el periodo en 40 segundos con un anillo y un sonido por sismo, L oculta los nombres. Sin conexión muestra sismos inventados y lo avisa.",
-                       "A dotted globe with the world's countries (borders and names) and every earthquake of the last 24 hours (or week) standing out of the surface: height is magnitude, color is depth. Two free, keyless downloads on a background thread: the U.S. Geological Survey's real-time feed (every 5 minutes) and Natural Earth's country outlines (once, kept in the temp folder). Each dot of the globe is land if it falls inside a country (point in polygon). Hover a quake for its magnitude, depth, country, place and time. W shows the week (the quakes trace the plate boundaries by themselves), R replays the period in 40 seconds with a ring and a sound per quake, L hides the names. Offline it shows made-up quakes and says so."),
+                Loc.Tr("Un globo punteado con relieve (las montañas se levantan y tienen sombra) y los países del mundo (bordes y nombres), y cada terremoto de las últimas 24 horas (o de la semana) saliendo de la superficie: la altura es la magnitud y el color la profundidad. Tres descargas gratuitas y sin clave, en hilos aparte y con un panel de carga que muestra el progreso de cada una: el feed en tiempo real del Servicio Geológico de EE.UU. (cada 5 minutos), los contornos de países de Natural Earth y un mapa de elevación de toda la Tierra (los dos últimos una sola vez, guardados en la carpeta temporal). Cada punto del globo es tierra si cae dentro de un país (punto en polígono). Pasá el mouse por un sismo para ver magnitud, profundidad, país, lugar y hora. W muestra la semana (los sismos dibujan solos los bordes de las placas), R repite el periodo en 40 segundos con un anillo y un sonido por sismo, E cambia el relieve (plano, normal, exagerado), L oculta los nombres. Sin conexión muestra sismos inventados y lo avisa.",
+                       "A dotted globe with relief (mountains rise and are hill-shaded) and the world's countries (borders and names), and every earthquake of the last 24 hours (or week) standing out of the surface: height is magnitude, color is depth. Three free, keyless downloads on background threads, with a loading panel showing each one's progress: the U.S. Geological Survey's real-time feed (every 5 minutes), Natural Earth's country outlines and an elevation map of the whole Earth (the last two once, kept in the temp folder). Each dot of the globe is land if it falls inside a country (point in polygon). Hover a quake for its magnitude, depth, country, place and time. W shows the week (the quakes trace the plate boundaries by themselves), R replays the period in 40 seconds with a ring and a sound per quake, E switches the relief (flat, normal, dramatic), L hides the names. Offline it shows made-up quakes and says so."),
                 QuakeGlobe,
                 new[] { SampleTag.Data, SampleTag.ThreeD, SampleTag.Audio, SampleTag.Interaction }),
         };
@@ -22,23 +22,29 @@ namespace DanaProcessing.Ide.Editor
         private const string QuakeGlobe =
 @"// The planet's earthquakes, live, on a dotted globe with the world's countries.
 //
-// Two downloads, both free and keyless, on a background thread (the globe never waits):
+// Three downloads, all free and keyless, on background threads (the globe never waits;
+// a loading panel shows each one's progress):
 // - the earthquakes: the USGS (U.S. Geological Survey) real-time feed, GeoJSON,
 //   refreshed every 5 minutes. https://earthquake.usgs.gov/earthquakes/feed/
 // - the countries: Natural Earth's 1:110m country shapes (public domain), also GeoJSON,
 //   downloaded once and kept in your temp folder for next time.
 //   https://www.naturalearthdata.com
+// - the relief: a 2048 x 1024 grayscale elevation map of the whole Earth (the one the
+//   three-globe project uses, from NASA data), also downloaded once and cached.
 //
-// The globe is ~14,000 dots spread evenly over the sphere: the ones that fall inside a
-// country (point-in-polygon against its outline) are land, the rest a faint ocean. The
-// borders are drawn on top, and the bigger countries are labelled. Each earthquake
+// The globe is ~36,000 points spread evenly over the sphere: the ones that fall inside a
+// country (point-in-polygon against its outline) are land, a few of the rest a faint
+// ocean. Land points rise with the terrain (exaggerated about 400x, or you wouldn't see
+// the Himalayas at all) and take its colors: green lowlands, tan uplands, white peaks.
+// The borders are drawn on top, and the bigger countries are labelled. Each earthquake
 // stands out of the surface: its height is the magnitude, its color the depth (shallow
 // yellow, deep red and violet -- deep ones are where one plate dives under another).
 // Hover one to see its magnitude, depth, place, country and time.
 //
 // Drag: turn.  Wheel: zoom.  D / W: last day / last week (with the week the quakes
 // trace the plate boundaries by themselves).  R: replay the period in 40 s, with a ring
-// and a sound per quake.  L: labels on/off.  Space: stop the spin.
+// and a sound per quake.  E: relief flat / normal / dramatic.  L: labels on/off.
+// Space: stop the spin.
 // No connection: a plain dotted sphere and made-up quakes, clearly labelled as such.
 public class QuakeGlobe : Sketch
 {
@@ -48,7 +54,9 @@ public class QuakeGlobe : Sketch
     const string CountriesUrl = ""https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_admin_0_countries.geojson"";
     const string NameField = ""NAME_ES"";      // NAME for English names, NAME_FR, NAME_DE, NAME_PT...
     const float R = 10;                      // globe radius
+    const string ReliefUrl = ""https://raw.githubusercontent.com/vasturiano/three-globe/master/example/img/earth-topology.png"";
     const float ReplaySeconds = 40;
+    const int Dots = 36000;
 
     record Quake(float Lat, float Lon, float DepthKm, float Mag, string Place, DateTime Time)
     {
@@ -76,6 +84,20 @@ public class QuakeGlobe : Sketch
     string status = ""downloading..."", mapStatus = ""downloading the world map..."";
     volatile string arrivedMapStatus;
     bool week, demo, labels = true;
+
+    // Loading: one line per download, with its progress (0..1, or -1 while the size is unknown).
+    class Job { public string Name = """"; public volatile string State = ""waiting""; public float Progress = -1; public volatile bool Done; }
+    readonly Job mapJob = new() { Name = ""World map (country outlines)"" };
+    readonly Job reliefJob = new() { Name = ""Relief (elevation of the Earth)"" };
+    readonly Job dotsJob = new() { Name = ""Building the globe (land and sea)"" };
+    readonly Job quakeJob = new() { Name = ""Earthquakes (USGS)"" };
+    volatile byte[] arrivedRelief;
+    float[] heights;                         // the elevation map, 0..1, ReliefW x ReliefH
+    const int ReliefW = 1024, ReliefH = 512;
+    float[] landHeight = System.Array.Empty<float>(), landShade = System.Array.Empty<float>();
+    float relief = 1;                        // E cycles 0 / 1 / 2.2
+    bool ready;                              // map, relief and dots all in: show the world
+    float shown;                             // fades the world in
     long lastFetch = -999999;
     volatile bool fetching;
 
@@ -101,42 +123,84 @@ public class QuakeGlobe : Sketch
     {
         System.Threading.Tasks.Task.Run(async () =>
         {
+            byte[] data = await Download(ReliefUrl, ""dana_earth_topology.png"", reliefJob);
+            if (data != null) arrivedRelief = data;
+        });
+        System.Threading.Tasks.Task.Run(async () =>
+        {
             List<Country> list = new();
-            try
+            byte[] data = await Download(CountriesUrl, ""dana_ne_110m_countries.geojson"", mapJob);
+            if (data != null)
             {
-                string cache = System.IO.Path.Combine(System.IO.Path.GetTempPath(), ""dana_ne_110m_countries.geojson"");
-                string json;
-                if (File.Exists(cache)) json = File.ReadAllText(cache);
-                else
+                try
                 {
-                    using var http = new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(30) };
-                    json = await http.GetStringAsync(CountriesUrl);
-                    File.WriteAllText(cache, json);
+                    mapJob.State = ""reading the outlines..."";
+                    list = ParseCountries(System.Text.Encoding.UTF8.GetString(data));
+                    mapJob.State = $""{list.Count} countries"";
+                    arrivedMapStatus = $""Natural Earth · {list.Count} countries"";
                 }
-                list = ParseCountries(json);
-                arrivedMapStatus = $""Natural Earth · {list.Count} countries"";
+                catch (Exception e) { mapJob.State = ""unreadable: "" + e.GetType().Name; arrivedMapStatus = ""no world map""; }
             }
-            catch (Exception e)
-            {
-                arrivedMapStatus = $""no world map ({e.GetType().Name}): plain globe"";
-            }
+            else arrivedMapStatus = ""no world map: plain globe"";
+            mapJob.Done = true;
 
-            // The dots: a Fibonacci spiral spreads them evenly; each one is land if it's inside a country.
-            const int dots = 14000;
+            // The points: a Fibonacci spiral spreads them evenly; each one is land if it's inside a country.
             var landDots = new List<PVector>();
             var seaDots = new List<PVector>();
-            for (int k = 0; k < dots; k++)
+            for (int k = 0; k < Dots; k++)
             {
-                float y = 1 - 2 * (k + 0.5f) / dots, r = MathF.Sqrt(1 - y * y), a = k * 2.39996f;
+                if (k % 2000 == 0) { dotsJob.Progress = k / (float)Dots; dotsJob.State = $""{k:N0} / {Dots:N0} points""; }
+                float y = 1 - 2 * (k + 0.5f) / Dots, r = MathF.Sqrt(1 - y * y), a = k * 2.39996f;
                 var p = new PVector(MathF.Cos(a) * r, y, MathF.Sin(a) * r);
                 float lat = MathF.Asin(y) * 180 / MathF.PI, lon = MathF.Atan2(p.X, -p.Z) * 180 / MathF.PI;
                 if (CountryAt(list, lat, lon) != null) landDots.Add(p);
-                else if (k % 3 == 0) seaDots.Add(p);
+                else if (k % 6 == 0) seaDots.Add(p);
             }
+            dotsJob.Progress = 1;
+            dotsJob.State = $""{landDots.Count:N0} land points"";
+            dotsJob.Done = true;
             arrivedLand = landDots.ToArray();
             arrivedSea = seaDots.ToArray();
             arrivedCountries = list;
         });
+    }
+
+    /// <summary>Downloads a file once (with progress), keeping it in the temp folder; null if it can't.</summary>
+    static async System.Threading.Tasks.Task<byte[]> Download(string url, string cacheName, Job job)
+    {
+        string cache = System.IO.Path.Combine(System.IO.Path.GetTempPath(), cacheName);
+        try
+        {
+            if (File.Exists(cache))
+            {
+                job.Progress = 1;
+                job.State = ""from cache"";
+                return File.ReadAllBytes(cache);
+            }
+            using var http = new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(60) };
+            using var response = await http.GetAsync(url, System.Net.Http.HttpCompletionOption.ResponseHeadersRead);
+            response.EnsureSuccessStatusCode();
+            long total = response.Content.Headers.ContentLength ?? -1;
+            using var stream = await response.Content.ReadAsStreamAsync();
+            var ms = new MemoryStream();
+            var buffer = new byte[64 * 1024];
+            int read;
+            while ((read = await stream.ReadAsync(buffer)) > 0)
+            {
+                ms.Write(buffer, 0, read);
+                job.Progress = total > 0 ? ms.Length / (float)total : -1;
+                job.State = total > 0 ? $""{ms.Length / 1024:N0} / {total / 1024:N0} KB"" : $""{ms.Length / 1024:N0} KB"";
+            }
+            var bytes = ms.ToArray();
+            File.WriteAllBytes(cache, bytes);
+            job.Progress = 1;
+            return bytes;
+        }
+        catch (Exception e)
+        {
+            job.State = ""failed: "" + e.GetType().Name;
+            return null;
+        }
     }
 
     static List<Country> ParseCountries(string json)
@@ -218,15 +282,20 @@ public class QuakeGlobe : Sketch
         {
             try
             {
+                quakeJob.State = ""downloading..."";
                 using var http = new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(15) };
                 string json = await http.GetStringAsync(url);
                 var list = ParseQuakes(json);
+                quakeJob.State = $""{list.Count} earthquakes"";
+                quakeJob.Progress = 1;
                 arrivedStatus = $""USGS · {list.Count} earthquakes · {(week ? ""magnitude 2.5+, last 7 days"" : ""all, last 24 hours"")} · updated {DateTime.Now:HH:mm}"";
                 demo = false;
                 arrivedQuakes = list;
             }
             catch (Exception e)
             {
+                quakeJob.State = ""no connection: made-up quakes"";
+                quakeJob.Progress = 1;
                 if (quakes.Count == 0 || demo)
                 {
                     arrivedStatus = $""no connection ({e.GetType().Name}) · these quakes are MADE UP"";
@@ -235,7 +304,7 @@ public class QuakeGlobe : Sketch
                 }
                 else arrivedStatus = status + "" · last update failed"";
             }
-            finally { fetching = false; }
+            finally { fetching = false; quakeJob.Done = true; }
         });
     }
 
@@ -277,7 +346,25 @@ public class QuakeGlobe : Sketch
     // =====================================================================================
     public override void Draw()
     {
-        if (arrivedCountries != null) { countries = arrivedCountries; land = arrivedLand; sea = arrivedSea; mapStatus = arrivedMapStatus; arrivedCountries = null; }
+        if (arrivedCountries != null) { countries = arrivedCountries; land = arrivedLand; sea = arrivedSea; mapStatus = arrivedMapStatus; arrivedCountries = null; landHeight = new float[land.Length]; landShade = new float[land.Length]; heightsDirty = true;
+            foreach (var q in quakes) q.Country = CountryAt(countries, q.Lat, q.Lon)?.Name ?? """"; }
+        if (arrivedRelief != null) ReadRelief();
+        if (heightsDirty && heights != null && land.Length > 0)
+        {
+            for (int k = 0; k < land.Length; k++)
+            {
+                var d = land[k];
+                float lat = MathF.Asin(d.Y) * 180 / MathF.PI, lon = MathF.Atan2(d.X, -d.Z) * 180 / MathF.PI;
+                landHeight[k] = HeightAt(lat, lon);
+                // Hill shading: light from the north-west, so slopes facing it are brighter and the
+                // ones facing away darker -- that's what makes mountains readable from straight on.
+                float slope = (HeightAt(lat + 0.6f, lon) - HeightAt(lat - 0.6f, lon)) + (HeightAt(lat, lon - 0.6f) - HeightAt(lat, lon + 0.6f));
+                landShade[k] = Math.Clamp(1 + slope * 4, 0.45f, 1.6f);
+            }
+            heightsDirty = false;
+        }
+        ready = mapJob.Done && dotsJob.Done && (reliefJob.Done || heights != null || reliefJob.State.StartsWith(""failed""));
+        if (ready) shown = Min(1, shown + 0.02f);
         if (arrivedQuakes != null)
         {
             var list = arrivedQuakes;
@@ -305,13 +392,89 @@ public class QuakeGlobe : Sketch
         Fill(6, 12, 28);
         Circle(ex, ey, 2 * screenR);
 
-        DrawDots(sea, 0.9f, 30, 55, 95);
-        DrawDots(land, 2.1f, 120, 200, 230);
-        DrawBorders();
-        var clock = Replay();
-        DrawQuakes(clock);
-        if (labels) DrawLabels();
+        if (shown > 0)
+        {
+            DrawSea();
+            DrawLand();
+            DrawBorders();
+            var clock = Replay();
+            DrawQuakes(clock);
+            if (labels) DrawLabels();
+        }
         Hud();
+        if (shown < 1) Loading();
+    }
+
+    bool heightsDirty;
+
+    /// <summary>The elevation PNG: decoded with LoadImage, drawn small on a PGraphics and read back as numbers.</summary>
+    void ReadRelief()
+    {
+        var bytes = arrivedRelief;
+        arrivedRelief = null;
+        try
+        {
+            reliefJob.State = ""reading the elevation map..."";
+            var img = LoadImage(bytes);
+            var pg = CreateGraphics(ReliefW, ReliefH);
+            pg.BeginDraw();
+            pg.Image(img, 0, 0, ReliefW, ReliefH);
+            pg.LoadPixels();
+            heights = new float[ReliefW * ReliefH];
+            for (int i = 0; i < heights.Length; i++) heights[i] = pg.Pixels[i].R / 248f;
+            pg.EndDraw();
+            pg.Dispose();
+            reliefJob.State = ""Himalayas to sea level, 1024 x 512"";
+            heightsDirty = true;
+        }
+        catch (Exception e) { reliefJob.State = ""unreadable: "" + e.GetType().Name; }
+        reliefJob.Done = true;
+    }
+
+    /// <summary>Elevation 0..1 at a latitude/longitude (the map is equirectangular: lon -180..180 left to right, lat 90..-90 top to bottom).</summary>
+    float HeightAt(float lat, float lon)
+    {
+        if (heights == null) return 0;
+        int x = Math.Clamp((int)((lon + 180) / 360 * ReliefW), 0, ReliefW - 1);
+        int y = Math.Clamp((int)((90 - lat) / 180 * ReliefH), 0, ReliefH - 1);
+        return heights[y * ReliefW + x];
+    }
+
+    /// <summary>How far above the sphere a point of this elevation sits.</summary>
+    float Lift(float h) => R * h * 0.06f * relief;
+
+    void Loading()
+    {
+        float a = 1 - shown;
+        float w = 440, h = 190, x = (Width - w) / 2, y = (Height - h) / 2;
+        NoStroke();
+        Fill(8, 14, 30, 225 * a);
+        Rect(x, y, w, h);
+        TextFont(font, 15);
+        TextSize(15);
+        TextAlign(TextAlignH.Left, TextAlignV.Top);
+        Fill(230, 240, 255, 255 * a);
+        string[] spin = { ""◐"", ""◓"", ""◑"", ""◒"" };
+        Text($""{spin[(int)(Millis() / 150) % 4]}  Loading the world"", x + 20, y + 16);
+        Job[] jobs = { mapJob, reliefJob, dotsJob, quakeJob };
+        for (int k = 0; k < jobs.Length; k++)
+        {
+            var j = jobs[k];
+            float ly = y + 52 + k * 34;
+            TextSize(12);
+            Fill(190, 205, 230, 255 * a);
+            Text(j.Name, x + 20, ly);
+            TextAlign(TextAlignH.Right, TextAlignV.Top);
+            Fill(140, 160, 190, 255 * a);
+            Text(j.State, x + w - 20, ly);
+            TextAlign(TextAlignH.Left, TextAlignV.Top);
+            // The bar: filled to its progress, or a sliding block while the size is unknown.
+            Fill(255, 255, 255, 25 * a);
+            Rect(x + 20, ly + 17, w - 40, 4);
+            Fill(90, 190, 255, 255 * a);
+            if (j.Progress >= 0) Rect(x + 20, ly + 17, (w - 40) * Math.Min(1, j.Progress), 4);
+            else Rect(x + 20 + ((Millis() / 4) % (long)(w - 100)), ly + 17, 60, 4);
+        }
     }
 
     /// <summary>World point -> screen (x, y) and how far it is in front of the globe's middle (>0: facing us).</summary>
@@ -329,16 +492,38 @@ public class QuakeGlobe : Sketch
         return new PVector(MathF.Cos(la) * MathF.Sin(lo) * r, MathF.Sin(la) * r, -MathF.Cos(la) * MathF.Cos(lo) * r);
     }
 
-    void DrawDots(PVector[] dots, float size, float r, float g, float b)
+    void DrawSea()
     {
         NoStroke();
-        foreach (var d in dots)
+        foreach (var d in sea)
         {
             var (x, y, facing) = Project(d.X * R, d.Y * R, d.Z * R);
             if (facing < 0) continue;                                   // the far side is hidden
             float edge = facing / R;                                    // 1 in the middle, 0 at the rim
-            Fill(r, g, b, 60 + 195 * edge);
-            Circle(x, y, size * (0.55f + 0.45f * edge) * zoom);
+            Fill(30, 60, 105, (60 + 150 * edge) * shown);
+            Circle(x, y, 1.1f * (0.55f + 0.45f * edge) * zoom);
+        }
+    }
+
+    void DrawLand()
+    {
+        NoStroke();
+        for (int k = 0; k < land.Length; k++)
+        {
+            var d = land[k];
+            float h = landHeight.Length == land.Length ? landHeight[k] : 0;
+            float r = R + Lift(h);
+            var (x, y, facing) = Project(d.X * r, d.Y * r, d.Z * r);
+            if (facing < -0.5f) continue;
+            float edge = Constrain(facing / R, 0, 1);
+            // Terrain colors: green lowlands, tan uplands, white peaks; a little brighter facing us.
+            float cr, cg, cb;
+            if (h < 0.18f) { float t = h / 0.18f; cr = Lerp(70, 160, t); cg = Lerp(190, 185, t); cb = Lerp(130, 105, t); }
+            else if (h < 0.55f) { float t = (h - 0.18f) / 0.37f; cr = Lerp(150, 175, t); cg = Lerp(175, 140, t); cb = Lerp(100, 105, t); }
+            else { float t = Math.Min(1, (h - 0.55f) / 0.35f); cr = Lerp(175, 245, t); cg = Lerp(140, 245, t); cb = Lerp(105, 250, t); }
+            float light = (0.6f + 0.4f * edge) * (landShade.Length == land.Length ? landShade[k] : 1);
+            Fill(Math.Min(255, cr * light), Math.Min(255, cg * light), Math.Min(255, cb * light), (120 + 135 * edge) * shown);
+            Circle(x, y, (2.3f + h * 1.6f) * (0.6f + 0.4f * edge) * zoom);
         }
     }
 
@@ -353,7 +538,7 @@ public class QuakeGlobe : Sketch
                 float px = 0, py = 0; bool prev = false;
                 for (int i = 0; i < ring.Length; i += 2)
                 {
-                    var p = LatLon(ring[i + 1], ring[i], R * 1.002f);
+                    var p = LatLon(ring[i + 1], ring[i], R * 1.002f + Lift(HeightAt(ring[i + 1], ring[i])));
                     var (x, y, facing) = Project(p.X, p.Y, p.Z);
                     bool vis = facing > 0;
                     if (vis && prev) Line(px, py, x, y);
@@ -418,8 +603,9 @@ public class QuakeGlobe : Sketch
         {
             if (q.Time > clock) continue;
             float h = 0.2f + Pow(Max(0, q.Mag), 1.6f) * 0.25f;
-            var a = LatLon(q.Lat, q.Lon, R);
-            var b = LatLon(q.Lat, q.Lon, R + h);
+            float ground = R + Lift(HeightAt(q.Lat, q.Lon));
+            var a = LatLon(q.Lat, q.Lon, ground);
+            var b = LatLon(q.Lat, q.Lon, ground + h);
             var (x0, y0, f0) = Project(a.X, a.Y, a.Z);
             var (x1, y1, _) = Project(b.X, b.Y, b.Z);
             if (f0 < -1) continue;                                      // behind the globe
@@ -469,7 +655,7 @@ public class QuakeGlobe : Sketch
         TextAlign(TextAlignH.Center, TextAlignV.Center);
         foreach (var c in countries)
         {
-            if (c.Rank > 3 + (int)(zoom * 1.5f)) continue;              // closer: more names
+            if (c.Rank > 2 + (int)((zoom - 1) * 3)) continue;           // closer: more names
             var p = LatLon(c.LabelLat, c.LabelLon, R * 1.01f);
             var (x, y, facing) = Project(p.X, p.Y, p.Z);
             if (facing < R * 0.35f) continue;
@@ -505,7 +691,7 @@ public class QuakeGlobe : Sketch
         string replay = replayT >= 0 ? $""  ·  replay {Math.Min(100, replayT / ReplaySeconds * 100):0}%"" : """";
         Text($""{status}{replay}  ·  {mapStatus}"", 16, Height - 30);
         Fill(255, 255, 255, 80);
-        Text(""drag: turn · wheel: zoom · hover: details · D/W: day/week · R: replay · L: labels · Space: spin"", 16, Height - 12);
+        Text(""drag: turn · wheel: zoom · hover: details · D/W: day/week · R: replay · E: relief · L: labels · Space: spin"", 16, Height - 12);
 
         // Legend: the depth colors.
         TextAlign(TextAlignH.Right, TextAlignV.Center);
@@ -536,6 +722,7 @@ public class QuakeGlobe : Sketch
         else if (Key == 'd' || Key == 'D') { week = false; status = ""downloading the day...""; lastFetch = -999999; }
         else if (Key == 'r' || Key == 'R') { replayT = 0; rings.Clear(); }
         else if (Key == 'l' || Key == 'L') labels = !labels;
+        else if (Key == 'e' || Key == 'E') relief = relief == 0 ? 1 : relief == 1 ? 2.2f : 0;
         else if (Key == ' ') spinning = !spinning;
     }
 }
