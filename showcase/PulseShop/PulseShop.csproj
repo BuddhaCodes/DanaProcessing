@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!--
+    PulseShop: a small online store made of five services that call each other over real
+    HTTP, with the whole thing streaming its own heartbeat (every request hop, the GC, the
+    thread pool) over SignalR and server-sent events. It has nothing to do with Dana: it's
+    any ASP.NET Core app. The Dana sketch "Inside Kestrel" listens to it and draws it.
+    No NuGet packages: everything here ships with ASP.NET Core.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <ServerGarbageCollection>false</ServerGarbageCollection>
+  </PropertyGroup>
+
+</Project>

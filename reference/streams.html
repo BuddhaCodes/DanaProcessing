@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en" data-root="../">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- Google Analytics only loads after the visitor says yes (assets/site.js, "Analytics: only with permission"). -->
+<meta name="dana-analytics" content="G-N4ZWC7GN1B">
+<title>Live data: WebSockets, events, webhooks, SignalR — DanaProcessing reference</title>
+<meta name="description" content="Data that keeps arriving: WebSockets, server-sent events (SSE), webhooks and ASP.NET Core SignalR hubs, each a background feed that Draw() reads from without ever waiting.">
+<link rel="canonical" href="https://buddhacodes.github.io/DanaProcessing/reference/streams.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="DanaProcessing">
+<meta property="og:title" content="Live data: WebSockets, events, webhooks, SignalR — DanaProcessing reference">
+<meta property="og:description" content="Data that keeps arriving: WebSockets, server-sent events (SSE), webhooks and ASP.NET Core SignalR hubs, each a background feed that Draw() reads from without ever waiting.">
+<meta property="og:url" content="https://buddhacodes.github.io/DanaProcessing/reference/streams.html">
+<meta property="og:image" content="https://buddhacodes.github.io/DanaProcessing/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://buddhacodes.github.io/DanaProcessing/og-image.png">
+<meta name="theme-color" content="#13202A">
+<link rel="icon" type="image/png" href="../DanaProcessing.Ide/Theme/dana.png">
+<link rel="apple-touch-icon" href="../DanaProcessing.Ide/Theme/dana.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&amp;family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/search-index.js" defer></script>
+<script src="../assets/site.js" defer></script>
+</head>
+<body class="page-topic">
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="bar">
+    <a class="brand" href="../index.html"><svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><circle cx="15" cy="15" r="13" fill="none" stroke="currentColor" stroke-width="2"></circle><circle cx="15" cy="15" r="6" fill="#E7B66B"></circle><circle cx="23" cy="8" r="2.5" fill="#FF8A6B"></circle></svg><span>DanaProcessing</span></a>
+    <button type="button" class="menu-toggle" aria-expanded="false" aria-controls="site-menu">Menu</button>
+    <div class="site-menu" id="site-menu">
+      <nav class="main-nav" aria-label="Main">
+        <a href="../reference/tutorial.html">Learn</a>
+        <a href="../reference/a-z.html" aria-current="page">Reference</a>
+        <a href="../index.html#gallery">Examples</a>
+        <a href="../reference/ide.html">The IDE</a>
+      </nav>
+      <form class="search" role="search" action="../reference/a-z.html">
+        <label class="visually-hidden" for="site-search">Search the documentation</label>
+        <div class="search-box">
+          <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+          <input id="site-search" name="q" type="search" autocomplete="off" placeholder="Search — press /" aria-describedby="search-status" aria-controls="search-results">
+        </div>
+        <p id="search-status" class="visually-hidden" aria-live="polite"></p>
+        <ul id="search-results" class="search-results" hidden></ul>
+      </form>
+      <a class="support-link" href="../index.html#support"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M12 21s-7.5-4.6-9.6-9.4C1 8.2 3.1 4.5 6.8 4.5c2.2 0 3.7 1.3 5.2 3 1.5-1.7 3-3 5.2-3 3.7 0 5.8 3.7 4.4 7.1C19.5 16.4 12 21 12 21z"></path></svg><span>Support Dana</span></a>
+    </div>
+  </div>
+</header>
+<main id="main">
+<div class="topic-hero">
+  <div class="wrap">
+    <div class="topic-hero-text">
+      <nav class="breadcrumb" aria-label="Breadcrumb"><ol><li><a href="a-z.html">Reference</a></li><li>Data &amp; math</li><li aria-current="page">Live data: WebSockets, events, webhooks, SignalR</li></ol></nav>
+      <h1>Live data: WebSockets, events, webhooks, SignalR</h1>
+      <p class="lede">Data that keeps arriving: a WebSocket, a stream of server events, a webhook, a SignalR hub. Each one is a <code class="inline">LiveFeed</code>: the connection lives on its own thread, messages wait in a queue, and <code class="inline">Draw()</code> takes them when it's ready -- it never waits for the network. Feeds reconnect by themselves when the connection drops and close when the sketch stops.</p>
+      <p class="tags"><span class="tag">websocket</span><span class="tag">sse</span><span class="tag">server-sent events</span><span class="tag">webhook</span><span class="tag">signalr</span><span class="tag">stream</span><span class="tag">live</span><span class="tag">realtime</span><span class="tag">feed</span></p>
+    </div>
+    <div class="topic-art" aria-hidden="true"><span style="background:#8FD3B6"></span><span></span><span></span><span></span><span></span></div>
+  </div>
+</div>
+<div class="wrap topic-layout">
+  <button type="button" class="topics-toggle" aria-expanded="false" aria-controls="topics">All topics</button>
+<nav class="topics" id="topics" aria-label="Reference topics">
+<div class="topic-group"><h2>Start here</h2><ul>
+<li><a href="intro.html">Overview</a></li>
+<li><a href="tutorial.html">30-minute tutorial</a></li>
+<li><a href="from-processing.html">From Processing / p5.js</a></li>
+</ul></div>
+<div class="topic-group"><h2>Basics</h2><ul>
+<li><a href="structure.html">Sketch structure</a></li>
+<li><a href="input.html">Input &amp; time</a></li>
+</ul></div>
+<div class="topic-group"><h2>Drawing</h2><ul>
+<li><a href="color.html">Color</a></li>
+<li><a href="shape-primitives.html">2D Primitives</a></li>
+<li><a href="shape-custom.html">Custom shapes</a></li>
+<li><a href="typography.html">Typography</a></li>
+<li><a href="transform.html">Transformations</a></li>
+</ul></div>
+<div class="topic-group"><h2>Media</h2><ul>
+<li><a href="image.html">PImage</a></li>
+<li><a href="pgraphics.html">PGraphics</a></li>
+<li><a href="pshape.html">PShape</a></li>
+<li><a href="output.html">Saving output</a></li>
+<li><a href="pixels.html">Pixels</a></li>
+<li><a href="reels.html">Reels</a></li>
+</ul></div>
+<div class="topic-group"><h2>Data &amp; math</h2><ul>
+<li><a href="files-data.html">Files &amp; data</a></li>
+<li><a href="geo.html">Maps &amp; globes</a></li>
+<li><a href="streams.html" aria-current="page">Live data</a>
+<ul class="on-this-page" aria-label="On this page">
+<li><a href="#livefeed">class LiveFeed&lt;T&gt; · feed.Next(out msg) · feed.ReadAll(max)</a></li>
+<li><a href="#connectwebsocket"><code>ConnectWebSocket</code></a></li>
+<li><a href="#listenevents"><code>ListenEvents</code></a></li>
+<li><a href="#listenwebhook"><code>ListenWebhook</code></a></li>
+<li><a href="#connectsignalr"><code>ConnectSignalR</code></a></li>
+<li><a href="#streams-example">Runnable example</a></li>
+</ul>
+</li>
+<li><a href="utilities.html">Conversion &amp; utilities</a></li>
+<li><a href="math.html">Math &amp; trig</a></li>
+<li><a href="pvector.html">PVector</a></li>
+<li><a href="random-noise.html">Random &amp; noise</a></li>
+<li><a href="collections.html">Collections</a></li>
+</ul></div>
+<div class="topic-group"><h2>3D</h2><ul>
+<li><a href="getting-started-3d.html">Getting started</a></li>
+<li><a href="shape-3d-primitives.html">3D Primitives</a></li>
+<li><a href="transform-3d.html">3D Transformations</a></li>
+<li><a href="camera-3d.html">Camera &amp; Projection</a></li>
+<li><a href="lights-3d.html">Lights</a></li>
+<li><a href="material-3d.html">Material properties</a></li>
+<li><a href="coordinates-3d.html">Coordinates</a></li>
+<li><a href="shape-3d-custom.html">Custom 3D shapes</a></li>
+<li><a href="pshader.html">PShader</a></li>
+</ul></div>
+<div class="topic-group"><h2>Sound</h2><ul>
+<li><a href="audio.html">Live loops &amp; timing</a></li>
+</ul></div>
+<div class="topic-group"><h2>Live &amp; generative</h2><ul>
+<li><a href="live.html">Playing live: MIDI, beat, mic</a></li>
+<li><a href="generative.html">Generative art: seeds, print</a></li>
+<li><a href="workflow.html">Day to day: F3, data/, rewind</a></li>
+</ul></div>
+<div class="topic-group"><h2>Tooling</h2><ul>
+<li><a href="ide.html">The IDE</a></li>
+<li><a href="hosting.html">Avalonia host</a></li>
+<li><a href="enums.html">Enumerations</a></li>
+</ul></div>
+<p class="topics-all"><a href="a-z.html">All topics &amp; A–Z index</a></p></nav>
+  <div class="topic-main">
+<details class="on-this-page-mobile"><summary>On this page · 6 entries</summary><ul><li><a href="#livefeed">class LiveFeed&lt;T&gt; · feed.Next(out msg) · feed.ReadAll(max)</a></li><li><a href="#connectwebsocket"><code>ConnectWebSocket</code></a></li><li><a href="#listenevents"><code>ListenEvents</code></a></li><li><a href="#listenwebhook"><code>ListenWebhook</code></a></li><li><a href="#connectsignalr"><code>ConnectSignalR</code></a></li><li><a href="#streams-example">Runnable example</a></li></ul></details>
+<div class="doc">
+<h2 class="entry-title" id="livefeed">class LiveFeed&lt;T&gt; · feed.Next(out msg) · feed.ReadAll(max)</h2>
+<p class="entry-desc">What every feed has. <code class="inline">Next(out msg)</code> takes the oldest waiting message (false when there's none); <code class="inline">ReadAll()</code> takes them all, oldest first -- or at most <code class="inline">max</code>, leaving the rest for the next frame. <code class="inline">State</code> (Connecting, Open, Reconnecting, Closed, Failed), <code class="inline">Connected</code>, <code class="inline">Error</code>, a ready-made <code class="inline">Status</code> line, <code class="inline">Received</code>, <code class="inline">PerSecond</code> and <code class="inline">Pending</code>. A firehose can't eat the memory: past <code class="inline">Capacity</code> (10,000) waiting messages, the oldest are dropped and counted in <code class="inline">Dropped</code>. <code class="inline">Close()</code> ends it.</p>
+
+<h2 class="entry-title api" id="connectwebsocket"><code>ConnectWebSocket</code></h2><ul class="sigs" aria-label="Signatures"><li><code>ConnectWebSocket(url, reconnect) <span class="sig-return">→ WebSocketFeed</span></code></li></ul>
+<p class="entry-desc">A WebSocket (<code class="inline">ws://</code> or <code class="inline">wss://</code>): each text message arrives as a <code class="inline">string</code> -- usually JSON, for <code class="inline">JSONObject.Parse()</code>. <code class="inline">feed.Send(text)</code> sends one back (or a <code class="inline">JSONObject</code>); sent at once when connected, otherwise as soon as it is. Exchanges' trade streams, Bluesky's Jetstream, live chats, your own servers.</p>
+
+<h2 class="entry-title api" id="listenevents"><code>ListenEvents</code></h2><ul class="sigs" aria-label="Signatures"><li><code>ListenEvents(url, reconnect) <span class="sig-return">→ LiveFeed&lt;ServerEvent&gt;</span></code></li></ul>
+<p class="entry-desc">A stream of server-sent events (SSE, <code class="inline">text/event-stream</code>): Wikipedia's live edits, Firebase, .NET 10's <code class="inline">TypedResults.ServerSentEvents</code>. Each <code class="inline">ServerEvent</code> has its <code class="inline">Type</code> ("message" unless the server names it), <code class="inline">Data</code> (multi-line data joined), <code class="inline">Id</code>, and <code class="inline">JSON()</code>. When it reconnects it tells the server the last id it saw, so nothing is missed, and it honors the server's <code class="inline">retry:</code>.</p>
+
+<h2 class="entry-title api" id="listenwebhook"><code>ListenWebhook</code></h2><ul class="sigs" aria-label="Signatures"><li><code>ListenWebhook(port, path) <span class="sig-return">→ LiveFeed&lt;WebhookCall&gt;</span></code></li></ul>
+<p class="entry-desc">A small web server on your computer, at <code class="inline">http://localhost:port/path/</code>: every request it gets becomes a <code class="inline">WebhookCall</code> -- <code class="inline">Method</code>, <code class="inline">Path</code>, <code class="inline">Query</code>, <code class="inline">Headers</code>, <code class="inline">Body</code> and <code class="inline">JSON()</code> -- and is answered 200 OK. Point GitHub, Stripe or ntfy at it through a tunnel (smee.io, ngrok) and every star, payment or message lands in the sketch.</p>
+
+<h2 class="entry-title api" id="connectsignalr"><code>ConnectSignalR</code></h2><ul class="sigs" aria-label="Signatures"><li><code>ConnectSignalR(hubUrl, reconnect) <span class="sig-return">→ SignalRFeed</span></code></li></ul>
+<p class="entry-desc">An ASP.NET Core SignalR hub (<code class="inline">http(s)://host/hub</code>), spoken directly -- SignalR's JSON protocol over a WebSocket, no packages. Whatever the hub sends to its clients (<code class="inline">Clients.All.SendAsync("Target", args...)</code>) arrives as a <code class="inline">HubMessage</code>: its <code class="inline">Target</code> and <code class="inline">Arguments</code>, with <code class="inline">Object(i)</code>, <code class="inline">Text(i)</code> and <code class="inline">Number(i)</code>. <code class="inline">hub.Invoke("Method", args...)</code> calls a method on the hub. It handshakes, keeps itself alive with pings and reconnects by itself. The sample <em>Inside Kestrel</em> uses it to draw a live ASP.NET Core app.</p>
+
+<h2 class="entry-title" id="streams-example">Runnable example</h2>
+<p class="entry-desc">A complete sketch using this section. <strong>Test in Dana</strong> opens it in the IDE, or paste it into a new tab and press Run.</p>
+<div class="code-block"><div class="code-bar"><span class="code-label">C#</span><div class="code-actions"><button type="button" class="copy-btn" data-target="streams-example-code">Copy code</button><button class="dana-test-btn" data-target="streams-example-code" type="button"><svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M7 4l13 8-13 8z"></path></svg><span class="dana-test-label">Run in Dana</span></button></div></div><pre id="streams-example-code" tabindex="0" aria-label="Code, scrollable"><span class="cm">// Wikipedia, live: every edit made anywhere, as it happens (Wikimedia's public</span>
+<span class="cm">// event stream, no key). Each edit falls as its page title; the bigger the change,</span>
+<span class="cm">// the bigger the word. New pages are green, edits by bots are dim.</span>
+<span class="kw">public</span> <span class="kw">class</span> WikiLive : <span class="tp">Sketch</span>
+{
+    <span class="tp">LiveFeed</span>&lt;<span class="tp">ServerEvent</span>&gt; edits;
+    <span class="kw">readonly</span> <span class="tp">List</span>&lt;(<span class="kw">string</span> Title, <span class="kw">float</span> X, <span class="kw">float</span> Y, <span class="kw">float</span> Size, <span class="tp">Color</span> C)&gt; words = <span class="kw">new</span>();
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup()
+    {
+        Size(900, 560);
+        edits = ListenEvents("https:<span class="cm">//stream.wikimedia.org/v2/stream/recentchange");</span>
+    }
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        Background(12, 14, 22);
+        <span class="cm">// Everything that arrived since the last frame (at most 40, the rest wait).</span>
+        <span class="kw">foreach</span> (<span class="kw">var</span> e <span class="kw">in</span> edits.ReadAll(40))
+        {
+            <span class="kw">var</span> edit = e.JSON();
+            <span class="kw">if</span> (edit.GetString("type") <span class="kw">is</span> <span class="kw">not</span> ("edit" <span class="kw">or</span> "new")) <span class="kw">continue</span>;
+            <span class="kw">var</span> length = edit.GetJSONObject("length");
+            <span class="kw">float</span> change = length == <span class="kw">null</span> ? 0 : Abs(length.GetFloat("new") - length.GetFloat("old"));
+            <span class="kw">var</span> c = edit.GetString("type") == "new" ? <span class="tp">Color</span>(120, 230, 150)
+                  : edit.GetBoolean("bot") ? <span class="tp">Color</span>(110, 120, 150) : <span class="tp">Color</span>(230, 235, 255);
+            words.Add((edit.GetString("title"), Random(40, Width - 40), -10, Constrain(9 + Sqrt(change), 9, 48), c));
+        }
+        TextAlign(<span class="tp">TextAlignH</span>.Center, <span class="tp">TextAlignV</span>.Center);
+        <span class="kw">for</span> (<span class="kw">int</span> i = words.Count - 1; i &gt;= 0; i--)
+        {
+            <span class="kw">var</span> w = words[i];
+            w.Y += 1.2f + w.Size * 0.03f;
+            <span class="kw">if</span> (w.Y &gt; Height + 20) { words.RemoveAt(i); <span class="kw">continue</span>; }
+            words[i] = w;
+            Fill(w.C);
+            TextSize(w.Size);
+            Text(w.Title, w.X, w.Y);
+        }
+        Fill(255, 255, 255, 140);
+        TextAlign(<span class="tp">TextAlignH</span>.Left, <span class="tp">TextAlignV</span>.Top);
+        TextSize(13);
+        Text($"Wikipedia, live · {edits.Status} · {edits.Received:N0} events", 16, 14);
+    }
+}</pre></div>
+
+</div>
+<nav class="pager" aria-label="Previous and next topic"><a class="prev" href="geo.html"><span>← Previous</span><strong>Maps &amp; globes</strong></a><a class="next" href="utilities.html"><span>Next →</span><strong>Conversion &amp; utility functions</strong></a></nav>
+<aside class="support-aside" aria-label="Support the project">
+  <p><strong>Found this useful?</strong> Dana is free and built in spare time — a donation buys more time for docs like this one.</p>
+  <a class="btn btn-ink" href="https://paypal.me/CarlosFernandez934"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M12 21s-7.5-4.6-9.6-9.4C1 8.2 3.1 4.5 6.8 4.5c2.2 0 3.7 1.3 5.2 3 1.5-1.7 3-3 5.2-3 3.7 0 5.8 3.7 4.4 7.1C19.5 16.4 12 21 12 21z"></path></svg><span>Donate via PayPal</span></a>
+</aside>
+
+  </div>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap">
+    <p>DanaProcessing · v1.0 · MIT · stands on the shoulders of <a href="https://processing.org">Processing</a>, <a href="https://p5js.org">p5.js</a> and <a href="https://sonic-pi.net">Sonic Pi</a>.</p>
+    <nav aria-label="Footer">
+      <a href="../reference/a-z.html">All topics &amp; A–Z</a>
+      <a href="https://github.com/BuddhaCodes/DanaProcessing/releases/latest">Releases</a>
+      <a href="https://github.com/BuddhaCodes/DanaProcessing">GitHub</a>
+      <a href="../index.html#support">Support</a>
+      <button type="button" class="footer-link" data-privacy-choices hidden>Privacy choices</button>
+    </nav>
+  </div>
+</footer>
+</body>
+</html>

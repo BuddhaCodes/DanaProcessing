@@ -2193,5 +2193,80 @@
   "name": "TextSizeSnap",
   "kind": "method",
   "target": "textsizesnap"
+ },
+ {
+  "name": "LiveFeed",
+  "kind": "class",
+  "target": "livefeed"
+ },
+ {
+  "name": "Next",
+  "kind": "method",
+  "target": "livefeed"
+ },
+ {
+  "name": "ReadAll",
+  "kind": "method",
+  "target": "livefeed"
+ },
+ {
+  "name": "FeedState",
+  "kind": "enum",
+  "target": "livefeed"
+ },
+ {
+  "name": "ConnectWebSocket",
+  "kind": "method",
+  "target": "connectwebsocket"
+ },
+ {
+  "name": "WebSocketFeed",
+  "kind": "class",
+  "target": "connectwebsocket"
+ },
+ {
+  "name": "Send",
+  "kind": "method",
+  "target": "connectwebsocket"
+ },
+ {
+  "name": "ListenEvents",
+  "kind": "method",
+  "target": "listenevents"
+ },
+ {
+  "name": "ServerEvent",
+  "kind": "class",
+  "target": "listenevents"
+ },
+ {
+  "name": "ListenWebhook",
+  "kind": "method",
+  "target": "listenwebhook"
+ },
+ {
+  "name": "WebhookCall",
+  "kind": "class",
+  "target": "listenwebhook"
+ },
+ {
+  "name": "ConnectSignalR",
+  "kind": "method",
+  "target": "connectsignalr"
+ },
+ {
+  "name": "SignalRFeed",
+  "kind": "class",
+  "target": "connectsignalr"
+ },
+ {
+  "name": "HubMessage",
+  "kind": "class",
+  "target": "connectsignalr"
+ },
+ {
+  "name": "Invoke",
+  "kind": "method",
+  "target": "connectsignalr"
  }
 ]

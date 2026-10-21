@@ -1,0 +1,71 @@
+<!--meta {"title": "Live data: WebSockets, events, webhooks, SignalR", "nav": "Live data", "summary": "Data that keeps arriving: WebSockets, server-sent events (SSE), webhooks and ASP.NET Core SignalR hubs, each a background feed that Draw() reads from without ever waiting.", "tags": ["websocket", "sse", "server-sent events", "webhook", "signalr", "stream", "live", "realtime", "feed"]} -->
+<p class="section-intro">Data that keeps arriving: a WebSocket, a stream of server events, a webhook, a SignalR hub. Each one is a <code class="inline">LiveFeed</code>: the connection lives on its own thread, messages wait in a queue, and <code class="inline">Draw()</code> takes them when it's ready -- it never waits for the network. Feeds reconnect by themselves when the connection drops and close when the sketch stops.</p>
+
+<h3 class="entry-title" id="livefeed">class LiveFeed&lt;T&gt; · feed.Next(out msg) · feed.ReadAll(max)</h3>
+<p class="entry-desc">What every feed has. <code class="inline">Next(out msg)</code> takes the oldest waiting message (false when there's none); <code class="inline">ReadAll()</code> takes them all, oldest first -- or at most <code class="inline">max</code>, leaving the rest for the next frame. <code class="inline">State</code> (Connecting, Open, Reconnecting, Closed, Failed), <code class="inline">Connected</code>, <code class="inline">Error</code>, a ready-made <code class="inline">Status</code> line, <code class="inline">Received</code>, <code class="inline">PerSecond</code> and <code class="inline">Pending</code>. A firehose can't eat the memory: past <code class="inline">Capacity</code> (10,000) waiting messages, the oldest are dropped and counted in <code class="inline">Dropped</code>. <code class="inline">Close()</code> ends it.</p>
+
+<h3 class="entry-title" id="connectwebsocket">ConnectWebSocket(url, reconnect) <span class="sig-return">→ WebSocketFeed</span></h3>
+<p class="entry-desc">A WebSocket (<code class="inline">ws://</code> or <code class="inline">wss://</code>): each text message arrives as a <code class="inline">string</code> -- usually JSON, for <code class="inline">JSONObject.Parse()</code>. <code class="inline">feed.Send(text)</code> sends one back (or a <code class="inline">JSONObject</code>); sent at once when connected, otherwise as soon as it is. Exchanges' trade streams, Bluesky's Jetstream, live chats, your own servers.</p>
+
+<h3 class="entry-title" id="listenevents">ListenEvents(url, reconnect) <span class="sig-return">→ LiveFeed&lt;ServerEvent&gt;</span></h3>
+<p class="entry-desc">A stream of server-sent events (SSE, <code class="inline">text/event-stream</code>): Wikipedia's live edits, Firebase, .NET 10's <code class="inline">TypedResults.ServerSentEvents</code>. Each <code class="inline">ServerEvent</code> has its <code class="inline">Type</code> ("message" unless the server names it), <code class="inline">Data</code> (multi-line data joined), <code class="inline">Id</code>, and <code class="inline">JSON()</code>. When it reconnects it tells the server the last id it saw, so nothing is missed, and it honors the server's <code class="inline">retry:</code>.</p>
+
+<h3 class="entry-title" id="listenwebhook">ListenWebhook(port, path) <span class="sig-return">→ LiveFeed&lt;WebhookCall&gt;</span></h3>
+<p class="entry-desc">A small web server on your computer, at <code class="inline">http://localhost:port/path/</code>: every request it gets becomes a <code class="inline">WebhookCall</code> -- <code class="inline">Method</code>, <code class="inline">Path</code>, <code class="inline">Query</code>, <code class="inline">Headers</code>, <code class="inline">Body</code> and <code class="inline">JSON()</code> -- and is answered 200 OK. Point GitHub, Stripe or ntfy at it through a tunnel (smee.io, ngrok) and every star, payment or message lands in the sketch.</p>
+
+<h3 class="entry-title" id="connectsignalr">ConnectSignalR(hubUrl, reconnect) <span class="sig-return">→ SignalRFeed</span></h3>
+<p class="entry-desc">An ASP.NET Core SignalR hub (<code class="inline">http(s)://host/hub</code>), spoken directly -- SignalR's JSON protocol over a WebSocket, no packages. Whatever the hub sends to its clients (<code class="inline">Clients.All.SendAsync("Target", args...)</code>) arrives as a <code class="inline">HubMessage</code>: its <code class="inline">Target</code> and <code class="inline">Arguments</code>, with <code class="inline">Object(i)</code>, <code class="inline">Text(i)</code> and <code class="inline">Number(i)</code>. <code class="inline">hub.Invoke("Method", args...)</code> calls a method on the hub. It handshakes, keeps itself alive with pings and reconnects by itself. The sample <em>Inside Kestrel</em> uses it to draw a live ASP.NET Core app.</p>
+
+<h3 class="entry-title" id="streams-example">Runnable example</h3>
+<p class="entry-desc">A complete sketch using this section. <strong>Test in Dana</strong> opens it in the IDE, or paste it into a new tab and press Run.</p>
+<div class="code-block">
+  <pre id="streams-example-code"><span class="cm">// Wikipedia, live: every edit made anywhere, as it happens (Wikimedia's public</span>
+<span class="cm">// event stream, no key). Each edit falls as its page title; the bigger the change,</span>
+<span class="cm">// the bigger the word. New pages are green, edits by bots are dim.</span>
+<span class="kw">public</span> <span class="kw">class</span> WikiLive : <span class="tp">Sketch</span>
+{
+    <span class="tp">LiveFeed</span>&lt;<span class="tp">ServerEvent</span>&gt; edits;
+    <span class="kw">readonly</span> <span class="tp">List</span>&lt;(<span class="kw">string</span> Title, <span class="kw">float</span> X, <span class="kw">float</span> Y, <span class="kw">float</span> Size, <span class="tp">Color</span> C)&gt; words = <span class="kw">new</span>();
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup()
+    {
+        Size(900, 560);
+        edits = ListenEvents("https:<span class="cm">//stream.wikimedia.org/v2/stream/recentchange");</span>
+    }
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        Background(12, 14, 22);
+        <span class="cm">// Everything that arrived since the last frame (at most 40, the rest wait).</span>
+        <span class="kw">foreach</span> (<span class="kw">var</span> e <span class="kw">in</span> edits.ReadAll(40))
+        {
+            <span class="kw">var</span> edit = e.JSON();
+            <span class="kw">if</span> (edit.GetString("type") <span class="kw">is</span> <span class="kw">not</span> ("edit" <span class="kw">or</span> "new")) <span class="kw">continue</span>;
+            <span class="kw">var</span> length = edit.GetJSONObject("length");
+            <span class="kw">float</span> change = length == <span class="kw">null</span> ? 0 : Abs(length.GetFloat("new") - length.GetFloat("old"));
+            <span class="kw">var</span> c = edit.GetString("type") == "new" ? <span class="tp">Color</span>(120, 230, 150)
+                  : edit.GetBoolean("bot") ? <span class="tp">Color</span>(110, 120, 150) : <span class="tp">Color</span>(230, 235, 255);
+            words.Add((edit.GetString("title"), Random(40, Width - 40), -10, Constrain(9 + Sqrt(change), 9, 48), c));
+        }
+        TextAlign(<span class="tp">TextAlignH</span>.Center, <span class="tp">TextAlignV</span>.Center);
+        <span class="kw">for</span> (<span class="kw">int</span> i = words.Count - 1; i &gt;= 0; i--)
+        {
+            <span class="kw">var</span> w = words[i];
+            w.Y += 1.2f + w.Size * 0.03f;
+            <span class="kw">if</span> (w.Y &gt; Height + 20) { words.RemoveAt(i); <span class="kw">continue</span>; }
+            words[i] = w;
+            Fill(w.C);
+            TextSize(w.Size);
+            Text(w.Title, w.X, w.Y);
+        }
+        Fill(255, 255, 255, 140);
+        TextAlign(<span class="tp">TextAlignH</span>.Left, <span class="tp">TextAlignV</span>.Top);
+        TextSize(13);
+        Text($"Wikipedia, live · {edits.Status} · {edits.Received:N0} events", 16, 14);
+    }
+}</pre>
+  <button class="dana-test-btn" data-target="streams-example-code" title="Run in DanaProcessing IDE">
+    <i class="ph-bold ph-play"></i>
+    <span class="dana-test-label">Test in Dana</span>
+  </button>
+</div>

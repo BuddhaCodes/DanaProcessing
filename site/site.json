@@ -41,6 +41,7 @@
       "pages": [
         "files-data",
         "geo",
+        "streams",
         "utilities",
         "math",
         "pvector",

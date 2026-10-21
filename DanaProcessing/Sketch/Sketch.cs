@@ -424,6 +424,7 @@ namespace DanaProcessing
             finally
             {
                 ReleaseMicrophone(); // the OS's "mic in use" light goes off with the sketch
+                CloseFeeds();        // WebSockets, event streams, webhooks, SignalR hubs
             }
         }
 

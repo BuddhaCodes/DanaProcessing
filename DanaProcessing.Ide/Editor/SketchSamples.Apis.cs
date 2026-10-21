@@ -36,6 +36,12 @@ namespace DanaProcessing.Ide.Editor
                        "Pick a country and its relief appears in detail (about 180 heights along it, read from AWS/Mapzen terrain tiles with img.Pixels), with the real weather from Open-Meteo for ~25 points: temperature, clouds, rain and wind now and hour by hour for 48 hours, which play by themselves. Clouds float and drift with the wind, it rains where the forecast says, and the water lands on the terrain: a \"virtual pipes\" simulation makes it run downhill, form rivers, fill lakes and drain to the sea, while the sun evaporates more where it's hot. Click the land to drop a lake, D unleashes a deluge, L switches layers (relief, temperature, rain), , and . move through the hours, W dries everything, M goes back to the map and R picks a random country."),
                 LivingCountry,
                 new[] { SampleTag.Data, SampleTag.ThreeD, SampleTag.Generative, SampleTag.Interaction }),
+            new SketchSample(
+                Loc.Tr("Dentro de Kestrel (ASP.NET Core en vivo por SignalR)", "Inside Kestrel (a live ASP.NET Core app over SignalR)"),
+                Loc.Tr("Una app ASP.NET Core de verdad, dibujada mientras corre. PulseShop (en showcase/PulseShop: arrancala con dotnet run) es una tiendita de cinco servicios que se llaman por HTTP real, más una base de datos; se observa a sí misma con lo que trae .NET (un ActivityListener en cada request, el GC y el thread pool) y lo transmite por SignalR. Este sketch se conecta con ConnectSignalR(), sin paquetes: cada request es una chispa que vuela de quien llama a quien responde, tan lenta como fue de verdad; cada servicio es una esfera que crece con su tráfico y arde con sus errores; un GC de generación 2 manda una onda expansiva y, si matás de hambre al thread pool con sync-over-async, ves la cola de trabajo apilarse en la puerta. Y se rompe desde acá: 1-6 eligen servicio, L le suma 200 ms, F lo hace fallar 30%, S bloquea el thread pool, G desata el GC, Espacio un pico de tráfico, R arregla todo. También desde un celular en http://localhost:5199. Sin PulseShop, D muestra una simulación (avisando).",
+                       "A real ASP.NET Core app, drawn as it runs. PulseShop (in showcase/PulseShop: start it with dotnet run) is a little store of five services calling each other over real HTTP, plus a database; it watches itself with what .NET ships (an ActivityListener on every request, the GC and the thread pool) and streams it over SignalR. This sketch connects with ConnectSignalR(), no packages: every request is a spark flying from caller to callee, as slow as it really was; each service is a sphere that swells with its traffic and burns with its errors; a gen 2 GC sends a shockwave and, if you starve the thread pool with sync-over-async, you watch the work queue pile up at the door. And you break it from here: 1-6 pick a service, L adds 200 ms, F makes it fail 30%, S blocks the thread pool, G unleashes the GC, Space a traffic spike, R fixes everything. Also from a phone at http://localhost:5199. Without PulseShop, D shows a simulation (labelled)."),
+                InsideKestrel,
+                new[] { SampleTag.Data, SampleTag.ThreeD, SampleTag.Audio, SampleTag.Interaction }),
         };
 
         private const string StormFromAbove =
@@ -2335,6 +2341,625 @@ public class LivingCountry : Sketch
         else if (Key == ',' && hourTimes != null) hour = Math.Max(0, (int)hour - 1);
         else if (KeyCode == UP) heightMul = Math.Min(4, heightMul * 1.25f);
         else if (KeyCode == DOWN) heightMul = Math.Max(0.25f, heightMul / 1.25f);
+    }
+}
+";
+
+        private const string InsideKestrel =
+@"// Inside Kestrel: a live ASP.NET Core app, drawn as it runs.
+//
+// PulseShop (in showcase/PulseShop: any ASP.NET Core app could do this) is a little store
+// made of five services that call each other over real HTTP, plus a database. It watches
+// itself with what .NET ships -- an ActivityListener on every request, the GC and the
+// thread pool -- and streams it over SignalR. This sketch connects with ConnectSignalR():
+// no packages, just Dana.
+//
+// - every request is a spark flying from caller to callee, as slow as it really was:
+//   add latency and you see them crawl; errors arrive red and burst;
+// - each service is a sphere that swells with its traffic and burns with its errors;
+// - the runtime underneath: requests per second, p50/p99 latency, the heap, the GC (a
+//   gen 2 collection sends a shockwave through everything) and the thread pool -- starve
+//   it with sync-over-async and watch the queue pile up at the door;
+// - and you can break it from here, or from a phone at http://localhost:5199.
+//
+// Start PulseShop first:  cd showcase/PulseShop && dotnet run
+//
+// 1-6: pick a service (6 is the database).  L: +200 ms on it.  F: make it fail 30%.
+// S: starve the thread pool.  G: GC storm.  Space: traffic spike.  + / -: load.
+// R: everything back to normal.  Drag: turn.  Wheel: zoom.  M: mute.
+// Not running? D shows a simulation (clearly labelled).
+public class InsideKestrel : Sketch
+{
+    const string HubUrl = ""http://localhost:5199/pulse"";
+
+    // ---- the services ---------------------------------------------------------------------
+    class Service
+    {
+        public string Name;
+        public PVector Pos;
+        public Color Color;
+        public float Rate, Errors, Latency;          // smoothed: hops/s, error share, ms
+        public float Pulse;                          // a kick when something arrives
+        public int Count, ErrorCount; public float LatencySum;
+    }
+
+    readonly Service[] services =
+    {
+        new() { Name = ""internet"" }, new() { Name = ""gateway"" }, new() { Name = ""catalog"" }, new() { Name = ""cart"" },
+        new() { Name = ""inventory"" }, new() { Name = ""payments"" }, new() { Name = ""db"" },
+    };
+    int Index(string name) { for (int i = 0; i < services.Length; i++) if (services[i].Name == name) return i; return -1; }
+
+    // ---- requests in flight ---------------------------------------------------------------
+    struct Spark { public int From, To; public float Start, Duration; public bool Error, Slow, Root; public float Seed; }
+    readonly List<Spark> sparks = new();
+    readonly List<(PVector Pos, PVector Vel, float Born, Color C)> debris = new();
+    readonly float[,] linkTraffic = new float[7, 7];
+
+    // ---- the runtime ----------------------------------------------------------------------
+    SignalRFeed hub;
+    JSONObject metrics, chaos;
+    readonly Queue<(float Rps, float P99, float Heap, float Queue)> history = new();
+    int lastGen0 = -1, lastGen1 = -1, lastGen2 = -1;
+    float gen0Flash, gen1Flash, gen2Flash, shockwaveAt = -10;
+    int queued, busy, threads;
+
+    // ---- view -----------------------------------------------------------------------------
+    PFont font, mono;
+    readonly PointCloud cloud = new();
+    float yaw = 0.1f, pitch = 0.18f, zoom = 1;
+    int selected = 5;                               // payments
+    bool simulate, muted;
+    string said = """"; float saidAt = -10;
+    int notesThisSecond; float noteSecond;
+
+    public override void Setup()
+    {
+        Size(1280, 720);
+        font = CreateFont(""Segoe UI"", 14);
+        mono = CreateFont(""Consolas"", 14);
+        TextSizeSnap(1);
+        // Left to right, the way a request goes: the internet, the gateway, four services, the database.
+        services[0].Pos = new PVector(-36, 0, 0);   services[0].Color = Color(150, 160, 190);
+        services[1].Pos = new PVector(-16, 0, 0);   services[1].Color = Color(90, 200, 255);
+        services[2].Pos = new PVector(3, 15.5f, -3);   services[2].Color = Color(120, 230, 160);
+        services[3].Pos = new PVector(8, 5.5f, 4);   services[3].Color = Color(250, 210, 90);
+        services[4].Pos = new PVector(8, -5.5f, -4); services[4].Color = Color(190, 140, 255);
+        services[5].Pos = new PVector(3, -16, 3);   services[5].Color = Color(255, 140, 110);
+        services[6].Pos = new PVector(24, 0, 0);    services[6].Color = Color(110, 180, 230);
+        hub = ConnectSignalR(HubUrl);
+    }
+
+    float Now => Millis() / 1000f;
+
+    // =====================================================================================
+    // What arrives
+    // =====================================================================================
+    void Read()
+    {
+        while (hub.Next(out var msg))
+        {
+            if (msg.Target == ""hops"")
+            {
+                var list = msg.Arguments.GetJSONArray(0);
+                int n = list.Size();
+                for (int i = 0; i < n; i++)
+                {
+                    var h = list.GetJSONObject(i);
+                    Hop(h.GetString(""from""), h.GetString(""to""), h.GetFloat(""ms""), h.GetInt(""status""), h.GetBoolean(""root""), i / (float)n * 0.1f);
+                }
+            }
+            else if (msg.Target == ""metrics"") Metrics(msg.Object(0));
+            else if (msg.Target == ""chaos"") chaos = msg.Object(0);
+        }
+    }
+
+    void Hop(string from, string to, float ms, int status, bool root, float delay)
+    {
+        int a = Index(from), b = Index(to);
+        if (a < 0 || b < 0) return;
+        var s = services[b];
+        s.Count++; s.LatencySum += ms;
+        bool error = status >= 500;
+        if (error) s.ErrorCount++;
+        linkTraffic[a, b] += 1;
+        if (sparks.Count > 4000) return;                         // more than the eye can follow
+        // As slow as it really was: a 5 ms call zips, a 500 ms call crawls.
+        float duration = Math.Clamp(0.35f + MathF.Sqrt(ms) * 0.09f, 0.35f, 4f);
+        sparks.Add(new Spark { From = a, To = b, Start = Now + delay, Duration = duration, Error = error, Slow = ms > 250, Root = root, Seed = Random(1) });
+        if (root) Note(to, ms, error);
+    }
+
+    void Metrics(JSONObject m)
+    {
+        metrics = m;
+        history.Enqueue((m.GetFloat(""rps""), m.GetFloat(""p99""), m.GetFloat(""heapMB""), m.GetFloat(""threadPoolQueue"")));
+        while (history.Count > 240) history.Dequeue();
+        int g0 = m.GetInt(""gen0""), g1 = m.GetInt(""gen1""), g2 = m.GetInt(""gen2"");
+        if (lastGen0 >= 0)
+        {
+            if (g0 > lastGen0) gen0Flash = 1;
+            if (g1 > lastGen1) gen1Flash = 1;
+            if (g2 > lastGen2) { gen2Flash = 1; shockwaveAt = Now; if (!muted) Play(31, amp: 0.5, release: 0.6, synth: Synth.Kick); }
+        }
+        lastGen0 = g0; lastGen1 = g1; lastGen2 = g2;
+        queued = m.GetInt(""threadPoolQueue""); busy = m.GetInt(""busyThreads""); threads = m.GetInt(""threads"");
+    }
+
+    /// <summary>A soft note per finished customer request: higher for faster, a low growl for errors. Never more than ~14 a second.</summary>
+    void Note(string to, float ms, bool error)
+    {
+        if (muted) return;
+        if (Now - noteSecond > 1) { noteSecond = Now; notesThisSecond = 0; }
+        if (notesThisSecond++ > 14) return;
+        int[] scale = { 0, 2, 4, 7, 9, 12, 14, 16 };
+        if (error) Play(40 + Random(4), amp: 0.12, release: 0.5, cutoff: 70, synth: Synth.Saw);
+        else
+        {
+            int step = scale[Math.Clamp((int)(7 - MathF.Log2(Math.Max(1, ms)) * 0.9f), 0, scale.Length - 1)];
+            Play(64 + step, amp: 0.05, pan: Random(-0.5f, 0.5f), release: 0.35, synth: Synth.Pluck);
+        }
+    }
+
+    // =====================================================================================
+    // Each frame
+    // =====================================================================================
+    public override void Draw()
+    {
+        Read();
+        if (simulate && !hub.Connected) Simulate();
+        float dt = 1 / 60f;
+        foreach (var s in services)
+        {
+            // Smooth what happened this frame into rates.
+            float rate = s.Count / dt;
+            s.Rate = Lerp(s.Rate, rate, 0.03f);
+            if (s.Count > 0) s.Latency = Lerp(s.Latency, s.LatencySum / s.Count, 0.1f);
+            s.Errors = Lerp(s.Errors, s.Count > 0 ? s.ErrorCount / (float)s.Count : s.Errors * 0.98f, 0.06f);
+            s.Pulse = Math.Max(0, s.Pulse - dt * 2.5f);
+            s.Count = 0; s.ErrorCount = 0; s.LatencySum = 0;
+        }
+        for (int a = 0; a < 7; a++) for (int b = 0; b < 7; b++) linkTraffic[a, b] *= 0.97f;
+        gen0Flash *= 0.9f; gen1Flash *= 0.93f; gen2Flash *= 0.96f;
+        // A slow sway, so it reads as 3D without ever turning its back on you.
+        float sway = IsMousePressed ? 0 : Sin(Now * 0.12f) * 0.22f;
+        var view = View3D.Orbit(yaw + sway, pitch, 62 / zoom, new PVector(-4, -2.5f, 0), 50);
+        Background(5, 7, 14);
+        Shockwave(view);
+        Links(view);
+        cloud.Clear();
+        Spheres();
+        Queue();
+        SparksAndTrails(view);
+        Debris();
+        Points(cloud, view);
+        Labels(view);
+        Hud();
+        Runtime();
+    }
+
+    PVector Curve(int a, int b, float t)
+    {
+        var A = services[a].Pos; var B = services[b].Pos;
+        float d = PVector.Dist(A, B);
+        var C = new PVector((A.X + B.X) / 2, (A.Y + B.Y) / 2 + d * 0.12f, (A.Z + B.Z) / 2 - d * 0.25f);
+        float u = 1 - t;
+        return new PVector(u * u * A.X + 2 * u * t * C.X + t * t * B.X, u * u * A.Y + 2 * u * t * C.Y + t * t * B.Y, u * u * A.Z + 2 * u * t * C.Z + t * t * B.Z);
+    }
+
+    /// <summary>The paths between services, brighter the busier.</summary>
+    void Links(View3D view)
+    {
+        StrokeWeight(1);
+        for (int a = 0; a < 7; a++)
+            for (int b = 0; b < 7; b++)
+            {
+                float k = Math.Min(1, linkTraffic[a, b] / 40);
+                if (k < 0.01f) continue;
+                Stroke(120, 150, 210, 25 + 70 * k);
+                BeginShape(ShapeKind.Lines);
+                var prev = view.Project(Curve(a, b, 0), Width, Height);
+                for (int i = 1; i <= 24; i++)
+                {
+                    var p = view.Project(Curve(a, b, i / 24f), Width, Height);
+                    if (prev.Depth > 0.5f && p.Depth > 0.5f) { Vertex(prev.X, prev.Y); Vertex(p.X, p.Y); }
+                    prev = p;
+                }
+                EndShape();
+            }
+    }
+
+    /// <summary>Each service: a shell of points that swells with traffic, flickers red with errors, glows orange when slow.</summary>
+    void Spheres()
+    {
+        for (int i = 0; i < services.Length; i++)
+        {
+            var s = services[i];
+            bool isDb = s.Name == ""db"", isNet = s.Name == ""internet"";
+            float r = (isDb ? 3.2f : isNet ? 2.2f : 2.4f) + MathF.Sqrt(s.Rate) * 0.12f + s.Pulse * 0.5f;
+            float heat = Math.Clamp((s.Latency - 30) / 300, 0, 1);
+            float err = Math.Clamp(s.Errors * 3, 0, 1);
+            bool chaosHere = ChaosOn(s.Name);
+            int count = isNet ? 220 : 420;
+            for (int k = 0; k < count; k++)
+            {
+                // Fibonacci points on the sphere, slowly turning.
+                float y = 1 - 2 * (k + 0.5f) / count, rad = MathF.Sqrt(1 - y * y), th = k * 2.39996f + Now * (0.3f + 0.05f * i);
+                float wobble = 1 + 0.06f * Sin(k * 1.7f + Now * 3) * Math.Min(1, s.Rate / 30);
+                float x = Cos(th) * rad * r * wobble, z = Sin(th) * rad * r * wobble;
+                var c = s.Color;
+                float R = Lerp(Lerp(c.R, 255, heat), 255, err), G = Lerp(Lerp(c.G, 150, heat), 60, err), B = Lerp(Lerp(c.B, 60, heat), 60, err);
+                bool flicker = err > 0.05f && Hash(k + (int)(Now * 12)) < err * 0.5f;
+                float a = (i == selected ? 230 : 170) * (flicker ? 0.3f : 1);
+                cloud.Add(s.Pos.X + x, s.Pos.Y + y * r * wobble, s.Pos.Z + z, Color(R, G, B, a), i == selected ? 0.32f : 0.26f);
+            }
+            if (chaosHere)
+            {
+                // A ring around a service someone is breaking.
+                for (int k = 0; k < 90; k++)
+                {
+                    float th = k / 90f * TWO_PI + Now;
+                    cloud.Add(s.Pos.X + Cos(th) * (r + 1.2f), s.Pos.Y, s.Pos.Z + Sin(th) * (r + 1.2f), Color(255, 120, 60, 200), 0.22f);
+                }
+            }
+        }
+    }
+
+    /// <summary>Thread pool starvation, made visible: the work waiting for a thread piles up at the gateway's door.</summary>
+    void Queue()
+    {
+        int n = Math.Min(queued, 600);
+        var door = services[1].Pos;
+        for (int k = 0; k < n; k++)
+        {
+            int col = k % 12, row = k / 12;
+            float x = door.X - 4 - row * 0.45f, z = (col - 5.5f) * 0.45f;
+            cloud.Add(x, door.Y - 3.4f + Sin(Now * 4 + k) * 0.08f, z, Color(255, 90, 70, 220), 0.3f);
+        }
+    }
+
+    void SparksAndTrails(View3D view)
+    {
+        var ok = new List<(float, float, float, float)>(); var slow = new List<(float, float, float, float)>(); var bad = new List<(float, float, float, float)>();
+        for (int i = sparks.Count - 1; i >= 0; i--)
+        {
+            var s = sparks[i];
+            float t = (Now - s.Start) / s.Duration;
+            if (t < 0) continue;
+            if (t >= 1)
+            {
+                // Arrived.
+                services[s.To].Pulse = Math.Min(1, services[s.To].Pulse + 0.08f);
+                if (s.Error) Burst(services[s.To].Pos);
+                sparks.RemoveAt(i);
+                continue;
+            }
+            float e = t * t * (3 - 2 * t);
+            var p = Curve(s.From, s.To, e);
+            var c = s.Error ? Color(255, 70, 60) : s.Slow ? Color(255, 170, 60) : services[s.To].Color;
+            cloud.Add(p.X, p.Y, p.Z, Color(Math.Min(255, c.R + 60), Math.Min(255, c.G + 60), Math.Min(255, c.B + 60), 255), s.Error ? 0.55f : 0.4f);
+            // A comet tail.
+            var q = Curve(s.From, s.To, Math.Max(0, e - 0.08f));
+            var P = view.Project(p, Width, Height); var Q = view.Project(q, Width, Height);
+            if (P.Depth > 0.5f && Q.Depth > 0.5f) (s.Error ? bad : s.Slow ? slow : ok).Add((P.X, P.Y, Q.X, Q.Y));
+        }
+        StrokeWeight(1.2f); Stroke(150, 210, 255, 110); Lines(ok);
+        StrokeWeight(1.6f); Stroke(255, 170, 60, 170); Lines(slow);
+        StrokeWeight(2); Stroke(255, 70, 60, 200); Lines(bad);
+    }
+
+    void Lines(List<(float X0, float Y0, float X1, float Y1)> lines)
+    {
+        if (lines.Count == 0) return;
+        BeginShape(ShapeKind.Lines);
+        foreach (var (x0, y0, x1, y1) in lines) { Vertex(x0, y0); Vertex(x1, y1); }
+        EndShape();
+    }
+
+    void Burst(PVector at)
+    {
+        for (int k = 0; k < 14; k++)
+        {
+            var v = new PVector(Random(-1, 1), Random(-0.4f, 1.2f), Random(-1, 1));
+            v.Normalize(); v.Mult(Random(3, 9));
+            debris.Add((at.Copy(), v, Now, Color(255, Random(60, 140), 50)));
+        }
+        if (debris.Count > 3000) debris.RemoveRange(0, debris.Count - 3000);
+    }
+
+    void Debris()
+    {
+        for (int i = debris.Count - 1; i >= 0; i--)
+        {
+            var (p, v, born, c) = debris[i];
+            float age = Now - born;
+            if (age > 0.9f) { debris.RemoveAt(i); continue; }
+            cloud.Add(p.X + v.X * age, p.Y + v.Y * age - 4 * age * age, p.Z + v.Z * age, Color(c.R, c.G, c.B, 255 * (1 - age / 0.9f)), 0.25f);
+        }
+    }
+
+    /// <summary>A gen 2 garbage collection: a ring that sweeps through everything.</summary>
+    void Shockwave(View3D view)
+    {
+        float age = Now - shockwaveAt;
+        if (age > 1.6f) return;
+        float r = age * 34, a = 1 - age / 1.6f;
+        StrokeWeight(2 + 4 * a);
+        Stroke(200, 160, 255, 200 * a);
+        NoFill();
+        BeginShape(ShapeKind.Lines);
+        // Facing you, from the middle of the app, out past every service.
+        var center = new PVector(-4, 0, 0);
+        var prev = view.Project(new PVector(center.X + r, center.Y, center.Z), Width, Height);
+        for (int k = 1; k <= 96; k++)
+        {
+            float th = k / 96f * TWO_PI;
+            var p = view.Project(new PVector(center.X + Cos(th) * r, center.Y + Sin(th) * r, center.Z), Width, Height);
+            if (prev.Depth > 0.5f && p.Depth > 0.5f) { Vertex(prev.X, prev.Y); Vertex(p.X, p.Y); }
+            prev = p;
+        }
+        EndShape();
+    }
+
+    void Labels(View3D view)
+    {
+        TextAlign(TextAlignH.Center, TextAlignV.Top);
+        for (int i = 0; i < services.Length; i++)
+        {
+            var s = services[i];
+            var p = view.Project(new PVector(s.Pos.X, s.Pos.Y - (s.Name == ""db"" ? 4.6f : 3.6f), s.Pos.Z), Width, Height);
+            if (p.Depth <= 0.5f) continue;
+            TextFont(font, 15);
+            Fill(i == selected ? Color(255, 255, 255) : Color(s.Color.R, s.Color.G, s.Color.B, 230));
+            string key = i >= 1 ? $""{i}  "" : """";
+            Text(key + s.Name, p.X, p.Y);
+            if (s.Name == ""internet"") continue;
+            TextFont(mono, 12);
+            Fill(170, 185, 215, 200);
+            string err = s.Errors > 0.01f ? $"" · {s.Errors:P0} err"" : """";
+            Text($""{s.Rate:0}/s · {s.Latency:0} ms{err}"", p.X, p.Y + 19);
+            string c = ChaosText(s.Name);
+            if (c != """") { Fill(255, 140, 90); Text(c, p.X, p.Y + 35); }
+        }
+    }
+
+    // =====================================================================================
+    // Chaos: what's broken right now (as the app reports it)
+    // =====================================================================================
+    bool ChaosOn(string name) => ChaosText(name) != """";
+
+    string ChaosText(string name)
+    {
+        if (chaos == null) return """";
+        var parts = new List<string>();
+        var lat = chaos.GetJSONObject(""latency""); var fail = chaos.GetJSONObject(""failure"");
+        if (lat != null && lat.HasKey(name)) parts.Add($""+{lat.GetInt(name)} ms"");
+        if (fail != null && fail.HasKey(name)) parts.Add($""fails {fail.GetFloat(name):P0}"");
+        if (name == ""inventory"" && chaos.GetBoolean(""starve"")) parts.Add(""sync over async!"");
+        if (name == ""db"" && chaos.GetBoolean(""gcStorm"")) parts.Add(""allocating like crazy"");
+        return string.Join("" · "", parts);
+    }
+
+    // =====================================================================================
+    // On screen
+    // =====================================================================================
+    void Hud()
+    {
+        TextAlign(TextAlignH.Left, TextAlignV.Top);
+        TextFont(font, 26);
+        Fill(235, 240, 255);
+        Text(""Inside Kestrel"", 24, 18);
+        TextFont(font, 14);
+        Fill(150, 165, 200);
+        string source = hub.Connected ? ""PulseShop, live over SignalR · ASP.NET Core · .NET 10""
+                      : simulate ? ""SIMULATED (PulseShop isn't running)""
+                      : $""{HubUrl}: {hub.Status}"";
+        Text(source, 24, 52);
+        if (!hub.Connected && !simulate)
+        {
+            Fill(255, 200, 120);
+            Text(""start it:  cd showcase/PulseShop && dotnet run     (or D for a simulation)"", 24, 74);
+        }
+
+        if (metrics != null)
+        {
+            float rps = metrics.GetFloat(""rps""), p50 = metrics.GetFloat(""p50""), p99 = metrics.GetFloat(""p99""), err = metrics.GetFloat(""errorRate"");
+            TextFont(font, 44);
+            Fill(235, 240, 255);
+            TextAlign(TextAlignH.Right, TextAlignV.Top);
+            Text($""{rps:0}"", Width - 150, 14);
+            TextFont(font, 14);
+            Fill(150, 165, 200);
+            TextAlign(TextAlignH.Left, TextAlignV.Top);
+            Text(""requests/s"", Width - 142, 34);
+            TextAlign(TextAlignH.Right, TextAlignV.Top);
+            Fill(p99 > 500 ? Color(255, 150, 90) : Color(200, 210, 235));
+            Text($""p50 {p50:0} ms   p99 {p99:0} ms"", Width - 24, 70);
+            Fill(err > 0.02f ? Color(255, 100, 90) : Color(200, 210, 235));
+            Text($""errors {err:P1}"", Width - 24, 90);
+            if (chaos != null && chaos.GetBoolean(""spike"")) { Fill(255, 210, 90); Text(""TRAFFIC SPIKE ×8"", Width - 24, 110); }
+        }
+
+        if (Now - saidAt < 2.5f)
+        {
+            float a = 255 * Math.Clamp(2.5f - (Now - saidAt), 0, 1);
+            TextFont(font, 22);
+            TextAlign(TextAlignH.Center, TextAlignV.Top);
+            Fill(255, 220, 160, a);
+            Text(said, Width / 2, 22);
+        }
+
+        TextAlign(TextAlignH.Left, TextAlignV.Bottom);
+        TextFont(font, 12);
+        Fill(255, 255, 255, 80);
+        TextAlign(TextAlignH.Right, TextAlignV.Bottom);
+        Fill(255, 255, 255, 120);
+        TextFont(font, 13);
+        Text(""made with Dana · creative coding in C#"", Width - 24, Height - 12);
+        TextAlign(TextAlignH.Left, TextAlignV.Bottom);
+        TextFont(font, 12);
+        Fill(255, 255, 255, 80);
+        Text(""1-6 pick · L +200 ms · F fail 30% · S starve thread pool · G GC storm · Space spike · +/- load · R reset · drag/wheel · M mute"", 24, Height - 12);
+    }
+
+    /// <summary>The runtime strip: sparklines, the GC bulbs, the thread pool.</summary>
+    void Runtime()
+    {
+        if (metrics == null) return;
+        float x = 24, y = Height - 120, w = 190, h = 44;
+        Sparkline(""req/s"", history.Select(v => v.Rps), x, y, w, h, Color(90, 200, 255), ""0"");
+        Sparkline(""p99 ms"", history.Select(v => v.P99), x + 210, y, w, h, Color(255, 170, 60), ""0"");
+        Sparkline(""heap MB"", history.Select(v => v.Heap), x + 420, y, w, h, Color(190, 140, 255), ""0.0"");
+        Sparkline(""thread pool queue"", history.Select(v => v.Queue), x + 630, y, w, h, Color(255, 90, 70), ""0"");
+
+        // GC: three bulbs that flash on each collection of their generation.
+        float gx = x + 850;
+        TextFont(mono, 12);
+        TextAlign(TextAlignH.Center, TextAlignV.Top);
+        (string Name, float Flash, int Count)[] gens = { (""gen0"", gen0Flash, lastGen0), (""gen1"", gen1Flash, lastGen1), (""gen2"", gen2Flash, lastGen2) };
+        for (int g = 0; g < 3; g++)
+        {
+            float cx = gx + g * 52, cy = y + 16;
+            NoStroke();
+            Fill(200, 160, 255, 40 + 215 * gens[g].Flash);
+            Circle(cx, cy, 18 + 10 * gens[g].Flash);
+            Fill(170, 185, 215);
+            Text($""{gens[g].Name}\n{gens[g].Count}"", cx, cy + 16);
+        }
+
+        // The thread pool: one cell per thread, lit when busy.
+        float tx = gx + 170;
+        TextAlign(TextAlignH.Left, TextAlignV.Top);
+        Fill(150, 165, 200);
+        TextFont(font, 12);
+        Text($""thread pool: {busy}/{threads} busy · {queued} waiting"", tx, y - 4);
+        int shown = Math.Min(threads, 64);
+        for (int i = 0; i < shown; i++)
+        {
+            float cx = tx + i % 16 * 11, cy = y + 16 + i / 16 * 11;
+            NoStroke();
+            Fill(i < busy ? Color(255, 190, 80) : Color(60, 70, 95));
+            Rect(cx, cy, 9, 9, 2);
+        }
+        TextFont(font, 12);
+        Fill(150, 165, 200);
+        Text($""cpu {metrics.GetFloat(""cpu""):0}% · alloc {metrics.GetFloat(""allocMBps""):0.0} MB/s"", tx, y + 66);
+    }
+
+    void Sparkline(string label, IEnumerable<float> values, float x, float y, float w, float h, Color c, string format)
+    {
+        var v = values.ToArray();
+        if (v.Length < 2) return;
+        float max = Math.Max(1e-3f, v.Max());
+        NoFill();
+        Stroke(255, 255, 255, 20);
+        StrokeWeight(1);
+        Line(x, y + h, x + w, y + h);
+        Stroke(c);
+        StrokeWeight(1.5f);
+        BeginShape();
+        for (int i = 0; i < v.Length; i++) Vertex(x + i / (float)(v.Length - 1) * w, y + h - v[i] / max * h);
+        EndShape();
+        NoStroke();
+        Fill(150, 165, 200);
+        TextFont(font, 12);
+        TextAlign(TextAlignH.Left, TextAlignV.Top);
+        Text($""{label}  {v[^1].ToString(format)}"", x, y + h + 6);
+    }
+
+    static float Hash(int n)
+    {
+        unchecked
+        {
+            uint x = (uint)n * 747796405u + 2891336453u;
+            x = ((x >> (int)((x >> 28) + 4)) ^ x) * 277803737u;
+            return ((x >> 22) ^ x) / 4294967296f;
+        }
+    }
+
+    // =====================================================================================
+    // Breaking it
+    // =====================================================================================
+    void Say(string text) { said = text; saidAt = Now; }
+
+    public override void KeyPressed()
+    {
+        string name = services[selected].Name;
+        if (Key >= '1' && Key <= '6') { selected = Key - '0'; Say(""selected: "" + services[selected].Name); }
+        else if (Key == 'l' || Key == 'L')
+        {
+            var lat = chaos?.GetJSONObject(""latency"");
+            int now = lat != null && lat.HasKey(name) ? lat.GetInt(name) : 0;
+            int next = now >= 800 ? 0 : now + 200;
+            hub.Invoke(""Latency"", name, next);
+            Say(next == 0 ? $""{name}: fast again"" : $""{name}: +{next} ms"");
+        }
+        else if (Key == 'f' || Key == 'F')
+        {
+            var fail = chaos?.GetJSONObject(""failure"");
+            bool failing = fail != null && fail.HasKey(name);
+            hub.Invoke(""Fail"", name, failing ? 0.0 : 0.3);
+            Say(failing ? $""{name}: healthy again"" : $""{name}: failing 30%"");
+        }
+        else if (Key == 's' || Key == 'S')
+        {
+            bool on = !(chaos?.GetBoolean(""starve"") ?? false);
+            hub.Invoke(""Starve"", on);
+            Say(on ? ""inventory: Task.Wait() -- sync over async"" : ""inventory: async all the way again"");
+        }
+        else if (Key == 'g' || Key == 'G')
+        {
+            bool on = !(chaos?.GetBoolean(""gcStorm"") ?? false);
+            hub.Invoke(""GcStorm"", on);
+            Say(on ? ""GC storm"" : ""GC calm"");
+        }
+        else if (Key == ' ') { hub.Invoke(""Spike"", 8); Say(""traffic spike ×8""); }
+        else if (Key == '+' || Key == '=') { int l = (chaos?.GetInt(""load"") ?? 40) * 2; hub.Invoke(""SetLoad"", Math.Min(l, 1600)); Say($""load: {Math.Min(l, 1600)} req/s""); }
+        else if (Key == '-' || Key == '_') { int l = Math.Max(5, (chaos?.GetInt(""load"") ?? 40) / 2); hub.Invoke(""SetLoad"", l); Say($""load: {l} req/s""); }
+        else if (Key == 'r' || Key == 'R') { hub.Invoke(""Reset""); Say(""everything back to normal""); }
+        else if (Key == 'm' || Key == 'M') { muted = !muted; Say(muted ? ""muted"" : ""sound on""); }
+        else if (Key == 'd' || Key == 'D') simulate = !simulate;
+    }
+
+    public override void MouseDragged()
+    {
+        yaw -= (MouseX - PMouseX) * 0.006f;
+        pitch = Constrain(pitch - (MouseY - PMouseY) * 0.006f, -0.2f, 1.4f);
+    }
+
+    public override void MouseWheel(float delta) => zoom = Constrain(zoom * (delta > 0 ? 1 / 1.1f : 1.1f), 0.5f, 3);
+
+    // =====================================================================================
+    // The simulation (D, only while PulseShop isn't running)
+    // =====================================================================================
+    float simBudget, simMetricsAt;
+    int simGen0, simGen2;
+
+    void Simulate()
+    {
+        simBudget += 40 / 60f;
+        while (simBudget >= 1)
+        {
+            simBudget--;
+            float r = Random(1);
+            float slowPay = 0;
+            Hop(""internet"", ""gateway"", 30 + Random(40), 200, true, Random(0.1f));
+            if (r < 0.6f) { Hop(""gateway"", ""catalog"", 6, 200, false, Random(0.1f)); Hop(""catalog"", ""db"", 4, 200, false, Random(0.1f)); Hop(""gateway"", ""inventory"", 4, 200, false, Random(0.1f)); }
+            else if (r < 0.85f) { Hop(""gateway"", ""inventory"", 8, 200, false, Random(0.1f)); Hop(""inventory"", ""db"", 6, 200, false, Random(0.1f)); Hop(""gateway"", ""cart"", 5, 200, false, Random(0.1f)); }
+            else { Hop(""gateway"", ""cart"", 4, 200, false, Random(0.1f)); Hop(""gateway"", ""payments"", 30 + slowPay, Random(1) < 0.05f ? 503 : 200, false, Random(0.1f)); Hop(""payments"", ""db"", 5, 200, false, Random(0.1f)); }
+        }
+        if (Now - simMetricsAt > 0.25f)
+        {
+            simMetricsAt = Now;
+            simGen0 += Random(1) < 0.3f ? 1 : 0;
+            simGen2 += Random(1) < 0.01f ? 1 : 0;
+            var m = new JSONObject();
+            m.SetFloat(""rps"", 40 + Random(-3, 3)); m.SetFloat(""p50"", 22); m.SetFloat(""p99"", 70 + Random(30)); m.SetFloat(""errorRate"", 0.01f);
+            m.SetInt(""gen0"", simGen0); m.SetInt(""gen1"", simGen0 / 8); m.SetInt(""gen2"", simGen2);
+            m.SetFloat(""heapMB"", 18 + Sin(Now) * 3); m.SetFloat(""allocMBps"", 2); m.SetInt(""threadPoolQueue"", 0);
+            m.SetInt(""threads"", 8); m.SetInt(""busyThreads"", 2 + (int)Random(3)); m.SetFloat(""cpu"", 6);
+            Metrics(m);
+        }
     }
 }
 ";
