@@ -1296,13 +1296,15 @@ namespace DanaProcessing
             }
 
             using var vertices = SKVertices.CreateCopy(SKVertexMode.Triangles, positions, texs, colors);
-            using var meshPaint = new SKPaint { IsAntialias = true };
+            // White: with no texture, Modulate multiplies the vertex colors by the paint's
+            // color, and an SKPaint starts out black -- which turned every Gouraud mesh black.
+            using var meshPaint = new SKPaint { IsAntialias = true, Color = SKColors.White };
             if (_shapeTexture != null)
                 meshPaint.Shader = SKShader.CreateBitmap(_shapeTexture.Bitmap, _textureWrapX, _textureWrapY);
 
             // Modulate multiplies the (optional) texture shader's color by
             // each vertex's color; with no shader, the paint's own color
-            // (white, unset above) makes this a pure passthrough of the
+            // (white, set above) makes this a pure passthrough of the
             // vertex colors — so Modulate works correctly for both the pure
             // Gouraud case and the textured case.
             Canvas.DrawVertices(vertices, SKBlendMode.Modulate, meshPaint);

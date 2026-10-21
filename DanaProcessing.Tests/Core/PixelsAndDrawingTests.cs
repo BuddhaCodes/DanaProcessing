@@ -174,4 +174,26 @@ public class PixelsAndDrawingTests
         var after = Enumerable.Range(0, 1000).Select(_ => s.Random(1)).ToList();
         Assert.True(after.Distinct().Count() > 900, "still random after concurrent use");
     }
+
+    [Fact]
+    public void A_mesh_with_a_color_per_vertex_shows_those_colors()
+    {
+        // Fill() before each Vertex(): a Gouraud-shaded triangle, red, green and blue corners.
+        using var surface = Offscreen.Run(new Drawn(s =>
+        {
+            s.Background(0);
+            s.NoStroke();
+            s.BeginShape(ShapeKind.Triangles);
+            s.Fill(255, 0, 0); s.Vertex(5, 5);
+            s.Fill(0, 255, 0); s.Vertex(95, 5);
+            s.Fill(0, 0, 255); s.Vertex(5, 95);
+            s.EndShape();
+        }));
+        var nearRed = Offscreen.Pixel(surface, 10, 10);
+        var nearGreen = Offscreen.Pixel(surface, 85, 8);
+        var nearBlue = Offscreen.Pixel(surface, 8, 85);
+        Assert.True(nearRed.Red > 180 && nearRed.Green < 80, $"red corner {nearRed}");
+        Assert.True(nearGreen.Green > 180 && nearGreen.Red < 80, $"green corner {nearGreen}");
+        Assert.True(nearBlue.Blue > 180 && nearBlue.Red < 80, $"blue corner {nearBlue}");
+    }
 }
