@@ -2048,5 +2048,150 @@
   "name": "RotateZ",
   "kind": "method",
   "target": "rotatexyz"
+ },
+ {
+  "name": "Request",
+  "kind": "class",
+  "target": "requesttext"
+ },
+ {
+  "name": "RequestText",
+  "kind": "method",
+  "target": "requesttext"
+ },
+ {
+  "name": "RequestStrings",
+  "kind": "method",
+  "target": "requesttext"
+ },
+ {
+  "name": "RequestBytes",
+  "kind": "method",
+  "target": "requesttext"
+ },
+ {
+  "name": "RequestJSONObject",
+  "kind": "method",
+  "target": "requesttext"
+ },
+ {
+  "name": "RequestJSONArray",
+  "kind": "method",
+  "target": "requesttext"
+ },
+ {
+  "name": "RequestXML",
+  "kind": "method",
+  "target": "requesttext"
+ },
+ {
+  "name": "RequestTable",
+  "kind": "method",
+  "target": "requesttext"
+ },
+ {
+  "name": "RequestPImage",
+  "kind": "method",
+  "target": "requesttext"
+ },
+ {
+  "name": "RequestGeoJSON",
+  "kind": "method",
+  "target": "geojson"
+ },
+ {
+  "name": "LoadGeoJSON",
+  "kind": "method",
+  "target": "geojson"
+ },
+ {
+  "name": "GeoMap",
+  "kind": "class",
+  "target": "geojson"
+ },
+ {
+  "name": "GeoFeature",
+  "kind": "class",
+  "target": "geojson"
+ },
+ {
+  "name": "GeoRing",
+  "kind": "class",
+  "target": "geojson"
+ },
+ {
+  "name": "FeatureAt",
+  "kind": "method",
+  "target": "geojson"
+ },
+ {
+  "name": "Geo",
+  "kind": "static class",
+  "target": "geo-tosphere"
+ },
+ {
+  "name": "ToSphere",
+  "kind": "static method",
+  "target": "geo-tosphere"
+ },
+ {
+  "name": "FromSphere",
+  "kind": "static method",
+  "target": "geo-tosphere"
+ },
+ {
+  "name": "DistanceKm",
+  "kind": "static method",
+  "target": "geo-distance"
+ },
+ {
+  "name": "Destination",
+  "kind": "static method",
+  "target": "geo-distance"
+ },
+ {
+  "name": "Equirectangular",
+  "kind": "static method",
+  "target": "geo-equirectangular"
+ },
+ {
+  "name": "FromEquirectangular",
+  "kind": "static method",
+  "target": "geo-equirectangular"
+ },
+ {
+  "name": "FibonacciSphere",
+  "kind": "static method",
+  "target": "geo-fibonacci"
+ },
+ {
+  "name": "View3D",
+  "kind": "class",
+  "target": "view3d"
+ },
+ {
+  "name": "Orbit",
+  "kind": "static method",
+  "target": "view3d"
+ },
+ {
+  "name": "Project",
+  "kind": "method",
+  "target": "view3d"
+ },
+ {
+  "name": "PointCloud",
+  "kind": "class",
+  "target": "pointcloud"
+ },
+ {
+  "name": "Points",
+  "kind": "method",
+  "target": "pointcloud"
+ },
+ {
+  "name": "TextSizeSnap",
+  "kind": "method",
+  "target": "textsizesnap"
  }
 ]

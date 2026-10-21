@@ -121,6 +121,7 @@ Synths, drums, `.wav` samples, envelopes, filters, and `Amplitude` / `Spectrum()
 | 🔥 **Hot reload that keeps state** | Tweak a value in a particle system you've been tuning for ten minutes and it keeps running, instead of starting over from `Setup()`. |
 | 🧊 **One API, two renderers** | 2D on SkiaSharp, real 3D on OpenGL (Silk.NET) with lights, cameras, materials, custom shaders and 200,000 GPU particles. |
 | 📦 **Any NuGet package as a library** | Put `// nuget: PackageName, 1.2.3` at the top of a sketch and it's downloaded and linked. No `.csproj` to touch. |
+| 🌍 **Data from the web, maps and globes** | `LoadJSONObject("https://...")` like Processing, or `RequestGeoJSON(url, cacheFor: ...)` to keep drawing while it downloads (with progress and a disk cache). GeoJSON countries, distances and circles on the Earth, image pixels you can read, and a point cloud that draws tens of thousands of dots at once: enough for a live earthquake globe in one sketch. |
 | 🔊 **Live-coded sound** | Live loops, synths, drums and samples, with visuals that react on the beat. |
 | 🎛️ **Made to play live** | `[Tweak]` sliders you can MIDI-learn onto your controller's knobs, a performance mode with the code floating over the full-screen visuals (on the projector), and visuals locked to the beat. |
 | 🎲 **Seeds you can keep** | Every Run has a seed; the PNGs a sketch saves carry it (and the slider values), a variations sheet draws 9 or 16 alternatives side by side, and print export redraws any of them as vectors — a 16x poster or a pen-plotter SVG. |
