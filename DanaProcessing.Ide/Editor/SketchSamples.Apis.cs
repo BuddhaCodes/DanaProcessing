@@ -37,9 +37,9 @@ namespace DanaProcessing.Ide.Editor
                 LivingCountry,
                 new[] { SampleTag.Data, SampleTag.ThreeD, SampleTag.Generative, SampleTag.Interaction }),
             new SketchSample(
-                Loc.Tr("Dentro de Kestrel: los signos vitales de una app ASP.NET Core", "Inside Kestrel: the vital signs of an ASP.NET Core app"),
-                Loc.Tr("Una app ASP.NET Core de verdad, dibujada y escuchada mientras corre. PulseShop (en showcase/PulseShop: arrancala con dotnet run) es una tiendita de cinco servicios que se llaman por HTTP real, más una base de datos; se observa a sí misma con lo que trae .NET (un ActivityListener en cada request, el GC y el thread pool) y lo transmite por SignalR. Este sketch se conecta con ConnectSignalR(), sin paquetes. Cada request es una chispa de luz que va y vuelve, tan lenta como fue de verdad; cada servicio, una esfera que crece con su tráfico y arde con sus errores; los hilos del thread pool orbitan el gateway y el trabajo que espera se enrosca en la puerta. Suena como un monitor cardíaco: un pitido cada 25 pedidos servidos (el ritmo ES el rendimiento), un zumbido por cada error, un golpe grave por cada GC completo, un zumbido que sube con la cola del thread pool, y el pitido continuo cuando la app deja de atender. Rompela con el teclado (L latencia, F fallos, S sync-over-async, G tormenta de GC, Espacio pico de tráfico, R arreglar) o desde un celular en http://localhost:5199; la cámara va a lo que se rompió y un rótulo explica qué pasa. Sin PulseShop, D muestra una simulación (avisando).",
-                       "A real ASP.NET Core app, drawn and heard as it runs. PulseShop (in showcase/PulseShop: start it with dotnet run) is a little store of five services calling each other over real HTTP, plus a database; it watches itself with what .NET ships (an ActivityListener on every request, the GC and the thread pool) and streams it over SignalR. This sketch connects with ConnectSignalR(), no packages. Every request is a spark of light going there and back, as slow as it really was; each service a sphere that swells with its traffic and burns with its errors; the thread pool's threads orbit the gateway and waiting work coils up at the door. It sounds like a heart monitor: a beep every 25 requests served (the tempo IS the throughput), a buzz per error, a deep boom per full GC, a hum that rises with the thread pool queue, and the flatline tone when the app stops serving. Break it from the keyboard (L latency, F failures, S sync-over-async, G GC storm, Space traffic spike, R fix) or from a phone at http://localhost:5199; the camera goes to what broke and a caption explains what's happening. Without PulseShop, D shows a simulation (labelled)."),
+                Loc.Tr("Dentro de Kestrel: los signos vitales de una app ASP.NET Core, en 3D", "Inside Kestrel: the vital signs of an ASP.NET Core app, in 3D"),
+                Loc.Tr("Una app ASP.NET Core de verdad, en 3D, filmada y escuchada mientras corre: los servicios en profundidad por el camino de un pedido, y un director de cámara que corta entre plano general, vuelo a través, seguir un pedido, grúa y primeros planos, con profundidad de campo, niebla y cámara lenta cuando el GC detiene el mundo. PulseShop (en showcase/PulseShop: arrancala con dotnet run) es una tiendita de cinco servicios que se llaman por HTTP real, más una base de datos; se observa a sí misma con lo que trae .NET (un ActivityListener en cada request, el GC y el thread pool) y lo transmite por SignalR. Este sketch se conecta con ConnectSignalR(), sin paquetes. Cada request es una chispa de luz que va y vuelve, tan lenta como fue de verdad; cada servicio, una esfera que crece con su tráfico y arde con sus errores; los hilos del thread pool orbitan el gateway y el trabajo que espera se enrosca en la puerta. Suena como un monitor cardíaco: un pitido cada 25 pedidos servidos (el ritmo ES el rendimiento), un zumbido por cada error, un golpe grave por cada GC completo, un zumbido que sube con la cola del thread pool, y el pitido continuo cuando la app deja de atender. C prende o apaga el director (arrastrar toma la cámara). Rompela con el teclado (L latencia, F fallos, S sync-over-async, G tormenta de GC, Espacio pico de tráfico, R arreglar) o desde un celular en http://localhost:5199; la cámara va a lo que se rompió y un rótulo explica qué pasa. Sin PulseShop, D muestra una simulación (avisando).",
+                       "A real ASP.NET Core app in 3D, filmed and heard as it runs: the services laid out in depth along a request's path, and a camera director cutting between a wide shot, a fly-through, riding a request, a crane and close-ups, with depth of field, fog and slow motion when the GC stops the world. PulseShop (in showcase/PulseShop: start it with dotnet run) is a little store of five services calling each other over real HTTP, plus a database; it watches itself with what .NET ships (an ActivityListener on every request, the GC and the thread pool) and streams it over SignalR. This sketch connects with ConnectSignalR(), no packages. Every request is a spark of light going there and back, as slow as it really was; each service a sphere that swells with its traffic and burns with its errors; the thread pool's threads orbit the gateway and waiting work coils up at the door. It sounds like a heart monitor: a beep every 25 requests served (the tempo IS the throughput), a buzz per error, a deep boom per full GC, a hum that rises with the thread pool queue, and the flatline tone when the app stops serving. C turns the director on or off (dragging takes the camera). Break it from the keyboard (L latency, F failures, S sync-over-async, G GC storm, Space traffic spike, R fix) or from a phone at http://localhost:5199; the camera goes to what broke and a caption explains what's happening. Without PulseShop, D shows a simulation (labelled)."),
                 InsideKestrel,
                 new[] { SampleTag.Data, SampleTag.ThreeD, SampleTag.Audio, SampleTag.Interaction }),
         };
@@ -2346,7 +2346,7 @@ public class LivingCountry : Sketch
 ";
 
         private const string InsideKestrel =
-@"// Inside Kestrel: the vital signs of a live ASP.NET Core app.
+@"// Inside Kestrel: the vital signs of a live ASP.NET Core app -- in 3D, shot like a film.
 //
 // PulseShop (in showcase/PulseShop: any ASP.NET Core app could do this) is a little store
 // made of five services that call each other over real HTTP, plus a database. It watches
@@ -2354,10 +2354,12 @@ public class LivingCountry : Sketch
 // thread pool -- and streams it over SignalR. This sketch connects with ConnectSignalR():
 // no packages, just Dana.
 //
-// What you see: every request is a spark of light flying from caller to callee and back,
-// as slow as it really was. Each service is a sphere that swells with its traffic and
-// burns with its errors. Around the gateway orbit the thread pool's threads; work waiting
-// for one coils up at the door.
+// The app is laid out in depth, the way a request travels: from the internet, through the
+// thread pool's ring of threads at the gateway, out to four services and down to the
+// database. Every request is a spark of light going there and back, as slow as it really
+// was. A camera director cuts between shots -- a wide orbit, a flight through the app,
+// riding a request, a crane up from below, close-ups -- and runs to whatever breaks. Depth
+// of field, fog, drifting dust, and slow motion when the GC stops the world.
 //
 // What you hear -- a heart monitor:
 //   beep        25 customer requests served (the tempo IS the throughput)
@@ -2370,12 +2372,13 @@ public class LivingCountry : Sketch
 //
 // 1-6: pick a service (6 is the database).  L: +200 ms on it.  F: make it fail 30%.
 // S: starve the thread pool (sync over async).  G: GC storm.  Space: traffic spike.
-// + / -: load.  R: everything back to normal.  Drag: turn.  Wheel: zoom.  M: mute.
-// Not running? D shows a simulation (clearly labelled).
+// + / -: load.  R: everything back to normal.  C: camera director on/off (dragging takes
+// the camera).  Wheel: zoom.  M: mute.  Not running? D shows a simulation (labelled).
 public class InsideKestrel : Sketch
 {
     const string HubUrl = ""http://localhost:5199/pulse"";
     const int ServedPerBeep = 25;
+    const float Bar = 64;                            // the letterbox bars
 
     // ---- the services ---------------------------------------------------------------------
     class Service
@@ -2396,37 +2399,51 @@ public class InsideKestrel : Sketch
     int Index(string name) { for (int i = 0; i < services.Length; i++) if (services[i].Name == name) return i; return -1; }
 
     // ---- light in flight --------------------------------------------------------------------
-    struct Spark { public int From, To; public float Start, Duration; public bool Error, Slow, Reply; }
+    struct Spark { public int From, To; public float Start, Duration; public bool Error, Slow, Reply; public int Id; }
     readonly List<Spark> sparks = new();
     readonly List<(PVector Pos, PVector Vel, float Born, Color C)> debris = new();
     readonly float[,] linkTraffic = new float[7, 7];
+    readonly PVector[] dust = new PVector[900];
+    int nextSparkId;
 
     // ---- the runtime ----------------------------------------------------------------------
     SignalRFeed hub;
     JSONObject metrics, chaos;
     int lastGen2 = -1, lastGen0 = -1;
-    float gen0Flash, shockwaveAt = -10;
+    float gen0Flash, shockwaveAt = -100;
     int queued, busy, threads;
 
+    // ---- time: scene time can slow down (the GC stopping the world) ---------------------
+    float sceneT, timeScale = 1, slowUntil = -10;
+
     // ---- the monitor ------------------------------------------------------------------------
-    readonly float[] ecg = new float[900];           // the trace, swept left to right like a hospital monitor
-    readonly bool[] ecgRed = new bool[900];
+    readonly float[] ecg = new float[700];
+    readonly bool[] ecgRed = new bool[700];
     float ecgCursor;
     readonly Queue<(float At, bool Red)> beats = new();
-    int served;                                      // requests served since the last beep
+    int served;
     float lastBeep = -10, lastBuzz = -10, lastBoom = -10, lastHum = -10, lastFlat = -10;
-    float zeroSince = -1;                            // when throughput fell to nothing
+    float zeroSince = -1;
     bool flatline;
 
-    // ---- the director ------------------------------------------------------------------------
+    // ---- the director -------------------------------------------------------------------------
+    enum Shot { Wide, FlyThrough, Ride, Crane, CloseUp }
+    Shot shot = Shot.Wide;
+    int shotSubject = 1;
+    float shotStart, shotLength = 9;
+    int scheduleIndex;
+    bool director = true;
+    float manualUntil = -10, manualYaw, manualPitch = 0.3f, zoom = 1;
+    PVector camEye = new(0, 30, -140), camTarget = new(0, 0, 0);
+    float camFov = 50;
+    int ridingId = -1;
+    float shake;
+
     PFont font, mono, big;
-    readonly PointCloud cloud = new();
-    float yaw = 0.1f, pitch = 0.2f, zoom = 1, shake;
-    int focus = -1; float focusUntil;
-    PVector camTarget = new(-4, -7, 0);
-    float camDist = 160;
+    readonly PointCloud cloud = new(), haze = new(), lights = new();
+    View3D view;
     string capTitle = """", capBody = """"; float capAt = -10;
-    int selected = 5;                               // payments
+    int selected = 5;
     bool simulate, muted;
     float startedAt = -1;
 
@@ -2438,14 +2455,22 @@ public class InsideKestrel : Sketch
         big = CreateFont(""Segoe UI Semibold"", 40);
         TextSizeSnap(1);
         cloud.Glow = true;
-        // Left to right, the way a request goes: the internet, the gateway, four services, the database.
-        services[0].Pos = new PVector(-36, 0, 0);    services[0].Color = Color(150, 160, 200);
-        services[1].Pos = new PVector(-16, 0, 0);    services[1].Color = Color(70, 190, 255);
-        services[2].Pos = new PVector(3, 15.5f, -3); services[2].Color = Color(90, 235, 150);
-        services[3].Pos = new PVector(8, 5.5f, 4);   services[3].Color = Color(255, 205, 70);
-        services[4].Pos = new PVector(8, -5.5f, -4); services[4].Color = Color(180, 120, 255);
-        services[5].Pos = new PVector(3, -16, 3);    services[5].Color = Color(255, 120, 90);
-        services[6].Pos = new PVector(24, 0, 0);     services[6].Color = Color(90, 170, 255);
+        haze.Glow = true;
+        haze.DepthSort = false;
+        // Sparks are sized in pixels: crisp at any distance, and cheap however many there are.
+        lights.Glow = true;
+        lights.DepthSort = false;
+        lights.SizeInWorld = false;
+        // In depth, the way a request travels: the internet, the gateway, a ring of four services, the database.
+        services[0].Pos = new PVector(0, 2, -52);    services[0].Color = Color(150, 160, 210);
+        services[1].Pos = new PVector(0, 0, -28);    services[1].Color = Color(70, 190, 255);
+        services[2].Pos = new PVector(0, 14, -4);    services[2].Color = Color(90, 235, 150);
+        services[3].Pos = new PVector(14, 0, -2);    services[3].Color = Color(255, 205, 70);
+        services[4].Pos = new PVector(0, -14, 0);    services[4].Color = Color(180, 120, 255);
+        services[5].Pos = new PVector(-14, 0, 2);    services[5].Color = Color(255, 120, 90);
+        services[6].Pos = new PVector(0, -4, 26);    services[6].Color = Color(90, 170, 255);
+        for (int i = 0; i < dust.Length; i++)
+            dust[i] = new PVector(Random(-120, 120), Random(-60, 70), Random(-140, 120));
         hub = ConnectSignalR(HubUrl);
     }
 
@@ -2487,10 +2512,9 @@ public class InsideKestrel : Sketch
             if (error) Buzz();
             else if (++served >= ServedPerBeep) { served = 0; beats.Enqueue((Now + delay, false)); }
         }
-        if (sparks.Count > 4000) return;                         // more than the eye can follow
-        // As slow as it really was: a 5 ms call zips across, a 500 ms call crawls.
-        float duration = Math.Clamp(0.3f + MathF.Sqrt(ms) * 0.09f, 0.3f, 4f);
-        sparks.Add(new Spark { From = a, To = b, Start = Now + delay, Duration = duration, Error = error, Slow = ms > 250 });
+        if (sparks.Count > 1400) return;                         // more than the eye can follow
+        float duration = Math.Clamp(0.35f + MathF.Sqrt(ms) * 0.1f, 0.35f, 4.5f);
+        sparks.Add(new Spark { From = a, To = b, Start = sceneT + delay, Duration = duration, Error = error, Slow = ms > 250, Id = nextSparkId++ });
     }
 
     void Metrics(JSONObject m)
@@ -2498,16 +2522,28 @@ public class InsideKestrel : Sketch
         metrics = m;
         int g0 = m.GetInt(""gen0""), g2 = m.GetInt(""gen2"");
         if (lastGen0 >= 0 && g0 > lastGen0) gen0Flash = 1;
-        if (lastGen2 >= 0 && g2 > lastGen2) { shockwaveAt = Now; shake += 0.6f; Boom(); }
+        if (lastGen2 >= 0 && g2 > lastGen2) GcStopsTheWorld();
         lastGen0 = g0; lastGen2 = g2;
         queued = m.GetInt(""threadPoolQueue""); busy = m.GetInt(""busyThreads""); threads = m.GetInt(""threads"");
-        // Flatline: customers are coming (load > 0) but nothing has been served for a while.
         float rps = m.GetFloat(""rps"");
         if (rps < 0.5f && m.GetInt(""load"") > 0) { if (zeroSince < 0) zeroSince = Now; }
         else zeroSince = -1;
         bool was = flatline;
         flatline = zeroSince >= 0 && Now - zeroSince > 0.8f;
-        if (flatline && !was) Caption(""Flatline"", ""Nothing is being served. The process is alive -- every thread is just waiting."");
+        if (flatline && !was)
+        {
+            Caption(""Flatline"", ""Nothing is being served. The process is alive -- every thread is just waiting."");
+            Cut(Shot.CloseUp, 1, 10);
+        }
+    }
+
+    /// <summary>A full GC: a shockwave, a boom, and the scene slows down for a moment -- the world stopped.</summary>
+    void GcStopsTheWorld()
+    {
+        shockwaveAt = sceneT;
+        shake += 0.8f;
+        slowUntil = Now + 0.9f;
+        Boom();
     }
 
     // =====================================================================================
@@ -2520,46 +2556,42 @@ public class InsideKestrel : Sketch
         if (prev == null) return;
         var lat = next.GetJSONObject(""latency""); var pLat = prev.GetJSONObject(""latency"");
         var fail = next.GetJSONObject(""failure""); var pFail = prev.GetJSONObject(""failure"");
-        foreach (var s in services)
+        for (int i = 0; i < services.Length; i++)
         {
+            var s = services[i];
             int ms = lat != null && lat.HasKey(s.Name) ? lat.GetInt(s.Name) : 0, pms = pLat != null && pLat.HasKey(s.Name) ? pLat.GetInt(s.Name) : 0;
-            if (ms > pms) { Focus(s.Name); Caption($""{s.Name} +{ms} ms"", $""Every call to {s.Name} now waits. Watch its sparks crawl -- and everything that calls it slow down with it.""); }
+            if (ms > pms) { Cut(Shot.CloseUp, i, 9); Caption($""{s.Name} +{ms} ms"", $""Every call to {s.Name} now waits. Watch its sparks crawl -- and everything that calls it slow down with it.""); }
             float f = fail != null && fail.HasKey(s.Name) ? fail.GetFloat(s.Name) : 0, pf = pFail != null && pFail.HasKey(s.Name) ? pFail.GetFloat(s.Name) : 0;
-            if (f > pf) { Focus(s.Name); Caption($""{s.Name} fails {f:P0}"", ""One failure cascades: the gateway turns it into an error for the customer. Listen for the buzz.""); }
+            if (f > pf) { Cut(Shot.CloseUp, i, 9); Caption($""{s.Name} fails {f:P0}"", ""One failure cascades: the gateway turns it into an error for the customer. Listen for the buzz.""); }
         }
         if (next.GetBoolean(""starve"") && !prev.GetBoolean(""starve""))
         {
-            Focus(""inventory"");
+            Cut(Shot.CloseUp, 1, 11);
             Caption(""Thread pool starvation"", ""inventory blocks on Task.Wait(): each request holds a thread for 300 ms. The pool adds about one thread a second -- the rest of the work waits at the door. Listen to the hum rise."");
         }
         if (next.GetBoolean(""gcStorm"") && !prev.GetBoolean(""gcStorm""))
         {
-            Focus(""db"");
-            Caption(""GC storm"", ""Lots of short-lived garbage on every query. Gen 0 collects constantly; each full gen 2 collection shakes everything (boom)."");
+            Cut(Shot.Wide, 1, 9);
+            Caption(""GC storm"", ""Lots of short-lived garbage on every query. Gen 0 collects constantly; each full gen 2 collection stops the world -- and the film slows down with it."");
         }
-        if (next.GetBoolean(""spike"") && !prev.GetBoolean(""spike"")) Caption(""Traffic spike ×8"", ""Eight times the customers for eight seconds. Listen to the heart race."");
+        if (next.GetBoolean(""spike"") && !prev.GetBoolean(""spike"")) { Cut(Shot.FlyThrough, 1, 9); Caption(""Traffic spike ×8"", ""Eight times the customers for eight seconds. Listen to the heart race.""); }
         bool calm = (lat == null || lat.Size() == 0) && (fail == null || fail.Size() == 0) && !next.GetBoolean(""starve"") && !next.GetBoolean(""gcStorm"");
         bool wasCalm = (pLat == null || pLat.Size() == 0) && (pFail == null || pFail.Size() == 0) && !prev.GetBoolean(""starve"") && !prev.GetBoolean(""gcStorm"");
-        if (calm && !wasCalm) { focus = -1; Caption(""Back to normal"", ""...and now see how long it really takes to recover.""); }
+        if (calm && !wasCalm) { Cut(Shot.Wide, 1, 10); Caption(""Back to normal"", ""...and now see how long it really takes to recover.""); }
     }
 
-    void Focus(string name) { focus = Index(name); focusUntil = Now + 3.5f; }
     void Caption(string title, string body) { capTitle = title; capBody = body; capAt = Now; }
 
     // =====================================================================================
     // The sound: a heart monitor
     // =====================================================================================
-    void Beep(bool red)
-    {
-        lastBeep = Now;
-        if (!muted) Play(red ? 77 : 83, amp: 0.16, attack: 0.002, release: 0.13, synth: Synth.Sine);
-    }
+    void Beep(bool red) { lastBeep = Now; if (!muted) Play(red ? 77 : 83, amp: 0.16, attack: 0.002, release: 0.13, synth: Synth.Sine); }
 
     void Buzz()
     {
         if (Now - lastBuzz < 0.25f) return;
         lastBuzz = Now;
-        shake += 0.15f;
+        shake += 0.2f;
         if (!muted) Play(38, amp: 0.13, release: 0.22, cutoff: 75, synth: Synth.Saw);
     }
 
@@ -2573,20 +2605,17 @@ public class InsideKestrel : Sketch
 
     void Sound()
     {
-        // Beeps leave the queue at the moment their requests finished (never more than 10 a second).
         while (beats.Count > 0 && beats.Peek().At <= Now)
         {
             var (_, red) = beats.Dequeue();
             if (Now - lastBeep > 0.1f) { Beep(red); Beat(red); }
         }
-        // The hum: a low, filtered drone that rises and swells with the thread pool queue.
         if (queued > 5 && Now - lastHum > 0.22f)
         {
             lastHum = Now;
             float k = Math.Min(1, MathF.Log10(queued) / 2.6f);
             if (!muted) Play(36 + k * 22, amp: 0.05 + 0.2 * k, attack: 0.08, sustain: 0.2, release: 0.15, cutoff: 45 + 40 * k, synth: Synth.Saw);
         }
-        // Flatline: the long tone.
         if (flatline && Now - lastFlat > 0.42f)
         {
             lastFlat = Now;
@@ -2599,11 +2628,16 @@ public class InsideKestrel : Sketch
     // =====================================================================================
     public override void Draw()
     {
-        if (startedAt < 0) startedAt = Now;
+        if (startedAt < 0) { startedAt = Now; shotStart = Now; }
+        float dt = 1 / 60f;
+        // Slow motion when the GC stops the world, easing back.
+        float targetScale = Now < slowUntil ? 0.22f : 1;
+        timeScale = Lerp(timeScale, targetScale, Now < slowUntil ? 0.3f : 0.06f);
+        sceneT += dt * timeScale;
+
         Read();
         if (simulate && !hub.Connected) Simulate();
         Sound();
-        float dt = 1 / 60f;
         foreach (var s in services)
         {
             float rate = s.Count / dt;
@@ -2617,21 +2651,24 @@ public class InsideKestrel : Sketch
         gen0Flash *= 0.9f;
         shake *= 0.9f;
 
-        var view = Camera();
-        Background(3, 5, 11);
-        BlendMode(BlendModeKind.Add);                    // light adds up, like light
-        Shockwave(view);
-        Links(view);
+        view = Camera();
+        Background(2, 3, 9);
+        BlendMode(BlendModeKind.Add);
+        Dust();
+        Links();
         cloud.Clear();
+        lights.Clear();
         Spheres();
         ThreadPool();
-        SparksAndTrails(view);
+        Shockwave();
+        SparksAndTrails();
         Debris();
         Points(cloud, view);
+        Points(lights, view);
         BlendMode(BlendModeKind.Blend);
-        Labels(view);
+        Labels();
         if (flatline) Alarm();
-        BottomBar();
+        Letterbox();
         Monitor();
         Vitals();
         Legend();
@@ -2639,33 +2676,191 @@ public class InsideKestrel : Sketch
         Title();
     }
 
-    /// <summary>The camera: flies in at the start, sways gently, leans toward whatever just broke, and shakes.</summary>
+    // =====================================================================================
+    // The director
+    // =====================================================================================
+    readonly (Shot Shot, int Subject, float Length)[] schedule =
+    {
+        (Shot.Wide, 1, 9), (Shot.FlyThrough, 1, 9), (Shot.Ride, 1, 7), (Shot.CloseUp, 1, 7),
+        (Shot.Crane, 6, 8), (Shot.CloseUp, 6, 7), (Shot.Ride, 1, 7), (Shot.CloseUp, 5, 7),
+    };
+
+    void Cut(Shot s, int subject, float length)
+    {
+        shot = s; shotSubject = subject; shotStart = Now; shotLength = length; ridingId = -1;
+    }
+
+    /// <summary>
+    /// Where the camera wants to be for the current shot. The real camera glides toward it,
+    /// so one shot flows into the next.
+    /// </summary>
+    (PVector Eye, PVector Target, float Fov) ShotCamera(float t)
+    {
+        var center = new PVector(0, 0, -12);
+        var subject = services[shotSubject].Pos;
+        switch (shot)
+        {
+            case Shot.Wide:
+            {
+                // From the side, so a request crosses the frame left to right, slowly turning.
+                float yaw = 1.25f + t * 0.05f;
+                return (new PVector(center.X + Sin(yaw) * 70, center.Y + 22, center.Z - Cos(yaw) * 70), new PVector(0, -2, -12), 48);
+            }
+            case Shot.FlyThrough:
+            {
+                // Down the length of the app, from behind the internet to past the database.
+                float u = Math.Clamp(t / shotLength, 0, 1);
+                float z = Lerp(-90, -4, u * u * (3 - 2 * u));
+                var eye = new PVector(9 + Sin(t * 0.4f) * 4, 6 + Cos(t * 0.3f) * 3, z);
+                return (eye, new PVector(0, 0, Math.Min(z + 34, 26)), 62);
+            }
+            case Shot.Ride:
+            {
+                // Follow one customer request, from the door to wherever it goes.
+                var s = Riding();
+                if (s == null) goto case Shot.Wide;
+                var p = SparkPos(s.Value, 0);
+                var ahead = SparkPos(s.Value, 0.2f);
+                var dir = PVector.Sub(ahead, p);
+                if (dir.Mag() < 1e-3f) dir = new PVector(0, 0, 1);
+                dir.Normalize();
+                var eye = new PVector(p.X - dir.X * 7, p.Y - dir.Y * 7 + 2.5f, p.Z - dir.Z * 7);
+                return (eye, PVector.Add(p, PVector.Mult(dir, 10)), 70);
+            }
+            case Shot.Crane:
+            {
+                // From under the database, rising and looking back up the app.
+                float u = Math.Clamp(t / shotLength, 0, 1);
+                var eye = new PVector(-20 + u * 14, Lerp(-34, 18, u), 48 - u * 10);
+                return (eye, new PVector(0, 0, -14), 55);
+            }
+            default:
+            {
+                float yaw = 2.2f + t * 0.16f + shotSubject;
+                float dist = shotSubject == 6 ? 22 : shotSubject == 1 ? 26 : 16;
+                var eye = new PVector(subject.X + Sin(yaw) * dist, subject.Y + 4.5f, subject.Z - Cos(yaw) * dist);
+                return (eye, subject, 52);
+            }
+        }
+    }
+
+    Spark? Riding()
+    {
+        // Keep riding the same spark while it flies; then pick the newest root one.
+        foreach (var s in sparks) if (s.Id == ridingId) return s;
+        Spark? best = null;
+        foreach (var s in sparks)
+            if (!s.Reply && s.From == 0 && sceneT - s.Start < 0.15f && sceneT >= s.Start) { best = s; }
+        if (best == null) foreach (var s in sparks) if (!s.Reply && s.From == 1) { best = s; break; }
+        ridingId = best?.Id ?? -1;
+        return best;
+    }
+
     View3D Camera()
     {
-        float intro = Math.Clamp((Now - startedAt) / 5f, 0, 1);
-        float ease = 1 - MathF.Pow(1 - intro, 3);
-        bool focusing = focus >= 0 && Now < focusUntil;
-        var target = focusing ? PVector.Lerp(new PVector(-4, -7, 0), services[focus].Pos, 0.3f) : new PVector(-4, -7, 0);
-        camTarget = PVector.Lerp(camTarget, target, 0.03f);
-        float dist = (focusing ? 62 : 72) / zoom;
-        camDist = Lerp(camDist, Lerp(170, dist, ease), intro < 1 ? 1 : 0.04f);
-        float sway = IsMousePressed ? 0 : Sin(Now * 0.12f) * 0.2f;
-        float introYaw = (1 - ease) * -1.1f;
-        var t = new PVector(camTarget.X + Random(-1, 1) * shake, camTarget.Y + Random(-1, 1) * shake, camTarget.Z);
-        return View3D.Orbit(yaw + sway + introYaw, pitch + (1 - ease) * 0.5f, camDist, t, 50);
+        if (director && Now > manualUntil)
+        {
+            float t = Now - shotStart;
+            if (t > shotLength)
+            {
+                var next = schedule[scheduleIndex++ % schedule.Length];
+                Cut(next.Shot, next.Subject, next.Length);
+                t = 0;
+            }
+            var (eye, target, fov) = ShotCamera(t);
+            float intro = Math.Clamp((Now - startedAt) / 4, 0, 1);
+            float k = shot == Shot.Ride ? 0.18f : 0.035f + 0.04f * (1 - intro);
+            camEye = PVector.Lerp(camEye, eye, k);
+            camTarget = PVector.Lerp(camTarget, target, shot == Shot.Ride ? 0.25f : 0.05f);
+            camFov = Lerp(camFov, fov, 0.04f);
+        }
+        else
+        {
+            var orbit = View3D.Orbit(manualYaw, manualPitch, 80 / zoom, new PVector(0, 0, -12), 50);
+            camEye = PVector.Lerp(camEye, orbit.Eye, 0.12f);
+            camTarget = PVector.Lerp(camTarget, orbit.Target, 0.12f);
+            camFov = Lerp(camFov, 50, 0.1f);
+        }
+        var v = new View3D
+        {
+            Eye = new PVector(camEye.X + Random(-1, 1) * shake, camEye.Y + Random(-1, 1) * shake, camEye.Z),
+            Target = camTarget,
+            FovY = camFov / (director ? zoom : 1),
+        };
+        return v;
+    }
+
+    // =====================================================================================
+    // Depth: depth of field and fog on every point
+    // =====================================================================================
+
+    /// <summary>
+    /// Adds a point the way a film camera sees it: in focus at the subject's distance, growing
+    /// into a soft, faint disc nearer or farther (bokeh), and fading into the fog far away.
+    /// </summary>
+    void Add(PointCloud pc, float x, float y, float z, Color c, float size)
+    {
+        float dx = x - view.Eye.X, dy = y - view.Eye.Y, dz = z - view.Eye.Z;
+        float d = MathF.Sqrt(dx * dx + dy * dy + dz * dz);
+        float focus = PVector.Dist(view.Eye, view.Target);
+        if (d < 4) return;                                   // right at the lens: skip it
+        float blur = Math.Clamp(Math.Abs(d - focus) / Math.Max(8, focus) * 1.8f, 0, 2);
+        float fog = Math.Clamp(1 - (d - 70) / 110, 0.12f, 1);
+        float a = c.A * fog / (1 + blur * 1.6f);
+        if (a < 3) return;
+        // Bokeh, but never discs so big they cost more than they show.
+        pc.Add(x, y, z, Color(c.R, c.G, c.B, a), Math.Min(size * (1 + blur * 1.3f), Math.Max(size, d * 0.05f)));
+    }
+
+    /// <summary>The same for a light whose size is in pixels: out of focus it only dims and softens a little.</summary>
+    void AddLight(float x, float y, float z, Color c, float px)
+    {
+        float dx = x - view.Eye.X, dy = y - view.Eye.Y, dz = z - view.Eye.Z;
+        float d = MathF.Sqrt(dx * dx + dy * dy + dz * dz);
+        if (d < 2) return;
+        float focus = PVector.Dist(view.Eye, view.Target);
+        float blur = Math.Clamp(Math.Abs(d - focus) / Math.Max(8, focus) * 1.8f, 0, 2);
+        float fog = Math.Clamp(1 - (d - 70) / 110, 0.12f, 1);
+        // Nearer lights look bigger, as they would.
+        float near = Math.Clamp(40 / d, 0.6f, 3);
+        lights.Add(x, y, z, Color(c.R, c.G, c.B, c.A * fog / (1 + blur)), Math.Min(px * near * (1 + blur * 0.6f), 40));
+    }
+
+    void Dust()
+    {
+        haze.Clear();
+        for (int i = 0; i < dust.Length; i++)
+        {
+            var p = dust[i];
+            float drift = sceneT * (0.4f + (i % 7) * 0.08f);
+            float z = ((p.Z + drift + 140) % 260) - 140;
+            Add(haze, p.X, p.Y, z, i % 9 == 0 ? Color(120, 160, 255, 90) : Color(90, 110, 170, 60), 0.35f);
+        }
+        Points(haze, view);
     }
 
     PVector Curve(int a, int b, float t)
     {
         var A = services[a].Pos; var B = services[b].Pos;
         float d = PVector.Dist(A, B);
-        var C = new PVector((A.X + B.X) / 2, (A.Y + B.Y) / 2 + d * 0.12f, (A.Z + B.Z) / 2 - d * 0.25f);
+        // Bow each path outward from the app's long axis, so paths don't cross through each other.
+        var mid = new PVector((A.X + B.X) / 2, (A.Y + B.Y) / 2, (A.Z + B.Z) / 2);
+        var outward = new PVector(mid.X, mid.Y + 0.01f, 0);
+        if (outward.Mag() < 2) outward = new PVector(0, 1, 0);
+        outward.Normalize();
+        var C = PVector.Add(mid, PVector.Mult(outward, d * 0.22f));
         float u = 1 - t;
         return new PVector(u * u * A.X + 2 * u * t * C.X + t * t * B.X, u * u * A.Y + 2 * u * t * C.Y + t * t * B.Y, u * u * A.Z + 2 * u * t * C.Z + t * t * B.Z);
     }
 
-    /// <summary>The paths between services, brighter the busier.</summary>
-    void Links(View3D view)
+    PVector SparkPos(Spark s, float ahead)
+    {
+        float t = Math.Clamp((sceneT - s.Start) / s.Duration + ahead, 0, 1);
+        float e = t * t * (3 - 2 * t);
+        return Curve(s.From, s.To, e);
+    }
+
+    void Links()
     {
         StrokeWeight(1);
         for (int a = 0; a < 7; a++)
@@ -2674,83 +2869,86 @@ public class InsideKestrel : Sketch
                 float k = Math.Min(1, linkTraffic[a, b] / 40);
                 if (k < 0.01f) continue;
                 var c = services[b].Color;
-                Stroke(c.R * 0.5f, c.G * 0.5f, c.B * 0.5f, 20 + 50 * k);
-                BeginShape(ShapeKind.Lines);
+                Stroke(c.R * 0.5f, c.G * 0.5f, c.B * 0.5f, 14 + 40 * k);
+                var segs = new List<(float, float, float, float)>();
                 var prev = view.Project(Curve(a, b, 0), Width, Height);
-                for (int i = 1; i <= 24; i++)
+                for (int i = 1; i <= 28; i++)
                 {
-                    var p = view.Project(Curve(a, b, i / 24f), Width, Height);
-                    if (prev.Depth > 0.5f && p.Depth > 0.5f) { Vertex(prev.X, prev.Y); Vertex(p.X, p.Y); }
+                    var p = view.Project(Curve(a, b, i / 28f), Width, Height);
+                    if (prev.Depth > 0.5f && p.Depth > 0.5f) segs.Add((prev.X, prev.Y, p.X, p.Y));
                     prev = p;
                 }
-                EndShape();
+                Lines(segs);
             }
     }
 
-    /// <summary>Each service: a glowing shell that swells with traffic, flickers red with errors, burns orange when slow.</summary>
+    /// <summary>Each service: a lit sphere of points (bright on the key-light side, a rim of light at its edge) around a glowing core.</summary>
     void Spheres()
     {
+        var light = new PVector(-0.5f, 0.7f, -0.5f);
+        light.Normalize();
+        var toEye = PVector.Sub(view.Eye, view.Target);
+        toEye.Normalize();
         for (int i = 0; i < services.Length; i++)
         {
             var s = services[i];
             bool isDb = s.Name == ""db"", isNet = s.Name == ""internet"";
-            float r = (isDb ? 3.4f : isNet ? 2.2f : 2.5f) + MathF.Sqrt(s.Rate) * 0.12f + s.Pulse * 0.6f;
+            float r = (isDb ? 4.2f : isNet ? 2.4f : 2.8f) + MathF.Sqrt(s.Rate) * 0.12f + s.Pulse * 0.6f;
             float heat = Math.Clamp((s.Latency - 30) / 300, 0, 1);
             float err = Math.Clamp(s.Errors * 3, 0, 1);
-            int count = isNet ? 140 : 260;
+            int count = isNet ? 160 : isDb ? 420 : 300;
             var c = s.Color;
             float R = Lerp(Lerp(c.R, 255, heat), 255, err), G = Lerp(Lerp(c.G, 140, heat), 50, err), B = Lerp(Lerp(c.B, 40, heat), 50, err);
-            // A soft core of light...
-            cloud.Add(s.Pos.X, s.Pos.Y, s.Pos.Z, Color(R, G, B, 70 + 60 * s.Pulse), r * 2.6f);
-            // ...inside a shell of turning points.
+            Add(cloud, s.Pos.X, s.Pos.Y, s.Pos.Z, Color(R, G, B, 60 + 70 * s.Pulse), r * 2.4f);
             for (int k = 0; k < count; k++)
             {
-                float y = 1 - 2 * (k + 0.5f) / count, rad = MathF.Sqrt(1 - y * y), th = k * 2.39996f + Now * (0.3f + 0.05f * i);
-                float wobble = 1 + 0.07f * Sin(k * 1.7f + Now * 3) * Math.Min(1, s.Rate / 30);
+                float y = 1 - 2 * (k + 0.5f) / count, rad = MathF.Sqrt(1 - y * y), th = k * 2.39996f + sceneT * (0.25f + 0.05f * i);
+                var n = new PVector(Cos(th) * rad, y, Sin(th) * rad);
+                float wobble = 1 + 0.07f * Sin(k * 1.7f + sceneT * 3) * Math.Min(1, s.Rate / 30);
+                float lit = 0.25f + 0.75f * Math.Max(0, n.X * light.X + n.Y * light.Y + n.Z * light.Z);
+                float rim = MathF.Pow(1 - Math.Abs(n.X * toEye.X + n.Y * toEye.Y + n.Z * toEye.Z), 3);
                 bool flicker = err > 0.05f && Hash(k + (int)(Now * 12)) < err * 0.5f;
-                float a = (i == selected ? 200 : 140) * (flicker ? 0.25f : 1);
-                cloud.Add(s.Pos.X + Cos(th) * rad * r * wobble, s.Pos.Y + y * r * wobble, s.Pos.Z + Sin(th) * rad * r * wobble, Color(R, G, B, a), i == selected ? 0.45f : 0.38f);
+                float a = (i == selected ? 210 : 160) * (lit * 0.8f + rim * 0.9f) * (flicker ? 0.25f : 1);
+                Add(cloud, s.Pos.X + n.X * r * wobble, s.Pos.Y + n.Y * r * wobble, s.Pos.Z + n.Z * r * wobble, Color(R, G, B, Math.Min(255, a)), 0.42f);
             }
             if (ChaosText(s.Name) != """")
-                for (int k = 0; k < 120; k++)
+                for (int k = 0; k < 140; k++)
                 {
-                    float th = k / 120f * TWO_PI + Now * 1.5f;
-                    cloud.Add(s.Pos.X + Cos(th) * (r + 1.4f), s.Pos.Y + Sin(th * 3 + Now) * 0.2f, s.Pos.Z + Sin(th) * (r + 1.4f), Color(255, 110, 50, 160), 0.35f);
+                    float th = k / 140f * TWO_PI + sceneT * 1.5f;
+                    Add(cloud, s.Pos.X + Cos(th) * (r + 1.6f), s.Pos.Y + Sin(th * 3 + sceneT) * 0.3f, s.Pos.Z + Sin(th) * (r + 1.6f), Color(255, 110, 50, 170), 0.38f);
                 }
         }
     }
 
-    /// <summary>The thread pool: its threads orbit the gateway (lit when busy); work waiting for one coils at the door.</summary>
+    /// <summary>The thread pool: a ring of threads around the gateway that every request passes through, lit when busy; work waiting for one coils back toward the internet.</summary>
     void ThreadPool()
     {
         var g = services[1].Pos;
-        int n = Math.Min(threads, 96);
+        int n = Math.Min(threads, 120);
         for (int i = 0; i < n; i++)
         {
-            float th = i / (float)Math.Max(1, n) * TWO_PI + Now * 0.7f;
-            float ring = 4.6f + (i % 3) * 0.5f;
+            float th = i / (float)Math.Max(1, n) * TWO_PI + sceneT * 0.5f;
+            float ring = 6.5f + (i % 2) * 0.6f;
             bool isBusy = i < busy;
-            cloud.Add(g.X + Cos(th) * ring, g.Y + Sin(th) * ring * 0.35f, g.Z + Sin(th) * ring,
-                      isBusy ? Color(255, 190, 70, 230) : Color(90, 110, 150, 120), isBusy ? 0.7f : 0.45f);
+            Add(cloud, g.X + Cos(th) * ring, g.Y + Sin(th) * ring, g.Z - 2, isBusy ? Color(255, 190, 70, 240) : Color(90, 110, 160, 130), isBusy ? 0.8f : 0.5f);
         }
-        int q = Math.Min(queued, 700);
+        int q = Math.Min(queued, 360);
         for (int k = 0; k < q; k++)
         {
-            // A coil that grows outward from the door as the queue grows.
-            float s = k * 0.11f;
-            float th = s * 2.2f - Now * 1.5f;
-            float coil = 1.2f + s * 0.06f;
-            cloud.Add(g.X - 3.2f - s * 0.55f, g.Y + Sin(th) * coil, g.Z + Cos(th) * coil, Color(255, 60, 50, 200), 0.5f);
+            float s = k * 0.12f;
+            float th = s * 2.0f - sceneT * 1.5f;
+            float coil = 2.2f + s * 0.05f;
+            Add(cloud, g.X + Cos(th) * coil, g.Y + Sin(th) * coil, g.Z - 4 - s * 0.9f, Color(255, 60, 50, 210), 0.55f);
         }
     }
 
-    void SparksAndTrails(View3D view)
+    void SparksAndTrails()
     {
         var ok = new List<(float, float, float, float)>(); var slow = new List<(float, float, float, float)>(); var bad = new List<(float, float, float, float)>();
         for (int i = sparks.Count - 1; i >= 0; i--)
         {
             var s = sparks[i];
-            float t = (Now - s.Start) / s.Duration;
+            float t = (sceneT - s.Start) / s.Duration;
             if (t < 0) continue;
             if (t >= 1)
             {
@@ -2758,24 +2956,24 @@ public class InsideKestrel : Sketch
                 if (s.Reply) continue;
                 services[s.To].Pulse = Math.Min(1, services[s.To].Pulse + 0.06f);
                 if (s.Error) Burst(services[s.To].Pos);
-                // The answer goes back: dimmer, quicker.
-                if (sparks.Count < 4000)
-                    sparks.Add(new Spark { From = s.To, To = s.From, Start = Now, Duration = Math.Max(0.25f, s.Duration * 0.5f), Error = s.Error, Reply = true });
+                if (sparks.Count < 1100)
+                    sparks.Add(new Spark { From = s.To, To = s.From, Start = sceneT, Duration = Math.Max(0.25f, s.Duration * 0.5f), Error = s.Error, Reply = true, Id = nextSparkId++ });
                 continue;
             }
-            float e = t * t * (3 - 2 * t);
-            var p = Curve(s.From, s.To, e);
+            var p = SparkPos(s, 0);
             var c = s.Error ? Color(255, 60, 50) : s.Slow ? Color(255, 160, 40) : services[s.Reply ? s.From : s.To].Color;
             float a = s.Reply ? 0.45f : 1;
-            cloud.Add(p.X, p.Y, p.Z, Color(Math.Min(255, c.R + 80), Math.Min(255, c.G + 80), Math.Min(255, c.B + 80), 255 * a), s.Error ? 0.7f : 0.5f);
-            if (!s.Reply) cloud.Add(p.X, p.Y, p.Z, Color(c.R, c.G, c.B, 45), s.Error ? 1.8f : 1.1f);   // its halo
-            var q = Curve(s.From, s.To, Math.Max(0, e - 0.1f));
+            bool ridden = s.Id == ridingId && shot == Shot.Ride;
+            AddLight(p.X, p.Y, p.Z, Color(Math.Min(255, c.R + 80), Math.Min(255, c.G + 80), Math.Min(255, c.B + 80), 255 * a), ridden ? 14 : s.Error ? 9 : 6);
+            if (!s.Reply && (sparks.Count < 700 || ridden || s.Error)) AddLight(p.X, p.Y, p.Z, Color(c.R, c.G, c.B, ridden ? 120 : 45), ridden ? 40 : s.Error ? 22 : 14);
+            if (s.Reply) continue;
+            var q = SparkPos(s, -0.1f);
             var P = view.Project(p, Width, Height); var Q = view.Project(q, Width, Height);
-            if (P.Depth > 0.5f && Q.Depth > 0.5f && !s.Reply) (s.Error ? bad : s.Slow ? slow : ok).Add((P.X, P.Y, Q.X, Q.Y));
+            if (P.Depth > 0.5f && Q.Depth > 0.5f) (s.Error ? bad : s.Slow ? slow : ok).Add((P.X, P.Y, Q.X, Q.Y));
         }
-        StrokeWeight(1.5f); Stroke(110, 190, 255, 120); Lines(ok);
-        StrokeWeight(2); Stroke(255, 160, 40, 170); Lines(slow);
-        StrokeWeight(2.5f); Stroke(255, 60, 50, 210); Lines(bad);
+        StrokeWeight(1.5f); Stroke(110, 190, 255, 110); Lines(ok);
+        StrokeWeight(2); Stroke(255, 160, 40, 160); Lines(slow);
+        StrokeWeight(2.5f); Stroke(255, 60, 50, 200); Lines(bad);
     }
 
     void Lines(List<(float X0, float Y0, float X1, float Y1)> lines)
@@ -2790,9 +2988,9 @@ public class InsideKestrel : Sketch
     {
         for (int k = 0; k < 18; k++)
         {
-            var v = new PVector(Random(-1, 1), Random(-0.6f, 1.2f), Random(-1, 1));
+            var v = new PVector(Random(-1, 1), Random(-1, 1), Random(-1, 1));
             v.Normalize(); v.Mult(Random(4, 11));
-            debris.Add((at.Copy(), v, Now, Color(255, Random(50, 130), 40)));
+            debris.Add((at.Copy(), v, sceneT, Color(255, Random(50, 130), 40)));
         }
         if (debris.Count > 3000) debris.RemoveRange(0, debris.Count - 3000);
     }
@@ -2802,59 +3000,52 @@ public class InsideKestrel : Sketch
         for (int i = debris.Count - 1; i >= 0; i--)
         {
             var (p, v, born, c) = debris[i];
-            float age = Now - born;
+            float age = sceneT - born;
             if (age > 0.9f) { debris.RemoveAt(i); continue; }
-            cloud.Add(p.X + v.X * age, p.Y + v.Y * age - 5 * age * age, p.Z + v.Z * age, Color(c.R, c.G, c.B, 255 * (1 - age / 0.9f)), 0.4f);
+            Add(cloud, p.X + v.X * age, p.Y + v.Y * age - 4 * age * age, p.Z + v.Z * age, Color(c.R, c.G, c.B, 255 * (1 - age / 0.9f)), 0.45f);
         }
     }
 
-    /// <summary>A gen 2 garbage collection: a ring of light that sweeps through everything.</summary>
-    void Shockwave(View3D view)
+    /// <summary>A gen 2 garbage collection: a sphere of light expanding through the whole app.</summary>
+    void Shockwave()
     {
-        float age = Now - shockwaveAt;
-        if (age > 1.6f) return;
-        float r = age * 36, a = 1 - age / 1.6f;
-        var center = new PVector(-4, 0, 0);
-        for (int ring = 0; ring < 3; ring++)
+        float age = sceneT - shockwaveAt;
+        if (age > 1.4f || age < 0) return;
+        float r = age * 50, a = 1 - age / 1.4f;
+        var center = new PVector(0, 0, -6);
+        int n = 500;
+        for (int k = 0; k < n; k++)
         {
-            float rr = Math.Max(0, r - ring * 2.5f);
-            StrokeWeight(6 - ring * 2);
-            Stroke(190, 150, 255, (90 - ring * 25) * a);
-            BeginShape(ShapeKind.Lines);
-            var prev = view.Project(new PVector(center.X + rr, center.Y, center.Z), Width, Height);
-            for (int k = 1; k <= 96; k++)
-            {
-                float th = k / 96f * TWO_PI;
-                var p = view.Project(new PVector(center.X + Cos(th) * rr, center.Y + Sin(th) * rr, center.Z), Width, Height);
-                if (prev.Depth > 0.5f && p.Depth > 0.5f) { Vertex(prev.X, prev.Y); Vertex(p.X, p.Y); }
-                prev = p;
-            }
-            EndShape();
+            float y = 1 - 2 * (k + 0.5f) / n, rad = MathF.Sqrt(1 - y * y), th = k * 2.39996f;
+            Add(cloud, center.X + Cos(th) * rad * r, center.Y + y * r, center.Z + Sin(th) * rad * r, Color(190, 150, 255, 160 * a), 0.9f);
         }
     }
 
-    void Labels(View3D view)
+    void Labels()
     {
         TextAlign(TextAlignH.Center, TextAlignV.Top);
+        float focus = PVector.Dist(view.Eye, view.Target);
         for (int i = 0; i < services.Length; i++)
         {
             var s = services[i];
-            var p = view.Project(new PVector(s.Pos.X, s.Pos.Y - (s.Name == ""db"" ? 4.8f : 3.8f), s.Pos.Z), Width, Height);
-            if (p.Depth <= 0.5f) continue;
+            var p = view.Project(new PVector(s.Pos.X, s.Pos.Y - (s.Name == ""db"" ? 5.4f : 4.0f), s.Pos.Z), Width, Height);
+            if (p.Depth <= 1 || p.Y < Bar || p.Y > Height - Bar - 20) continue;
+            // Labels fade with the depth of field, like everything else.
+            float d = PVector.Dist(view.Eye, s.Pos);
+            float a = Math.Clamp(1.4f - Math.Abs(d - focus) / Math.Max(10, focus) * 1.4f, 0.15f, 1);
             TextFont(font, 15);
-            Fill(i == selected ? Color(255, 255, 255) : Color(s.Color.R, s.Color.G, s.Color.B, 230));
+            Fill(i == selected ? Color(255, 255, 255, 255 * a) : Color(s.Color.R, s.Color.G, s.Color.B, 230 * a));
             Text((i >= 1 ? $""{i}  "" : """") + s.Name, p.X, p.Y);
             if (s.Name == ""internet"") continue;
             TextFont(mono, 12);
-            Fill(170, 185, 215, 190);
+            Fill(170, 185, 215, 190 * a);
             string err = s.Errors > 0.01f ? $"" · {s.Errors:P0} err"" : """";
             Text($""{s.Rate:0}/s · {s.Latency:0} ms{err}"", p.X, p.Y + 19);
             string c = ChaosText(s.Name);
-            if (c != """") { Fill(255, 140, 80); Text(c, p.X, p.Y + 35); }
+            if (c != """") { Fill(255, 140, 80, 255 * a); Text(c, p.X, p.Y + 35); }
         }
-        // The thread pool, named once.
-        var g = view.Project(new PVector(services[1].Pos.X, services[1].Pos.Y + 6.2f, services[1].Pos.Z), Width, Height);
-        if (g.Depth > 0.5f && threads > 0)
+        var g = view.Project(new PVector(services[1].Pos.X, services[1].Pos.Y + 8.5f, services[1].Pos.Z), Width, Height);
+        if (g.Depth > 1 && threads > 0 && g.Y > Bar && g.Y < Height - Bar)
         {
             TextFont(mono, 11);
             Fill(255, 200, 110, 200);
@@ -2875,29 +3066,33 @@ public class InsideKestrel : Sketch
     }
 
     // =====================================================================================
-    // On screen
+    // The frame: letterbox, monitor, vitals, legend, captions
     // =====================================================================================
+    void Letterbox()
+    {
+        NoStroke();
+        Fill(0);
+        Rect(0, 0, Width, Bar);
+        Rect(0, Height - Bar, Width, Bar);
+        // A soft vignette into the bars.
+        for (int i = 0; i < 16; i++)
+        {
+            Fill(0, 0, 0, 14 * (16 - i) / 16f * 6);
+            Rect(0, Bar + i * 2, Width, 2);
+            Rect(0, Height - Bar - (i + 1) * 2, Width, 2);
+        }
+    }
 
-    /// <summary>The heart monitor: a trace swept left to right, a spike per beep, flat when the app is.</summary>
     void Monitor()
     {
-        float x0 = 24, y0 = Height - 92, w = 590, h = 64;
-        // Sweep: the cursor moves at a steady speed and wipes a little gap ahead of itself.
-        float speed = 150;                                  // samples per second
+        float x0 = 24, y0 = Height - Bar + 10, w = 470, h = Bar - 22;
+        float speed = 120;
         int before = (int)ecgCursor;
         ecgCursor = (ecgCursor + speed / 60f) % ecg.Length;
-        for (int i = before; i != (int)ecgCursor; i = (i + 1) % ecg.Length)
-        {
-            ecgRed[i] = false;
-            ecg[i] = Wave(i);
-        }
+        for (int i = before; i != (int)ecgCursor; i = (i + 1) % ecg.Length) { ecgRed[i] = false; ecg[i] = Wave(i); }
         NoFill();
-        Stroke(40, 255, 140, 18);
-        StrokeWeight(1);
-        for (int gx = 0; gx <= 12; gx++) Line(x0 + gx * w / 12, y0, x0 + gx * w / 12, y0 + h);
-        // The trace as polylines, one per stretch of the same color, broken at the sweep's gap.
-        int gap = 18;
-        StrokeWeight(2);
+        StrokeWeight(1.6f);
+        int gap = 14;
         bool open = false, openRed = false;
         for (int i = 0; i < ecg.Length; i++)
         {
@@ -2914,169 +3109,149 @@ public class InsideKestrel : Sketch
             Vertex(x0 + i / (float)ecg.Length * w, y0 + h / 2 - ecg[i] * h * 0.45f);
         }
         if (open) EndShape();
-        // The cursor's glowing dot.
         int c = ((int)ecgCursor - 1 + ecg.Length) % ecg.Length;
         NoStroke();
         Fill(flatline ? Color(255, 90, 80) : Color(120, 255, 180));
-        Circle(x0 + c / (float)ecg.Length * w, y0 + h / 2 - ecg[c] * h * 0.45f, 6);
-        TextFont(mono, 11);
-        TextAlign(TextAlignH.Left, TextAlignV.Bottom);
-        Fill(flatline ? Color(255, 100, 90) : Color(80, 230, 140, 200));
-        Text(flatline ? ""NO REQUESTS SERVED"" : $""one beat = {ServedPerBeep} requests served"", x0, y0 - 4);
+        Circle(x0 + c / (float)ecg.Length * w, y0 + h / 2 - ecg[c] * h * 0.45f, 5);
+        TextFont(mono, 10);
+        TextAlign(TextAlignH.Left, TextAlignV.Top);
+        Fill(flatline ? Color(255, 100, 90) : Color(80, 230, 140, 170));
+        Text(flatline ? ""NO REQUESTS SERVED"" : $""1 beat = {ServedPerBeep} requests served"", x0, Height - Bar + 2);
     }
 
-    // The trace's shape for each new sample: a beat's P, QRS and T waves, or a flat line.
     int beatStart = -1000; bool beatRed;
     float Wave(int i)
     {
         int k = (i - beatStart + ecg.Length) % ecg.Length;
-        if (k > 40) return (Noise(i * 0.2f, Now) - 0.5f) * 0.04f;
+        if (k > 34) return (Noise(i * 0.2f, Now) - 0.5f) * 0.04f;
         ecgRed[i] = beatRed;
-        if (k < 6) return Sin(k / 6f * PI) * 0.12f;                     // P
-        if (k < 9) return 0;
-        if (k == 9) return -0.15f;                                       // Q
-        if (k == 10) return 1f;                                          // R
-        if (k == 11) return -0.35f;                                      // S
-        if (k < 20) return 0;
-        if (k < 34) return Sin((k - 20) / 14f * PI) * 0.22f;            // T
+        if (k < 5) return Sin(k / 5f * PI) * 0.12f;
+        if (k < 8) return 0;
+        if (k == 8) return -0.15f;
+        if (k == 9) return 1f;
+        if (k == 10) return -0.35f;
+        if (k < 17) return 0;
+        if (k < 29) return Sin((k - 17) / 12f * PI) * 0.22f;
         return 0;
     }
 
     void Beat(bool red) { beatStart = (int)ecgCursor; beatRed = red; }
 
-    /// <summary>Vital signs, like the numbers on a monitor.</summary>
     void Vitals()
     {
         if (metrics == null) return;
-        float x = 640, y = Height - 104;
+        float x = 520, y = Height - Bar + 6;
         float rps = metrics.GetFloat(""rps""), p99 = metrics.GetFloat(""p99""), err = metrics.GetFloat(""errorRate""), heap = metrics.GetFloat(""heapMB"");
         void Vital(float vx, string label, string value, Color c)
         {
             TextAlign(TextAlignH.Left, TextAlignV.Top);
-            TextFont(mono, 11); Fill(c.R, c.G, c.B, 170); Text(label, vx, y);
-            TextFont(big, 30); Fill(c); Text(value, vx, y + 14);
+            TextFont(mono, 10); Fill(c.R, c.G, c.B, 170); Text(label, vx, y);
+            TextFont(big, 26); Fill(c); Text(value, vx, y + 12);
         }
         Vital(x, ""REQ/S"", $""{rps:0}"", flatline ? Color(255, 80, 70) : Color(60, 255, 150));
-        Vital(x + 90, ""P99 MS"", $""{p99:0}"", p99 > 500 ? Color(255, 160, 50) : Color(110, 200, 255));
-        Vital(x + 185, ""ERRORS"", $""{err * 100:0.#}%"", err > 0.02f ? Color(255, 80, 70) : Color(200, 210, 235));
-        Vital(x + 280, ""HEAP MB"", $""{heap:0}"", Color(190, 150, 255));
-        TextFont(mono, 11);
-        Fill(150, 165, 200);
-        TextAlign(TextAlignH.Left, TextAlignV.Top);
-        Text($""gen0 {lastGen0} · gen2 {lastGen2} · cpu {metrics.GetFloat(""cpu""):0}% · alloc {metrics.GetFloat(""allocMBps""):0} MB/s"", x, y + 58);
-        if (gen0Flash > 0.1f) { NoStroke(); Fill(190, 150, 255, 200 * gen0Flash); Circle(x + 440, y + 64, 6); }
+        Vital(x + 80, ""P99 MS"", $""{p99:0}"", p99 > 500 ? Color(255, 160, 50) : Color(110, 200, 255));
+        Vital(x + 175, ""ERRORS"", $""{err * 100:0.#}%"", err > 0.02f ? Color(255, 80, 70) : Color(200, 210, 235));
+        Vital(x + 265, ""HEAP MB"", $""{heap:0}"", Color(190, 150, 255));
+        Vital(x + 350, ""GC2"", $""{lastGen2}"", Now - lastBoom < 1 ? Color(255, 255, 255) : Color(190, 150, 255));
     }
 
-    /// <summary>What you hear, each line lit while its sound plays.</summary>
     void Legend()
     {
-        float x = Width - 258, y = Height - 112;
+        float x = Width - 330, y = Height - Bar + 6;
         (string Sound, string Means, float Last)[] rows =
         {
             (""beep"", $""{ServedPerBeep} requests served"", lastBeep), (""buzz"", ""a request failed"", lastBuzz), (""boom"", ""full GC (gen 2)"", lastBoom),
             (""hum"", ""work waiting for a thread"", lastHum), (""flatline"", ""nothing served"", lastFlat),
         };
-        TextFont(mono, 11);
+        TextFont(mono, 10);
         TextAlign(TextAlignH.Left, TextAlignV.Top);
-        Fill(255, 255, 255, 70);
-        Text(muted ? ""WHAT YOU'D HEAR (muted: M)"" : ""WHAT YOU HEAR"", x, y);
         for (int i = 0; i < rows.Length; i++)
         {
             float lit = Math.Clamp(1 - (Now - rows[i].Last) / 0.35f, 0, 1);
-            float ry = y + 18 + i * 17;
+            float rx = x + (i < 3 ? 0 : 168), ry = y + (i % 3) * 17;
             NoStroke();
             Fill(255, 220, 120, 40 + 215 * lit);
-            Circle(x + 5, ry + 6, 5 + 4 * lit);
-            Fill(255, 255, 255, 110 + 145 * lit);
-            Text($""{rows[i].Sound,-9}{rows[i].Means}"", x + 16, ry);
+            Circle(rx + 4, ry + 6, 4 + 4 * lit);
+            Fill(255, 255, 255, 100 + 155 * lit);
+            Text($""{rows[i].Sound,-9}{rows[i].Means}"", rx + 13, ry);
         }
+        if (muted) { Fill(255, 255, 255, 90); Text(""muted (M)"", x + 168, y + 34); }
     }
 
+    /// <summary>Subtitles, like a film: the title of what's happening, and a line or two of why.</summary>
     void Captions()
     {
         float age = Now - capAt;
-        if (age > 6.5f) return;
-        float a = Math.Clamp(Math.Min(age * 4, (6.5f - age) * 1.5f), 0, 1);
-        // Wrapped by hand at ~95 characters a line.
+        if (age > 7) return;
+        float a = Math.Clamp(Math.Min(age * 3, (7 - age) * 1.5f), 0, 1);
         var lines = new List<string>();
         var line = """";
         foreach (var word in capBody.Split(' '))
         {
-            if (line.Length + word.Length > 95) { lines.Add(line); line = """"; }
+            if (line.Length + word.Length > 100) { lines.Add(line); line = """"; }
             line = line == """" ? word : line + "" "" + word;
         }
         if (line != """") lines.Add(line);
-        float h = 58 + lines.Count * 20, y = Height - 150 - h;
-        NoStroke();
-        Fill(8, 10, 22, 190 * a);
-        Rect(Width / 2 - 380, y, 760, h, 14);
-        Fill(255, 170, 80, 255 * a);
-        Rect(Width / 2 - 380, y, 4, h, 2);
+        float y = Height - Bar - 28 - lines.Count * 21;
+        TextAlign(TextAlignH.Center, TextAlignV.Bottom);
+        TextFont(big, 30);
+        Fill(0, 0, 0, 160 * a); Text(capTitle, Width / 2 + 2, y + 2);
+        Fill(255, 225, 170, 255 * a); Text(capTitle, Width / 2, y);
         TextAlign(TextAlignH.Center, TextAlignV.Top);
-        TextFont(big, 28);
-        Fill(255, 225, 170, 255 * a);
-        Text(capTitle, Width / 2, y + 10);
-        TextFont(font, 15);
-        Fill(220, 225, 245, 235 * a);
-        for (int i = 0; i < lines.Count; i++) Text(lines[i], Width / 2, y + 50 + i * 20);
-    }
-
-    void BottomBar()
-    {
-        NoStroke();
-        for (int i = 0; i < 30; i++)
+        TextFont(font, 16);
+        for (int i = 0; i < lines.Count; i++)
         {
-            Fill(3, 5, 11, 8 * i);
-            Rect(0, Height - 150 + i * 2, Width, 2);
+            Fill(0, 0, 0, 170 * a); Text(lines[i], Width / 2 + 1, y + 7 + i * 21);
+            Fill(235, 238, 250, 240 * a); Text(lines[i], Width / 2, y + 6 + i * 21);
         }
-        Fill(3, 5, 11, 235);
-        Rect(0, Height - 90, Width, 90);
     }
 
     void Alarm()
     {
-        // A slow red pulse at the edges of the screen.
         float a = (Sin(Now * 6) * 0.5f + 0.5f) * 70;
         NoStroke();
-        for (int i = 0; i < 12; i++)
+        for (int i = 0; i < 14; i++)
         {
-            Fill(255, 30, 30, a * (1 - i / 12f) * 0.35f);
-            Rect(0, i * 4, Width, 4); Rect(0, Height - (i + 1) * 4, Width, 4);
-            Rect(i * 4, 0, 4, Height); Rect(Width - (i + 1) * 4, 0, 4, Height);
+            Fill(255, 30, 30, a * (1 - i / 14f) * 0.35f);
+            Rect(0, Bar + i * 4, Width, 4); Rect(0, Height - Bar - (i + 1) * 4, Width, 4);
+            Rect(i * 4, Bar, 4, Height - 2 * Bar); Rect(Width - (i + 1) * 4, Bar, 4, Height - 2 * Bar);
         }
     }
 
     void Title()
     {
-        TextAlign(TextAlignH.Left, TextAlignV.Top);
-        TextFont(big, 30);
+        TextAlign(TextAlignH.Left, TextAlignV.Center);
+        TextFont(big, 24);
         Fill(235, 240, 255);
-        Text(""Inside Kestrel"", 24, 18);
-        TextFont(font, 14);
+        Text(""Inside Kestrel"", 24, Bar / 2 - 6);
+        TextFont(font, 12);
         Fill(150, 165, 200);
         string source = hub.Connected ? ""the vital signs of a live ASP.NET Core app · SignalR · .NET 10""
                       : simulate ? ""SIMULATED (PulseShop isn't running)""
-                      : $""{HubUrl}: {hub.Status}"";
-        Text(source, 24, 56);
-        if (!hub.Connected && !simulate)
-        {
-            Fill(255, 200, 120);
-            Text(""start it:  cd showcase/PulseShop && dotnet run     (or D for a simulation)"", 24, 78);
-        }
-        TextAlign(TextAlignH.Right, TextAlignV.Top);
-        Fill(255, 255, 255, 120);
+                      : $""{HubUrl}: {hub.Status} -- start it: cd showcase/PulseShop && dotnet run (or D)"";
+        Text(source, 24, Bar / 2 + 16);
+        TextAlign(TextAlignH.Right, TextAlignV.Center);
         TextFont(font, 13);
-        Text(""made with Dana · creative coding in C#"", Width - 24, 20);
-        Fill(255, 255, 255, 70);
+        Fill(255, 255, 255, 130);
+        Text(""made with Dana · creative coding in C#"", Width - 24, Bar / 2 - 8);
         TextFont(font, 11);
-        Text(""1-6 pick · L +200 ms · F fail 30% · S starve thread pool · G GC storm · Space spike · +/- load · R reset · drag/wheel · M mute"", Width - 24, 40);
+        Fill(255, 255, 255, 70);
+        string cam = !director ? ""camera: yours (C: director)"" : Now < manualUntil ? ""camera: yours for a moment"" : $""shot: {ShotName()}"";
+        Text($""{cam} · 1-6 pick · L latency · F fail · S starve · G GC · Space spike · R reset · M mute"", Width - 24, Bar / 2 + 12);
         if (chaos != null && chaos.GetBoolean(""spike""))
         {
-            TextFont(big, 20);
+            TextAlign(TextAlignH.Center, TextAlignV.Center);
+            TextFont(big, 18);
             Fill(255, 210, 90, 150 + 100 * Sin(Now * 8));
-            Text(""TRAFFIC SPIKE ×8"", Width - 24, 60);
+            Text(""TRAFFIC SPIKE ×8"", Width / 2, Bar / 2);
         }
     }
+
+    string ShotName() => shot switch
+    {
+        Shot.Wide => ""wide"", Shot.FlyThrough => ""fly-through"", Shot.Ride => ""riding a request"", Shot.Crane => ""crane"",
+        _ => ""close-up: "" + services[shotSubject].Name,
+    };
 
     static float Hash(int n)
     {
@@ -3094,7 +3269,7 @@ public class InsideKestrel : Sketch
     public override void KeyPressed()
     {
         string name = services[selected].Name;
-        if (Key >= '1' && Key <= '6') { selected = Key - '0'; Focus(services[selected].Name); }
+        if (Key >= '1' && Key <= '6') { selected = Key - '0'; Cut(Shot.CloseUp, selected, 8); }
         else if (Key == 'l' || Key == 'L')
         {
             var lat = chaos?.GetJSONObject(""latency"");
@@ -3113,13 +3288,22 @@ public class InsideKestrel : Sketch
         else if (Key == '-' || Key == '_') hub.Invoke(""SetLoad"", Math.Max(5, (chaos?.GetInt(""load"") ?? 40) / 2));
         else if (Key == 'r' || Key == 'R') hub.Invoke(""Reset"");
         else if (Key == 'm' || Key == 'M') muted = !muted;
+        else if (Key == 'c' || Key == 'C') { director = !director; manualUntil = -10; }
         else if (Key == 'd' || Key == 'D') simulate = !simulate;
     }
 
     public override void MouseDragged()
     {
-        yaw -= (MouseX - PMouseX) * 0.006f;
-        pitch = Constrain(pitch - (MouseY - PMouseY) * 0.006f, -0.3f, 1.3f);
+        // Dragging takes the camera for a while; the director gets it back after 8 seconds.
+        if (Now > manualUntil && director)
+        {
+            var d = PVector.Sub(camEye, new PVector(0, 0, -12));
+            manualYaw = Atan2(d.X, -d.Z);
+            manualPitch = Asin(Constrain(d.Y / Math.Max(1, d.Mag()), -1, 1));
+        }
+        manualUntil = Now + 8;
+        manualYaw -= (MouseX - PMouseX) * 0.006f;
+        manualPitch = Constrain(manualPitch - (MouseY - PMouseY) * 0.006f, -1.2f, 1.3f);
     }
 
     public override void MouseWheel(float delta) => zoom = Constrain(zoom * (delta > 0 ? 1 / 1.1f : 1.1f), 0.5f, 3);
