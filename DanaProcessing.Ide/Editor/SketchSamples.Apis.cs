@@ -42,6 +42,18 @@ namespace DanaProcessing.Ide.Editor
                        "A real ASP.NET Core app in 3D, filmed and heard as it runs: the services laid out in depth along a request's path, and a camera director cutting between a wide shot, a fly-through, riding a request, a crane and close-ups, with depth of field, fog and slow motion when the GC stops the world. PulseShop (in showcase/PulseShop: start it with dotnet run) is a little store of five services calling each other over real HTTP, plus a database; it watches itself with what .NET ships (an ActivityListener on every request, the GC and the thread pool) and streams it over SignalR. This sketch connects with ConnectSignalR(), no packages. Every request is a spark of light going there and back, as slow as it really was; each service a sphere that swells with its traffic and burns with its errors; the thread pool's threads orbit the gateway and waiting work coils up at the door. It sounds like a heart monitor: a beep every 25 requests served (the tempo IS the throughput), a buzz per error, a deep boom per full GC, a hum that rises with the thread pool queue, and the flatline tone when the app stops serving. C turns the director on or off (dragging takes the camera). Break it from the keyboard (L latency, F failures, S sync-over-async, G GC storm, Space traffic spike, R fix) or from a phone at http://localhost:5199; the camera goes to what broke and a caption explains what's happening. Without PulseShop, D shows a simulation (labelled)."),
                 InsideKestrel,
                 new[] { SampleTag.Data, SampleTag.ThreeD, SampleTag.Audio, SampleTag.Interaction }),
+            new SketchSample(
+                Loc.Tr("BabySmash! Ultra (homenaje a Scott Hanselman)", "BabySmash! Ultra (a tribute to Scott Hanselman)"),
+                Loc.Tr("El BabySmash de Scott Hanselman rehecho en Dana: el bebé aporrea el teclado y cada letra o número aparece enorme, y cualquier otra tecla trae una figura con cara que te mira; todo suena en una escala pentatónica, así que cualquier aporreo es música, y el mouse pinta con luz. El giro: en una máquina como la Surface Laptop Ultra (muchos núcleos y mucha memoria) se pone Ultra: cada letra se arma con decenas de miles de partículas que explotan y vuelan a su lugar, se sostienen y se derriten como fuegos artificiales -- cientos de miles a la vez, simuladas en paralelo en todos los núcleos y dibujadas por un pequeño renderizador propio que suma la luz y la tonifica como una foto HDR. Para los grandes: Ctrl+U Ultra a mano, Ctrl+M escucha la sala (aplausos y risas tiran confeti), Ctrl+H oculta la letra chica.",
+                       "Scott Hanselman's BabySmash remade in Dana: the baby mashes the keyboard and each letter or number shows up huge, any other key brings a shape with a face that looks at you; everything plays in one pentatonic scale, so any mashing is music, and the mouse paints with light. The twist: on a machine like the Surface Laptop Ultra (many cores, lots of memory) it goes Ultra: every letter is built from tens of thousands of particles that burst out and fly into place, hold and melt like fireworks -- hundreds of thousands at once, simulated in parallel on every core and drawn by a tiny renderer of its own that adds up the light and tone-maps it like an HDR photo. For grown-ups: Ctrl+U Ultra by hand, Ctrl+M listens to the room (claps and giggles throw confetti), Ctrl+H hides the small print."),
+                BabySmashUltra,
+                new[] { SampleTag.Particles, SampleTag.Audio, SampleTag.Interaction, SampleTag.Generative }),
+            new SketchSample(
+                Loc.Tr("Tus gastos como una galaxia (tally de David Fowler)", "Your spending as a galaxy (David Fowler's tally)"),
+                Loc.Tr("Para tally (github.com/davidfowl/tally), donde agentes de IA clasifican tus movimientos bancarios: exportá el año con tally up --format csv > spending.csv y el sketch lo convierte en una galaxia 3D. Cada categoría es un brazo; cada comercio, una estrella más grande cuanto más gastaste ahí. El año se reproduce: cada transacción destella al ocurrir y se suma a la nube de su estrella, así la galaxia crece mes a mes, con una nota por gasto. Lo recurrente (el alquiler, las suscripciones: lo que tally pondría en \"Every Month\") gira en anillos como planetas, las compras grandes llegan como cometas, los reembolsos se van en azul y lo que quedó sin clasificar flota afuera como estrellas errantes: la lista de pendientes de tu agente. Sin spending.csv inventa un año (y lo dice).",
+                       "For tally (github.com/davidfowl/tally), where AI agents classify your bank transactions: export the year with tally up --format csv > spending.csv and the sketch turns it into a 3D galaxy. Each category is an arm; each merchant a star, bigger the more you spent there. The year plays back: every transaction flashes as it happens and joins its star's cloud, so the galaxy grows month by month, with a note per purchase. Recurring things (rent, subscriptions: what tally would put in \"Every Month\") ride rings like planets, big purchases arrive as comets, refunds fly back out in blue, and what's still uncategorized drifts outside as rogue stars: your agent's to-do list. Without spending.csv it makes up a year (and says so)."),
+                SpendingGalaxy,
+                new[] { SampleTag.Data, SampleTag.ThreeD, SampleTag.Audio, SampleTag.Interaction }),
         };
 
         private const string StormFromAbove =
@@ -3371,6 +3383,1003 @@ public class InsideKestrel : Sketch
             m.SetInt(""threads"", 8); m.SetInt(""busyThreads"", 2 + (int)Random(3)); m.SetFloat(""cpu"", 6); m.SetInt(""load"", 40);
             Metrics(m);
         }
+    }
+}
+";
+
+        private const string BabySmashUltra =
+@"// BabySmash! Ultra -- a tribute to Scott Hanselman's BabySmash, remade in Dana.
+//
+// Like the original: a baby mashes the keyboard and every key does something lovely.
+// A letter or a number shows itself; any other key makes a shape with a happy face that
+// looks around. Each one plays a note, and the notes are all from one pentatonic scale,
+// so whatever gets mashed, it sounds like music. Moving the mouse paints with light.
+//
+// The twist: on a machine like the Surface Laptop Ultra (lots of cores, lots of memory)
+// it goes Ultra. Every letter and shape is built from tens of thousands of particles
+// that burst out and fly into place, hold, then melt away like fireworks -- hundreds of
+// thousands at once, simulated on every core in parallel and drawn by a tiny renderer
+// of its own: each particle adds its light into a buffer, and the buffer is tone-mapped
+// like an HDR photo, so where they pile up it glows.
+//
+// For grown-ups: Ctrl+U switches Ultra on and off by hand; Ctrl+M listens to the room
+// (claps and giggles throw confetti); Ctrl+H hides the small print. Tip: Settings ->
+// Running sketches -> ""Optimized code"" makes the particles several times faster.
+public class BabySmashUltra : Sketch
+{
+    // ---- how much --------------------------------------------------------------------------
+    bool ultra;
+    int pool;                          // particles in all
+    int perSmash;                      // particles per letter or shape
+    float renderScale;                 // the light buffer's size relative to the window
+
+    // ---- the particles (structure of arrays: fast to sweep on many cores) ---------------
+    float[] px, py, vx, vy, tx, ty, born, hold;
+    float[] cr, cg, cb;
+    byte[] state;                      // 0 idle, 1 flying to its place, 2 melting away
+    int next;                          // the next particle to reuse (the oldest)
+
+    // ---- the light buffer --------------------------------------------------------------------
+    int bw, bh;
+    float[] accR, accG, accB;
+    float[][] laneR, laneG, laneB;     // one private buffer per core, summed at the end
+    PImage frame;
+    int lanes;
+
+    // ---- what's on screen ------------------------------------------------------------------
+    class Thing { public string Glyph; public string Shape; public float X, Y, Size, Born, Hue; public bool Face; }
+    readonly List<Thing> things = new();
+    readonly string[] shapes = { ""circle"", ""star"", ""heart"", ""triangle"", ""square"", ""hexagon"", ""moon"", ""diamond"" };
+    readonly Dictionary<string, List<(float X, float Y)>> templates = new();
+    PFont big, small;
+    float lastMouseX = -1, lastMouseY = -1;
+    bool listening, smallPrint = true;
+    float lastClap = -10, micBefore;
+    string banner = """"; float bannerAt = -10;
+    bool optimized;
+
+    // Every key plays from one scale: C major pentatonic, so nothing ever clashes.
+    readonly int[] scale = { 0, 2, 4, 7, 9 };
+
+    public override void Setup()
+    {
+        Size(1280, 720);
+        FrameRate(120);                               // the Ultra's screen runs at 120 Hz
+        big = CreateFont(""Segoe UI Black"", 300);
+        small = CreateFont(""Segoe UI"", 13);
+        optimized = !(System.Reflection.Assembly.GetExecutingAssembly()
+            .GetCustomAttributes(typeof(System.Diagnostics.DebuggableAttribute), false) is System.Diagnostics.DebuggableAttribute[] d && d.Length > 0 && d[0].IsJITOptimizerDisabled);
+        // Is this an Ultra? Many cores and lots of memory: the kind of machine that can afford it.
+        long memGB = GC.GetGCMemoryInfo().TotalAvailableMemoryBytes >> 30;
+        SetUltra(Environment.ProcessorCount >= 16 && memGB >= 48);
+        if (ultra) Banner(""Ultra machine detected. Engaging Ultra Smash."");
+    }
+
+    void SetUltra(bool on)
+    {
+        ultra = on;
+        pool = on ? 600_000 : 120_000;
+        perSmash = on ? 60_000 : 12_000;
+        renderScale = on ? 1f : 0.5f;
+        px = new float[pool]; py = new float[pool]; vx = new float[pool]; vy = new float[pool];
+        tx = new float[pool]; ty = new float[pool]; born = new float[pool]; hold = new float[pool];
+        cr = new float[pool]; cg = new float[pool]; cb = new float[pool];
+        state = new byte[pool];
+        next = 0;
+        things.Clear();
+        bw = Math.Max(2, (int)(Width * renderScale)); bh = Math.Max(2, (int)(Height * renderScale));
+        accR = new float[bw * bh]; accG = new float[bw * bh]; accB = new float[bw * bh];
+        lanes = Math.Max(1, Environment.ProcessorCount);
+        laneR = new float[lanes][]; laneG = new float[lanes][]; laneB = new float[lanes][];
+        for (int l = 0; l < lanes; l++) { laneR[l] = new float[bw * bh]; laneG[l] = new float[bw * bh]; laneB[l] = new float[bw * bh]; }
+        var pg = CreateGraphics(bw, bh);
+        pg.BeginDraw(); pg.Background(0); pg.EndDraw();
+        frame = pg.Get();
+        frame.LoadPixels();
+    }
+
+    float Now => Millis() / 1000f;
+
+    // =====================================================================================
+    // Templates: where the particles of a letter or a shape go
+    // =====================================================================================
+
+    /// <summary>
+    /// Draws the glyph or shape once, big, in an offscreen buffer, and keeps the spots it
+    /// covers (relative to its center, -0.5..0.5) -- the particles will fly to those.
+    /// </summary>
+    List<(float X, float Y)> Template(string key)
+    {
+        if (templates.TryGetValue(key, out var t)) return t;
+        const int S = 220;
+        var pg = CreateGraphics(S, S);
+        pg.BeginDraw();
+        pg.Background(0);
+        pg.NoStroke();
+        pg.Fill(255);
+        float c = S / 2f, r = S * 0.42f;
+        if (key.StartsWith(""glyph:""))
+        {
+            pg.TextFont(big, 200);
+            pg.TextAlign(TextAlignH.Center, TextAlignV.Center);
+            pg.Text(key.Substring(6), c, c - 6);
+        }
+        else
+        {
+            pg.BeginShape();
+            switch (key)
+            {
+                case ""circle"": for (int i = 0; i < 64; i++) { float a = i / 64f * TWO_PI; pg.Vertex(c + Cos(a) * r, c + Sin(a) * r); } break;
+                case ""star"": for (int i = 0; i < 10; i++) { float a = i / 10f * TWO_PI - HALF_PI, rr = i % 2 == 0 ? r : r * 0.45f; pg.Vertex(c + Cos(a) * rr, c + Sin(a) * rr); } break;
+                case ""heart"":
+                    for (int i = 0; i < 80; i++)
+                    {
+                        float a = i / 80f * TWO_PI;
+                        float hx = 16 * MathF.Pow(Sin(a), 3), hy = -(13 * Cos(a) - 5 * Cos(2 * a) - 2 * Cos(3 * a) - Cos(4 * a));
+                        pg.Vertex(c + hx * r / 17, c + hy * r / 17);
+                    }
+                    break;
+                case ""triangle"": for (int i = 0; i < 3; i++) { float a = i / 3f * TWO_PI - HALF_PI; pg.Vertex(c + Cos(a) * r, c + Sin(a) * r * 1.05f + r * 0.15f); } break;
+                case ""square"": pg.Vertex(c - r * 0.8f, c - r * 0.8f); pg.Vertex(c + r * 0.8f, c - r * 0.8f); pg.Vertex(c + r * 0.8f, c + r * 0.8f); pg.Vertex(c - r * 0.8f, c + r * 0.8f); break;
+                case ""hexagon"": for (int i = 0; i < 6; i++) { float a = i / 6f * TWO_PI; pg.Vertex(c + Cos(a) * r, c + Sin(a) * r); } break;
+                case ""diamond"": pg.Vertex(c, c - r); pg.Vertex(c + r * 0.7f, c); pg.Vertex(c, c + r); pg.Vertex(c - r * 0.7f, c); break;
+                case ""moon"":
+                    for (int i = 0; i <= 40; i++) { float a = HALF_PI + i / 40f * PI; pg.Vertex(c + Cos(a) * r, c + Sin(a) * r); }
+                    for (int i = 40; i >= 0; i--) { float a = HALF_PI + i / 40f * PI; pg.Vertex(c + r * 0.35f + Cos(a) * r * 0.75f, c + Sin(a) * r * 0.95f); }
+                    break;
+            }
+            pg.EndShape(true);
+        }
+        pg.EndDraw();
+        pg.LoadPixels();
+        var spots = new List<(float, float)>();
+        for (int y = 0; y < S; y++)
+            for (int x = 0; x < S; x++)
+                if (pg.Pixels[y * S + x].R > 128) spots.Add((x / (float)S - 0.5f, y / (float)S - 0.5f));
+        templates[key] = spots;
+        return spots;
+    }
+
+    // =====================================================================================
+    // Smash!
+    // =====================================================================================
+    bool ctrl;                                     // held down: Ctrl+U, Ctrl+M, Ctrl+H are for grown-ups
+
+    public override void KeyReleased()
+    {
+        if (Key == CODED && KeyCode == CONTROL) ctrl = false;
+    }
+
+    public override void KeyPressed()
+    {
+        if (Key == CODED && (KeyCode == CONTROL || KeyCode == SHIFT || KeyCode == ALT))
+        {
+            if (KeyCode == CONTROL) ctrl = true;
+            return;
+        }
+        if (ctrl && (Key == 'u' || Key == 'U' || Key == (char)21)) { SetUltra(!ultra); Banner(ultra ? ""Ultra Smash: on"" : ""Ultra Smash: off""); return; }
+        if (ctrl && (Key == 'm' || Key == 'M' || Key == (char)13)) { listening = !listening; if (listening) ListenTo(AudioSource.Microphone); Banner(listening ? ""Listening: clap or giggle!"" : ""Not listening""); return; }
+        if (ctrl && (Key == 'h' || Key == 'H' || Key == (char)8)) { smallPrint = !smallPrint; return; }
+        char k = char.ToUpperInvariant(Key);
+        if (char.IsLetterOrDigit(k)) Smash(k.ToString(), null);
+        else Smash(null, shapes[(int)Random(shapes.Length)]);
+    }
+
+    void Smash(string glyph, string shape)
+    {
+        // Somewhere on screen, as far as possible from what's already there (the best of a dozen tries).
+        float size = Random(0.32f, 0.5f) * Height;
+        float x = 0, y = 0, best = -1;
+        for (int k = 0; k < 12; k++)
+        {
+            float cx = Random(size * 0.55f, Width - size * 0.55f), cy = Random(size * 0.55f, Height - size * 0.55f);
+            float nearest = float.MaxValue;
+            foreach (var o in things) if (Now - o.Born < 4) nearest = Math.Min(nearest, Dist(cx, cy, o.X, o.Y));
+            if (nearest > best) { best = nearest; x = cx; y = cy; }
+        }
+        float hue = Random(360);
+        var thing = new Thing { Glyph = glyph, Shape = shape, X = x, Y = y, Size = size, Born = Now, Hue = hue, Face = shape != null };
+        things.Add(thing);
+        if (things.Count > 12) things.RemoveAt(0);
+
+        var spots = Template(glyph != null ? ""glyph:"" + glyph : shape);
+        if (spots.Count == 0) return;
+        var (r0, g0, b0) = Hsb(hue, 0.85f, 1);
+        float t = Now;
+        for (int n = 0; n < perSmash; n++)
+        {
+            int i = next;
+            next = (next + 1) % pool;
+            var (sx, sy) = spots[(int)Random(spots.Count)];
+            // Born at the center in a burst, flying out and then home to their spot.
+            px[i] = x; py[i] = y;
+            float a = Random(TWO_PI), sp = Random(200, 1400) * Height / 720;
+            vx[i] = Cos(a) * sp; vy[i] = Sin(a) * sp;
+            tx[i] = x + (sx + Random(-0.002f, 0.002f)) * size; ty[i] = y + (sy + Random(-0.002f, 0.002f)) * size;
+            born[i] = t; hold[i] = Random(3.2f, 4.2f);
+            // A little variety in each particle's color, like sparks.
+            float v = Random(0.75f, 1.15f);
+            cr[i] = Math.Min(1, r0 * v + 0.08f); cg[i] = Math.Min(1, g0 * v + 0.08f); cb[i] = Math.Min(1, b0 * v + 0.08f);
+            state[i] = 1;
+        }
+        Sound(glyph, shape, x);
+    }
+
+    void Sound(string glyph, string shape, float x)
+    {
+        double pan = (x / Width) * 1.4 - 0.7;
+        if (glyph != null)
+        {
+            // A letter: its own note, low A to high Z, always in the scale.
+            int idx = char.IsDigit(glyph[0]) ? glyph[0] - '0' + 3 : glyph[0] - 'A';
+            int note = 60 + 12 * (idx / 5 % 3) + scale[idx % 5];
+            Play(note, amp: 0.3, pan: pan, release: 1.2, synth: Synth.Pluck);
+            Play(note + 12, amp: 0.08, pan: pan, attack: 0.02, release: 1.6, synth: Synth.Sine);
+        }
+        else
+        {
+            // A shape: a little arpeggio.
+            int root = 48 + scale[(int)Random(5)];
+            for (int i = 0; i < 3; i++)
+                Play(root + 12 * (i / 2) + scale[(i * 2) % 5], amp: 0.14, pan: pan, attack: 0.01 + i * 0.06, release: 1.4, synth: Synth.Triangle);
+        }
+    }
+
+    void Confetti()
+    {
+        for (int n = 0; n < perSmash / 3; n++)
+        {
+            int i = next;
+            next = (next + 1) % pool;
+            px[i] = Random(Width); py[i] = Height + 5;
+            vx[i] = Random(-200, 200); vy[i] = -Random(500, 1300) * Height / 720;
+            born[i] = Now; hold[i] = 0;
+            (cr[i], cg[i], cb[i]) = Hsb(Random(360), 0.8f, 1);
+            state[i] = 2;
+        }
+        Play(new[] { 72, 76, 79, 84 }, amp: 0.12, release: 1, synth: Synth.Sine);
+    }
+
+    // =====================================================================================
+    // Each frame
+    // =====================================================================================
+    public override void Draw()
+    {
+        float dt = Math.Min(1 / 30f, 1f / (float)Math.Max(30, ActualFrameRate));
+        float now = Now;
+
+        // The mouse paints with light.
+        if (lastMouseX >= 0 && (MouseX != lastMouseX || MouseY != lastMouseY)) Paint(lastMouseX, lastMouseY, MouseX, MouseY);
+        lastMouseX = MouseX; lastMouseY = MouseY;
+
+        // The room: a clap or a giggle louder than before throws confetti.
+        if (listening)
+        {
+            float level = MicLevel;
+            if (level > 0.25f && level > micBefore * 1.6f && now - lastClap > 0.6f) { lastClap = now; Confetti(); }
+            micBefore = Lerp(micBefore, level, 0.2f);
+        }
+
+        Simulate(dt, now);
+        Render();
+        Background(0);
+        Image(frame, 0, 0, Width, Height);
+        Faces(now);
+        SmallPrint();
+    }
+
+    void Paint(float x0, float y0, float x1, float y1)
+    {
+        int n = ultra ? 900 : 200;
+        float hue = (Now * 90) % 360;
+        var (pr, pg, pb) = Hsb(hue, 0.7f, 1);
+        for (int k = 0; k < n; k++)
+        {
+            int i = next;
+            next = (next + 1) % pool;
+            float t = Random(1);
+            px[i] = Lerp(x0, x1, t) + Random(-3, 3); py[i] = Lerp(y0, y1, t) + Random(-3, 3);
+            vx[i] = Random(-40, 40); vy[i] = Random(-40, 40);
+            born[i] = Now - 0.4f; hold[i] = 0;
+            cr[i] = pr; cg[i] = pg; cb[i] = pb;
+            state[i] = 2;
+        }
+    }
+
+    /// <summary>A hue (0..360) at a saturation and brightness (0..1), as red, green, blue 0..1.</summary>
+    static (float, float, float) Hsb(float h, float s, float v)
+    {
+        h = ((h % 360) + 360) % 360 / 60;
+        int i = (int)h;
+        float f = h - i, p = v * (1 - s), q = v * (1 - s * f), t = v * (1 - s * (1 - f));
+        return i switch { 0 => (v, t, p), 1 => (q, v, p), 2 => (p, v, t), 3 => (p, q, v), 4 => (t, p, v), _ => (v, p, q) };
+    }
+
+    /// <summary>Every particle, every frame, split across all the cores: fly home, hold, then melt away.</summary>
+    void Simulate(float dt, float now)
+    {
+        float h = Height, w = Width;
+        int chunk = (pool + lanes - 1) / lanes;
+        Parallel.For(0, lanes, lane =>
+        {
+            int end = Math.Min(pool, (lane + 1) * chunk);
+            for (int i = lane * chunk; i < end; i++)
+            {
+                byte s = state[i];
+                if (s == 0) continue;
+                float age = now - born[i];
+                if (s == 1)
+                {
+                    // A spring home, strongly damped: a burst, then they settle exactly on the shape.
+                    float k = Math.Min(1, age * 1.4f);
+                    float ax = (tx[i] - px[i]) * 40 * k, ay = (ty[i] - py[i]) * 40 * k;
+                    float damp = MathF.Pow(0.02f + 0.1f * (1 - k), dt);
+                    vx[i] = (vx[i] + ax * dt) * damp; vy[i] = (vy[i] + ay * dt) * damp;
+                    // A shimmer while they hold.
+                    vx[i] += MathF.Sin(i * 12.9898f + now * 6) * 6; vy[i] += MathF.Cos(i * 78.233f + now * 6) * 6;
+                    if (age > hold[i])
+                    {
+                        state[i] = 2;
+                        born[i] = now;
+                        float a = (i * 0.618034f % 1) * MathF.PI * 2;
+                        vx[i] = MathF.Cos(a) * 60; vy[i] = MathF.Sin(a) * 60 - 40;
+                    }
+                }
+                else
+                {
+                    // Melting: a swirl, a little gravity, and out.
+                    float sw = MathF.Sin(py[i] * 0.01f + now) * 30, sv = MathF.Cos(px[i] * 0.01f + now * 0.7f) * 30;
+                    vx[i] += sw * dt * 4; vy[i] += (sv + 140) * dt;
+                    vx[i] *= 0.995f; vy[i] *= 0.995f;
+                    if (age > 2.6f || py[i] > h + 40 || px[i] < -40 || px[i] > w + 40) { state[i] = 0; continue; }
+                }
+                px[i] += vx[i] * dt; py[i] += vy[i] * dt;
+            }
+        });
+    }
+
+    /// <summary>
+    /// The tiny renderer: every core adds its particles' light into its own buffer, the
+    /// buffers are summed onto what's left of the last frame (a fading trail), and the sum
+    /// is tone-mapped -- bright where light piles up, never clipping, like an HDR photo.
+    /// </summary>
+    void Render()
+    {
+        int n = bw * bh;
+        float sx = bw / (float)Width, sy = bh / (float)Height;
+        int chunk = (pool + lanes - 1) / lanes;
+        float now = Now;
+        float gain = ultra ? 0.1f : 0.22f;             // more particles, less light each
+        Parallel.For(0, lanes, lane =>
+        {
+            var R = laneR[lane]; var G = laneG[lane]; var B = laneB[lane];
+            Array.Clear(R); Array.Clear(G); Array.Clear(B);
+            int end = Math.Min(pool, (lane + 1) * chunk);
+            for (int i = lane * chunk; i < end; i++)
+            {
+                byte s = state[i];
+                if (s == 0) continue;
+                int x = (int)(px[i] * sx), y = (int)(py[i] * sy);
+                if (x < 0 || y < 0 || x >= bw || y >= bh) continue;
+                float a = gain;
+                if (s == 2) a *= Math.Max(0, 1 - (now - born[i]) / 2.6f);
+                int p = y * bw + x;
+                R[p] += cr[i] * a; G[p] += cg[i] * a; B[p] += cb[i] * a;
+            }
+        });
+        var pixels = frame.Pixels;
+        int rows = (bh + lanes - 1) / lanes;
+        Parallel.For(0, lanes, lane =>
+        {
+            int start = lane * rows * bw, end = Math.Min(n, (lane + 1) * rows * bw);
+            for (int p = start; p < end; p++)
+            {
+                float r = accR[p] * 0.78f, g = accG[p] * 0.78f, b = accB[p] * 0.78f;
+                for (int l = 0; l < lanes; l++) { r += laneR[l][p]; g += laneG[l][p]; b += laneB[l][p]; }
+                accR[p] = r; accG[p] = g; accB[p] = b;
+                // Tone map: 1 - e^(-x). Light adds up and glows toward white instead of clipping.
+                pixels[p] = new Color((byte)(255 * (1 - MathF.Exp(-r))), (byte)(255 * (1 - MathF.Exp(-g))), (byte)(255 * (1 - MathF.Exp(-b))));
+            }
+        });
+        frame.UpdatePixels();
+    }
+
+    /// <summary>BabySmash's shapes have faces: two eyes that look at the mouse, and a smile.</summary>
+    void Faces(float now)
+    {
+        foreach (var t in things)
+        {
+            if (!t.Face) continue;
+            float age = now - t.Born;
+            float a = Math.Clamp((age - 0.7f) * 3, 0, 1) * Math.Clamp((4.0f - age) * 2, 0, 1);
+            if (a <= 0) continue;
+            float s = t.Size, ex = s * 0.13f, ey = t.Y - s * 0.06f;
+            bool blink = (age * 1.3f + t.Hue) % 3.2f < 0.12f;
+            for (int e = -1; e <= 1; e += 2)
+            {
+                float cx = t.X + e * ex;
+                NoStroke();
+                Fill(255, 255, 255, 235 * a);
+                if (blink) Rect(cx - s * 0.05f, ey - 2, s * 0.1f, 4, 2);
+                else
+                {
+                    Circle(cx, ey, s * 0.1f);
+                    // Pupils follow the mouse.
+                    float dx = MouseX - cx, dy = MouseY - ey, d = Math.Max(1, Mag(dx, dy));
+                    Fill(20, 20, 30, 255 * a);
+                    Circle(cx + dx / d * s * 0.02f, ey + dy / d * s * 0.02f, s * 0.05f);
+                }
+            }
+            NoFill();
+            Stroke(255, 255, 255, 230 * a);
+            StrokeWeight(Math.Max(2, s * 0.018f));
+            Arc(t.X, t.Y + s * 0.04f, s * 0.22f, s * 0.16f, 0.15f * PI, 0.85f * PI);
+        }
+        things.RemoveAll(t => now - t.Born > 5);
+    }
+
+    void Banner(string text) { banner = text; bannerAt = Now; }
+
+    void SmallPrint()
+    {
+        float age = Now - bannerAt;
+        if (age < 3.5f)
+        {
+            float a = Math.Clamp(Math.Min(age * 3, (3.5f - age) * 2), 0, 1);
+            TextFont(small, 26);
+            TextAlign(TextAlignH.Center, TextAlignV.Top);
+            Fill(255, 255, 255, 230 * a);
+            Text(banner, Width / 2, 28);
+        }
+        if (!smallPrint) return;
+        int alive = 0;
+        for (int i = 0; i < pool; i += 7) if (state[i] != 0) alive++;
+        alive *= 7;
+        long memGB = GC.GetGCMemoryInfo().TotalAvailableMemoryBytes >> 30;
+        TextFont(small, 12);
+        TextAlign(TextAlignH.Right, TextAlignV.Bottom);
+        Fill(255, 255, 255, 90);
+        Text($""BabySmash! {(ultra ? ""ULTRA"" : """")} · {Environment.ProcessorCount} cores · {memGB} GB · {alive:N0} / {pool:N0} particles · {ActualFrameRate:0} fps"" +
+             (optimized ? """" : "" · tip: Settings > Optimized code""), Width - 14, Height - 26);
+        Fill(255, 255, 255, 60);
+        Text(""a tribute to Scott Hanselman's BabySmash · made with Dana · Ctrl+U ultra · Ctrl+M listen · Ctrl+H hide"", Width - 14, Height - 10);
+    }
+}
+";
+
+        private const string SpendingGalaxy =
+@"// Your spending as a galaxy -- for tally (github.com/davidfowl/tally): let agents classify
+// your bank transactions, then let Dana show you where the money goes.
+//
+// Export your year from tally:   tally up --format csv > spending.csv
+// and put spending.csv next to this sketch (or set the path below). Without it, the sketch
+// makes up a year of spending to show itself -- and says so on screen.
+//
+// Each category is an arm of the galaxy; each merchant a star on it, bigger the more you
+// spent there. The year plays back: every transaction flashes as it happens and joins its
+// star's cloud, so the galaxy grows month by month. Recurring things -- the rent, the
+// subscriptions, anything tally would put in ""Every Month"" -- ride on rings, steady as
+// planets; one-off big purchases arrive as comets. Refunds fly back out, blue.
+// Uncategorized transactions drift outside the galaxy as rogue stars: your agent's to-do
+// list (""tally discover"").
+//
+// Drag: turn.  Wheel: zoom.  Hover a star: what it is.  Space: pause.  Left/Right: a month
+// back / forward.  E: the end of the year at once.  L: labels.  M: mute.
+public class SpendingGalaxy : Sketch
+{
+    const string CsvPath = ""spending.csv"";
+    const float SecondsPerMonth = 3.2f;
+
+    // ---- the data --------------------------------------------------------------------------
+    record Txn(DateTime Date, string Merchant, string Category, float Amount, bool Refund);
+    class Merchant
+    {
+        public string Name, Category;
+        public float Total, Shown;             // all year / so far in the playback
+        public int Count, Months;
+        public bool Recurring, Rogue;
+        public PVector Pos;
+        public float Hue;
+        public List<int> Txns = new();
+    }
+    readonly List<Txn> txns = new();
+    readonly Dictionary<string, Merchant> merchants = new();
+    readonly List<string> categories = new();
+    readonly Dictionary<string, float> categoryHue = new();
+    readonly Dictionary<string, float> categoryAngle = new();
+    bool demo;
+    DateTime start, end;
+    float currency = 0;
+
+    // ---- the playback ----------------------------------------------------------------------
+    float playT;                               // seconds into the year
+    int nextTxn;
+    bool paused, labels = true, muted;
+    readonly List<(int Txn, float At)> flashes = new();
+    readonly List<(PVector From, PVector To, float At, float Hue, bool Out)> comets = new();
+    readonly float[] monthTotals = new float[13];
+
+    // ---- view ------------------------------------------------------------------------------
+    PFont font, mono, big;
+    readonly PointCloud cloud = new(), dust = new();
+    float yaw = 0.4f, pitch = 0.75f, zoom = 1;
+    float lastDrag = -10, lastNote = -10;
+    View3D view;
+
+    public override void Setup()
+    {
+        Size(1280, 720);
+        font = CreateFont(""Segoe UI"", 14);
+        mono = CreateFont(""Consolas"", 13);
+        big = CreateFont(""Segoe UI Semibold"", 34);
+        TextSizeSnap(1);
+        cloud.Glow = true;
+        dust.Glow = true;
+        dust.DepthSort = false;
+        Load();
+        Layout();
+        BuildDust();
+    }
+
+    float Now => Millis() / 1000f;
+
+    // =====================================================================================
+    // Reading tally's CSV (date, description, amount, merchant, category, subcategory, source, tags)
+    // =====================================================================================
+    void Load()
+    {
+        if (System.IO.File.Exists(CsvPath) || System.IO.File.Exists(SketchPath(CsvPath)))
+        {
+            var table = LoadTable(CsvPath, ""header"");
+            foreach (var row in table.Rows)
+            {
+                if (!DateTime.TryParse(row.GetString(""date""), System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var date)) continue;
+                string tags = row.GetString(""tags"");
+                if (tags.Contains(""income"") || tags.Contains(""transfer"")) continue;      // tally leaves these out of spending too
+                float amount = row.GetFloat(""amount"");
+                string merchant = row.GetString(""merchant"");
+                string category = row.GetString(""category"");
+                if (string.IsNullOrWhiteSpace(category)) category = ""Unknown"";
+                if (string.IsNullOrWhiteSpace(merchant)) merchant = row.GetString(""description"");
+                txns.Add(new Txn(date, merchant, category, Math.Abs(amount), amount < 0 || tags.Contains(""refund"")));
+            }
+        }
+        if (txns.Count == 0) { demo = true; MakeUpAYear(); }
+        txns.Sort((a, b) => a.Date.CompareTo(b.Date));
+        start = new DateTime(txns[0].Date.Year, txns[0].Date.Month, 1);
+        end = txns[^1].Date;
+
+        for (int i = 0; i < txns.Count; i++)
+        {
+            var t = txns[i];
+            if (!merchants.TryGetValue(t.Merchant, out var m))
+                merchants[t.Merchant] = m = new Merchant { Name = t.Merchant, Category = t.Category };
+            m.Txns.Add(i);
+            if (!t.Refund) { m.Total += t.Amount; m.Count++; }
+            if (!categories.Contains(t.Category)) categories.Add(t.Category);
+        }
+        // Recurring, the way tally's ""Every Month"" view sees it: 6+ months, steady amounts.
+        foreach (var m in merchants.Values)
+        {
+            var amounts = m.Txns.Where(i => !txns[i].Refund).Select(i => txns[i].Amount).ToList();
+            m.Months = m.Txns.Select(i => txns[i].Date.Year * 12 + txns[i].Date.Month).Distinct().Count();
+            float mean = amounts.Count > 0 ? amounts.Average() : 0;
+            float sd = amounts.Count > 1 ? MathF.Sqrt(amounts.Select(a => (a - mean) * (a - mean)).Average()) : 0;
+            m.Recurring = m.Months >= 6 && mean > 0 && sd / mean < 0.3f;
+            m.Rogue = m.Category == ""Unknown"";
+        }
+        categories.Remove(""Unknown"");
+        categories.Sort((a, b) => Spent(b).CompareTo(Spent(a)));
+    }
+
+    float Spent(string category) => merchants.Values.Where(m => m.Category == category).Sum(m => m.Total);
+
+    /// <summary>A made-up year, for when there's no spending.csv yet (clearly labelled on screen).</summary>
+    void MakeUpAYear()
+    {
+        RandomSeed(7);
+        var year = new DateTime(DateTime.Now.Year - 1, 1, 1);
+        void Monthly(string merchant, string category, int day, float amount, float jitter = 0)
+        {
+            for (int mo = 0; mo < 12; mo++) txns.Add(new Txn(year.AddMonths(mo).AddDays(day - 1), merchant, category, amount * (1 + Random(-jitter, jitter)), false));
+        }
+        void Often(string merchant, string category, int perMonth, float lo, float hi)
+        {
+            for (int mo = 0; mo < 12; mo++)
+                for (int k = 0; k < perMonth + (int)Random(-1, 2); k++)
+                    txns.Add(new Txn(year.AddMonths(mo).AddDays((int)Random(0, 28)), merchant, category, Random(lo, hi), false));
+        }
+        Monthly(""Rent"", ""Housing"", 1, 2150);
+        Monthly(""City Power & Light"", ""Utilities"", 12, 120, 0.25f);
+        Monthly(""Fiber Internet"", ""Utilities"", 15, 80);
+        Monthly(""Phone Plan"", ""Utilities"", 20, 65);
+        Monthly(""Netflix"", ""Subscriptions"", 8, 15.49f);
+        Monthly(""Spotify"", ""Subscriptions"", 9, 11.99f);
+        Monthly(""iCloud"", ""Subscriptions"", 3, 2.99f);
+        Monthly(""GitHub Copilot"", ""Subscriptions"", 5, 10f);
+        Monthly(""Gym"", ""Health"", 2, 45);
+        Monthly(""Babysitting (Zelle to Sarah)"", ""Childcare"", 25, 240, 0.2f);
+        Often(""Grocery Market"", ""Food"", 6, 40, 180);
+        Often(""Costco"", ""Food"", 2, 90, 260);
+        Often(""Coffee Shop"", ""Food"", 9, 4, 9);
+        Often(""Pizza Place"", ""Food"", 2, 18, 45);
+        Often(""Taco Truck"", ""Food"", 2, 9, 22);
+        Often(""Gas Station"", ""Transportation"", 4, 30, 70);
+        Often(""Uber"", ""Transportation"", 3, 9, 38);
+        Often(""Amazon"", ""Shopping"", 5, 8, 120);
+        Often(""Target"", ""Shopping"", 2, 25, 140);
+        Often(""Pharmacy"", ""Health"", 1, 8, 60);
+        Often(""Bookstore"", ""Shopping"", 1, 12, 40);
+        txns.Add(new Txn(year.AddMonths(3).AddDays(10), ""Airline"", ""Travel"", 860, false));
+        txns.Add(new Txn(year.AddMonths(3).AddDays(12), ""Hotel"", ""Travel"", 640, false));
+        txns.Add(new Txn(year.AddMonths(7).AddDays(4), ""Laptop Store"", ""Shopping"", 2599, false));
+        txns.Add(new Txn(year.AddMonths(7).AddDays(19), ""Laptop Store"", ""Shopping"", 120, true));   // a refund
+        txns.Add(new Txn(year.AddMonths(10).AddDays(22), ""Toy Store"", ""Shopping"", 310, false));
+        for (int k = 0; k < 9; k++)
+            txns.Add(new Txn(year.AddDays((int)Random(0, 360)), $""SQ *{(char)('A' + k)}{(char)('K' + k)} {1000 + k * 37}"", ""Unknown"", Random(6, 70), false));
+    }
+
+    // =====================================================================================
+    // The shape of the galaxy
+    // =====================================================================================
+    void Layout()
+    {
+        // Each category an arm, its merchants along it -- biggest near the core.
+        for (int k = 0; k < categories.Count; k++)
+        {
+            categoryAngle[categories[k]] = k / (float)categories.Count * TWO_PI;
+            categoryHue[categories[k]] = (k * 360f / categories.Count + 200) % 360;
+        }
+        foreach (var cat in categories)
+        {
+            var list = merchants.Values.Where(m => m.Category == cat).OrderByDescending(m => m.Total).ToList();
+            for (int j = 0; j < list.Count; j++)
+            {
+                var m = list[j];
+                float r = 9 + (j + 0.6f) / (list.Count + 0.6f) * 34 + Hash(m.Name) * 3;
+                float th = categoryAngle[cat] + r * 0.075f + (Hash(m.Name + ""θ"") - 0.5f) * 0.25f;
+                m.Pos = new PVector(Cos(th) * r, (Hash(m.Name + ""y"") - 0.5f) * 3, Sin(th) * r);
+                m.Hue = (categoryHue[cat] + (Hash(m.Name + ""h"") - 0.5f) * 30 + 360) % 360;
+            }
+        }
+        // Rogue stars: outside the rim.
+        foreach (var m in merchants.Values.Where(m => m.Rogue))
+        {
+            float th = Hash(m.Name) * TWO_PI, r = 58 + Hash(m.Name + ""r"") * 12;
+            m.Pos = new PVector(Cos(th) * r, (Hash(m.Name + ""y"") - 0.5f) * 14, Sin(th) * r);
+            m.Hue = 0;
+        }
+    }
+
+    static float Hash(string s)
+    {
+        unchecked
+        {
+            uint h = 2166136261;
+            foreach (char c in s) h = (h ^ c) * 16777619;
+            h ^= h >> 13; h *= 0x5bd1e995; h ^= h >> 15;
+            return (h & 0xFFFFFF) / (float)0x1000000;
+        }
+    }
+
+    void BuildDust()
+    {
+        // The galaxy's faint body: a disc of dust along the arms, and stars far behind.
+        RandomSeed(3);
+        for (int i = 0; i < 6000; i++)
+        {
+            float k = (int)Random(Math.Max(1, categories.Count)), r = 6 + MathF.Pow(Random(1), 0.7f) * 46;
+            float th = (categories.Count > 0 ? k / categories.Count * TWO_PI : 0) + r * 0.075f + RandomGaussian() * 0.22f;
+            float hue = categories.Count > 0 ? categoryHue[categories[(int)k]] : 220;
+            var (cr, cg, cb) = Hsb(hue, 0.5f, 1);
+            dust.Add(Cos(th) * r, RandomGaussian() * 0.8f, Sin(th) * r, Color(cr * 255, cg * 255, cb * 255, Random(30, 70)), Random(0.4f, 0.9f));
+        }
+        for (int i = 0; i < 700; i++)
+        {
+            var p = PVector.Random3D(); p.Mult(Random(160, 260));
+            dust.Add(p.X, p.Y, p.Z, Color(200, 210, 255, Random(40, 120)), 0.6f);
+        }
+        // The core.
+        for (int i = 0; i < 500; i++)
+        {
+            var p = PVector.Random3D(); p.Mult(MathF.Abs(RandomGaussian()) * 3.5f);
+            dust.Add(p.X, p.Y * 0.5f, p.Z, Color(255, 230, 190, 60), 0.9f);
+        }
+    }
+
+    static (float, float, float) Hsb(float h, float s, float v)
+    {
+        h = ((h % 360) + 360) % 360 / 60;
+        int i = (int)h;
+        float f = h - i, p = v * (1 - s), q = v * (1 - s * f), t = v * (1 - s * (1 - f));
+        return i switch { 0 => (v, t, p), 1 => (q, v, p), 2 => (p, v, t), 3 => (p, q, v), 4 => (t, p, v), _ => (v, p, q) };
+    }
+
+    Color HueColor(float hue, float s, float v, float a)
+    {
+        var (r, g, b) = Hsb(hue, s, v);
+        return Color(r * 255, g * 255, b * 255, a);
+    }
+
+    // =====================================================================================
+    // The playback
+    // =====================================================================================
+    DateTime PlayDate => start.AddDays(playT / SecondsPerMonth * 30.44);
+
+    void Advance(float dt)
+    {
+        if (!paused) playT += dt;
+        var now = PlayDate;
+        while (nextTxn < txns.Count && txns[nextTxn].Date <= now)
+        {
+            var t = txns[nextTxn];
+            var m = merchants[t.Merchant];
+            if (!t.Refund) { m.Shown += t.Amount; monthTotals[Math.Clamp((t.Date.Year - start.Year) * 12 + t.Date.Month - start.Month, 0, 12)] += t.Amount; currency += t.Amount; }
+            else currency -= t.Amount;
+            flashes.Add((nextTxn, Now));
+            // Big one-offs arrive as comets from deep space; refunds fly back out.
+            if (t.Refund || (!m.Recurring && t.Amount > 400))
+            {
+                var far = PVector.Random3D(); far.Mult(120);
+                comets.Add(t.Refund ? (m.Pos, far, Now, 210, true) : (far, m.Pos, Now, m.Hue, false));
+            }
+            Note(t, m);
+            nextTxn++;
+        }
+        if (nextTxn >= txns.Count && !paused && playT > (end - start).TotalDays / 30.44 * SecondsPerMonth + 6) Restart();
+        flashes.RemoveAll(f => Now - f.At > 1.2f);
+        comets.RemoveAll(c => Now - c.At > 2.2f);
+    }
+
+    void Restart()
+    {
+        playT = 0; nextTxn = 0; currency = 0;
+        Array.Clear(monthTotals);
+        foreach (var m in merchants.Values) m.Shown = 0;
+    }
+
+    /// <summary>A soft note per transaction: the bigger the amount, the lower the note (pentatonic, so it's always music).</summary>
+    void Note(Txn t, Merchant m)
+    {
+        if (muted || Now - lastNote < 0.045f) return;
+        lastNote = Now;
+        int[] scale = { 0, 2, 4, 7, 9 };
+        int step = Math.Clamp(14 - (int)(MathF.Log2(Math.Max(1, t.Amount)) * 1.4f), 0, 14);
+        int note = 48 + 12 * (step / 5) + scale[step % 5];
+        double pan = Math.Clamp(m.Pos.X / 50, -0.8f, 0.8f);
+        if (t.Refund) Play(note + 12, amp: 0.08, pan: pan, release: 0.6, synth: Synth.Sine);
+        else Play(note, amp: Math.Clamp(0.04 + t.Amount / 6000.0, 0.04, 0.3), pan: pan, release: 0.5 + Math.Min(2, t.Amount / 800.0), synth: t.Amount > 400 ? Synth.Triangle : Synth.Pluck);
+    }
+
+    // =====================================================================================
+    // Each frame
+    // =====================================================================================
+    public override void Draw()
+    {
+        Advance(1 / 60f);
+        if (Now - lastDrag > 4) yaw += 0.0012f;
+        view = View3D.Orbit(yaw, pitch, 95 / zoom, new PVector(0, -2, 0), 45);
+        Background(3, 4, 10);
+        BlendMode(BlendModeKind.Add);
+        Points(dust, view);
+        Rings();
+        cloud.Clear();
+        Stars();
+        Comets();
+        Points(cloud, view);
+        BlendMode(BlendModeKind.Blend);
+        if (labels) Labels();
+        Hover();
+        Hud();
+    }
+
+    /// <summary>Recurring merchants ride a ring around the core: steady as a planet's orbit.</summary>
+    void Rings()
+    {
+        StrokeWeight(1);
+        foreach (var m in merchants.Values)
+        {
+            if (!m.Recurring || m.Shown <= 0) continue;
+            float r = MathF.Sqrt(m.Pos.X * m.Pos.X + m.Pos.Z * m.Pos.Z);
+            var c = HueColor(m.Hue, 0.6f, 1, 30);
+            Stroke(c);
+            var segs = new List<(float, float, float, float)>();
+            (float X, float Y, float Depth) prev = default;
+            for (int k = 0; k <= 96; k++)
+            {
+                float th = k / 96f * TWO_PI;
+                var p = view.Project(new PVector(Cos(th) * r, m.Pos.Y, Sin(th) * r), Width, Height);
+                if (k > 0 && p.Depth > 1 && prev.Depth > 1) segs.Add((prev.X, prev.Y, p.X, p.Y));
+                prev = p;
+            }
+            BeginShape(ShapeKind.Lines);
+            foreach (var (a, b, c2, d) in segs) { Vertex(a, b); Vertex(c2, d); }
+            EndShape();
+        }
+    }
+
+    /// <summary>Each merchant: a star as big as what's been spent there so far, inside a cloud of its transactions.</summary>
+    void Stars()
+    {
+        float t = Now;
+        foreach (var m in merchants.Values)
+        {
+            if (m.Shown <= 0 && !m.Rogue) continue;
+            var pos = Position(m, t);
+            float size = 0.6f + MathF.Sqrt(Math.Max(m.Shown, 0)) * 0.065f;
+            float a = m.Rogue ? 140 : 255;
+            if (m.Rogue && m.Shown <= 0) continue;
+            cloud.Add(pos.X, pos.Y, pos.Z, m.Rogue ? Color(255, 120, 110, 160) : HueColor(m.Hue, 0.35f, 1, a), size);
+            cloud.Add(pos.X, pos.Y, pos.Z, m.Rogue ? Color(255, 80, 80, 40) : HueColor(m.Hue, 0.8f, 1, 50), size * 3.5f);
+            // Its transactions so far: a small cloud around it, one speck each.
+            int shown = 0;
+            foreach (int i in m.Txns)
+            {
+                if (i >= nextTxn) break;
+                var tx = txns[i];
+                float h1 = (i * 0.618034f) % 1, h2 = (i * 0.414214f) % 1;
+                float rr = size * 1.2f + 0.4f + MathF.Sqrt(tx.Amount) * 0.03f;
+                float th = h1 * TWO_PI + t * (0.15f + h2 * 0.2f);
+                cloud.Add(pos.X + Cos(th) * rr, pos.Y + (h2 - 0.5f) * rr * 0.6f, pos.Z + Sin(th) * rr,
+                          tx.Refund ? Color(120, 190, 255, 200) : HueColor(m.Hue, 0.6f, 1, 150), 0.18f + MathF.Sqrt(tx.Amount) * 0.012f);
+                if (++shown > 400) break;
+            }
+        }
+        // The flash of each new transaction.
+        foreach (var (i, at) in flashes)
+        {
+            var m = merchants[txns[i].Merchant];
+            float age = t - at, k = 1 - age / 1.2f;
+            var pos = Position(m, t);
+            float size = (1.2f + MathF.Sqrt(txns[i].Amount) * 0.08f) * (0.5f + age * 2);
+            cloud.Add(pos.X, pos.Y, pos.Z, txns[i].Refund ? Color(120, 190, 255, 220 * k) : HueColor(m.Hue, 0.25f, 1, 220 * k), size);
+        }
+    }
+
+    /// <summary>Where a merchant's star is now: recurring ones orbit the core; the rest turn slowly with the galaxy.</summary>
+    PVector Position(Merchant m, float t)
+    {
+        if (!m.Recurring) return m.Pos;
+        float r = MathF.Sqrt(m.Pos.X * m.Pos.X + m.Pos.Z * m.Pos.Z), th = MathF.Atan2(m.Pos.Z, m.Pos.X) + t * 6 / Math.Max(8, r);
+        return new PVector(Cos(th) * r, m.Pos.Y, Sin(th) * r);
+    }
+
+    void Comets()
+    {
+        foreach (var (from, to, at, hue, outward) in comets)
+        {
+            float age = Now - at, k = Math.Clamp(age / 1.6f, 0, 1);
+            float e = outward ? k * k : 1 - (1 - k) * (1 - k);
+            for (int j = 0; j < 40; j++)
+            {
+                float tt = Math.Max(0, e - j * 0.012f);
+                var p = PVector.Lerp(from, to, tt);
+                float fade = (1 - j / 40f) * (1 - Math.Max(0, age - 1.6f) / 0.6f);
+                cloud.Add(p.X, p.Y, p.Z, outward ? Color(120, 190, 255, 220 * fade) : HueColor(hue, 0.3f, 1, 230 * fade), 0.9f * (1 - j / 50f));
+            }
+        }
+    }
+
+    void Labels()
+    {
+        TextAlign(TextAlignH.Center, TextAlignV.Center);
+        foreach (var cat in categories)
+        {
+            float th = categoryAngle[cat] + 52 * 0.075f, r = 54;
+            var p = view.Project(new PVector(Cos(th) * r, 0, Sin(th) * r), Width, Height);
+            if (p.Depth <= 1 || p.Y < 90 || p.Y > Height - 100) continue;
+            float spent = merchants.Values.Where(m => m.Category == cat).Sum(m => m.Shown);
+            if (spent <= 0) continue;
+            TextFont(font, 15);
+            Fill(HueColor(categoryHue[cat], 0.45f, 1, 230));
+            Text(cat, p.X, p.Y);
+            TextFont(mono, 11);
+            Fill(200, 210, 235, 170);
+            Text(Money(spent), p.X, p.Y + 16);
+        }
+    }
+
+    void Hover()
+    {
+        Merchant best = null; float bestD = 22 * 22;
+        foreach (var m in merchants.Values)
+        {
+            if (m.Shown <= 0) continue;
+            var p = view.Project(Position(m, Now), Width, Height);
+            if (p.Depth <= 1) continue;
+            float d = (p.X - MouseX) * (p.X - MouseX) + (p.Y - MouseY) * (p.Y - MouseY);
+            if (d < bestD) { bestD = d; best = m; }
+        }
+        if (best == null) return;
+        var q = view.Project(Position(best, Now), Width, Height);
+        string kind = best.Rogue ? ""uncategorized -- run tally discover"" : best.Recurring ? ""recurring, every month"" : $""{best.Category}"";
+        string[] lines = { best.Name, kind, $""{Money(best.Shown)} so far · {best.Txns.Count(i => i < nextTxn)} transactions"" };
+        TextFont(font, 13);
+        float w = lines.Max(l => TextWidth(l)) + 24;
+        NoStroke();
+        Fill(10, 14, 26, 220);
+        Rect(q.X + 14, q.Y - 10, w, 64, 8);
+        TextAlign(TextAlignH.Left, TextAlignV.Top);
+        Fill(255);
+        Text(lines[0], q.X + 26, q.Y - 2);
+        Fill(best.Rogue ? Color(255, 140, 120) : Color(170, 185, 215));
+        Text(lines[1], q.X + 26, q.Y + 16);
+        Fill(220, 225, 245);
+        Text(lines[2], q.X + 26, q.Y + 34);
+    }
+
+    static string Money(float v) => v >= 1000 ? $""${v:N0}"" : $""${v:0.00}"";
+
+    void Hud()
+    {
+        TextAlign(TextAlignH.Left, TextAlignV.Top);
+        TextFont(big, 30);
+        Fill(240, 242, 255);
+        Text(""Where the money goes"", 24, 18);
+        TextFont(font, 13);
+        Fill(150, 165, 200);
+        Text(demo ? ""MADE-UP DATA -- run: tally up --format csv > spending.csv, and put it next to this sketch""
+                  : $""{txns.Count:N0} transactions classified by tally · {merchants.Count} merchants · {categories.Count} categories"", 24, 58);
+
+        // The date, the running total, and the months as bars.
+        var d = PlayDate > end ? end : PlayDate;
+        TextAlign(TextAlignH.Right, TextAlignV.Top);
+        TextFont(big, 30);
+        Fill(255, 230, 190);
+        Text(Money(currency), Width - 24, 18);
+        TextFont(font, 13);
+        Fill(150, 165, 200);
+        Text($""spent by {d:MMMM d, yyyy}"" + (paused ? ""  ·  paused"" : """"), Width - 24, 58);
+
+        float x0 = 24, y0 = Height - 70, w = Width - 48, h = 36;
+        float max = Math.Max(1, monthTotals.Max());
+        int months = Math.Min(12, (end.Year - start.Year) * 12 + end.Month - start.Month + 1);
+        for (int mo = 0; mo < months; mo++)
+        {
+            float bx = x0 + mo * w / months, bwid = w / months - 6;
+            float bh = monthTotals[mo] / max * h;
+            NoStroke();
+            Fill(255, 255, 255, 18);
+            Rect(bx, y0, bwid, h, 3);
+            Fill(255, 210, 150, 200);
+            Rect(bx, y0 + h - bh, bwid, bh, 3);
+            TextFont(mono, 10);
+            TextAlign(TextAlignH.Left, TextAlignV.Top);
+            Fill(170, 185, 215, 170);
+            Text(start.AddMonths(mo).ToString(""MMM""), bx, y0 + h + 4);
+        }
+        // The playhead.
+        float frac = (float)Math.Clamp((PlayDate - start).TotalDays / (months * 30.44), 0, 1);
+        Stroke(255, 255, 255, 160);
+        StrokeWeight(1);
+        Line(x0 + frac * w, y0 - 4, x0 + frac * w, y0 + h + 2);
+
+        TextAlign(TextAlignH.Right, TextAlignV.Bottom);
+        TextFont(font, 11);
+        Fill(255, 255, 255, 80);
+        Text(""drag: turn · wheel: zoom · hover: a star · Space: pause · ←/→: months · E: whole year · L: labels · M: mute   |   tally by David Fowler · made with Dana"", Width - 24, Height - 6);
+    }
+
+    // =====================================================================================
+    // Input
+    // =====================================================================================
+    public override void MouseDragged()
+    {
+        lastDrag = Now;
+        yaw -= (MouseX - PMouseX) * 0.006f;
+        pitch = Constrain(pitch - (MouseY - PMouseY) * 0.006f, -0.2f, 1.45f);
+    }
+
+    public override void MouseWheel(float delta) => zoom = Constrain(zoom * (delta > 0 ? 1 / 1.1f : 1.1f), 0.5f, 4);
+
+    public override void KeyPressed()
+    {
+        if (Key == ' ') paused = !paused;
+        else if (Key == 'l' || Key == 'L') labels = !labels;
+        else if (Key == 'm' || Key == 'M') muted = !muted;
+        else if (Key == 'e' || Key == 'E') { bool m = muted; muted = true; playT = (float)((end - start).TotalDays / 30.44 * SecondsPerMonth) + 0.01f; Advance(0); muted = m; }
+        else if (KeyCode == RIGHT) { bool m = muted; muted = true; playT += SecondsPerMonth; Advance(0); muted = m; }
+        else if (KeyCode == LEFT) { float back = Math.Max(0, playT - SecondsPerMonth); bool m = muted; muted = true; Restart(); playT = back; Advance(0); muted = m; }
     }
 }
 ";
