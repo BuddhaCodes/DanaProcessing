@@ -117,6 +117,7 @@
 <li><a href="#normal"><code>Normal</code></a></li>
 <li><a href="#vertex-3d"><code>Vertex</code></a></li>
 <li><a href="#createshape3d"><code>CreateShape3D</code></a></li>
+<li><a href="#color-3d">Color, see-through and glow in 3D</a></li>
 </ul>
 </li>
 <li><a href="pshader.html">PShader</a></li>
@@ -136,7 +137,7 @@
 </ul></div>
 <p class="topics-all"><a href="a-z.html">All topics &amp; A–Z index</a></p></nav>
   <div class="topic-main">
-<details class="on-this-page-mobile"><summary>On this page · 3 entries</summary><ul><li><a href="#normal"><code>Normal</code></a></li><li><a href="#vertex-3d"><code>Vertex</code></a></li><li><a href="#createshape3d"><code>CreateShape3D</code></a></li></ul></details>
+<details class="on-this-page-mobile"><summary>On this page · 4 entries</summary><ul><li><a href="#normal"><code>Normal</code></a></li><li><a href="#vertex-3d"><code>Vertex</code></a></li><li><a href="#createshape3d"><code>CreateShape3D</code></a></li><li><a href="#color-3d">Color, see-through and glow in 3D</a></li></ul></details>
 <div class="doc">
 <h2 class="entry-title api" id="normal"><code>Normal</code></h2><ul class="sigs" aria-label="Signatures"><li><code>Normal(<span class="tp">float</span> nx, ny, nz)</code></li></ul>
 <p class="entry-desc">Sets the current normal vector. Affects vertices added <em>after</em> this call — call it once per face, before that face's vertices, for flat shading (the faceted-gem example below), or share one normal across several vertices for smooth shading. Default before any call: <code class="inline">(0, 0, 1)</code>.</p>
@@ -184,6 +185,32 @@ Translate(x, y, z);
 Shape(_gemShape, <span class="str">0</span>, <span class="str">0</span>);   <span class="cm">// no re-triangulating or re-uploading anything</span>
 PopMatrix();</pre></div>
 <div class="note"><strong>Scaling.</strong> Unlike the 2D <code class="inline">Shape()</code> overload, <code class="inline">w</code>/<code class="inline">h</code> scaling isn't supported for a 3D mesh — a baked mesh's own coordinates already define its size. Wrap the call in your own <code class="inline">PushMatrix()</code>/<code class="inline">Scale()</code>/<code class="inline">Rotate()</code>/<code class="inline">PopMatrix()</code> instead.</div>
+
+<h2 class="entry-title" id="color-3d">Color, see-through and glow in 3D</h2>
+<p class="entry-desc">The same drawing state you use in 2D works on 3D meshes. Each <code class="inline">Vertex()</code> keeps the <code class="inline">Fill()</code> it was added with, so a mesh can blend from one color to another (and a textured mesh is tinted by it, as in 2D). A fill with alpha is see-through. <code class="inline">BlendMode(BlendModeKind.Add)</code> adds light instead of covering, for flames, sparks and stars; Multiply, Screen, Lightest and Darkest work too. <code class="inline">Texture(pg)</code> with an offscreen <code class="inline">PGraphics</code> shows what was last drawn into it, so a simulation drawn every frame can be wrapped around a mesh. <code class="inline">Background()</code> clears the 3D picture, and 2D drawn during the frame, like <code class="inline">Text()</code> for labels, is laid on top of it.</p>
+<div class="table-wrap" role="region" tabindex="0" aria-label="Table: Processing hint, under Renderer3D">
+  <table>
+    <tr><th>Processing hint</th><th>under Renderer3D</th></tr>
+    <tr><td><code class="inline">Hint("DISABLE_DEPTH_MASK")</code></td><td>Shapes are still hidden by nearer ones but don't hide anything themselves: the usual way to draw many translucent or additive things (particles, smoke, glows) in any order. <code class="inline">ENABLE_DEPTH_MASK</code> turns it back on.</td></tr>
+    <tr><td><code class="inline">Hint("DISABLE_DEPTH_TEST")</code></td><td>Everything is drawn over what's already there, near or far. <code class="inline">ENABLE_DEPTH_TEST</code> turns it back on.</td></tr>
+  </table>
+</div>
+<div class="code-block"><div class="code-bar"><span class="code-label">C#</span><div class="code-actions"><button type="button" class="copy-btn" data-target="shape-3d-custom-code-3">Copy code</button></div></div><pre id="shape-3d-custom-code-3" tabindex="0" aria-label="Code, scrollable"><span class="cm">// Glowing sparks over a lit scene: added light, drawn in any order.</span>
+NoLights();
+BlendMode(<span class="tp">BlendModeKind</span>.Add);
+Hint(<span class="str">"DISABLE_DEPTH_MASK"</span>);
+BeginShape(<span class="tp">ShapeKind</span>.Quads);
+Texture(glow);                       <span class="cm">// a soft round dot, transparent at the edges</span>
+<span class="kw">foreach</span> (<span class="kw">var</span> s <span class="kw">in</span> sparks)
+{
+    Fill(<span class="str">255</span>, <span class="str">160</span>, <span class="str">60</span>, s.Alpha);
+    Vertex(s.X - <span class="str">4</span>, s.Y - <span class="str">4</span>, s.Z, <span class="str">0</span>, <span class="str">0</span>); Vertex(s.X + <span class="str">4</span>, s.Y - <span class="str">4</span>, s.Z, <span class="str">1</span>, <span class="str">0</span>);
+    Vertex(s.X + <span class="str">4</span>, s.Y + <span class="str">4</span>, s.Z, <span class="str">1</span>, <span class="str">1</span>); Vertex(s.X - <span class="str">4</span>, s.Y + <span class="str">4</span>, s.Z, <span class="str">0</span>, <span class="str">1</span>);
+}
+EndShape();
+Hint(<span class="str">"ENABLE_DEPTH_MASK"</span>);
+BlendMode(<span class="tp">BlendModeKind</span>.Blend);</pre></div>
+<div class="note"><strong>Transparent pixels don't count.</strong> Where a texture is fully transparent (around a glyph cut from a font atlas, at the edge of a sprite), nothing is drawn and nothing behind is hidden. The <em>A Book of Elements</em> example builds every letter that way.</div>
 
 </div>
 <nav class="pager" aria-label="Previous and next topic"><a class="prev" href="coordinates-3d.html"><span>← Previous</span><strong>Coordinates</strong></a><a class="next" href="pshader.html"><span>Next →</span><strong>PShader</strong></a></nav>

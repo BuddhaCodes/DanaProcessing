@@ -411,7 +411,7 @@ namespace DanaProcessing
             if (flat.Length == 0)
                 throw new InvalidOperationException("CreateShape3D(): no se agregó ningún vértice dentro de buildVertices().");
 
-            var (vao, vbo, vertexCount, textureId) = backend.UploadPersistentMesh(flat, _shapeTexture);
+            var (vao, vbo, vertexCount, textureId) = backend.UploadPersistentMesh(flat, ShapeTextureImage());
             return PShape.FromMesh3D(backend, vao, vbo, vertexCount, textureId);
         }
 

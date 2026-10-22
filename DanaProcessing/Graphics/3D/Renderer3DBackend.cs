@@ -509,14 +509,17 @@ namespace DanaProcessing
 layout(location = 0) in vec3 aPos;
 layout(location = 1) in vec3 aNormal;
 layout(location = 2) in vec2 aUV;
+layout(location = 3) in vec4 aColor;   // per-vertex color (custom meshes); Box()/Sphere() get a constant white
 uniform mat4 uModel;
 uniform mat4 uView;
 uniform mat4 uProjection;
 out vec3 vNormal;
 out vec3 vWorldPos;
 out vec2 vUV;
+out vec4 vColor;
 void main()
 {
+    vColor = aColor;
     vec4 worldPos = uModel * vec4(aPos, 1.0);
     vWorldPos = worldPos.xyz;
     gl_Position = uProjection * uView * worldPos;
@@ -532,11 +535,13 @@ void main()
 in vec3 vNormal;
 in vec3 vWorldPos;
 in vec2 vUV;
+in vec4 vColor;
 out vec4 FragColor;
  
 uniform vec4 uFillColor;
 uniform sampler2D uTexture;
 uniform int uHasTexture;
+uniform int uAmbientFromSurface;
 uniform vec3 uMaterialAmbient;
 uniform vec3 uMaterialSpecular;
 uniform vec3 uMaterialEmissive;
@@ -566,6 +571,13 @@ void main()
         vec4 texColor = texture(uTexture, vUV);
         surfaceColor = vec4(texColor.rgb, texColor.a * uFillColor.a);
     }
+    // Each vertex's own color (captured from Fill() when it was added) tints the surface,
+    // texture included -- the same as the 2D mesh path.
+    surfaceColor *= vColor;
+    // A fully transparent fragment (the empty parts of a glyph or a sprite) neither shows
+    // nor hides what's behind it: it doesn't touch the depth buffer.
+    if (surfaceColor.a < 0.004)
+        discard;
  
     if (uLightCount <= 0)
     {
@@ -635,8 +647,9 @@ void main()
         }
     }
  
+    vec3 ambientColor = uAmbientFromSurface == 1 ? surfaceColor.rgb : uMaterialAmbient;
     vec3 rgb = uMaterialEmissive
-             + uMaterialAmbient * totalAmbient
+             + ambientColor * totalAmbient
              + surfaceColor.rgb * totalDiffuse
              + uMaterialSpecular * totalSpecular;
  
@@ -682,7 +695,7 @@ void main()
             return program;
         }
 
-        private int _uTextureLoc, _uHasTextureLoc;
+        private int _uTextureLoc, _uHasTextureLoc, _uAmbientFromSurfaceLoc;
         // Fetches every uModel/uView/.../uLight*[] uniform location from
         // the given (already-linked) program and stores them in the
         // _uXxxLoc fields that DrawBox()/DrawSphere()/UploadLighting() read
@@ -705,6 +718,7 @@ void main()
             
             _uTextureLoc = _gl.GetUniformLocation(program, "uTexture");
             _uHasTextureLoc = _gl.GetUniformLocation(program, "uHasTexture");
+            _uAmbientFromSurfaceLoc = _gl.GetUniformLocation(program, "uAmbientFromSurface");
 
             _uLightCountLoc = _gl.GetUniformLocation(program, "uLightCount");
             for (int i = 0; i < MaxLights; i++)
@@ -1009,6 +1023,8 @@ void main()
 
             var ambient = _materialAmbient ?? Rgb01(fillColor.Red, fillColor.Green, fillColor.Blue);
             _gl.Uniform3(_uMaterialAmbientLoc, ambient.X, ambient.Y, ambient.Z);
+            // No Ambient() set: ambient light reflects the surface's own color (its texture, its vertex colors).
+            _gl.Uniform1(_uAmbientFromSurfaceLoc, _materialAmbient == null ? 1 : 0);
             _gl.Uniform3(_uMaterialSpecularLoc, _materialSpecular.X, _materialSpecular.Y, _materialSpecular.Z);
             _gl.Uniform3(_uMaterialEmissiveLoc, _materialEmissive.X, _materialEmissive.Y, _materialEmissive.Z);
             _gl.Uniform1(_uMaterialShininessLoc, _materialShininess);
@@ -1033,45 +1049,162 @@ void main()
         // volver a subirla cada frame si el mismo PImage se usa de nuevo
         // (típico: Texture(img) llamado adentro de Draw() con la misma
         // imagen todos los frames). Se limpia en Dispose().
-        private readonly Dictionary<PImage, uint> _textureCache = new();
-
-        private unsafe uint GetOrUploadTexture(PImage img)
+        /// <summary>One uploaded texture and the version of its source it holds (an image's
+        /// bitmap, or an offscreen buffer's draw count) -- when the source moves on, the texture
+        /// is uploaded again instead of drawing a stale picture.</summary>
+        private sealed class CachedTexture
         {
-            if (_textureCache.TryGetValue(img, out uint existing))
-                return existing;
+            public uint Id;
+            public object? Version;
+        }
 
-            uint tex = _gl.GenTexture();
-            _gl.BindTexture(TextureTarget.Texture2D, tex);
+        private readonly Dictionary<object, CachedTexture> _textureCache = new(ReferenceEqualityComparer.Instance);
 
-            var bitmap = img.Bitmap;
-            using var rgba = bitmap.ColorType == SKColorType.Rgba8888 ? null : bitmap.Copy(SKColorType.Rgba8888);
-            var source = rgba ?? bitmap;
+        /// <summary>The GL texture for a PImage, uploaded the first time and again whenever its
+        /// pixels were replaced (UpdatePixels() swaps the bitmap).</summary>
+        private uint GetOrUploadTexture(PImage img) =>
+            GetOrUploadTexture(img, img.Bitmap, () => img.Bitmap);
 
-            var pixels = source.GetPixels();
-            _gl.TexImage2D(TextureTarget.Texture2D, 0, InternalFormat.Rgba8, (uint)source.Width, (uint)source.Height, 0, PixelFormat.Rgba, PixelType.UnsignedByte, (void*)pixels);
+        /// <summary>The GL texture for a live offscreen buffer (Texture(pg)): uploaded again after
+        /// each EndDraw(), so a page, a screen or a simulation drawn into it every frame shows up
+        /// on the mesh as it is now.</summary>
+        internal uint GetOrUploadTexture(PGraphics pg) =>
+            GetOrUploadTexture(pg, pg.DrawCount, () =>
+            {
+                using var snapshot = pg.SnapshotForDraw();
+                return SKBitmap.FromImage(snapshot);
+            }, owned: true);
 
-            _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)GLEnum.Linear);
+        private unsafe uint GetOrUploadTexture(object key, object version, Func<SKBitmap> pixels, bool owned = false)
+        {
+            if (_textureCache.TryGetValue(key, out var cached) && Equals(cached.Version, version))
+                return cached.Id;
+
+            if (cached == null)
+            {
+                cached = new CachedTexture { Id = _gl.GenTexture() };
+                _textureCache[key] = cached;
+            }
+            cached.Version = version;
+            _gl.BindTexture(TextureTarget.Texture2D, cached.Id);
+
+            var bitmap = pixels();
+            try
+            {
+                // GL blends straight (unpremultiplied) color, so that's what's uploaded.
+                var info = new SKImageInfo(bitmap.Width, bitmap.Height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+                using var straight = new SKBitmap(info);
+                using (var source = bitmap.PeekPixels())
+                    source.ReadPixels(info, straight.GetPixels(), info.RowBytes);
+                _gl.TexImage2D(TextureTarget.Texture2D, 0, InternalFormat.Rgba8, (uint)straight.Width, (uint)straight.Height, 0, PixelFormat.Rgba, PixelType.UnsignedByte, (void*)straight.GetPixels());
+            }
+            finally
+            {
+                if (owned) bitmap.Dispose();
+            }
+
+            // Mipmaps: a texture seen small or at a grazing angle (text on a page lying in
+            // perspective) stays crisp instead of shimmering.
+            _gl.GenerateMipmap(TextureTarget.Texture2D);
+            _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)GLEnum.LinearMipmapLinear);
             _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)GLEnum.Linear);
             _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int)GLEnum.ClampToEdge);
             _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int)GLEnum.ClampToEdge);
-
-            _textureCache[img] = tex;
-            return tex;
+            return cached.Id;
         }
 
-        /// <summary>Binds uTexture/uHasTexture for the draw call about to happen — texture == null sets uHasTexture=0 (the shader falls back to uFillColor, exactly as before this patch).</summary>
-        private void BindTextureUniform(PImage? texture)
+        /// <summary>Binds uTexture/uHasTexture for the draw call about to happen — no texture sets uHasTexture=0 (the shader falls back to uFillColor).</summary>
+        private void BindTextureUniform(PImage? texture, PGraphics? live = null)
         {
-            if (texture == null)
+            if (texture == null && live == null)
             {
                 _gl.Uniform1(_uHasTextureLoc, 0);
                 return;
             }
-            uint tex = GetOrUploadTexture(texture);
+            uint tex = live != null ? GetOrUploadTexture(live) : GetOrUploadTexture(texture!);
             _gl.ActiveTexture(TextureUnit.Texture0);
             _gl.BindTexture(TextureTarget.Texture2D, tex);
             _gl.Uniform1(_uTextureLoc, 0); // unidad de textura 0
             _gl.Uniform1(_uHasTextureLoc, 1);
+        }
+
+        // =====================================================================
+        // Blending and depth -- BlendMode() and Processing's depth hints
+        // (hint(DISABLE_DEPTH_TEST), hint(DISABLE_DEPTH_MASK) and their ENABLE_
+        // twins). Kept here and re-applied at the start of every frame, so
+        // they behave like the rest of the drawing state: set once, they stay.
+        // =====================================================================
+
+        private SKBlendMode _blend = SKBlendMode.SrcOver;
+        private bool _depthTest = true, _depthMask = true;
+
+        /// <summary>How what's drawn next combines with what's already there, like blendMode()
+        /// under P3D. Blend (the default) lets translucent shapes show what's behind; Add sums
+        /// light (glows, fire, sparks); Multiply, Screen, Lightest and Darkest too. Other modes
+        /// fall back to Blend.</summary>
+        public void SetBlendMode(SKBlendMode mode)
+        {
+            _blend = mode;
+            ApplyBlendMode();
+        }
+
+        private void ApplyBlendMode()
+        {
+            _gl.Enable(EnableCap.Blend);
+            _gl.BlendEquation(BlendEquationModeEXT.FuncAdd);
+            // The alpha channel always ends up opaque over an opaque background, so the frame
+            // reads back as an ordinary picture.
+            switch (_blend)
+            {
+                case SKBlendMode.Plus:
+                    _gl.BlendFuncSeparate(BlendingFactor.SrcAlpha, BlendingFactor.One, BlendingFactor.Zero, BlendingFactor.One);
+                    break;
+                case SKBlendMode.Multiply:
+                    _gl.BlendFuncSeparate(BlendingFactor.DstColor, BlendingFactor.OneMinusSrcAlpha, BlendingFactor.Zero, BlendingFactor.One);
+                    break;
+                case SKBlendMode.Screen:
+                    _gl.BlendFuncSeparate(BlendingFactor.One, BlendingFactor.OneMinusSrcColor, BlendingFactor.Zero, BlendingFactor.One);
+                    break;
+                case SKBlendMode.Lighten:
+                    _gl.BlendEquation(BlendEquationModeEXT.Max);
+                    _gl.BlendFunc(BlendingFactor.One, BlendingFactor.One);
+                    break;
+                case SKBlendMode.Darken:
+                    _gl.BlendEquation(BlendEquationModeEXT.Min);
+                    _gl.BlendFunc(BlendingFactor.One, BlendingFactor.One);
+                    break;
+                default:
+                    _gl.BlendFuncSeparate(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha, BlendingFactor.One, BlendingFactor.OneMinusSrcAlpha);
+                    break;
+            }
+        }
+
+        /// <summary>hint(DISABLE_DEPTH_TEST) / hint(ENABLE_DEPTH_TEST): with the test off, every
+        /// shape is drawn over what's there, near or far (handy for a layer of glow on top).</summary>
+        public void SetDepthTest(bool on)
+        {
+            _depthTest = on;
+            if (on) _gl.Enable(EnableCap.DepthTest); else _gl.Disable(EnableCap.DepthTest);
+        }
+
+        /// <summary>hint(DISABLE_DEPTH_MASK) / hint(ENABLE_DEPTH_MASK): with the mask off, shapes are
+        /// still hidden by nearer ones but don't hide anything themselves -- the usual way to draw
+        /// many translucent or additive things (particles, flames, smoke) in any order.</summary>
+        public void SetDepthMask(bool on)
+        {
+            _depthMask = on;
+            _gl.DepthMask(on);
+        }
+
+        /// <summary>Background() under Renderer3D: clears the picture to a color and forgets all
+        /// depth, so the frame starts fresh (and clears any 2D drawn so far this frame).</summary>
+        public void ClearTo(SKColor color)
+        {
+            _gl.ClearColor(color.Red / 255f, color.Green / 255f, color.Blue / 255f, color.Alpha / 255f);
+            _gl.DepthMask(true);
+            _gl.Clear((uint)(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit));
+            _gl.DepthMask(_depthMask);
+            Canvas.Clear(SKColors.Transparent);
         }
 
         // =====================================================================
@@ -1099,7 +1232,19 @@ void main()
             // de dibujar geometría 3D no tiene efecto visible; queda como mejora
             // futura conectarlo a glClearColor).
             _gl.ClearColor(0.08f, 0.08f, 0.1f, 1f);
+            _gl.DepthMask(true);
             _gl.Clear((uint)(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit));
+
+            ApplyBlendMode();
+            SetDepthTest(_depthTest);
+            SetDepthMask(_depthMask);
+            // Box()/Sphere()/particles have no per-vertex color: they read this constant white.
+            _gl.DisableVertexAttribArray(3);
+            _gl.VertexAttrib4(3, 1f, 1f, 1f, 1f);
+
+            // 2D drawn during the frame (Text(), Rect()...) goes on its own transparent layer,
+            // laid over the 3D picture in EndFrame().
+            Canvas.Clear(SKColors.Transparent);
 
             _model = Matrix4x4.Identity;
             _modelStack.Clear();
@@ -1165,7 +1310,10 @@ void main()
                 flipCanvas.DrawBitmap(bitmap, 0, 0);
             }
 
+            // The 3D picture, then whatever 2D was drawn this frame on top of it.
+            using var overlay = Surface.Snapshot();
             Canvas.DrawBitmap(flipped, 0, 0, new SKPaint { BlendMode = SKBlendMode.Src });
+            Canvas.DrawImage(overlay, 0, 0);
             Canvas.Flush();
         }
 
@@ -1366,7 +1514,7 @@ void main()
         /// CreateShape3D()) and reused with Shape(), rather than re-issuing
         /// BeginShape()/EndShape() itself every Draw().
         /// </summary>
-        public unsafe void DrawCustomMesh(float[] positionsNormalsUVs, SKColor fillColor, PImage? texture)
+        public unsafe void DrawCustomMesh(float[] positionsNormalsUVs, SKColor fillColor, PImage? texture, PGraphics? liveTexture = null)
         {
             if (positionsNormalsUVs.Length == 0)
                 return;
@@ -1381,23 +1529,18 @@ void main()
                 _gl.BufferData(GLEnum.ArrayBuffer, (nuint)(positionsNormalsUVs.Length * sizeof(float)), data, GLEnum.StreamDraw);
             }
 
-            const uint stride = 8 * sizeof(float);
-            _gl.EnableVertexAttribArray(0);
-            _gl.VertexAttribPointer(0, 3, GLEnum.Float, false, stride, (void*)0);
-            _gl.EnableVertexAttribArray(1);
-            _gl.VertexAttribPointer(1, 3, GLEnum.Float, false, stride, (void*)(3 * sizeof(float)));
-            _gl.EnableVertexAttribArray(2);
-            _gl.VertexAttribPointer(2, 2, GLEnum.Float, false, stride, (void*)(6 * sizeof(float)));
+            SetUpMeshAttributes();
 
+            // The vertices carry their own colors (vColor); the uniform fill stays white.
             _gl.UseProgram(_shaderProgram);
             UploadMatrix(_uModelLoc, _model);
             UploadMatrix(_uViewLoc, _view);
             UploadMatrix(_uProjectionLoc, _projection);
-            _gl.Uniform4(_uFillColorLoc, fillColor.Red / 255f, fillColor.Green / 255f, fillColor.Blue / 255f, fillColor.Alpha / 255f);
+            _gl.Uniform4(_uFillColorLoc, 1f, 1f, 1f, 1f);
             UploadLighting(fillColor);
-            BindTextureUniform(texture);
+            BindTextureUniform(texture, liveTexture);
 
-            int vertexCount = positionsNormalsUVs.Length / 8;
+            int vertexCount = positionsNormalsUVs.Length / MeshFloatsPerVertex;
             _gl.DrawArrays(GLEnum.Triangles, 0, (uint)vertexCount);
 
             _gl.BindVertexArray(0);
@@ -1430,18 +1573,12 @@ void main()
                     _gl.BufferData(GLEnum.ArrayBuffer, (nuint)(positionsNormalsUVs.Length * sizeof(float)), data, GLEnum.StaticDraw);
                 }
 
-                const uint stride = 8 * sizeof(float);
-                _gl.EnableVertexAttribArray(0);
-                _gl.VertexAttribPointer(0, 3, GLEnum.Float, false, stride, (void*)0);
-                _gl.EnableVertexAttribArray(1);
-                _gl.VertexAttribPointer(1, 3, GLEnum.Float, false, stride, (void*)(3 * sizeof(float)));
-                _gl.EnableVertexAttribArray(2);
-                _gl.VertexAttribPointer(2, 2, GLEnum.Float, false, stride, (void*)(6 * sizeof(float)));
+                SetUpMeshAttributes();
 
                 _gl.BindVertexArray(0);
 
                 uint textureId = texture != null ? GetOrUploadTexture(texture) : 0;
-                int vertexCount = positionsNormalsUVs.Length / 8;
+                int vertexCount = positionsNormalsUVs.Length / MeshFloatsPerVertex;
                 return (vao, vbo, vertexCount, textureId);
             }
             finally
@@ -1500,6 +1637,22 @@ void main()
             }
         }
 
+        /// <summary>Floats per vertex of a custom mesh: position xyz, normal xyz, uv, color rgba.</summary>
+        internal const int MeshFloatsPerVertex = 12;
+
+        private unsafe void SetUpMeshAttributes()
+        {
+            const uint stride = MeshFloatsPerVertex * sizeof(float);
+            _gl.EnableVertexAttribArray(0);
+            _gl.VertexAttribPointer(0, 3, GLEnum.Float, false, stride, (void*)0);
+            _gl.EnableVertexAttribArray(1);
+            _gl.VertexAttribPointer(1, 3, GLEnum.Float, false, stride, (void*)(3 * sizeof(float)));
+            _gl.EnableVertexAttribArray(2);
+            _gl.VertexAttribPointer(2, 2, GLEnum.Float, false, stride, (void*)(6 * sizeof(float)));
+            _gl.EnableVertexAttribArray(3);
+            _gl.VertexAttribPointer(3, 4, GLEnum.Float, false, stride, (void*)(8 * sizeof(float)));
+        }
+
         private unsafe void UploadMatrix(int location, Matrix4x4 m)
         {
             // transpose: FALSE — see the corrected coordinate-convention
@@ -1519,15 +1672,14 @@ void main()
             if (_disposed)
                 return;
 
-            foreach (var tex in _textureCache.Values)
-                _gl.DeleteTexture(tex);
-            _textureCache.Clear();
-
             // Same reasoning as BeginFrame() — Dispose() can be called from
             // yet another thread (e.g. the UI thread swapping in a new
             // sketch via LoadSketch()), and deleting GL objects needs the
             // context current on whichever thread does it.
             _window.GLContext?.MakeCurrent();
+            foreach (var tex in _textureCache.Values)
+                _gl.DeleteTexture(tex.Id);
+            _textureCache.Clear();
             _gl.DeleteVertexArray(_cubeVao);
             _gl.DeleteBuffer(_cubeVbo);
             if (_sphereVao != 0)

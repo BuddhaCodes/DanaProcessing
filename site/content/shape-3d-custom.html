@@ -51,3 +51,31 @@ Shape(_gemShape, <span class="str">0</span>, <span class="str">0</span>);   <spa
 PopMatrix();</pre>
 </div>
 <div class="note"><strong>Scaling.</strong> Unlike the 2D <code class="inline">Shape()</code> overload, <code class="inline">w</code>/<code class="inline">h</code> scaling isn't supported for a 3D mesh — a baked mesh's own coordinates already define its size. Wrap the call in your own <code class="inline">PushMatrix()</code>/<code class="inline">Scale()</code>/<code class="inline">Rotate()</code>/<code class="inline">PopMatrix()</code> instead.</div>
+
+<h3 class="entry-title" id="color-3d">Color, see-through and glow in 3D</h3>
+<p class="entry-desc">The same drawing state you use in 2D works on 3D meshes. Each <code class="inline">Vertex()</code> keeps the <code class="inline">Fill()</code> it was added with, so a mesh can blend from one color to another (and a textured mesh is tinted by it, as in 2D). A fill with alpha is see-through. <code class="inline">BlendMode(BlendModeKind.Add)</code> adds light instead of covering, for flames, sparks and stars; Multiply, Screen, Lightest and Darkest work too. <code class="inline">Texture(pg)</code> with an offscreen <code class="inline">PGraphics</code> shows what was last drawn into it, so a simulation drawn every frame can be wrapped around a mesh. <code class="inline">Background()</code> clears the 3D picture, and 2D drawn during the frame, like <code class="inline">Text()</code> for labels, is laid on top of it.</p>
+<div class="table-wrap">
+  <table>
+    <tr><th>Processing hint</th><th>under Renderer3D</th></tr>
+    <tr><td><code class="inline">Hint("DISABLE_DEPTH_MASK")</code></td><td>Shapes are still hidden by nearer ones but don't hide anything themselves: the usual way to draw many translucent or additive things (particles, smoke, glows) in any order. <code class="inline">ENABLE_DEPTH_MASK</code> turns it back on.</td></tr>
+    <tr><td><code class="inline">Hint("DISABLE_DEPTH_TEST")</code></td><td>Everything is drawn over what's already there, near or far. <code class="inline">ENABLE_DEPTH_TEST</code> turns it back on.</td></tr>
+  </table>
+</div>
+<div class="code-block">
+<pre><span class="cm">// Glowing sparks over a lit scene: added light, drawn in any order.</span>
+NoLights();
+BlendMode(<span class="tp">BlendModeKind</span>.Add);
+Hint(<span class="str">"DISABLE_DEPTH_MASK"</span>);
+BeginShape(<span class="tp">ShapeKind</span>.Quads);
+Texture(glow);                       <span class="cm">// a soft round dot, transparent at the edges</span>
+<span class="kw">foreach</span> (<span class="kw">var</span> s <span class="kw">in</span> sparks)
+{
+    Fill(<span class="str">255</span>, <span class="str">160</span>, <span class="str">60</span>, s.Alpha);
+    Vertex(s.X - <span class="str">4</span>, s.Y - <span class="str">4</span>, s.Z, <span class="str">0</span>, <span class="str">0</span>); Vertex(s.X + <span class="str">4</span>, s.Y - <span class="str">4</span>, s.Z, <span class="str">1</span>, <span class="str">0</span>);
+    Vertex(s.X + <span class="str">4</span>, s.Y + <span class="str">4</span>, s.Z, <span class="str">1</span>, <span class="str">1</span>); Vertex(s.X - <span class="str">4</span>, s.Y + <span class="str">4</span>, s.Z, <span class="str">0</span>, <span class="str">1</span>);
+}
+EndShape();
+Hint(<span class="str">"ENABLE_DEPTH_MASK"</span>);
+BlendMode(<span class="tp">BlendModeKind</span>.Blend);</pre>
+</div>
+<div class="note"><strong>Transparent pixels don't count.</strong> Where a texture is fully transparent (around a glyph cut from a font atlas, at the edge of a sprite), nothing is drawn and nothing behind is hidden. The <em>A Book of Elements</em> example builds every letter that way.</div>

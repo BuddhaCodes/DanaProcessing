@@ -262,4 +262,52 @@ public class PixelsAndDrawingTests
         Assert.True(Offscreen.Pixel(surface, 50, 40).Red < 30, "nothing joins the two");
         Assert.True(Offscreen.Pixel(surface, 50, 80).Red < 30, "the odd vertex draws nothing");
     }
+
+    [Fact]
+    public void An_offscreen_buffer_can_be_a_mesh_texture()
+    {
+        PGraphics pg = null;
+        using var surface = Offscreen.Run(new Drawn(s =>
+        {
+            pg ??= s.CreateGraphics(20, 20);
+            pg.BeginDraw();
+            pg.NoStroke();
+            pg.Fill(255, 0, 0); pg.Rect(0, 0, 10, 20);
+            pg.Fill(0, 0, 255); pg.Rect(10, 0, 10, 20);
+            pg.EndDraw();
+            s.Background(0);
+            s.NoStroke();
+            s.BeginShape(ShapeKind.Quads);
+            s.Texture(pg);
+            s.Vertex(0, 0, 0, 0); s.Vertex(100, 0, 1, 0); s.Vertex(100, 100, 1, 1); s.Vertex(0, 100, 0, 1);
+            s.EndShape();
+        }));
+        var left = Offscreen.Pixel(surface, 25, 50);
+        var right = Offscreen.Pixel(surface, 75, 50);
+        Assert.True(left.Red > 200 && left.Blue < 60, $"left half {left}");
+        Assert.True(right.Blue > 200 && right.Red < 60, $"right half {right}");
+    }
+
+    [Fact]
+    public void A_textured_mesh_is_still_tinted_by_its_vertex_colors()
+    {
+        // White vertices take a faster path; a tint must still darken the picture.
+        PGraphics pg = null;
+        using var surface = Offscreen.Run(new Drawn(s =>
+        {
+            pg ??= s.CreateGraphics(20, 20);
+            pg.BeginDraw(); pg.Background(255); pg.EndDraw();
+            s.Background(0);
+            s.NoStroke();
+            s.BeginShape(ShapeKind.Quads);
+            s.Texture(pg);
+            s.Fill(255); s.Vertex(0, 0, 0, 0); s.Vertex(50, 0, 1, 0); s.Vertex(50, 100, 1, 1); s.Vertex(0, 100, 0, 1);
+            s.Fill(255, 0, 0); s.Vertex(50, 0, 0, 0); s.Vertex(100, 0, 1, 0); s.Vertex(100, 100, 1, 1); s.Vertex(50, 100, 0, 1);
+            s.EndShape();
+        }));
+        var white = Offscreen.Pixel(surface, 25, 50);
+        var tinted = Offscreen.Pixel(surface, 75, 50);
+        Assert.True(white.Red > 230 && white.Green > 230 && white.Blue > 230, $"untinted {white}");
+        Assert.True(tinted.Red > 200 && tinted.Green < 40 && tinted.Blue < 40, $"tinted {tinted}");
+    }
 }

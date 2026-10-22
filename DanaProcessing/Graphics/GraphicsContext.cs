@@ -283,6 +283,11 @@ namespace DanaProcessing
         private void BackgroundColor(SKColor color)
         {
             EnsureReady();
+            if (Renderer == RendererKind.Renderer3D && _backend is Renderer3DBackend backend3D)
+            {
+                backend3D.ClearTo(color);
+                return;
+            }
             using var paint = new SKPaint { Color = color, Style = SKPaintStyle.Fill };
             Canvas.DrawRect(new SKRect(0, 0, Width, Height), paint);
         }
@@ -408,6 +413,8 @@ namespace DanaProcessing
 
         private void SetBlendModeInternal(SKBlendMode mode)
         {
+            if (Renderer == RendererKind.Renderer3D && _backend is Renderer3DBackend backend3D)
+                backend3D.SetBlendMode(mode);
             _blendMode = mode;
             _fillPaint.BlendMode = mode;
             _strokePaint.BlendMode = mode;
@@ -424,8 +431,21 @@ namespace DanaProcessing
         // hint(SOME_CONSTANT) defensively still compile and run instead of
         // failing to build.
         // =====================================================================
-        public void Hint(string hintName) =>
+        public void Hint(string hintName)
+        {
+            // Under Renderer3D the depth hints are real, like Processing's under P3D.
+            if (Renderer == RendererKind.Renderer3D && _backend is Renderer3DBackend backend3D)
+            {
+                switch (hintName.Trim().ToUpperInvariant())
+                {
+                    case "DISABLE_DEPTH_TEST": backend3D.SetDepthTest(false); return;
+                    case "ENABLE_DEPTH_TEST": backend3D.SetDepthTest(true); return;
+                    case "DISABLE_DEPTH_MASK": backend3D.SetDepthMask(false); return;
+                    case "ENABLE_DEPTH_MASK": backend3D.SetDepthMask(true); return;
+                }
+            }
             DanaLogger.Warn($"Hint(\"{hintName}\") no tiene efecto en DanaProcessing — el renderer no distingue entre los hints de Processing (usa Smooth()/NoSmooth() para antialiasing).");
+        }
 
         // =====================================================================
         // PushStyle/PopStyle — https://processing.org/reference/pushStyle_.html.
@@ -782,12 +802,14 @@ namespace DanaProcessing
         private readonly List<SKPoint> _shapeVertexUVs = new List<SKPoint>();
         private readonly List<SKPoint> _curveVertexPoints = new List<SKPoint>();
         private PImage? _shapeTexture;
+        private PGraphics? _shapeTextureGraphics;   // a live offscreen buffer as the texture (Texture(pg))
         private bool _startNewContour = false;
         private bool _shapeHasContour = false;
         private bool _shape3DActive;
         private readonly List<System.Numerics.Vector3> _shape3DPositions = new List<System.Numerics.Vector3>();
         private readonly List<System.Numerics.Vector3> _shape3DNormals = new List<System.Numerics.Vector3>();
         private readonly List<System.Numerics.Vector2> _shape3DUVs = new List<System.Numerics.Vector2>();
+        private readonly List<SKColor> _shape3DColors = new List<SKColor>();
         public void BeginShape(ShapeKind kind = ShapeKind.Polygon)
         {
             _shapeKind = kind;
@@ -797,6 +819,7 @@ namespace DanaProcessing
             _shapeVertexUVs.Clear();
             _curveVertexPoints.Clear();
             _shapeTexture = null;
+            _shapeTextureGraphics = null;
             _startNewContour = false;
             _shapeHasContour = false;
 
@@ -806,6 +829,7 @@ namespace DanaProcessing
                 _shape3DPositions.Clear();
                 _shape3DNormals.Clear();
                 _shape3DUVs.Clear();
+                _shape3DColors.Clear();
             }
         }
 
@@ -838,10 +862,20 @@ namespace DanaProcessing
         }
 
         /// <summary>Sets the texture image for the shape currently being built. Only meaningful for Triangles/TriangleStrip/TriangleFan/Quads/QuadStrip — see the class remark above. Cleared automatically by the next BeginShape().</summary>
-        public void Texture(PImage img) => _shapeTexture = img;
+        public void Texture(PImage img) { _shapeTexture = img; _shapeTextureGraphics = null; }
+
+        /// <summary>
+        /// Uses an offscreen buffer as the shape's texture, like Processing's texture(pg): whatever
+        /// was drawn into it so far, with no copy -- draw a page, a screen, a simulation into a
+        /// PGraphics every frame and wrap it around a mesh. Same rules as Texture(PImage).
+        /// </summary>
+        public void Texture(PGraphics pg) { _shapeTextureGraphics = pg; _shapeTexture = null; }
+
+        /// <summary>The current texture as an image (the 3D renderer uploads images; a PGraphics is snapshotted).</summary>
+        private PImage? ShapeTextureImage() => _shapeTexture ?? _shapeTextureGraphics?.Get();
 
         /// <summary>Clears a texture set by Texture() for the current shape.</summary>
-        public void NoTexture() => _shapeTexture = null;
+        public void NoTexture() { _shapeTexture = null; _shapeTextureGraphics = null; }
 
         /// <summary>Sets how Vertex(x, y, u, v)'s u/v are interpreted from here on — see the TextureModeKind remark and the note on the default above.</summary>
         public void TextureMode(TextureModeKind mode) => _textureMode = mode;
@@ -923,6 +957,7 @@ namespace DanaProcessing
             _shape3DPositions.Add(new System.Numerics.Vector3(x, y, z));
             _shape3DNormals.Add(Require3D().CurrentNormal);
             _shape3DUVs.Add(new System.Numerics.Vector2(u, v));
+            _shape3DColors.Add(_fillPaint.Color);     // like 2D: each vertex keeps the Fill() it was added with
         }
 
         /// <summary>Adds a vertex with explicit texture coordinates (u, v in 0-1, relative to the image set via Texture()), like Processing's vertex(x, y, u, v). Only valid for Triangles/TriangleStrip/TriangleFan/Quads/QuadStrip — Polygon can't mix in per-vertex texture data because of its curved-segment support.</summary>
@@ -1072,7 +1107,7 @@ namespace DanaProcessing
         {
             var flat = TriangulateShape3D();
             if (flat.Length > 0)
-                Require3D().DrawCustomMesh(flat, _fillPaint.Color, _shapeTexture);
+                Require3D().DrawCustomMesh(flat, _fillPaint.Color, _shapeTexture, _shapeTextureGraphics);
         }
 
         /// <summary>Triangulates the vertices/normals recorded since BeginShape() into a flat GL_TRIANGLES buffer (position xyz, normal xyz per vertex) — shared by EndShape3D() (immediate draw) and CreateShape3D() (persistent upload).</summary>
@@ -1081,9 +1116,10 @@ namespace DanaProcessing
             var positions = _shape3DPositions;
             var normals = _shape3DNormals;
             var uvs = _shape3DUVs;
+            var colors = _shape3DColors;
             int n = positions.Count;
 
-            var flat = new List<float>(n * 8);
+            var flat = new List<float>(n * Renderer3DBackend.MeshFloatsPerVertex);
 
             void AddVert(int i)
             {
@@ -1098,6 +1134,11 @@ namespace DanaProcessing
                 flat.Add(nrm.Z);
                 flat.Add(uv.X);
                 flat.Add(uv.Y);
+                var c = colors[i];
+                flat.Add(c.Red / 255f);
+                flat.Add(c.Green / 255f);
+                flat.Add(c.Blue / 255f);
+                flat.Add(c.Alpha / 255f);
             }
             void AddTri(int a, int b, int c)
             { AddVert(a); AddVert(b); AddVert(c); }
@@ -1154,7 +1195,7 @@ namespace DanaProcessing
 
         private bool ShapeNeedsMesh()
         {
-            if (_shapeTexture != null)
+            if (_shapeTexture != null || _shapeTextureGraphics != null)
                 return true;
             if (_shapeVertexColors.Count == 0)
                 return false;
@@ -1274,7 +1315,9 @@ namespace DanaProcessing
 
             var positions = new SKPoint[tris.Count * 3];
             var colors = new SKColor[tris.Count * 3];
-            SKPoint[]? texs = _shapeTexture != null ? new SKPoint[tris.Count * 3] : null;
+            bool textured = _shapeTexture != null || _shapeTextureGraphics != null;
+            float texW = _shapeTexture?.Width ?? _shapeTextureGraphics?.Width ?? 1, texH = _shapeTexture?.Height ?? _shapeTextureGraphics?.Height ?? 1;
+            SKPoint[]? texs = textured ? new SKPoint[tris.Count * 3] : null;
 
             int k = 0;
             foreach (var (a, b, c) in tris)
@@ -1292,18 +1335,24 @@ namespace DanaProcessing
                         var uv = _shapeVertexUVs[idx];
                         texs[k] = _textureMode == TextureModeKind.Image
                             ? uv
-                            : new SKPoint(uv.X * _shapeTexture!.Width, uv.Y * _shapeTexture.Height);
+                            : new SKPoint(uv.X * texW, uv.Y * texH);
                     }
                     k++;
                 }
             }
 
-            using var vertices = SKVertices.CreateCopy(SKVertexMode.Triangles, positions, texs, colors);
+            // A texture under plain white vertices needs no per-vertex colors: Skia then takes a much faster path.
+            bool allWhite = texs != null;
+            for (int i = 0; allWhite && i < colors.Length; i++) allWhite = colors[i] == SKColors.White;
+            using var vertices = SKVertices.CreateCopy(SKVertexMode.Triangles, positions, texs, allWhite ? null : colors);
             // White: with no texture, Modulate multiplies the vertex colors by the paint's
             // color, and an SKPaint starts out black -- which turned every Gouraud mesh black.
             using var meshPaint = new SKPaint { IsAntialias = true, Color = SKColors.White, BlendMode = _blendMode };
+            using var snapshot = _shapeTextureGraphics?.SnapshotForDraw();
             if (_shapeTexture != null)
                 meshPaint.Shader = SKShader.CreateBitmap(_shapeTexture.Bitmap, _textureWrapX, _textureWrapY);
+            else if (snapshot != null)
+                meshPaint.Shader = snapshot.ToShader(_textureWrapX, _textureWrapY);
 
             // Modulate multiplies the (optional) texture shader's color by
             // each vertex's color; with no shader, the paint's own color

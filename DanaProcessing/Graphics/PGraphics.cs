@@ -14,6 +14,10 @@ namespace DanaProcessing
     public sealed class PGraphics : GraphicsContext
     {
         private bool _drawing;
+
+        /// <summary>How many times BeginDraw()/EndDraw() has finished on this buffer -- the 3D
+        /// renderer uses it to know when a buffer used as a texture has a new picture.</summary>
+        internal int DrawCount { get; private set; }
         private bool _disposed;
 
         /// <summary>Use Sketch.CreateGraphics(w, h) instead of calling this directly, matching Processing's createGraphics().</summary>
@@ -48,6 +52,7 @@ namespace DanaProcessing
             _backend!.EndFrame();
             Canvas.Flush();
             _drawing = false;
+            DrawCount++;
         }
 
         protected override void EnsureReady()
