@@ -2440,7 +2440,7 @@ public class InsideKestrel : Sketch
     float shake;
 
     PFont font, mono, big;
-    readonly PointCloud cloud = new(), haze = new(), lights = new();
+    readonly PointCloud cloud = new(), haze = new(), lights = new(), shells = new();
     View3D view;
     string capTitle = """", capBody = """"; float capAt = -10;
     int selected = 5;
@@ -2461,6 +2461,10 @@ public class InsideKestrel : Sketch
         lights.Glow = true;
         lights.DepthSort = false;
         lights.SizeInWorld = false;
+        // The spheres' shells too: fine points, as many as the sphere's size on screen asks for.
+        shells.Glow = false;                            // solid dots: crisp up close
+        shells.SizeInWorld = false;
+        shells.DepthSort = false;                       // light adds up: order doesn't matter
         // In depth, the way a request travels: the internet, the gateway, a ring of four services, the database.
         services[0].Pos = new PVector(0, 2, -52);    services[0].Color = Color(150, 160, 210);
         services[1].Pos = new PVector(0, 0, -28);    services[1].Color = Color(70, 190, 255);
@@ -2658,12 +2662,14 @@ public class InsideKestrel : Sketch
         Links();
         cloud.Clear();
         lights.Clear();
+        shells.Clear();
         Spheres();
         ThreadPool();
         Shockwave();
         SparksAndTrails();
         Debris();
         Points(cloud, view);
+        Points(shells, view);
         Points(lights, view);
         BlendMode(BlendModeKind.Blend);
         Labels();
@@ -2882,13 +2888,16 @@ public class InsideKestrel : Sketch
             }
     }
 
-    /// <summary>Each service: a lit sphere of points (bright on the key-light side, a rim of light at its edge) around a glowing core.</summary>
+    /// <summary>
+    /// Each service: a lit sphere of fine points (bright on the key-light side, a rim of light
+    /// at its edge) around a glowing core. The closer the camera, the more points: a sphere
+    /// filling the screen gets thousands, one far away a couple of hundred -- like a game's
+    /// level of detail, so a close-up is as sharp as a wide shot.
+    /// </summary>
     void Spheres()
     {
         var light = new PVector(-0.5f, 0.7f, -0.5f);
         light.Normalize();
-        var toEye = PVector.Sub(view.Eye, view.Target);
-        toEye.Normalize();
         for (int i = 0; i < services.Length; i++)
         {
             var s = services[i];
@@ -2896,27 +2905,51 @@ public class InsideKestrel : Sketch
             float r = (isDb ? 4.2f : isNet ? 2.4f : 2.8f) + MathF.Sqrt(s.Rate) * 0.12f + s.Pulse * 0.6f;
             float heat = Math.Clamp((s.Latency - 30) / 300, 0, 1);
             float err = Math.Clamp(s.Errors * 3, 0, 1);
-            int count = isNet ? 160 : isDb ? 420 : 300;
             var c = s.Color;
             float R = Lerp(Lerp(c.R, 255, heat), 255, err), G = Lerp(Lerp(c.G, 140, heat), 50, err), B = Lerp(Lerp(c.B, 40, heat), 50, err);
-            Add(cloud, s.Pos.X, s.Pos.Y, s.Pos.Z, Color(R, G, B, 60 + 70 * s.Pulse), r * 2.4f);
+            Add(cloud, s.Pos.X, s.Pos.Y, s.Pos.Z, Color(R, G, B, 70 + 70 * s.Pulse), r * 2.3f);
+
+            // How big is it on screen? That decides how many points it gets (in steps, so they don't shuffle every frame).
+            var (_, _, depth) = view.Project(s.Pos, Width, Height);
+            if (depth <= 0.5f) continue;
+            float px = r * view.Scale(depth, Height);
+            int count = Math.Clamp((int)(px * px * 0.3f / 250) * 250, isNet ? 250 : 500, 6000);
+            float dot = Math.Clamp(px / 45, 1.7f, 3.2f);       // point size in pixels
+            var toEye = PVector.Sub(view.Eye, s.Pos);
+            toEye.Normalize();
+            float focus = PVector.Dist(view.Eye, view.Target), d = PVector.Dist(view.Eye, s.Pos);
+            float blur = Math.Clamp(Math.Abs(d - focus) / Math.Max(8, focus) * 1.8f, 0, 2);
+            float fog = Math.Clamp(1 - (d - 70) / 110, 0.12f, 1);
+            float spin = sceneT * (0.25f + 0.05f * i);
             for (int k = 0; k < count; k++)
             {
-                float y = 1 - 2 * (k + 0.5f) / count, rad = MathF.Sqrt(1 - y * y), th = k * 2.39996f + sceneT * (0.25f + 0.05f * i);
-                var n = new PVector(Cos(th) * rad, y, Sin(th) * rad);
-                float wobble = 1 + 0.07f * Sin(k * 1.7f + sceneT * 3) * Math.Min(1, s.Rate / 30);
-                float lit = 0.25f + 0.75f * Math.Max(0, n.X * light.X + n.Y * light.Y + n.Z * light.Z);
-                float rim = MathF.Pow(1 - Math.Abs(n.X * toEye.X + n.Y * toEye.Y + n.Z * toEye.Z), 3);
+                float y = 1 - 2 * (k + 0.5f) / count, rad = MathF.Sqrt(1 - y * y), th = k * 2.39996f + spin;
+                float nx = Cos(th) * rad, nz = Sin(th) * rad;
+                float wobble = 1 + 0.05f * Sin(k * 0.37f + sceneT * 3) * Math.Min(1, s.Rate / 30);
+                float lit = 0.4f + 0.6f * Math.Max(0, nx * light.X + y * light.Y + nz * light.Z);
+                float facing = nx * toEye.X + y * toEye.Y + nz * toEye.Z;
+                float rim = MathF.Pow(1 - Math.Abs(facing), 3);
+                if (facing < -0.15f) { if (count > 1500) continue; lit *= 0.35f; }   // the far side: dim, and skipped when close
+                // Bands of latitude, like a planet's, turning with it.
+                float band = 0.75f + 0.25f * Sin(y * 18 + i);
                 bool flicker = err > 0.05f && Hash(k + (int)(Now * 12)) < err * 0.5f;
-                float a = (i == selected ? 210 : 160) * (lit * 0.8f + rim * 0.9f) * (flicker ? 0.25f : 1);
-                Add(cloud, s.Pos.X + n.X * r * wobble, s.Pos.Y + n.Y * r * wobble, s.Pos.Z + n.Z * r * wobble, Color(R, G, B, Math.Min(255, a)), 0.42f);
+                float a = (i == selected ? 255 : 210) * (lit * 0.85f * band + rim * 0.9f) * (flicker ? 0.25f : 1) * fog / (1 + blur);
+                if (a < 4) continue;
+                shells.Add(s.Pos.X + nx * r * wobble, s.Pos.Y + y * r * wobble, s.Pos.Z + nz * r * wobble,
+                           Color(Math.Min(255, R + 40 * rim), Math.Min(255, G + 40 * rim), Math.Min(255, B + 40 * rim), Math.Min(255, a)),
+                           dot * (1 + blur * 0.8f));
             }
             if (ChaosText(s.Name) != """")
-                for (int k = 0; k < 140; k++)
+            {
+                // A ring around a service someone is breaking: as fine as the shell.
+                int ringCount = Math.Clamp((int)((r + 1.6f) * view.Scale(depth, Height) * TWO_PI / 3), 120, 2500);
+                for (int k = 0; k < ringCount; k++)
                 {
-                    float th = k / 140f * TWO_PI + sceneT * 1.5f;
-                    Add(cloud, s.Pos.X + Cos(th) * (r + 1.6f), s.Pos.Y + Sin(th * 3 + sceneT) * 0.3f, s.Pos.Z + Sin(th) * (r + 1.6f), Color(255, 110, 50, 170), 0.38f);
+                    float th = k / (float)ringCount * TWO_PI + sceneT * 1.5f;
+                    shells.Add(s.Pos.X + Cos(th) * (r + 1.6f), s.Pos.Y + Sin(th * 3 + sceneT) * 0.3f, s.Pos.Z + Sin(th) * (r + 1.6f),
+                               Color(255, 120, 60, 200 * fog / (1 + blur)), dot * 1.3f * (1 + blur * 0.8f));
                 }
+            }
         }
     }
 
