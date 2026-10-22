@@ -196,4 +196,70 @@ public class PixelsAndDrawingTests
         Assert.True(nearGreen.Green > 180 && nearGreen.Red < 80, $"green corner {nearGreen}");
         Assert.True(nearBlue.Blue > 180 && nearBlue.Red < 80, $"blue corner {nearBlue}");
     }
+
+    [Fact]
+    public void Glow_points_fade_from_the_middle_to_the_edge()
+    {
+        static SKColor Center(bool glow, out SKColor nearEdge)
+        {
+            var cloud = new PointCloud { Glow = glow, SizeInWorld = false, DepthSort = false };
+            using var surface = Offscreen.Run(new Drawn(s =>
+            {
+                s.Background(0);
+                cloud.Clear();
+                cloud.Add(0, 0, 0, s.Color(255, 255, 255), 60);
+                s.Points(cloud, View3D.Orbit(0, 0, 10));
+            }));
+            nearEdge = Offscreen.Pixel(surface, 50 + 24, 50);
+            return Offscreen.Pixel(surface, 50, 50);
+        }
+        var hard = Center(false, out var hardEdge);
+        var soft = Center(true, out var softEdge);
+        Assert.True(hard.Red > 240 && hardEdge.Red > 240, $"a hard point is solid ({hard}, {hardEdge})");
+        Assert.True(soft.Red > 200, $"a glow is bright in the middle ({soft})");
+        Assert.True(softEdge.Red < 90, $"and faint near its edge ({softEdge})");
+    }
+
+    [Fact]
+    public void Points_follow_the_blend_mode_so_lights_add_up()
+    {
+        static SKColor Overlap(bool add)
+        {
+            var cloud = new PointCloud { SizeInWorld = false, DepthSort = false };
+            using var surface = Offscreen.Run(new Drawn(s =>
+            {
+                s.Background(0);
+                cloud.Clear();
+                cloud.Add(0, 0, 0, s.Color(255, 0, 0), 40);
+                cloud.Add(0, 0, 0, s.Color(0, 255, 0), 40);
+                if (add) s.BlendMode(BlendModeKind.Add);
+                s.Points(cloud, View3D.Orbit(0, 0, 10));
+            }));
+            return Offscreen.Pixel(surface, 50, 50);
+        }
+        var normal = Overlap(false);
+        var added = Overlap(true);
+        Assert.True(normal.Red < 30 && normal.Green > 230, $"normally the last one covers ({normal})");
+        Assert.True(added.Red > 230 && added.Green > 230, $"with Add, red + green = yellow ({added})");
+    }
+
+    [Fact]
+    public void Lines_shape_draws_each_pair_as_its_own_segment()
+    {
+        using var surface = Offscreen.Run(new Drawn(s =>
+        {
+            s.Background(0);
+            s.Stroke(255);
+            s.StrokeWeight(3);
+            s.BeginShape(ShapeKind.Lines);
+            s.Vertex(10, 20); s.Vertex(90, 20);
+            s.Vertex(10, 60); s.Vertex(90, 60);
+            s.Vertex(50, 90);                         // an odd vertex out: ignored
+            s.EndShape();
+        }));
+        Assert.True(Offscreen.Pixel(surface, 50, 20).Red > 200, "first segment");
+        Assert.True(Offscreen.Pixel(surface, 50, 60).Red > 200, "second segment");
+        Assert.True(Offscreen.Pixel(surface, 50, 40).Red < 30, "nothing joins the two");
+        Assert.True(Offscreen.Pixel(surface, 50, 80).Red < 30, "the odd vertex draws nothing");
+    }
 }

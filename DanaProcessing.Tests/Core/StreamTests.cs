@@ -217,6 +217,10 @@ public class StreamTests
         Assert.Equal("star", call.Headers["x-event"]);
         Assert.Equal("starred", call.JSON().GetString("action"));
         feed.Close();
+        // Closing it stops its web server: the port is free again.
+        using var again = new HttpListener();
+        again.Prefixes.Add($"http://localhost:{port}/github/");
+        again.Start();
     }
 
     [Fact]

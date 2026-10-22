@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -21,6 +22,12 @@ namespace DanaProcessing
         internal JSONObject(JsonObject node) => Node = node;
 
         public bool HasKey(string key) => Node.ContainsKey(key);
+
+        /// <summary>The object's keys, in order, like Processing's keys().</summary>
+        public string[] Keys() => Node.Select(kv => kv.Key).ToArray();
+
+        /// <summary>How many keys it has, like Processing's size().</summary>
+        public int Size() => Node.Count;
 
         public string GetString(string key, string fallback = "") => Node[key] is JsonValue v && v.TryGetValue<string>(out var s) ? s : fallback;
         public int GetInt(string key, int fallback = 0) => Node[key] is JsonValue v && v.TryGetValue<int>(out var i) ? i : fallback;

@@ -94,6 +94,13 @@ namespace DanaProcessing
         /// <summary>Round points (hexagons) or squares; squares are cheaper. Points under 3 pixels are always squares.</summary>
         public bool Round = true;
 
+        /// <summary>
+        /// Soft points: full color in the middle fading to nothing at the edge, like a light.
+        /// With BlendMode(BlendModeKind.Add), overlapping glows add up -- streams of sparks look
+        /// like long-exposure photos of traffic.
+        /// </summary>
+        public bool Glow;
+
         /// <summary>Draw far points first so near ones cover them (on by default).</summary>
         public bool DepthSort = true;
 
@@ -198,7 +205,7 @@ namespace DanaProcessing
             // Each point: a square (2 triangles) or, when round and big enough, a hexagon (6).
             int needed = 0;
             for (int q = 0; q < m; q++)
-                needed += cloud.Round && cloud.Sr[cloud.Order[q]] >= 1.5f ? 18 : 6;
+                needed += (cloud.Round || cloud.Glow) && cloud.Sr[cloud.Order[q]] >= 1.5f ? 18 : 6;
             if (cloud.Vertices.Length < needed)
             {
                 cloud.Vertices = new SKPoint[needed + needed / 4];
@@ -213,7 +220,7 @@ namespace DanaProcessing
                 float x = cloud.Sx[i], y = cloud.Sy[i], r = cloud.Sr[i];
                 uint c = cloud.Rgba[i];
                 var color = new SKColor((byte)c, (byte)(c >> 8), (byte)(c >> 16), (byte)(c >> 24));
-                if (cloud.Round && r >= 1.5f)
+                if ((cloud.Round || cloud.Glow) && r >= 1.5f)
                 {
                     float hx = r * 0.8660254f, hy = r * 0.5f;
                     var p0 = new SKPoint(x, y - r); var p1 = new SKPoint(x + hx, y - hy); var p2 = new SKPoint(x + hx, y + hy);
@@ -225,7 +232,14 @@ namespace DanaProcessing
                     v[k++] = center; v[k++] = p3; v[k++] = p4;
                     v[k++] = center; v[k++] = p4; v[k++] = p5;
                     v[k++] = center; v[k++] = p5; v[k++] = p0;
-                    for (int j = 0; j < 18; j++) col[k - 18 + j] = color;
+                    if (cloud.Glow)
+                    {
+                        // The middle keeps the color, the rim fades out: a soft dot of light.
+                        var rim = color.WithAlpha(0);
+                        for (int j = 0; j < 18; j++) col[k - 18 + j] = j % 3 == 0 ? color : rim;
+                    }
+                    else
+                        for (int j = 0; j < 18; j++) col[k - 18 + j] = color;
                 }
                 else
                 {
@@ -237,7 +251,8 @@ namespace DanaProcessing
             var positions = k == v.Length ? v : v.AsSpan(0, k).ToArray();
             var colors = k == col.Length ? col : col.AsSpan(0, k).ToArray();
             using var vertices = SKVertices.CreateCopy(SKVertexMode.Triangles, positions, null, colors);
-            using var paint = new SKPaint { IsAntialias = false, Color = SKColors.White };
+            // The sketch's BlendMode() applies: BlendMode(Add) makes the points add up like light.
+            using var paint = new SKPaint { IsAntialias = false, Color = SKColors.White, BlendMode = _blendMode };
             Canvas.DrawVertices(vertices, SKBlendMode.Dst, paint);
         }
     }

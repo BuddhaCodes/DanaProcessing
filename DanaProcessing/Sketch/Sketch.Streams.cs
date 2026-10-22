@@ -95,11 +95,16 @@ namespace DanaProcessing
             return list;
         }
 
+        /// <summary>Anything else to let go of on Close() (a webhook's web server).</summary>
+        internal Action OnClose;
+
         /// <summary>Closes the connection for good (the sketch stopping does it too).</summary>
         public void Close()
         {
             State = FeedState.Closed;
             try { Cancel.Cancel(); } catch (ObjectDisposedException) { }
+            var extra = Interlocked.Exchange(ref OnClose, null);
+            try { extra?.Invoke(); } catch { }
         }
 
         internal void Push(T message)
@@ -310,8 +315,9 @@ namespace DanaProcessing
                 DanaLogger.Warn($"ListenWebhook({port}) falló: {ex.Message}");
                 return feed;
             }
+            feed.OnClose = () => { try { listener.Stop(); listener.Close(); } catch { } };
             Task.Run(() => Streams.RunWebhook(feed, listener));
-            return Track(feed, () => { feed.Close(); try { listener.Stop(); listener.Close(); } catch { } });
+            return Track(feed, feed.Close);
         }
 
         // =====================================================================

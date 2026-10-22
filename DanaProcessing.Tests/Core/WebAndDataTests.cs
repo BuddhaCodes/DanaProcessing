@@ -156,4 +156,13 @@ public class WebAndDataTests : IDisposable
         var map = Wait(new Bare().RequestGeoJSON(_base + "geo.json"));
         Assert.Equal(3, map.Count);
     }
+
+    [Fact]
+    public void A_json_object_lists_its_keys_like_processing()
+    {
+        var o = JSONObject.Parse("{\"payments\": 400, \"db\": 120}");
+        Assert.Equal(new[] { "payments", "db" }, o.Keys());
+        Assert.Equal(2, o.Size());
+        Assert.Empty(new JSONObject().Keys());
+    }
 }

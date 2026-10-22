@@ -1013,7 +1013,10 @@ namespace DanaProcessing
                     Canvas.DrawPoints(SKPointMode.Points, _shapeVertices.ToArray(), _strokePaint);
                     break;
                 case ShapeKind.Lines:
-                    DrawGrouped(_shapeVertices, 2, closedAndFillable: false);
+                    // Every pair of vertices is a segment: one Skia call for all of them
+                    // (a path per segment made thousands of lines -- trails, grids -- slow).
+                    if (_strokeEnabled && _shapeVertices.Count >= 2)
+                        Canvas.DrawPoints(SKPointMode.Lines, _shapeVertices.ToArray(), _strokePaint);
                     break;
                 case ShapeKind.Triangles:
                     if (ShapeNeedsMesh())
@@ -1298,7 +1301,7 @@ namespace DanaProcessing
             using var vertices = SKVertices.CreateCopy(SKVertexMode.Triangles, positions, texs, colors);
             // White: with no texture, Modulate multiplies the vertex colors by the paint's
             // color, and an SKPaint starts out black -- which turned every Gouraud mesh black.
-            using var meshPaint = new SKPaint { IsAntialias = true, Color = SKColors.White };
+            using var meshPaint = new SKPaint { IsAntialias = true, Color = SKColors.White, BlendMode = _blendMode };
             if (_shapeTexture != null)
                 meshPaint.Shader = SKShader.CreateBitmap(_shapeTexture.Bitmap, _textureWrapX, _textureWrapY);
 

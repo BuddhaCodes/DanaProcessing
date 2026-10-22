@@ -28,6 +28,12 @@ Then open the **Inside Kestrel** sample in Dana (or any SignalR / SSE client), a
 http://localhost:5199 on your phone or browser to break things. To listen on another address:
 `dotnet run --urls http://0.0.0.0:5199` (then point the sketch's `HubUrl` at it).
 
+## What you hear in the sketch
+
+A heart monitor: a **beep** every 25 customer requests served (the tempo is the throughput), a
+**buzz** when one fails, a deep **boom** on each full (gen 2) garbage collection, a **hum** that rises
+and swells with the thread pool queue, and the long **flatline** tone when nothing is being served.
+
 ## What to try
 
 | Do this | And watch |

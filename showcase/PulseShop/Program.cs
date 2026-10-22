@@ -424,6 +424,7 @@ sealed class Telemetry(IHubContext<PulseHub> hub, Chaos chaos) : BackgroundServi
                 gen0 = GC.CollectionCount(0),
                 gen1 = GC.CollectionCount(1),
                 gen2 = GC.CollectionCount(2),
+                gcPauseMs = GC.GetTotalPauseDuration().TotalMilliseconds,   // the world stopped this long, in total
                 heapMB = GC.GetTotalMemory(false) / 1048576.0,
                 allocMBps,
                 threadPoolQueue = ThreadPool.PendingWorkItemCount,
