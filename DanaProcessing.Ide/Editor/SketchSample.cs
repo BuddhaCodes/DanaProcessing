@@ -113,8 +113,8 @@ namespace DanaProcessing.Ide.Editor
     /// </summary>
     public static partial class SketchSamples
     {
-        /// <summary>Every sample: this file's catalog, then SketchSamples.Extras.cs, then the ones that use public web APIs (SketchSamples.Apis.cs).</summary>
-        public static SketchSample[] All => _all ??= Catalog.Concat(Extras).Concat(Apis).ToArray();
+        /// <summary>Every sample: this file's catalog, then SketchSamples.Extras.cs, then the ones that use public web APIs (SketchSamples.Apis.cs), then SketchSamples.Book.cs.</summary>
+        public static SketchSample[] All => _all ??= Catalog.Concat(Extras).Concat(Apis).Concat(Books).ToArray();
         private static SketchSample[]? _all;
 
         private static readonly SketchSample[] Catalog =
