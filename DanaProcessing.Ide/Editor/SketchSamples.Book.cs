@@ -9,8 +9,8 @@ namespace DanaProcessing.Ide.Editor
         {
             new SketchSample(
                 Loc.Tr("Un libro de los elementos (3D)", "A Book of Elements (3D)"),
-                Loc.Tr("Un libro en 3D de verdad (en la GPU) donde cada página está viva y las palabras juegan. Ocho poemas de dominio público, cada uno con su elemento: tocá una palabra del Tigre de Blake y se prende fuego, vuela como brasas y vuelve; las palabras de Coleridge flotan en agua que hace ondas bajo tu dedo; la hierba de Whitman crece a través de la página y levanta las letras en sus tallos; el espejo de Carroll es una bola de cristal que rueda sobre el texto, lo curva y lo da vuelta (hacé clic para romperla); la nieve de Longfellow cae por la habitación y se posa sobre las letras hasta que se la sacuden; el viento del oeste de Shelley se lleva las palabras como hojas de otoño; el hielo de Frost hace crecer cristales desde las letras (tu mouse es tibio); y las palabras de Teasdale suben a la noche y forman constelaciones. Cada letra es su propio objeto 3D, recortado de un atlas de glifos y apoyado en la página aunque la página se esté curvando al girar. Usa lo nuevo del renderer 3D: color por vértice, transparencias, BlendMode(Add) para la luz, Hint(\"DISABLE_DEPTH_MASK\") para partículas y texto 2D encima. Arrastrá el borde de una página para girarla (o Izquierda/Derecha), tocá las páginas, hacé clic en el Índice para saltar, arrastrá la mesa para mirar alrededor y usá la rueda para acercarte.",
-                       "A real 3D book (on the GPU) where every page is alive and the words play. Eight public-domain poems, each living with its element: touch a word of Blake's Tyger and it catches fire, flies up as embers and comes back; Coleridge's words float on water that ripples under your finger; Whitman's grass grows up through the page and lifts the letters on its blades; Carroll's looking-glass is a glass ball rolling over the text, bending it and turning it backwards (click it to shatter it); Longfellow's snow falls through the room and settles on the letters until they shake it off; Shelley's west wind blows the words away as autumn leaves; Frost's ice grows crystals out of the letters (your mouse is warm); and Teasdale's words rise into the night as constellations. Every letter is its own 3D object, cut from a glyph atlas and laid on the page even while the page curls as it turns. It uses what's new in the 3D renderer: per-vertex color, transparency, BlendMode(Add) for light, Hint(\"DISABLE_DEPTH_MASK\") for particles, and 2D text on top. Drag a page's edge to turn it (or Left/Right), touch the pages, click the Contents to jump, drag the table to look around and use the wheel to zoom."),
+                Loc.Tr("Un libro en 3D de verdad (en la GPU) donde cada página está viva y las palabras juegan. Ocho poemas de dominio público, cada uno con su elemento: tocá una palabra del Tigre de Blake y se prende fuego, vuela como brasas y vuelve; las palabras de Coleridge flotan en agua que hace ondas bajo tu dedo; la hierba de Whitman crece a través de la página y levanta las letras en sus tallos; el espejo de Carroll es una bola de cristal que rueda sobre el texto, lo curva y lo da vuelta (hacé clic para romperla); la nieve de Longfellow cae por la habitación y se posa sobre las letras hasta que se la sacuden; el viento del oeste de Shelley se lleva las palabras como hojas de otoño; el hielo de Frost hace crecer cristales desde las letras (tu mouse es tibio); y las palabras de Teasdale suben a la noche y forman constelaciones. Está escrito a mano (Dancing Script y Pinyon Script, fuentes libres que se descargan una vez y quedan guardadas) y se ve en HD: papel envejecido, cuero, madera, llamas, copos, hojas y estrellas texturizados, y cristal y hielo con matcaps. Cada letra es su propio objeto 3D, recortado de un atlas de glifos y apoyado en la página aunque la página se esté curvando al girar. Usa lo nuevo del renderer 3D: color por vértice, transparencias, BlendMode(Add) para la luz, Hint(\"DISABLE_DEPTH_MASK\") para partículas y texto 2D encima. Arrastrá el borde de una página para girarla (o Izquierda/Derecha), tocá las páginas, hacé clic en el Índice para saltar, arrastrá la mesa para mirar alrededor y usá la rueda para acercarte.",
+                       "A real 3D book (on the GPU) where every page is alive and the words play. Eight public-domain poems, each living with its element: touch a word of Blake's Tyger and it catches fire, flies up as embers and comes back; Coleridge's words float on water that ripples under your finger; Whitman's grass grows up through the page and lifts the letters on its blades; Carroll's looking-glass is a glass ball rolling over the text, bending it and turning it backwards (click it to shatter it); Longfellow's snow falls through the room and settles on the letters until they shake it off; Shelley's west wind blows the words away as autumn leaves; Frost's ice grows crystals out of the letters (your mouse is warm); and Teasdale's words rise into the night as constellations. It's written by hand (Dancing Script and Pinyon Script, free fonts downloaded once and kept) and drawn in HD: aged paper, leather, wood, and textured flames, flakes, leaves and stars, with matcaps for the glass and the ice. Every letter is its own 3D object, cut from a glyph atlas and laid on the page even while the page curls as it turns. It uses what's new in the 3D renderer: per-vertex color, transparency, BlendMode(Add) for light, Hint(\"DISABLE_DEPTH_MASK\") for particles, and 2D text on top. Drag a page's edge to turn it (or Left/Right), touch the pages, click the Contents to jump, drag the table to look around and use the wheel to zoom."),
                 BookOfElements,
                 new[] { SampleTag.ThreeD, SampleTag.Gpu, SampleTag.Text, SampleTag.Interaction, SampleTag.Particles }),
         };
@@ -29,7 +29,9 @@ namespace DanaProcessing.Ide.Editor
 //
 // Every letter is its own little 3D object: a glyph cut from an atlas texture, laid on the
 // page wherever the page is -- even on a sheet curling as it turns -- and free to leave it.
-// The pages, the table and the covers are lit; flames, sparks and stars add light.
+// The pages, the table and the covers are lit; flames, sparks and stars add light. The book
+// is written by hand: Dancing Script and Pinyon Script (free Google Fonts, downloaded once and
+// kept), with a little tremble of the pen in every letter.
 //
 // Turn pages: drag a page's outer edge across, or Left/Right (Space turns forward). Touch
 // the pages with the mouse; click on the Contents to jump. Drag the table to look around,
@@ -67,23 +69,39 @@ public class BookOfElements : Sketch
     Vector3 fireLight; float fireLightPower;  // the Tyger's flames light the room
 
     // ---- shared pictures ----------------------------------------------------------------------
-    PImage atlas, glowTex, leafTex, woodTex, shadowTex, frostTex;
+    PImage atlas, glowTex, starTex, flameTex, flakeTex, leafTex, woodTex, shadowTex, frostTex, edgeTex,
+           glassCap, iceCap, causticTex, windowTex, charTex, crackTex, bladeTex;
     PFont fRegular, fItalic, fBold, ui;
-    readonly Glyph[] glyphs = new Glyph[600];
-    readonly Dictionary<(int, char), int> glyphOf = new();
-    const int Cell = 80, CellH = 92, AtlasSize = 2048, FontPx = 60, Base = 68, Pad = 10;
+    Glyph[] glyphs = new Glyph[600];
+    Dictionary<(int, char), int> glyphOf = new();
+    // The glyph atlas: big cells, so a script's swashes have room, at a size that stays crisp in HD.
+    const int Cell = 120, CellH = 140, AtlasW = 4096, AtlasH = 2048, FontPx = 84, Base = 98, Pad = 22;
+    const int PaperScale = 2;                 // page pictures are drawn at twice the page units
+
+    // The handwriting: two free fonts (SIL Open Font License), downloaded once and kept.
+    const string Fonts = ""https://raw.githubusercontent.com/google/fonts/main/ofl/"";
+    Request<byte[]> bodyFont, titleFont;
+    bool handwritten;
 
     struct Glyph { public float U0, V0, U1, V1, Advance; }
 
     public override void Setup()
     {
-        Size(1280, 800, RendererKind.Renderer3D);
-        fRegular = CreateFont(""Georgia"", FontPx);
-        fItalic = CreateFont(""Georgia Italic"", FontPx);
-        fBold = CreateFont(""Georgia Bold"", FontPx);
-        ui = CreateFont(""Segoe UI"", 13);
-        BuildAtlas();
+        Renderer3DSettings.DefaultSampleCount = 8;           // smoother edges
+        Size(1920, 1080, RendererKind.Renderer3D);
+        // Until the handwriting arrives (or offline): Windows' own script fonts.
+        fRegular = fItalic = CreateFont(""Segoe Script"", FontPx);
+        fBold = CreateFont(""Gabriola"", FontPx);
+        ui = CreateFont(""Segoe UI"", 18);
+        bodyFont = RequestBytes(Fonts + ""dancingscript/DancingScript%5Bwght%5D.ttf"", cacheFor: TimeSpan.FromDays(365));
+        titleFont = RequestBytes(Fonts + ""pinyonscript/PinyonScript-Regular.ttf"", cacheFor: TimeSpan.FromDays(365));
         BuildPictures();
+        BuildBook();
+    }
+
+    void BuildBook()
+    {
+        BuildAtlas();
         pages = new Page[]
         {
             new CoverPage(this), new ContentsPage(this),
@@ -96,6 +114,22 @@ public class BookOfElements : Sketch
         for (int i = 0; i < pages.Length; i++) { pages[i].Number = i; pages[i].Build(); }
     }
 
+    /// <summary>When both fonts have arrived, the book is written again, by hand.</summary>
+    void Handwriting()
+    {
+        if (handwritten || !bodyFont.Done || !titleFont.Done) return;
+        handwritten = true;
+        if (!bodyFont.Ready || !titleFont.Ready) return;            // offline: keep the fallback
+        string dir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), ""dana-book-of-elements"");
+        System.IO.Directory.CreateDirectory(dir);
+        string body = System.IO.Path.Combine(dir, ""DancingScript.ttf""), title = System.IO.Path.Combine(dir, ""PinyonScript.ttf"");
+        System.IO.File.WriteAllBytes(body, bodyFont.Value);
+        System.IO.File.WriteAllBytes(title, titleFont.Value);
+        fRegular = fItalic = LoadFont(body, FontPx);
+        fBold = LoadFont(title, FontPx);
+        BuildBook();
+    }
+
     float Now => Millis() / 1000f;
 
     // =====================================================================================
@@ -104,6 +138,7 @@ public class BookOfElements : Sketch
     public override void Draw()
     {
         float t = Now, dt = 1 / 60f;
+        Handwriting();
         Turning(t);
         if (flipping < 0 && pendingFlips.Count > 0) Flip(pendingFlips.Dequeue(), fast: true);
         if (t - lastInput > 25 && flipping < 0) { lastInput = t - 16; Flip(turned < Sheets ? +1 : -1); if (turned == Sheets) { for (int i = 1; i < Sheets; i++) pendingFlips.Enqueue(-1); } }
@@ -176,6 +211,7 @@ public class BookOfElements : Sketch
         // Light-adding things, last: no lights, added on top, never hiding each other.
         NoLights();
         Hint(""DISABLE_DEPTH_MASK"");
+        foreach (var p in pages) if (p.Surface != null && p.Live > 0.02f) p.DrawUnlit();
         foreach (var p in pages) if (p.Surface != null && p.Live > 0.02f) p.DrawSoft();
         DrawSprites(soft);
         DrawStreaks(softStreaks);
@@ -281,7 +317,7 @@ public class BookOfElements : Sketch
         N(Vector3.UnitY);
         BeginShape(ShapeKind.Quads);
         Texture(woodTex);
-        VT(new(-900, 0, -560), 0, 0); VT(new(900, 0, -560), 1, 0); VT(new(900, 0, 620), 1, 1); VT(new(-900, 0, 620), 0, 1);
+        VT(new(-1000, 0, -660), 0, 0); VT(new(1000, 0, -660), 1, 0); VT(new(1000, 0, 700), 1, 1); VT(new(-1000, 0, 700), 0, 1);
         EndShape();
         // The book's soft shadow on the wood.
         Hint(""DISABLE_DEPTH_MASK"");
@@ -306,16 +342,35 @@ public class BookOfElements : Sketch
     void Covers(float lh, float rh)
     {
         var leather = Rgb(112, 28, 34);
-        var paper = Rgb(226, 214, 190);
         Specular(70); Shininess(18);
         if (turned > 0 || flipping >= 0) Box3(new(-PW / 2 - 3, Board / 2, 0), new(PW + 8, Board, PH + 12), leather);
         if (turned < Sheets || flipping >= 0) Box3(new(PW / 2 + 3, Board / 2, 0), new(PW + 8, Board, PH + 12), leather);
-        Specular(0); Shininess(0);
-        if (lh > 0.05f) Box3(new(-PW / 2, Board + lh / 2, 0), new(PW - 0.4f, lh, PH - 0.4f), paper);
-        if (rh > 0.05f) Box3(new(PW / 2, Board + rh / 2, 0), new(PW - 0.4f, rh, PH - 0.4f), paper);
-        // The spine, a rounded strip along the gutter.
+        // The spine, along the gutter.
         if (turned > 0 && turned < Sheets || flipping >= 0)
             Box3(new(0, Board / 2, 0), new(10, Board + 0.2f, PH + 12), Rgb(96, 22, 28));
+        Specular(0); Shininess(0);
+        if (lh > 0.05f) Stack(-PW, Board, lh);
+        if (rh > 0.05f) Stack(0, Board, rh);
+    }
+
+    /// <summary>A block of sheets, its edges textured with the fine lines of the paper.</summary>
+    void Stack(float x0, float y0, float h)
+    {
+        float x1 = x0 + PW, y1 = y0 + h, z0 = -PH / 2 + 0.2f, z1 = PH / 2 - 0.2f;
+        float lines = h / SheetT;
+        Fill(236, 226, 204);
+        BeginShape(ShapeKind.Quads);
+        Texture(edgeTex);
+        N(Vector3.UnitZ);              // the foot, facing you
+        VT(new(x0, y1, z1), 0, 0); VT(new(x1, y1, z1), 1, 0); VT(new(x1, y0, z1), 1, lines / 40); VT(new(x0, y0, z1), 0, lines / 40);
+        N(-Vector3.UnitZ);
+        VT(new(x1, y1, z0), 0, 0); VT(new(x0, y1, z0), 1, 0); VT(new(x0, y0, z0), 1, lines / 40); VT(new(x1, y0, z0), 0, lines / 40);
+        float xo = x0 < 0 ? x0 : x1; var no = x0 < 0 ? -Vector3.UnitX : Vector3.UnitX;
+        N(no);                         // the fore-edge
+        VT(new(xo, y1, z0), 0, 0); VT(new(xo, y1, z1), 1, 0); VT(new(xo, y0, z1), 1, lines / 40); VT(new(xo, y0, z0), 0, lines / 40);
+        N(Vector3.UnitY);
+        VT(new(x0, y1, z0), 0.5f, 0); VT(new(x1, y1, z0), 0.5f, 0); VT(new(x1, y1, z1), 0.5f, 0); VT(new(x0, y1, z1), 0.5f, 0);
+        EndShape();
     }
 
     void FlatPage(Page p)
@@ -411,13 +466,14 @@ public class BookOfElements : Sketch
     {
         const string chars = "" !\""#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~“”‘’—–·…é"";
         var fonts = new[] { fRegular, fItalic, fBold };
-        var g = CreateGraphics(AtlasSize, AtlasSize);
+        glyphs = new Glyph[600]; glyphOf = new();
+        var g = CreateGraphics(AtlasW, AtlasH);
         g.BeginDraw();
         g.Clear();
         g.NoStroke();
         g.Fill(255);
         g.TextAlign(TextAlignH.Left, TextAlignV.Baseline);
-        int cols = AtlasSize / Cell, n = 0;
+        int cols = AtlasW / Cell, n = 0;
         for (int f = 0; f < fonts.Length; f++)
         {
             g.TextFont(fonts[f], FontPx);
@@ -427,8 +483,8 @@ public class BookOfElements : Sketch
                 g.Text(c.ToString(), x + Pad, y + Base);
                 glyphs[n] = new Glyph
                 {
-                    U0 = x / (float)AtlasSize, V0 = y / (float)AtlasSize,
-                    U1 = (x + Cell) / (float)AtlasSize, V1 = (y + CellH) / (float)AtlasSize,
+                    U0 = x / (float)AtlasW, V0 = y / (float)AtlasH,
+                    U1 = (x + Cell) / (float)AtlasW, V1 = (y + CellH) / (float)AtlasH,
                     Advance = g.TextWidth(c.ToString()),
                 };
                 glyphOf[(f, c)] = n++;
@@ -452,7 +508,7 @@ public class BookOfElements : Sketch
         // Alive:
         public Vector3 Off, Vel, Spin;           // offset from rest (page units), its velocity, a turn (axis * speed)
         public Quaternion Rot = Quaternion.Identity;
-        public float Scale = 1, Alpha = 1, Glow, Mirror;
+        public float Scale = 1, Alpha = 1, Glow, Mirror, Lean;
         public Vector4 GlowColor = Rgb(255, 170, 70);
         public Vector4? Paint;                    // overrides the ink while set
         public int State;
@@ -472,7 +528,7 @@ public class BookOfElements : Sketch
     void EmitQuad(Surface s, Letter L, Vector4 color, float w, float h, float lift, float u0, float v0, float u1, float v1, Vector3 extra = default)
     {
         var f = s.At(L.X / TW, L.Y / TH);
-        var q = L.Rot;
+        var q = L.Lean != 0 ? L.Rot * Quaternion.CreateFromAxisAngle(Vector3.UnitZ, L.Lean) : L.Rot;
         if (L.Mirror > 0) q = q * Quaternion.CreateFromAxisAngle(Vector3.UnitY, L.Mirror * MathF.PI);
         var r = Vector3.Transform(Vector3.UnitX, q); var d = Vector3.Transform(Vector3.UnitY, q); var n = Vector3.Transform(Vector3.UnitZ, q);
         var R = f.U * r.X + f.V * r.Y + f.N * r.Z;
@@ -531,51 +587,64 @@ public class BookOfElements : Sketch
     // =====================================================================================
     // Sprites: soft round dots facing the camera (flames, sparks, snow, stars)
     // =====================================================================================
-    struct Sprite { public Vector3 P; public float S; public Vector4 C; }
+    struct Sprite { public Vector3 P; public float S, Angle; public Vector4 C; public PImage Tex; public float U0, V0, U1, V1; }
     readonly List<Sprite> glow = new(), soft = new();
     readonly List<(Vector3 A, Vector3 B, float W, Vector4 C)> lines = new();
 
-    void AddGlow(Vector3 p, float size, Vector4 c, float alpha = 1) => glow.Add(new Sprite { P = p, S = size, C = new Vector4(c.X, c.Y, c.Z, c.W * alpha) });
-    void AddSoft(Vector3 p, float size, Vector4 c, float alpha = 1) => soft.Add(new Sprite { P = p, S = size, C = new Vector4(c.X, c.Y, c.Z, c.W * alpha) });
+    void AddGlow(Vector3 p, float size, Vector4 c, float alpha = 1) => AddSprite(glow, glowTex, p, size, c, alpha);
+    void AddSoft(Vector3 p, float size, Vector4 c, float alpha = 1) => AddSprite(soft, glowTex, p, size, c, alpha);
+    /// <summary>A star with its four rays of light.</summary>
+    void AddStar(Vector3 p, float size, Vector4 c, float alpha = 1, float angle = 0) => AddSprite(glow, starTex, p, size, c, alpha, angle);
+    void AddSprite(List<Sprite> list, PImage tex, Vector3 p, float size, Vector4 c, float alpha = 1, float angle = 0, float u0 = 0, float v0 = 0, float u1 = 1, float v1 = 1) =>
+        list.Add(new Sprite { P = p, S = size, Angle = angle, C = new Vector4(c.X, c.Y, c.Z, c.W * alpha), Tex = tex, U0 = u0, V0 = v0, U1 = u1, V1 = v1 });
     void AddLine(Vector3 a, Vector3 b, float width, Vector4 c, float alpha = 1) => lines.Add((a, b, width, new Vector4(c.X, c.Y, c.Z, c.W * alpha)));
-    readonly List<(Vector3 A, Vector3 B, float W, Vector4 C)> streaks = new(), softStreaks = new();
-    /// <summary>A soft dot stretched from a to b: a tongue of flame, a falling drop. Added light,
+
+    struct Streak { public Vector3 A, B; public float W; public Vector4 C; public PImage Tex; public float U0, U1; }
+    readonly List<Streak> streaks = new(), softStreaks = new();
+    /// <summary>A sprite stretched from a to b: a tongue of flame, a falling drop. Added light,
     /// or (soft) ordinary paint, which shows on light paper too.</summary>
-    void AddStreak(Vector3 a, Vector3 b, float width, Vector4 c, float alpha = 1, bool soft = false) =>
-        (soft ? softStreaks : streaks).Add((a, b, width, new Vector4(c.X, c.Y, c.Z, c.W * alpha)));
+    void AddStreak(Vector3 a, Vector3 b, float width, Vector4 c, float alpha = 1, bool soft = false, PImage tex = null, float u0 = 0, float u1 = 1) =>
+        (soft ? softStreaks : streaks).Add(new Streak { A = a, B = b, W = width, C = new Vector4(c.X, c.Y, c.Z, c.W * alpha), Tex = tex ?? glowTex, U0 = u0, U1 = u1 });
 
     void DrawSprites(List<Sprite> list)
     {
-        if (list.Count == 0) return;
-        BeginShape(ShapeKind.Quads);
-        Texture(glowTex);
-        foreach (var s in list)
+        foreach (var tex in list.Select(x => x.Tex).Distinct().ToList())
         {
-            var r = camRight * (s.S * 0.5f); var u = camUp * (s.S * 0.5f);
-            FillV(s.C);
-            VT(s.P - r + u, 0, 0); VT(s.P + r + u, 1, 0); VT(s.P + r - u, 1, 1); VT(s.P - r - u, 0, 1);
+            BeginShape(ShapeKind.Quads);
+            Texture(tex);
+            foreach (var s in list)
+            {
+                if (s.Tex != tex) continue;
+                float c = MathF.Cos(s.Angle), sn = MathF.Sin(s.Angle);
+                var r = (camRight * c + camUp * sn) * (s.S * 0.5f); var u = (camUp * c - camRight * sn) * (s.S * 0.5f);
+                FillV(s.C);
+                VT(s.P - r + u, s.U0, s.V0); VT(s.P + r + u, s.U1, s.V0); VT(s.P + r - u, s.U1, s.V1); VT(s.P - r - u, s.U0, s.V1);
+            }
+            EndShape();
         }
-        EndShape();
     }
 
-    void DrawStreaks(List<(Vector3 A, Vector3 B, float W, Vector4 C)> list)
+    void DrawStreaks(List<Streak> list)
     {
-        if (list.Count == 0) return;
-        BeginShape(ShapeKind.Quads);
-        Texture(glowTex);
-        foreach (var (a, b, w, c) in list)
+        foreach (var tex in list.Select(x => x.Tex).Distinct().ToList())
         {
-            var along = b - a;
-            var side = Vector3.Cross(along, camFwd);
-            if (side.LengthSquared() < 1e-8f) side = camRight;
-            side = Vector3.Normalize(side) * (w * 0.5f);
-            // Pad the ends by half a width so the stretched dot stays round at its tips.
-            var dir = along.LengthSquared() > 1e-8f ? Vector3.Normalize(along) * (w * 0.5f) : camUp * (w * 0.5f);
-            var a2 = a - dir; var b2 = b + dir;
-            FillV(c);
-            VT(a2 - side, 0, 0); VT(a2 + side, 1, 0); VT(b2 + side, 1, 1); VT(b2 - side, 0, 1);
+            BeginShape(ShapeKind.Quads);
+            Texture(tex);
+            foreach (var st in list)
+            {
+                if (st.Tex != tex) continue;
+                var along = st.B - st.A;
+                var side = Vector3.Cross(along, camFwd);
+                if (side.LengthSquared() < 1e-8f) side = camRight;
+                side = Vector3.Normalize(side) * (st.W * 0.5f);
+                // Pad the ends by half a width so the stretched sprite keeps its rounded tips.
+                var dir = along.LengthSquared() > 1e-8f ? Vector3.Normalize(along) * (st.W * 0.5f) : camUp * (st.W * 0.5f);
+                var a2 = st.A - dir; var b2 = st.B + dir;
+                FillV(st.C);
+                VT(a2 - side, st.U0, 0); VT(a2 + side, st.U1, 0); VT(b2 + side, st.U1, 1); VT(b2 - side, st.U0, 1);
+            }
+            EndShape();
         }
-        EndShape();
     }
 
     void DrawLines()
@@ -594,6 +663,14 @@ public class BookOfElements : Sketch
         EndShape();
     }
 
+    /// <summary>A matcap: a picture of a lit sphere, looked up by which way each point's surface
+    /// faces on screen. Cheap, and very convincing for glass and ice.</summary>
+    void MatcapVertex(Vector3 p, Vector3 n)
+    {
+        float u = 0.5f + 0.48f * Vector3.Dot(n, camRight), v = 0.5f - 0.48f * Vector3.Dot(n, camUp);
+        VT(p, u, v);
+    }
+
     /// <summary>A soft round spot lying on a page (a caustic, a shadow).</summary>
     void Decal(Surface s, float x, float y, float z, float radius, Vector4 c)
     {
@@ -609,43 +686,171 @@ public class BookOfElements : Sketch
     // =====================================================================================
     // Pictures made once: paper, leather, wood, a glow, a leaf, frost
     // =====================================================================================
+    // =====================================================================================
+    // Pictures made once, in HD: paper, leather, wood, flames, flakes, leaves, stars, glass, ice
+    // =====================================================================================
+
+    /// <summary>A picture computed pixel by pixel (color and alpha, 0..255).</summary>
+    PImage PixelImage(int w, int h, Func<float, float, Vector4> f)
+    {
+        var g = CreateGraphics(w, h);
+        g.BeginDraw(); g.Clear(); g.EndDraw();
+        var img = g.Get();
+        img.LoadPixels();
+        var px = img.Pixels;
+        for (int y = 0; y < h; y++)
+            for (int x = 0; x < w; x++)
+            {
+                var c = f((x + 0.5f) / w, (y + 0.5f) / h);
+                px[y * w + x] = Color(Math.Clamp(c.X, 0, 255), Math.Clamp(c.Y, 0, 255), Math.Clamp(c.Z, 0, 255), Math.Clamp(c.W, 0, 255));
+            }
+        img.UpdatePixels();
+        return img;
+    }
+
     void BuildPictures()
     {
-        var g = CreateGraphics(64, 64);
-        g.BeginDraw(); g.Clear(); g.NoStroke();
-        for (int r = 32; r > 0; r--) { float k = 1 - r / 32f; g.Fill(255, 255 * k * k); g.Circle(32, 32, r * 2); }
-        g.EndDraw();
-        glowTex = g.Get();
-
-        g = CreateGraphics(128, 128);
-        g.BeginDraw(); g.Clear(); g.NoStroke(); g.Fill(255);
-        g.BeginShape();
-        for (int i = 0; i <= 40; i++)
+        // A soft round dot.
+        glowTex = PixelImage(64, 64, (u, v) =>
         {
-            float a = i / 40f * TWO_PI, rr = 52 * (0.55f + 0.45f * MathF.Abs(MathF.Sin(a))) * (1 + 0.08f * MathF.Sin(a * 9));
-            g.Vertex(64 + MathF.Cos(a) * rr * 0.62f, 64 + MathF.Sin(a) * rr);
+            float d = MathF.Sqrt((u - 0.5f) * (u - 0.5f) + (v - 0.5f) * (v - 0.5f)) * 2, k = Clamp01(1 - d);
+            return new Vector4(255, 255, 255, 255 * k * k);
+        });
+
+        // A star: a bright core, a halo and four rays.
+        starTex = PixelImage(128, 128, (u, v) =>
+        {
+            float x = (u - 0.5f) * 2, y = (v - 0.5f) * 2, d = MathF.Sqrt(x * x + y * y);
+            float core = MathF.Exp(-d * d * 60), halo = 0.35f * MathF.Exp(-d * d * 7);
+            float rays = (MathF.Exp(-y * y * 900) * Clamp01(1 - MathF.Abs(x)) + MathF.Exp(-x * x * 900) * Clamp01(1 - MathF.Abs(y))) * 0.8f;
+            return new Vector4(255, 255, 255, 255 * Clamp01(core + halo + rays));
+        });
+
+        // Four tongues of flame side by side; v = 0 is the root, v = 1 the tip.
+        flameTex = PixelImage(512, 256, (u, v) =>
+        {
+            int k = (int)(u * 4); float x = (u * 4 - k) * 2 - 1;
+            float sway = 0.16f * MathF.Sin(v * (5 + k) + k * 1.7f) * v;
+            float width = 0.62f * MathF.Pow(1 - v, 0.75f) * (0.75f + 0.25f * MathF.Sin(v * 9 + k * 2.3f)) + 0.02f;
+            float e = Clamp01(1 - MathF.Abs(x - sway) / width);
+            float body = MathF.Pow(e, 0.8f) * Clamp01((1 - v) * 1.4f) * Clamp01(v * 12);
+            float core = MathF.Pow(e, 3) * Clamp01(1 - v * 1.6f);
+            return new Vector4(255, 255, 255, 255 * Clamp01(body * 0.75f + core * 0.5f));
+        });
+
+        // Four snowflakes: six arms, each with its little branches.
+        var g = CreateGraphics(512, 128);
+        g.BeginDraw(); g.Clear(); g.NoFill();
+        for (int k = 0; k < 4; k++)
+        {
+            float cx = 64 + k * 128, cy = 64;
+            var rng = new System.Random(k * 13 + 5);
+            float[] at = { 0.3f + (float)rng.NextDouble() * 0.2f, 0.55f + (float)rng.NextDouble() * 0.2f };
+            float[] len = { 0.22f + (float)rng.NextDouble() * 0.2f, 0.12f + (float)rng.NextDouble() * 0.15f };
+            for (int pass = 0; pass < 2; pass++)
+            {
+                g.Stroke(255, 255, 255, pass == 0 ? 60 : 255);
+                g.StrokeWeight(pass == 0 ? 7 : 2.6f);
+                for (int a = 0; a < 6; a++)
+                {
+                    float ang = a * MathF.PI / 3, ca = MathF.Cos(ang), sa = MathF.Sin(ang);
+                    g.Line(cx, cy, cx + ca * 56, cy + sa * 56);
+                    for (int b = 0; b < 2; b++)
+                    {
+                        float bx = cx + ca * 56 * at[b], by = cy + sa * 56 * at[b], l = 56 * len[b];
+                        foreach (float side in new[] { -1f, 1f })
+                        {
+                            float bang = ang + side * 0.95f;
+                            g.Line(bx, by, bx + MathF.Cos(bang) * l, by + MathF.Sin(bang) * l);
+                        }
+                    }
+                }
+            }
         }
-        g.EndShape(true);
-        g.Stroke(0, 0, 0, 60); g.StrokeWeight(2); g.Line(64, 14, 64, 118);
-        for (int i = 0; i < 5; i++) { float y = 34 + i * 16; g.Line(64, y, 40, y - 10); g.Line(64, y, 88, y - 10); }
+        g.EndDraw();
+        flakeTex = g.Get();
+
+        // Three leaves, white so they can be tinted: an almond leaf, a maple, an oak.
+        g = CreateGraphics(384, 128);
+        g.BeginDraw(); g.Clear(); g.NoStroke();
+        for (int k = 0; k < 3; k++)
+        {
+            float cx = 64 + k * 128, cy = 64;
+            g.Fill(255);
+            g.BeginShape();
+            for (int i = 0; i <= 120; i++)
+            {
+                float a = i / 120f * TWO_PI, r;
+                if (k == 0) r = 54 * (0.55f + 0.45f * MathF.Abs(MathF.Sin(a))) * (1 + 0.05f * MathF.Sin(a * 14));
+                else if (k == 1) r = 52 * (0.55f + 0.45f * MathF.Pow(MathF.Abs(MathF.Cos(a * 2.5f + 0.3f)), 0.6f)) * (1 + 0.06f * MathF.Sin(a * 22));
+                else r = 54 * (0.5f + 0.5f * MathF.Abs(MathF.Sin(a))) * (0.85f + 0.15f * MathF.Abs(MathF.Sin(a * 7)));
+                float sx = k == 1 ? 0.95f : 0.6f;
+                g.Vertex(cx + MathF.Cos(a) * r * sx, cy + MathF.Sin(a) * r);
+            }
+            g.EndShape(true);
+            // Veins, and the edge a little darker.
+            g.NoFill();
+            g.Stroke(0, 0, 0, 70); g.StrokeWeight(2.2f); g.Line(cx, cy - 52, cx, cy + 58);
+            g.StrokeWeight(1.2f);
+            for (int i = 0; i < 6; i++)
+            {
+                float y = cy - 34 + i * 14;
+                g.Line(cx, y, cx - (k == 1 ? 40 : 24), y - 14); g.Line(cx, y, cx + (k == 1 ? 40 : 24), y - 14);
+            }
+            g.Stroke(0, 0, 0, 25); g.StrokeWeight(1); g.Line(cx, cy + 50, cx + 6, cy + 62);
+        }
         g.EndDraw();
         leafTex = g.Get();
 
-        g = CreateGraphics(1024, 680);
-        g.BeginDraw();
-        g.Background(70, 44, 30);
-        g.NoFill();
-        for (int i = 0; i < 260; i++)
+        // A blade of grass: lighter down the middle, fading at its edges.
+        bladeTex = PixelImage(32, 128, (u, v) =>
         {
-            float y = i * 2.62f + (float)Math.Sin(i * 0.37) * 3;
-            g.Stroke(40 + 30 * Noise(i * 0.1f, 0), 24 + 18 * Noise(i * 0.1f, 3), 14 + 10 * Noise(i * 0.1f, 7), 90);
-            g.StrokeWeight(1.5f + 2 * Noise(i * 0.2f, 1));
-            g.BeginShape();
-            for (int x = 0; x <= 1024; x += 32) g.Vertex(x, y + 6 * (Noise(x * 0.004f, i * 0.05f) - 0.5f));
-            g.EndShape();
+            float x = MathF.Abs(u - 0.5f) * 2;
+            float shade = 200 + 55 * (1 - x) + 20 * MathF.Sin(u * 40);
+            return new Vector4(shade, shade, shade, 255 * Clamp01((1 - x) * 3));
+        });
+
+        // The edges of a stack of sheets: fine lines, 40 to the picture.
+        edgeTex = PixelImage(64, 256, (u, v) =>
+        {
+            float line = v * 40 % 1, dark = line < 0.18f ? 0.82f : 1;
+            float grain = 0.96f + 0.04f * Noise(u * 30, v * 300);
+            float c = 255 * dark * grain;
+            return new Vector4(c, c * 0.97f, c * 0.9f, 255);
+        });
+
+        // Wood: planks, their grain and a few knots, in a warm varnish.
+        g = CreateGraphics(2048, 1360);
+        g.BeginDraw();
+        g.Background(96, 60, 36);
+        g.NoFill();
+        for (int plank = 0; plank < 6; plank++)
+        {
+            float y0 = plank * 1360 / 6f, tone = (float)Math.Sin(plank * 2.3) * 8;
+            g.NoStroke(); g.Fill(96 + tone, 60 + tone * 0.6f, 36 + tone * 0.3f); g.Rect(0, y0, 2048, 1360 / 6f);
+            g.NoFill();
+            for (int i = 0; i < 90; i++)
+            {
+                float y = y0 + 3 + i * 2.5f;
+                g.Stroke(46 + 30 * Noise(i * 0.13f, plank), 26 + 18 * Noise(i * 0.13f, plank + 3), 14 + 10 * Noise(i * 0.1f, plank + 7), 70);
+                g.StrokeWeight(1 + 2.4f * Noise(i * 0.21f, plank + 1));
+                g.BeginShape();
+                for (int x = 0; x <= 2048; x += 16)
+                {
+                    float knot = 0;
+                    for (int kk = 0; kk < 2; kk++)
+                    {
+                        float kx = 300 + ((plank * 7 + kk * 3) % 5) * 380, ky = y0 + 110, d = MathF.Sqrt((x - kx) * (x - kx) + (y - ky) * (y - ky) * 4);
+                        knot += 26 * MathF.Exp(-d * d / 9000) * MathF.Sign(y - ky);
+                    }
+                    g.Vertex(x, y + 9 * (Noise(x * 0.0025f, i * 0.04f + plank) - 0.5f) + knot);
+                }
+                g.EndShape();
+            }
+            g.Stroke(20, 12, 8, 160); g.StrokeWeight(3); g.Line(0, y0, 2048, y0);
         }
         g.NoStroke();
-        for (int k = 0; k < 40; k++) { g.Fill(0, 0, 0, 6); g.Rect(-k * 8, -k * 8, 1024 + k * 16, 680 + k * 16); }
+        for (int k = 0; k < 60; k++) { g.Fill(0, 0, 0, 5); g.Rect(-k * 10, -k * 10, 2048 + k * 20, 1360 + k * 20); }
         g.EndDraw();
         woodTex = g.Get();
 
@@ -655,15 +860,76 @@ public class BookOfElements : Sketch
         g.EndDraw();
         shadowTex = g.Get();
 
+        // Glass: clear in the middle, bright at the rim (fresnel), two windows reflected in it,
+        // and the warm table in its lower half.
+        glassCap = PixelImage(256, 256, (u, v) =>
+        {
+            float x = u * 2 - 1, y = 1 - v * 2, d2 = x * x + y * y;
+            if (d2 > 1) return Vector4.Zero;
+            float z = MathF.Sqrt(1 - d2), fres = MathF.Pow(1 - z, 2.4f);
+            float win = Smooth(0.07f, 0.0f, MathF.Abs(x + 0.38f) - 0.13f) * Smooth(0.07f, 0.0f, MathF.Abs(y - 0.45f) - 0.16f);
+            win *= MathF.Abs(x + 0.38f) < 0.012f || MathF.Abs(y - 0.45f) < 0.012f ? 0.2f : 1;   // the window's cross bars
+            float win2 = Smooth(0.1f, 0.0f, MathF.Abs(x - 0.5f) - 0.06f) * Smooth(0.1f, 0.0f, MathF.Abs(y - 0.2f) - 0.1f) * 0.6f;
+            float table = Clamp01(-y - 0.2f) * fres * 1.3f;
+            var c = new Vector3(200, 225, 255) * (0.3f + fres) + new Vector3(255, 255, 255) * (win + win2) * 2 + new Vector3(150, 90, 50) * table;
+            return new Vector4(c.X, c.Y, c.Z, 255 * Clamp01(0.06f + fres * 0.9f + win + win2 + table * 0.5f));
+        });
+
+        // Ice: cold and milky inside, glittering facets and a bright rim.
+        iceCap = PixelImage(256, 256, (u, v) =>
+        {
+            float x = u * 2 - 1, y = 1 - v * 2, d2 = x * x + y * y;
+            if (d2 > 1) return Vector4.Zero;
+            float z = MathF.Sqrt(1 - d2), fres = MathF.Pow(1 - z, 2f);
+            float facets = MathF.Pow(Math.Max(0, MathF.Sin(MathF.Atan2(y, x) * 3 + d2 * 6)), 18) * 0.8f;
+            float spot = MathF.Exp(-((x + 0.35f) * (x + 0.35f) + (y - 0.4f) * (y - 0.4f)) * 18);
+            var c = new Vector3(150, 200, 240) * (0.55f + 0.6f * fres) + new Vector3(255, 255, 255) * (facets + spot * 1.5f);
+            return new Vector4(c.X, c.Y, c.Z, 255 * Clamp01(0.42f + fres * 0.5f + facets + spot));
+        });
+
+        // Caustics: the bright net that light makes on the bottom under moving water.
+        causticTex = PixelImage(512, 512, (u, v) =>
+        {
+            float x = u * 22, y = v * 22;
+            float wx = x + 0.9f * MathF.Sin(y * 0.7f + MathF.Sin(x * 0.5f)), wy = y + 0.9f * MathF.Sin(x * 0.6f + MathF.Cos(y * 0.4f));
+            float a = MathF.Abs(MathF.Sin(wx) * MathF.Sin(wy * 0.9f + 0.4f * MathF.Sin(wx * 1.3f)));
+            float c = MathF.Pow(1 - a, 7) + 0.5f * MathF.Pow(1 - MathF.Abs(MathF.Sin(wx * 1.7f + wy * 0.8f)), 10);
+            return new Vector4(255, 255, 255, 255 * Clamp01(c));
+        });
+
+        // A window, as water reflects it: sky-pale panes, dark bars, the room around it.
+        windowTex = PixelImage(256, 256, (u, v) =>
+        {
+            float bright = 0.12f + 0.25f * (1 - v);
+            bool pane = u > 0.25f && u < 0.75f && v > 0.18f && v < 0.68f;
+            bool bar = MathF.Abs(u - 0.5f) < 0.015f || MathF.Abs(v - 0.43f) < 0.015f;
+            if (pane && !bar) bright = 0.95f - 0.25f * v;
+            return new Vector4(235 * bright + 20, 245 * bright + 10, 255 * bright, 255 * Clamp01(bright * 1.1f));
+        });
+
+        // Charred paper, and the glowing cracks along the burning edge.
+        charTex = PixelImage(512, 64, (u, v) =>
+        {
+            float n = Noise(u * 40, v * 6) * 0.6f + Noise(u * 140, v * 20) * 0.4f;
+            float c = 18 + 40 * n;
+            return new Vector4(c * 1.2f, c * 0.75f, c * 0.45f, 255);
+        });
+        crackTex = PixelImage(512, 64, (u, v) =>
+        {
+            float n = MathF.Abs(Noise(u * 60, v * 5) - 0.5f) * 2, m = MathF.Abs(Noise(u * 23 + 9, v * 3) - 0.5f) * 2;
+            float c = MathF.Pow(1 - Math.Min(n, m), 14) * (1 - v * 0.6f);
+            return new Vector4(255, 255, 255, 255 * Clamp01(c * 1.4f));
+        });
+
         // Frost: feathery crystals grown from a few seeds.
-        g = CreateGraphics(420, 560);
-        g.BeginDraw(); g.Clear(); g.Stroke(255, 255, 255, 120);
-        var rng = new System.Random(4);
+        g = CreateGraphics((int)TW * PaperScale, (int)TH * PaperScale);
+        g.BeginDraw(); g.Clear(); g.Scale(PaperScale, PaperScale); g.Stroke(255, 255, 255, 130);
+        var frng = new System.Random(4);
         void Branch(float x, float y, float a, float len, int depth)
         {
-            if (depth == 0 || len < 2) return;
+            if (depth == 0 || len < 1.5f) return;
             float x2 = x + MathF.Cos(a) * len, y2 = y + MathF.Sin(a) * len;
-            g.StrokeWeight(Math.Max(0.6f, depth * 0.35f));
+            g.StrokeWeight(Math.Max(0.35f, depth * 0.3f));
             g.Line(x, y, x2, y2);
             for (int k = 1; k <= 3; k++)
             {
@@ -671,59 +937,104 @@ public class BookOfElements : Sketch
                 Branch(bx, by, a + 1.0f, len * 0.38f, depth - 1);
                 Branch(bx, by, a - 1.0f, len * 0.38f, depth - 1);
             }
-            Branch(x2, y2, a + (float)(rng.NextDouble() - 0.5) * 0.5f, len * 0.7f, depth - 1);
+            Branch(x2, y2, a + (float)(frng.NextDouble() - 0.5) * 0.5f, len * 0.7f, depth - 1);
         }
-        for (int i = 0; i < 26; i++)
+        for (int i = 0; i < 30; i++)
         {
-            float x = (float)rng.NextDouble() * 420, y = (float)rng.NextDouble() * 560;
-            for (int k = 0; k < 6; k++) Branch(x, y, k * MathF.PI / 3 + (float)rng.NextDouble() * 0.3f, 24 + (float)rng.NextDouble() * 30, 4);
+            float x = (float)frng.NextDouble() * TW, y = (float)frng.NextDouble() * TH;
+            for (int k = 0; k < 6; k++) Branch(x, y, k * MathF.PI / 3 + (float)frng.NextDouble() * 0.3f, 22 + (float)frng.NextDouble() * 30, 4);
         }
         g.EndDraw();
         frostTex = g.Get();
     }
 
-    /// <summary>A page's paper: grain, a soft vignette and its number -- or leather, or night.</summary>
+    /// <summary>A page's paper in HD: mottled, with fibres and a few spots of age -- or leather, or night.</summary>
     PImage MakePaper(int number, string kind)
     {
-        var g = CreateGraphics((int)TW, (int)TH);
+        var g = CreateGraphics((int)TW * PaperScale, (int)TH * PaperScale);
         var rng = new System.Random(number * 7 + 1);
+        float Rn(float a, float b) => a + (float)rng.NextDouble() * (b - a);
         g.BeginDraw();
+        g.Scale(PaperScale, PaperScale);
         g.NoStroke();
         if (kind == ""leather"")
         {
-            g.Background(104, 26, 32);
-            for (int k = 0; k < 5000; k++) { g.Fill(rng.Next(2) == 0 ? 0 : 255, rng.Next(4, 12)); g.Circle((float)rng.NextDouble() * TW, (float)rng.NextDouble() * TH, 1 + (float)rng.NextDouble() * 3); }
-            g.NoFill(); g.Stroke(214, 170, 90); g.StrokeWeight(2.5f); g.Rect(26, 26, TW - 52, TH - 52); g.StrokeWeight(1); g.Rect(34, 34, TW - 68, TH - 68);
+            g.Background(100, 25, 31);
+            for (int k = 0; k < 90; k++)
+            {
+                int tone = rng.Next(2) == 0 ? 0 : 255; float x = Rn(0, TW), y = Rn(0, TH), r = Rn(20, 90);
+                for (int ring = 8; ring >= 1; ring--) { g.Fill(tone, 1.3f); g.Circle(x, y, r * ring / 8f * 2); }
+            }
+            for (int k = 0; k < 14000; k++) { g.Fill(rng.Next(2) == 0 ? 0 : 255, rng.Next(6, 20)); g.Circle(Rn(0, TW), Rn(0, TH), Rn(0.4f, 1.6f)); }
+            g.NoFill();
+            for (int k = 0; k < 500; k++)
+            {
+                g.Stroke(0, 0, 0, rng.Next(10, 30)); g.StrokeWeight(Rn(0.4f, 1));
+                float x = Rn(0, TW), y = Rn(0, TH), a = Rn(0, 6.28f), l = Rn(3, 10);
+                g.Line(x, y, x + MathF.Cos(a) * l, y + MathF.Sin(a) * l);
+            }
+            // Gold tooling: a double frame with little flourishes at the corners.
+            g.Stroke(222, 178, 96); g.StrokeWeight(2.2f); g.Rect(26, 26, TW - 52, TH - 52);
+            g.StrokeWeight(0.9f); g.Rect(34, 34, TW - 68, TH - 68);
+            foreach (var (cx, cy) in new[] { (34f, 34f), (TW - 34, 34f), (34f, TH - 34), (TW - 34, TH - 34) })
+            {
+                g.Circle(cx, cy, 10); g.Circle(cx, cy, 4);
+                g.Arc(cx + (cx < TW / 2 ? 12 : -12), cy, 12, 12, 0, PI);
+                g.Arc(cx, cy + (cy < TH / 2 ? 12 : -12), 12, 12, HALF_PI, PI + HALF_PI);
+            }
+            g.NoStroke();
+            for (int k = 0; k < 12; k++) { g.NoFill(); g.Stroke(0, 0, 0, 10); g.StrokeWeight(6); g.Rect(k * 3, k * 3, TW - k * 6, TH - k * 6); }
             g.EndDraw();
             return g.Get();
         }
         if (kind == ""night"")
         {
-            g.Background(10, 16, 32);
-            for (int k = 0; k < 160; k++) { g.Fill(200, 210, 255, rng.Next(30, 150)); g.Circle((float)rng.NextDouble() * TW, (float)rng.NextDouble() * TH * 0.75f, (float)rng.NextDouble() * 1.8f); }
+            g.Background(9, 14, 30);
+            for (int k = 0; k < 40; k++) { g.Fill(rng.Next(2) == 0 ? 60 : 30, 40, rng.Next(80, 140), 9); g.Circle(Rn(0, TW), Rn(0, TH * 0.7f), Rn(60, 200)); }
+            for (int k = 0; k < 320; k++) { g.Fill(210, 220, 255, rng.Next(30, 170)); g.Circle(Rn(0, TW), Rn(0, TH * 0.78f), Rn(0.3f, 1.8f)); }
+            for (int k = 0; k < 1500; k++) { g.Fill(255, rng.Next(2, 6)); g.Circle(Rn(0, TW), Rn(0, TH), Rn(0.3f, 1.4f)); }
             // Pines on a dark hill.
             g.Fill(4, 7, 14);
             g.BeginShape(); g.Vertex(0, TH); g.Vertex(0, TH - 70);
-            for (int x = 0; x <= TW; x += 10) g.Vertex(x, TH - 70 - 26 * MathF.Sin(x * 0.012f + 0.6f));
+            for (int x = 0; x <= TW; x += 6) g.Vertex(x, TH - 70 - 26 * MathF.Sin(x * 0.012f + 0.6f));
             g.Vertex(TW, TH); g.EndShape(true);
-            for (int k = 0; k < 9; k++)
+            for (int k = 0; k < 11; k++)
             {
-                float x = 24 + k * 46 + (float)rng.NextDouble() * 18, base0 = TH - 70 - 26 * MathF.Sin(x * 0.012f + 0.6f), h = 50 + (float)rng.NextDouble() * 60;
-                g.Triangle(x - h * 0.22f, base0 + 6, x + h * 0.22f, base0 + 6, x, base0 - h);
-                g.Triangle(x - h * 0.17f, base0 - h * 0.3f, x + h * 0.17f, base0 - h * 0.3f, x, base0 - h * 1.15f);
+                float x = 18 + k * 38 + Rn(0, 16), base0 = TH - 70 - 26 * MathF.Sin(x * 0.012f + 0.6f), h = Rn(50, 115);
+                for (int tier = 0; tier < 4; tier++)
+                {
+                    float w = h * (0.24f - tier * 0.045f), yb = base0 + 6 - tier * h * 0.24f;
+                    g.Triangle(x - w, yb, x + w, yb, x, yb - h * 0.42f);
+                }
             }
             g.EndDraw();
             return g.Get();
         }
-        g.Background(244, 236, 216);
-        for (int k = 0; k < 2200; k++) { g.Fill(150, 120, 80, rng.Next(5, 16)); g.Circle((float)rng.NextDouble() * TW, (float)rng.NextDouble() * TH, (float)rng.NextDouble() * 2.2f); }
+        g.Background(243, 236, 219);
+        // Mottling, fibres and foxing: old paper.
+        for (int k = 0; k < 140; k++)
+        {
+            // Soft clouds of tone: each a stack of fainter and fainter rings, so it has no edge.
+            int tone = rng.Next(2); float x = Rn(0, TW), y = Rn(0, TH), r = Rn(20, 110);
+            for (int ring = 8; ring >= 1; ring--) { g.Fill(tone == 0 ? 170 : 255, tone == 0 ? 140 : 250, tone == 0 ? 100 : 235, 1.2f); g.Circle(x, y, r * ring / 8f * 2); }
+        }
+        for (int k = 0; k < 3000; k++) { g.Fill(150, 120, 80, rng.Next(4, 12)); g.Circle(Rn(0, TW), Rn(0, TH), Rn(0.3f, 1.6f)); }
         g.NoFill();
-        for (int k = 0; k < 14; k++) { g.Stroke(120, 90, 50, 5); g.StrokeWeight(10); g.Rect(k * 5, k * 5, TW - k * 10, TH - k * 10); }
+        for (int k = 0; k < 1400; k++)
+        {
+            g.Stroke(130, 100, 70, rng.Next(10, 28)); g.StrokeWeight(Rn(0.25f, 0.6f));
+            float x = Rn(0, TW), y = Rn(0, TH), a = Rn(0, 6.28f), l = Rn(2, 9);
+            g.Bezier(x, y, x + MathF.Cos(a) * l * 0.5f + Rn(-2, 2), y + MathF.Sin(a) * l * 0.5f + Rn(-2, 2), x + MathF.Cos(a) * l * 0.8f, y + MathF.Sin(a) * l * 0.8f, x + MathF.Cos(a) * l, y + MathF.Sin(a) * l);
+        }
         g.NoStroke();
-        g.Fill(120, 100, 70);
-        g.TextFont(fRegular, 13);
+        for (int k = 0; k < 18; k++) { float r = Rn(1, 5); float x = Rn(0, TW), y = Rn(0, TH); g.Fill(150, 96, 52, rng.Next(14, 40)); g.Circle(x, y, r); g.Fill(150, 96, 52, 8); g.Circle(x, y, r * 3); }
+        g.NoFill();
+        for (int k = 0; k < 40; k++) { g.Stroke(120, 88, 48, 2.2f); g.StrokeWeight(4); g.Rect(k * 2, k * 2, TW - k * 4, TH - k * 4); }
+        g.NoStroke();
+        g.Fill(110, 86, 60);
+        g.TextFont(fRegular, 18);
         g.TextAlign(TextAlignH.Center, TextAlignV.Bottom);
-        if (number > 1 && number < 11) g.Text(number.ToString(), TW / 2, TH - 18);
+        if (number > 1 && number < 11) g.Text(number.ToString(), TW / 2, TH - 16);
         g.EndDraw();
         return g.Get();
     }
@@ -881,10 +1192,10 @@ public class BookOfElements : Sketch
 
     void Hud()
     {
-        TextFont(ui, 13);
+        TextFont(ui, 18);
         TextAlign(TextAlignH.Center, TextAlignV.Bottom);
         Fill(255, 240, 220, 120);
-        Text(""drag a page's edge (or Left / Right) to turn · touch the pages · drag the table to look around · wheel: zoom"", Width / 2, Height - 14);
+        Text(""drag a page's edge (or Left / Right) to turn · touch the pages · drag the table to look around · wheel: zoom"", Width / 2, Height - 20);
     }
 
     // =====================================================================================
@@ -933,7 +1244,7 @@ public class BookOfElements : Sketch
         public bool WasOpen;
         protected readonly System.Random Rng;
         protected virtual string PaperKind => ""paper"";
-        protected Vector4 InkColor = Rgb(40, 30, 24);
+        protected Vector4 InkColor = Rgb(46, 30, 24);              // iron-gall ink
 
         protected Page(BookOfElements s) { S = s; Rng = new System.Random(GetType().Name.Length * 97 + 3); }
 
@@ -953,6 +1264,7 @@ public class BookOfElements : Sketch
         public virtual void DrawLit() { }
         public virtual void DrawTranslucent() { }
         public virtual void DrawSoft() { }
+        public virtual void DrawUnlit() { }
         public virtual void DrawGlow() { }
         public virtual void Press(float x, float y) { }
         public virtual void Drag(float x, float y) { }
@@ -972,10 +1284,15 @@ public class BookOfElements : Sketch
                 if (c == ' ') { if (inWord) { Close(start, current); start = Letters.Count; current = """"; words++; } inWord = false; x += S.Advance(font, c, size); continue; }
                 inWord = true; current += c;
                 int gi = S.GlyphOf(font, c);
+                // By hand: each letter leans a hair, sits a hair off the line, takes a little more or less ink.
+                float tremble = material == 0 ? 1 : 0.3f;
+                float shade = 1 - R(0, 0.14f) * tremble;
                 Letters.Add(new Letter
                 {
-                    Glyph = gi, Font = font, Ch = c, Word = words, Line = line, Material = material, Ink = ink,
-                    X = x - Pad * sc + Cell * sc / 2, Y = baseline - Base * sc + CellH * sc / 2, W = Cell * sc, H = CellH * sc,
+                    Glyph = gi, Font = font, Ch = c, Word = words, Line = line, Material = material,
+                    Ink = new Vector4(ink.X * shade, ink.Y * shade, ink.Z * shade, ink.W * (1 - R(0, 0.12f) * tremble)),
+                    X = x - Pad * sc + Cell * sc / 2, Y = baseline - Base * sc + CellH * sc / 2 + R(-0.7f, 0.7f) * tremble * sc * 3,
+                    W = Cell * sc, H = CellH * sc, Lean = R(-0.035f, 0.035f) * tremble,
                 });
                 x += S.glyphs[gi].Advance * sc;
             }
@@ -995,10 +1312,10 @@ public class BookOfElements : Sketch
         /// <summary>A title, an author, and lines of verse wrapped to the page; returns where it ended.</summary>
         protected float Poem(string title, string author, string[] verse, float top, float size = 21, bool prose = false)
         {
-            float ts = Math.Min(27, 27 * (TW - 70) / S.Measure(title, 27, 2));
-            Centered(title, top + 26, ts, 2, InkColor, -1);
-            var faint = new Vector4(InkColor.X, InkColor.Y, InkColor.Z, 170);
-            Centered(author, top + 50, 14, 1, faint, -1);
+            float ts = Math.Min(40, 40 * (TW - 60) / S.Measure(title, 40, 2));
+            Centered(title, top + 30, ts, 2, InkColor, -1);
+            var faint = new Vector4(InkColor.X, InkColor.Y, InkColor.Z, 175);
+            Centered(author, top + 56, 15, 1, faint, -1);
             float y = top + 96;
             int line = 0;
             foreach (var l in verse)
@@ -1078,7 +1395,7 @@ public class BookOfElements : Sketch
             for (int i = 0; i < 26; i++)
             {
                 float x = 50 + (i * 73 % 320), y = 150 + (i * 131 % 260), tw = MathF.Pow(Math.Max(0, MathF.Sin(t * 1.3f + i * 2.1f)), 8);
-                if (tw > 0.02f) S.AddGlow(W(x, y, 3), 9 * K, Rgb(255, 220, 140), tw * Live);
+                if (tw > 0.02f) S.AddStar(W(x, y, 16), 22 * K, Rgb(255, 220, 140), tw * Live, i);
             }
         }
     }
@@ -1174,7 +1491,7 @@ public class BookOfElements : Sketch
     // =====================================================================================
     sealed class FirePage : Page
     {
-        struct Flame { public Vector3 X, V; public float Age, Life, Size; public bool Spark; }
+        struct Flame { public Vector3 X, V; public float Age, Life, Size; public bool Spark; public int Shape; }
         readonly List<Flame> flames = new();
         float nextIgnite;
         public FirePage(BookOfElements s) : base(s) { }
@@ -1252,7 +1569,7 @@ public class BookOfElements : Sketch
                 }
             }
             // A bed of flames along the foot of the page, standing up out of it.
-            for (int i = 0; i < 14; i++)
+            for (int i = 0; i < 10; i++)
             {
                 // Tongues: the flames gather where a slow noise says, so they lick up in clumps.
                 float x = R(6, TW - 6);
@@ -1286,7 +1603,7 @@ public class BookOfElements : Sketch
                 V = spark ? new Vector3(R(-35, 35), R(-60, 10), R(40, 110)) : new Vector3(R(-6, 6), R(-70, -35) * scale, R(45, 90) * scale),   // climbing the page
                 Life = spark ? R(0.6f, 1.4f) : R(0.5f, 0.9f),
                 Size = (spark ? R(2.5f, 5) : R(20, 34)) * scale,
-                Spark = spark,
+                Spark = spark, Shape = Rng.Next(4),
             });
         }
 
@@ -1297,6 +1614,7 @@ public class BookOfElements : Sketch
 
         public override void DrawGlow()
         {
+            Strip(S.crackTex, true);
             foreach (var f in flames)
             {
                 float k = f.Age / f.Life;
@@ -1307,8 +1625,10 @@ public class BookOfElements : Sketch
                 var head = W(f.X.X, f.X.Y, f.X.Z);
                 var tail = W(f.X.X - f.V.X * 0.09f, f.X.Y - f.V.Y * (f.Spark ? 0.05f : 0.22f), f.X.Z - f.V.Z * (f.Spark ? 0.05f : 0.16f));
                 if (f.Spark) { S.AddStreak(tail, head, size * 0.6f, c, a); continue; }
-                S.AddStreak(tail, head, size * 0.8f, c, a * 1.5f);
-                if (k < 0.45f) S.AddStreak(tail, head, size * 0.4f, Rgb(255, 235, 170), a * (1 - k / 0.45f));
+                // A tongue of flame (one of four shapes), and its hot heart.
+                float u0 = f.Shape * 0.25f;
+                S.AddStreak(tail, head, size * 1.1f, c, Math.Min(1, a * 1.8f), tex: S.flameTex, u0: u0, u1: u0 + 0.25f);
+                if (k < 0.45f) S.AddStreak(tail, head, size * 0.55f, Rgb(255, 240, 190), a * (1 - k / 0.45f) * 1.2f, tex: S.flameTex, u0: u0, u1: u0 + 0.25f);
             }
             // The glowing edge where the paper is burning.
             float t = S.Now;
@@ -1316,32 +1636,43 @@ public class BookOfElements : Sketch
             {
                 float x0 = i * TW / Edge, x1 = (i + 1) * TW / Edge;
                 float pulse = 0.6f + 0.4f * S.Noise(i * 0.4f, t * 3);
-                S.AddLine(W(x0, CharLine(x0, t) + 8, 0.6f), W(x1, CharLine(x1, t) + 8, 0.6f), 2.2f, Rgb(255, 120 + 60 * pulse, 30), 0.55f * pulse * Live);
+                S.AddLine(W(x0, CharLine(x0, t) + 7, 0.6f), W(x1, CharLine(x1, t) + 7, 0.6f), 1.2f, Rgb(255, 150 + 60 * pulse, 50), 0.7f * pulse * Live);
             }
         }
 
         const int Edge = 48;
-        float CharLine(float x, float t) => 448 + 30 * S.Noise(x * 0.025f, t * 0.15f) + 8 * S.Noise(x * 0.11f, 7);
+        float CharLine(float x, float t) => 478 + 26 * S.Noise(x * 0.025f, t * 0.15f) + 8 * S.Noise(x * 0.11f, 7);
 
         public override void DrawTranslucent()
         {
             // The foot of the page is burning: charred, ragged, dark -- so the flames glow against it.
+            Strip(S.charTex, false);
+        }
+
+        /// <summary>The charred band along the foot of the page; with cracks, the glowing embers in it.</summary>
+        void Strip(PImage tex, bool cracks)
+        {
             float t = S.Now;
             S.N(Surface.Dir(Vector3.UnitZ));
             S.BeginShape(ShapeKind.Triangles);
+            S.Texture(tex);
             for (int i = 0; i < Edge; i++)
             {
-                float x0 = i * TW / Edge, x1 = (i + 1) * TW / Edge;
+                float x0 = i * TW / Edge, x1 = (i + 1) * TW / Edge, u0 = i / (float)Edge, u1 = (i + 1) / (float)Edge;
                 float y0 = CharLine(x0, t), y1 = CharLine(x1, t);
-                var fade = Rgb(30, 14, 6, 0); var dark = Rgb(22, 10, 4, 235 * Live); var deep = Rgb(12, 6, 2, 250 * Live);
-                void P(float x, float y, Vector4 c) { S.FillV(c); S.V(W(x, y, 0.3f)); }
-                P(x0, y0, fade); P(x1, y1, fade); P(x1, y1 + 14, dark);
-                P(x0, y0, fade); P(x1, y1 + 14, dark); P(x0, y0 + 14, dark);
-                P(x0, y0 + 14, dark); P(x1, y1 + 14, dark); P(x1, TH, deep);
-                P(x0, y0 + 14, dark); P(x1, TH, deep); P(x0, TH, deep);
+                float pulse = cracks ? 0.5f + 0.5f * S.Noise(i * 0.3f, t * 2.5f) : 1;
+                var fade = cracks ? Rgb(255, 140, 50, 0) : Rgb(255, 255, 255, 0);
+                var full = cracks ? Rgb(255, 120 + 80 * pulse, 40, 230 * pulse * Live) : Rgb(255, 255, 255, 245 * Live);
+                var foot = cracks ? Rgb(255, 90, 30, 60 * pulse * Live) : Rgb(200, 200, 200, 252 * Live);
+                void P(float x, float y, float u, float v, Vector4 c) { S.FillV(c); S.VT(W(x, y, 0.3f), u, v); }
+                P(x0, y0, u0, 0, fade); P(x1, y1, u1, 0, fade); P(x1, y1 + 14, u1, 0.25f, full);
+                P(x0, y0, u0, 0, fade); P(x1, y1 + 14, u1, 0.25f, full); P(x0, y0 + 14, u0, 0.25f, full);
+                P(x0, y0 + 14, u0, 0.25f, full); P(x1, y1 + 14, u1, 0.25f, full); P(x1, TH, u1, 1, foot);
+                P(x0, y0 + 14, u0, 0.25f, full); P(x1, TH, u1, 1, foot); P(x0, TH, u0, 1, foot);
             }
             S.EndShape();
         }
+
     }
 
     // =====================================================================================
@@ -1456,9 +1787,25 @@ public class BookOfElements : Sketch
         public override void Press(float x, float y) => Splash(x, y, 16);
         public override void Drag(float x, float y) => Disturb(x, y, 22, -1.5f);
 
-        public override void DrawTranslucent()
+        // Drawn before the letters: they float on top of it.
+        public override void DrawLit()
         {
             for (int j = 0; j < GY; j++) for (int i = 0; i < GX; i++) surf[j * GX + i] = Height(Gx(i), Gy(j));
+            // Caustics: the light the ripples gather on the paper underneath, two layers drifting.
+            S.BlendMode(BlendModeKind.Add);
+            S.Hint(""DISABLE_DEPTH_MASK"");
+            S.N(Surface.Dir(Vector3.UnitZ));
+            for (int layer = 0; layer < 2; layer++)
+            {
+                float ou = 0.25f + 0.22f * MathF.Sin(time * (0.05f + layer * 0.03f) + layer * 2), ov = 0.25f + 0.22f * MathF.Cos(time * (0.04f + layer * 0.035f) + layer);
+                S.Fill(150, 215, 255, 55 * Live);
+                S.BeginShape(ShapeKind.Quads);
+                S.Texture(S.causticTex);
+                S.VT(W(X0, Y0, 0.4f), ou, ov); S.VT(W(X1, Y0, 0.4f), ou + 0.5f, ov); S.VT(W(X1, Y1, 0.4f), ou + 0.5f, ov + 0.5f); S.VT(W(X0, Y1, 0.4f), ou, ov + 0.5f);
+                S.EndShape();
+            }
+            S.Hint(""ENABLE_DEPTH_MASK"");
+            S.BlendMode(BlendModeKind.Blend);
             S.Specular(255); S.Shininess(90);
             S.BeginShape(ShapeKind.Triangles);
             void Pt(int i, int j)
@@ -1467,7 +1814,7 @@ public class BookOfElements : Sketch
                 float gx = (surf[j * GX + Math.Min(GX - 1, i + 1)] - surf[j * GX + Math.Max(0, i - 1)]) / (2 * (X1 - X0) / (GX - 1));
                 float gy = (surf[Math.Min(GY - 1, j + 1) * GX + i] - surf[Math.Max(0, j - 1) * GX + i]) / (2 * (Y1 - Y0) / (GY - 1));
                 float crest = Clamp01((surf[k] - Level) / 6);
-                S.FillV(Vector4.Lerp(Rgb(30, 110, 150, 78), Rgb(140, 205, 230, 120), crest), Live);
+                S.FillV(Vector4.Lerp(Rgb(30, 110, 150, 70), Rgb(140, 205, 230, 110), crest), Live);
                 S.N(Vector3.Normalize(Surface.Dir(new Vector3(-gx, -gy, 1))));
                 S.V(W(Gx(i), Gy(j), surf[k]));
             }
@@ -1479,6 +1826,32 @@ public class BookOfElements : Sketch
                 }
             S.EndShape();
             S.Specular(0); S.Shininess(0);
+            S.Hint(""DISABLE_DEPTH_MASK"");
+            Reflection();
+            S.Hint(""ENABLE_DEPTH_MASK"");
+        }
+
+        /// <summary>The window, reflected in the water: it bends and breaks with every ripple.</summary>
+        void Reflection()
+        {
+            S.BeginShape(ShapeKind.Triangles);
+            S.Texture(S.windowTex);
+            void Pt(int i, int j)
+            {
+                int k = j * GX + i;
+                float gx = (surf[j * GX + Math.Min(GX - 1, i + 1)] - surf[j * GX + Math.Max(0, i - 1)]) / (2 * (X1 - X0) / (GX - 1));
+                float gy = (surf[Math.Min(GY - 1, j + 1) * GX + i] - surf[Math.Max(0, j - 1) * GX + i]) / (2 * (Y1 - Y0) / (GY - 1));
+                float u = Clamp01(0.3f + 0.4f * i / (GX - 1) - gx * 4), v = Clamp01(0.25f + 0.5f * j / (GY - 1) - gy * 4);
+                S.Fill(255, 255, 255, 55 * Live);
+                S.VT(W(Gx(i), Gy(j), surf[k] + 0.05f), u, v);
+            }
+            for (int j = 0; j < GY - 1; j++)
+                for (int i = 0; i < GX - 1; i++)
+                {
+                    Pt(i, j); Pt(i + 1, j); Pt(i + 1, j + 1);
+                    Pt(i, j); Pt(i + 1, j + 1); Pt(i, j + 1);
+                }
+            S.EndShape();
         }
 
         public override void DrawSoft()
@@ -1509,12 +1882,12 @@ public class BookOfElements : Sketch
         protected override void Init()
         {
             foreach (var L in Letters)
-                if (L.Line >= 0) blades.Add(new Blade { X = L.X, Y = L.Y + L.H * 0.25f, H = R(15, 20), Wd = 1.3f, Stiff = 1.4f, Hue = R(0, 1), Face = R(0, 6.28f), Carries = L });
+                if (L.Line >= 0) blades.Add(new Blade { X = L.X, Y = L.Y + L.H * 0.25f, H = R(15, 20), Wd = 2.2f, Stiff = 1.4f, Hue = R(0, 1), Face = R(0, 6.28f), Carries = L });
             for (int i = 0; i < 1150; i++)
             {
                 bool meadow = i < 750;
                 float y = meadow ? R(330, TH - 10) : R(16, TH - 10);
-                blades.Add(new Blade { X = R(8, TW - 8), Y = y, H = y > 320 ? R(36, 95) : R(8, 20), Wd = R(2.2f, 3.6f), Stiff = R(0.7f, 1.3f), Hue = R(0, 1), Face = R(0, 6.28f) });
+                blades.Add(new Blade { X = R(8, TW - 8), Y = y, H = y > 320 ? R(36, 95) : R(8, 20), Wd = R(3.6f, 5.8f), Stiff = R(0.7f, 1.3f), Hue = R(0, 1), Face = R(0, 6.28f) });
             }
         }
 
@@ -1574,6 +1947,7 @@ public class BookOfElements : Sketch
         {
             if (grow <= 0.01f) return;
             S.BeginShape(ShapeKind.Triangles);
+            S.Texture(S.bladeTex);
             foreach (var b in blades)
             {
                 float bl = b.Bend.Length();
@@ -1597,10 +1971,11 @@ public class BookOfElements : Sketch
                         n = Vector3.Normalize(n); if (n.Z < 0) n = -n;
                         var nw = Surface.Dir(Vector3.Normalize(n + Vector3.UnitZ * 0.6f));
                         S.N(nw);
-                        S.FillV(prevC, Live); S.V(W(prevL.X, prevL.Y, prevL.Z)); S.V(W(prevR.X, prevR.Y, prevR.Z));
-                        S.FillV(c, Live); S.V(W(r.X, r.Y, r.Z));
-                        S.FillV(prevC, Live); S.V(W(prevL.X, prevL.Y, prevL.Z));
-                        S.FillV(c, Live); S.V(W(r.X, r.Y, r.Z)); S.V(W(l.X, l.Y, l.Z));
+                        float pv = 1 - (s - 1) / 4f, cv = 1 - k;
+                        S.FillV(prevC, Live); S.VT(W(prevL.X, prevL.Y, prevL.Z), 0, pv); S.VT(W(prevR.X, prevR.Y, prevR.Z), 1, pv);
+                        S.FillV(c, Live); S.VT(W(r.X, r.Y, r.Z), 1, cv);
+                        S.FillV(prevC, Live); S.VT(W(prevL.X, prevL.Y, prevL.Z), 0, pv);
+                        S.FillV(c, Live); S.VT(W(r.X, r.Y, r.Z), 1, cv); S.VT(W(l.X, l.Y, l.Z), 0, cv);
                     }
                     prevL = l; prevR = r; prevC = c;
                 }
@@ -1700,38 +2075,57 @@ public class BookOfElements : Sketch
         public override void DrawTranslucent()
         {
             float rad = Rb * ballScale;
+            if (rad > 1) S.Decal(Surface, bx + 20, by + 26, 0.3f, rad * 1.05f, Rgb(40, 28, 18, 80 * Live));
+        }
+
+        /// <summary>The ball and its shards, as glass: a matcap of a clear sphere catching two windows.</summary>
+        public override void DrawUnlit()
+        {
+            float rad = Rb * ballScale;
             if (rad > 1)
             {
-                S.Decal(Surface, bx + 20, by + 26, 0.3f, rad * 1.05f, Rgb(40, 28, 18, 80 * Live));
-                S.Hint(""DISABLE_DEPTH_MASK"");
-                S.Specular(255); S.Shininess(120);
-                S.PushMatrix();
                 var c = W(bx, by, rad);
-                S.Translate(c.X, -c.Y, c.Z);
-                S.Fill(150, 185, 220, 34 * Live);
-                S.SphereDetail(48);
-                S.Sphere(rad * K);
-                S.PopMatrix();
-                S.Hint(""ENABLE_DEPTH_MASK"");
+                const int Rings = 26, Segs = 44;
+                S.Fill(255, 255, 255, 255 * Live);
+                S.BeginShape(ShapeKind.Triangles);
+                S.Texture(S.glassCap);
+                Vector3 Nrm(int i, int j)
+                {
+                    float th = MathF.PI * i / Rings, ph = TWO_PI * j / Segs;
+                    return new Vector3(MathF.Sin(th) * MathF.Cos(ph), MathF.Cos(th), MathF.Sin(th) * MathF.Sin(ph));
+                }
+                for (int i = 0; i < Rings; i++)
+                    for (int j = 0; j < Segs; j++)
+                    {
+                        var a = Nrm(i, j); var b = Nrm(i + 1, j); var d = Nrm(i + 1, j + 1); var e = Nrm(i, j + 1);
+                        // Only the half facing us: the matcap already shows the far side through the glass.
+                        if (Vector3.Dot(a + b + d + e, -S.camFwd) < 0) continue;
+                        float r = rad * K;
+                        S.MatcapVertex(c + a * r, a); S.MatcapVertex(c + b * r, b); S.MatcapVertex(c + d * r, d);
+                        S.MatcapVertex(c + a * r, a); S.MatcapVertex(c + d * r, d); S.MatcapVertex(c + e * r, e);
+                    }
+                S.EndShape();
             }
             if (shards.Count > 0)
             {
-                S.Specular(255); S.Shininess(140);
                 S.BeginShape(ShapeKind.Triangles);
+                S.Texture(S.glassCap);
                 foreach (var s in shards)
                 {
                     float fade = Smooth(3.4f, 2.4f, s.Age) * Live;
                     var a = s.P + Vector3.Transform(s.A, s.Q); var b = s.P + Vector3.Transform(s.B, s.Q); var cc = s.P + Vector3.Transform(s.C, s.Q);
                     var n = Vector3.Cross(b - a, cc - a);
                     if (n.LengthSquared() < 1e-6f) continue;
-                    n = Vector3.Normalize(n); if (n.Z < 0) n = -n;
-                    S.N(Surface.Dir(n));
-                    S.Fill(215, 235, 255, 150 * fade);
-                    S.V(W(a.X, a.Y, a.Z)); S.V(W(b.X, b.Y, b.Z)); S.V(W(cc.X, cc.Y, cc.Z));
+                    var nw = Vector3.Normalize(Surface.Dir(Vector3.Normalize(n)));
+                    if (Vector3.Dot(nw, S.camFwd) > 0) nw = -nw;
+                    S.Fill(255, 255, 255, 255 * fade);
+                    // Each corner a little different, so the shard glints.
+                    S.MatcapVertex(W(a.X, a.Y, a.Z), Vector3.Normalize(nw + new Vector3(0.3f, 0, 0)));
+                    S.MatcapVertex(W(b.X, b.Y, b.Z), Vector3.Normalize(nw + new Vector3(0, 0.3f, 0)));
+                    S.MatcapVertex(W(cc.X, cc.Y, cc.Z), Vector3.Normalize(nw + new Vector3(0, 0, 0.3f)));
                 }
                 S.EndShape();
             }
-            S.Specular(0); S.Shininess(0);
         }
 
         public override void DrawGlow()
@@ -1740,7 +2134,7 @@ public class BookOfElements : Sketch
             if (rad < 1) return;
             // The light gathered under the ball, and a gleam on it.
             S.Decal(Surface, bx - 12, by - 14, 0.5f, rad * 0.5f, Rgb(255, 248, 225, 120 * Live));
-            S.AddGlow(W(bx - rad * 0.35f, by - rad * 0.4f, rad * 1.75f), rad * 0.5f * K, Rgb(255, 255, 255), 0.4f * Live);
+            S.AddStar(W(bx - rad * 0.35f, by - rad * 0.4f, rad * 1.75f), rad * 0.6f * K, Rgb(255, 255, 255), 0.5f * Live, S.Now * 0.2f);
         }
     }
 
@@ -1889,9 +2283,33 @@ public class BookOfElements : Sketch
             S.Specular(0); S.Shininess(0);
         }
 
+        public override void DrawGlow()
+        {
+            // Settled snow glitters.
+            float t = S.Now;
+            for (int k = 0; k < 90; k++)
+            {
+                int cell = (k * 7919 + (int)(t * 2) * 31) % depth.Length;
+                if (depth[cell] < 1.2f) continue;
+                float tw = MathF.Pow(Math.Max(0, MathF.Sin(t * 3 + k * 1.3f)), 10);
+                if (tw < 0.05f) continue;
+                int i = cell % GX, j = cell / GX;
+                S.AddStar(W(i * TW / (GX - 1), j * TH / (GY - 1), 1 + depth[cell] * 0.9f), 7 * K, Rgb(230, 240, 255), tw * Live, k);
+            }
+        }
+
         public override void DrawSoft()
         {
-            foreach (var f in flakes) S.AddSoft(W(f.P.X, f.P.Y, f.P.Z), f.Size * K, Rgb(255, 255, 255), 0.9f * Live);
+            float t = S.Now;
+            for (int i = 0; i < flakes.Length; i++)
+            {
+                var f = flakes[i];
+                var at = W(f.P.X, f.P.Y, f.P.Z);
+                if (f.Size < 4) { S.AddSoft(at, f.Size * K, Rgb(255, 255, 255), 0.9f * Live); continue; }
+                // The bigger flakes are real six-armed crystals, slowly turning.
+                float u0 = (i % 4) * 0.25f;
+                S.AddSprite(S.soft, S.flakeTex, at, f.Size * 2.6f * K, Rgb(255, 255, 255), 0.95f * Live, f.Phase + t * (0.4f + f.Phase * 0.1f), u0, 0, u0 + 0.25f, 1);
+            }
             foreach (var (p, _, age) in puffs) S.AddSoft(W(p.X, p.Y, p.Z), 5 * K, Rgb(255, 255, 255), (1 - age / 2.5f) * 0.9f * Live);
         }
     }
@@ -2033,7 +2451,8 @@ public class BookOfElements : Sketch
                 float vis = Smooth(1, 10, L.Off.Z) * (L.State > 0 ? 1 : 0);
                 if (vis < 0.02f) continue;
                 var c = Autumn[(int)L.A];
-                S.EmitQuad(Surface, L, new Vector4(c.X, c.Y, c.Z, 255 * vis * Live), L.W * 1.9f, L.H * 1.25f, 0.1f, 0, 0, 1, 1);
+                int shape = (int)(L.Seed * 2.999f);
+                S.EmitQuad(Surface, L, new Vector4(c.X, c.Y, c.Z, 255 * vis * Live), L.W * 1.9f, L.H * 1.35f, 0.1f, shape / 3f, 0, (shape + 1) / 3f, 1);
             }
             foreach (var leaf in loose)
             {
@@ -2042,7 +2461,8 @@ public class BookOfElements : Sketch
                 S.FillV(leaf.C, Live);
                 S.N(Surface.Dir(n));
                 Vector3 P(Vector3 q) => W(q.X, q.Y, q.Z);
-                S.VT(P(leaf.P - r - d), 0, 0); S.VT(P(leaf.P + r - d), 1, 0); S.VT(P(leaf.P + r + d), 1, 1); S.VT(P(leaf.P - r + d), 0, 1);
+                float u0 = (loose.IndexOf(leaf) % 3) / 3f, u1 = u0 + 1 / 3f;
+                S.VT(P(leaf.P - r - d), u0, 0); S.VT(P(leaf.P + r - d), u1, 0); S.VT(P(leaf.P + r + d), u1, 1); S.VT(P(leaf.P - r + d), u0, 1);
             }
             S.EndShape();
         }
@@ -2174,9 +2594,15 @@ public class BookOfElements : Sketch
                 for (int i = 0; i < GX - 1; i++) { Fp(i, j); Fp(i + 1, j); Fp(i + 1, j + 1); Fp(i, j); Fp(i + 1, j + 1); Fp(i, j + 1); }
             S.EndShape();
 
+            S.Specular(0); S.Shininess(0);
+        }
+
+        /// <summary>The crystals: tapering hexagonal prisms of ice (a matcap: cold, milky, glittering).</summary>
+        public override void DrawUnlit()
+        {
             // The crystals: tapering hexagonal prisms.
-            S.Specular(255); S.Shininess(90);
             S.BeginShape(ShapeKind.Triangles);
+            S.Texture(S.iceCap);
             foreach (var c in crystals)
             {
                 if (c.Len < 0.5f) continue;
@@ -2193,17 +2619,17 @@ public class BookOfElements : Sketch
                     var d0 = e1 * MathF.Cos(a0) + e2 * MathF.Sin(a0); var d1 = e1 * MathF.Cos(a1) + e2 * MathF.Sin(a1);
                     var p0 = b0 + d0 * r; var p1 = b0 + d1 * r; var q0 = mid + d0 * r * 0.85f; var q1 = mid + d1 * r * 0.85f;
                     var n = Vector3.Normalize(d0 + d1);
-                    S.N(Surface.Dir(n));
-                    S.V(W(p0.X, p0.Y, p0.Z)); S.V(W(p1.X, p1.Y, p1.Z)); S.V(W(q1.X, q1.Y, q1.Z));
-                    S.V(W(p0.X, p0.Y, p0.Z)); S.V(W(q1.X, q1.Y, q1.Z)); S.V(W(q0.X, q0.Y, q0.Z));
+                    var nw = Vector3.Normalize(Surface.Dir(n));
+                    var nw0 = Vector3.Normalize(Surface.Dir(d0)); var nw1 = Vector3.Normalize(Surface.Dir(d1));
+                    S.MatcapVertex(W(p0.X, p0.Y, p0.Z), nw0); S.MatcapVertex(W(p1.X, p1.Y, p1.Z), nw1); S.MatcapVertex(W(q1.X, q1.Y, q1.Z), nw1);
+                    S.MatcapVertex(W(p0.X, p0.Y, p0.Z), nw0); S.MatcapVertex(W(q1.X, q1.Y, q1.Z), nw1); S.MatcapVertex(W(q0.X, q0.Y, q0.Z), nw0);
                     var nt = Vector3.Normalize(Vector3.Cross(q1 - q0, tip - q0));
                     if (Vector3.Dot(nt, n) < 0) nt = -nt;
-                    S.N(Surface.Dir(nt));
-                    S.V(W(q0.X, q0.Y, q0.Z)); S.V(W(q1.X, q1.Y, q1.Z)); S.V(W(tip.X, tip.Y, tip.Z));
+                    var ntw = Vector3.Normalize(Surface.Dir(nt));
+                    S.MatcapVertex(W(q0.X, q0.Y, q0.Z), ntw); S.MatcapVertex(W(q1.X, q1.Y, q1.Z), ntw); S.MatcapVertex(W(tip.X, tip.Y, tip.Z), Vector3.Normalize(ntw + nw));
                 }
             }
             S.EndShape();
-            S.Specular(0); S.Shininess(0);
         }
 
         public override void DrawGlow()
@@ -2219,7 +2645,7 @@ public class BookOfElements : Sketch
                 float tw = MathF.Pow(Math.Max(0, MathF.Sin(t * 2.3f + i * 1.7f)), 12);
                 if (tw < 0.02f) continue;
                 var tip = new Vector3(c.X, c.Y, 0) + c.Axis * c.Len;
-                S.AddGlow(W(tip.X, tip.Y, tip.Z), 9 * K, Rgb(220, 240, 255), tw * Live);
+                S.AddStar(W(tip.X, tip.Y, tip.Z), 14 * K, Rgb(220, 240, 255), tw * Live, i);
             }
         }
 
@@ -2361,14 +2787,15 @@ public class BookOfElements : Sketch
             for (int i = 0; i < dome.Length; i++)
             {
                 float tw = 0.55f + 0.45f * MathF.Sin(t * (1.5f + i % 7 * 0.3f) + i);
-                S.AddGlow(dome[i] + new Vector3(0, -120, 0), (i % 5 == 0 ? 16 : 9), domeColor[i], 0.75f * tw * night);
+                if (i % 5 == 0) S.AddStar(dome[i] + new Vector3(0, -120, 0), 30, domeColor[i], 0.8f * tw * night, i);
+                else S.AddGlow(dome[i] + new Vector3(0, -120, 0), 9, domeColor[i], 0.75f * tw * night);
             }
             float skyAmount = phase == 2 ? 1 : phase == 1 ? Clamp01(phaseT / 3) : phase == 3 ? Clamp01(1 - phaseT / 1.5f) : 0;
             for (int i = 0; i < Letters.Count; i++)
             {
                 var L = Letters[i];
                 var at = W(L.X + L.Off.X, L.Y + L.Off.Y, L.Off.Z);
-                if (L.Off.Z > 5) S.AddGlow(at, 14 * K * L.Scale, colors[i], 0.45f * Clamp01(L.Glow) * Live);
+                if (L.Off.Z > 5) S.AddStar(at, 20 * K * L.Scale, colors[i], 0.35f * Clamp01(L.Glow) * Live, L.Seed * 3);
                 if (i > 0 && Letters[i - 1].Word == L.Word && skyAmount > 0.01f)
                 {
                     var P = Letters[i - 1];
