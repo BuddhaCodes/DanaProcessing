@@ -368,6 +368,7 @@ namespace DanaProcessing
         /// the real macOS-unavailable case.</summary>
         private static (IWindow window, GL gl, bool computeCapable) CreateGLContext(int width, int height)
         {
+            ThrowIfOffMainThreadOnMac();
             var window = TryCreateWindow(width, height, new APIVersion(4, 3));
             var requestedHigh = window != null;
 
@@ -378,6 +379,23 @@ namespace DanaProcessing
             var computeCapable = requestedHigh && !Renderer3DSettings.ForceComputeFallback && ProbeComputeShaderSupport(gl);
 
             return (window, gl, computeCapable);
+        }
+
+        [System.Runtime.InteropServices.DllImport("libSystem.dylib")]
+        private static extern int pthread_main_np();
+
+        /// <summary>
+        /// On macOS, GLFW (Cocoa) may only create its window -- and so the GL context -- on the
+        /// process's main thread. Asked from any other thread it doesn't fail: it waits for the
+        /// main thread, which is often busy waiting for it, and everything hangs (a test runner's
+        /// worker thread, a sketch started off the UI thread). So it fails fast instead, saying why.
+        /// </summary>
+        internal static void ThrowIfOffMainThreadOnMac()
+        {
+            if (OperatingSystem.IsMacOS() && pthread_main_np() == 0)
+                throw new InvalidOperationException(
+                    "En macOS el renderer 3D (OpenGL vía GLFW) solo puede crear su contexto en el hilo principal. " +
+                    "Llamá a Size(..., RendererKind.Renderer3D) / CreateGraphics(..., Renderer3D) desde Setup() en el hilo de la UI.");
         }
 
         private static IWindow? TryCreateWindow(int width, int height, APIVersion apiVersion)
