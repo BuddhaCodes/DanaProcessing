@@ -1,0 +1,830 @@
+<!--meta {"title": "Attached sketches", "nav": "Attached sketches (beta)", "summary": "Sketches with no window of their own: they draw on another app's window (Windows Terminal by default), follow it around, feel how it moves and react to its commands.", "tags": ["Beta"]} -->
+<p class="section-intro">A sketch with no window of its own: its canvas is another app's window. It follows that window around the screen, takes its size, hides when it's minimized, and can feel how you move it, what you type in it, where you click and whether your last command failed. One sketch per window if you like, slowing down by itself while nobody's looking, and exported as a tray app. Windows only for now, and <strong>in beta</strong>: the API and the export may still change. Samples: <em>Rain on the terminal</em>, <em>Water in the terminal</em>, <em>Keyboard bubbles</em>, <em>Flow field in the terminal</em>, <em>Cloth over the whole terminal</em>, <em>Blobs in the terminal</em>, <em>Wobbly functions</em>, <em>CSS blob in the terminal</em> and <em>Audio-reactive terminal</em> (system audio through NAudio).</p>
+
+<div class="note"><strong>Beta.</strong> Attached sketches are new and still changing: names, the export options and how the sketch is placed may change between versions. On Windows Terminal a sketch is <strong>always drawn behind the terminal</strong>, under its text, never on top of it; it shows only through a see-through profile (<em>opacity</em> below 100 in the profile's settings, or the profile the export can install). With an opaque profile you won't see it.</div>
+
+<h3 class="entry-title" id="attachedsketch">AttachedSketch · Attach(<span class="tp">WindowTarget</span> target, <span class="tp">AttachLayer</span> layer, topInset, <span class="tp">AttachMode</span> mode)</h3>
+<p class="entry-desc">Inherit from <code class="inline">AttachedSketch</code> instead of <code class="inline">Sketch</code> and everything else stays the same: <code class="inline">Setup()</code>, <code class="inline">Draw()</code>, Run, ⚡ Hot Reload, ■ Stop. <code class="inline">Attach()</code> picks the window to draw on; without it the sketch follows Windows Terminal. <code class="inline">Width</code>/<code class="inline">Height</code> are the window's (minus <code class="inline">topInset</code>, the tab bar by default), change when it's resized, and <code class="inline">WindowResized()</code> tells you. <code class="inline">Size()</code> has no effect. The sketch draws in logical pixels: on a 150 % monitor things keep their size. In the IDE the canvas shows a card saying where the sketch is and what it's doing, with badges for what it uses: <em>N VENTANAS</em>, <em>TECLADO</em> and <em>RATÓN</em> (input hooks, in orange), <em>SHELL</em>, <em>ECO</em>, <em>PAUSA</em>.</p>
+<div class="note"><strong>Call Attach() in Settings().</strong> <code class="inline">Settings()</code> runs before the window is looked for, so <code class="inline">Width</code>/<code class="inline">Height</code> are already the target's inside <code class="inline">Setup()</code>. Calling <code class="inline">Attach()</code> later (a key press, <code class="inline">Draw()</code>) moves the sketch to the new target on the next frame; <code class="inline">mode</code> is only read at the start.</div>
+<div class="note"><strong>Clear() every frame.</strong> The canvas starts transparent. <code class="inline">Clear()</code> at the start of <code class="inline">Draw()</code> keeps it see-through where you don't draw (the desktop behind a terminal, or the window under an <code class="inline">Above</code> sketch); <code class="inline">Background()</code> would cover it.</div>
+
+<h3 class="entry-title" id="windowtarget">WindowTarget.Terminal · WindowTarget.Class(className, topInset) · WindowTarget.Process(processName, topInset) · AttachLayer</h3>
+<p class="entry-desc">Which window to follow. <code class="inline">WindowTarget.Terminal</code> is Windows Terminal (and leaves its 40 px tab bar uncovered). <code class="inline">WindowTarget.Class("Notepad")</code> matches a Win32 window class (Spy++ shows it); <code class="inline">WindowTarget.Process("Code")</code> the main window of a process, by name, with or without <code class="inline">.exe</code>. When several windows match, the one in front wins; when none is open the sketch waits and looks again twice a second. <code class="inline">AttachLayer.Behind</code> draws right under the window, which only shows where the window is see-through — the text then stays on top. <strong>Windows Terminal always uses <code class="inline">Behind</code></strong>, whatever <code class="inline">Attach()</code> asks for: give the profile an <em>opacity</em> below 100 to see the sketch. <code class="inline">AttachLayer.Above</code> draws on top of the window and lets every click through; it's the default for other windows (<code class="inline">Class</code>, <code class="inline">Process</code>) and is ignored on the terminal. <code class="inline">WindowTarget.IsTerminal</code> tells which is which.</p>
+
+<h3 class="entry-title" id="each-window">AttachMode.Front · AttachMode.EachWindow · InstanceNumber <span class="sig-return">→ int</span> · MaxInstances</h3>
+<p class="entry-desc"><code class="inline">AttachMode.Front</code> (default) runs one sketch, on the matching window in front. <code class="inline">AttachMode.EachWindow</code> runs one per matching window — every open terminal gets its own, as it opens, up to <code class="inline">MaxInstances</code> (8) — and drops it when the window closes. Each window's sketch is a separate instance of your class: fields aren't shared, <code class="inline">InstanceNumber</code> is 0, 1, 2…, and each is seeded with <code class="inline">Seed + InstanceNumber</code> so <code class="inline">Random()</code> and <code class="inline">Noise()</code> differ per window. Hot Reload reaches all of them, each keeping its own state; only the first one plays sound.</p>
+<div class="code-block">
+  <pre><span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Settings() =&gt;
+    Attach(<span class="tp">WindowTarget</span>.Terminal, mode: <span class="tp">AttachMode</span>.EachWindow);</pre>
+</div>
+
+<h3 class="entry-title" id="target-state">TargetX · TargetY <span class="sig-return">→ int</span> · TargetScale <span class="sig-return">→ float</span> · IsAttached · IsTargetFocused <span class="sig-return">→ bool</span></h3>
+<p class="entry-desc">Where the sketch's area is on screen (logical pixels), the monitor's scale (1.5 at 150 %), whether a target is found and showing, and whether it's the window you're typing in. <code class="inline">MouseX</code>/<code class="inline">MouseY</code> follow the cursor even though clicks go through, and <code class="inline">MouseMoved()</code> fires when it moves over the area. <code class="inline">Focused</code> is the same as <code class="inline">IsTargetFocused</code>.</p>
+
+<h3 class="entry-title" id="target-motion">TargetVelocity · TargetAcceleration <span class="sig-return">→ PVector</span> · IsTargetMoving <span class="sig-return">→ bool</span></h3>
+<p class="entry-desc">How the window is moving, in logical px/s and px/s², smoothed so one jittery frame doesn't spike them; acceleration is clamped to ±<code class="inline">TargetAccelerationLimit</code> (30000) so a window that jumps across the screen doesn't launch everything into orbit. Things inside a moving box feel the opposite of its acceleration — a glass of water in a car that brakes — so <code class="inline">-TargetAcceleration.X</code> is a sideways force and <code class="inline">Gravity - TargetAcceleration.Y</code> is gravity: yank the window down and it gets lighter, and things jump. Both are zero while the window is still or hidden. <code class="inline">IsTargetMoving</code> is true above <code class="inline">TargetMovingSpeed</code> (5 px/s).</p>
+
+<h3 class="entry-title" id="target-events">TargetMoved() · TargetFocused() · TargetBlurred() · TargetShown() · TargetHidden()</h3>
+<p class="entry-desc">Override them to react to the window. They run between frames on the same thread as <code class="inline">Draw()</code>, never in the middle of one, and only for changes after the sketch started (read <code class="inline">IsTargetFocused</code>/<code class="inline">IsAttached</code> in <code class="inline">Setup()</code> for the starting state). <code class="inline">TargetMoved()</code> fires every frame the window's position changes. <code class="inline">TargetHidden()</code> fires when it's minimized, hidden, moved to another virtual desktop, made too small or closed; <code class="inline">Draw()</code> stops until <code class="inline">TargetShown()</code>.</p>
+
+<h3 class="entry-title" id="target-input">ListenToTargetKeys(listen) · ListenToTargetMouse(listen)</h3>
+<p class="entry-desc">Opt in to the window's input. After <code class="inline">ListenToTargetKeys()</code>, keys typed into the target reach <code class="inline">KeyPressed()</code>, <code class="inline">KeyTyped()</code> and <code class="inline">KeyReleased()</code> with <code class="inline">Key</code>/<code class="inline">KeyCode</code> set as usual (letters follow Shift and the keyboard layout; arrows and modifiers are <code class="inline">CODED</code>). After <code class="inline">ListenToTargetMouse()</code>, clicks and the wheel over the sketch's area reach <code class="inline">MousePressed()</code>, <code class="inline">MouseReleased()</code>, <code class="inline">MouseClicked()</code> and <code class="inline">MouseWheel()</code>. The target still gets every key and click — nothing is swallowed. Both can be turned off again with <code class="inline">false</code>.</p>
+<div class="note"><strong>Privacy.</strong> Keys are read only while the target is the foreground window, and clicks only inside the sketch's area when the target itself is under the cursor; nothing typed in any other app ever reaches the sketch. Reading another app's input needs a low-level system hook, which some antivirus tools flag, so it only starts when a sketch asks for it, stops with the sketch, and the IDE's card shows it (<em>TECLADO</em>, <em>RATÓN</em>).</div>
+
+<h3 class="entry-title" id="shell-signals">ListenToShell(listen) · CommandFinished() · OnShellSignal(name) · LastCommandOk <span class="sig-return">→ bool</span> · LastExitCode · CommandCount <span class="sig-return">→ int</span></h3>
+<p class="entry-desc">React to the commands you run in the terminal. After <code class="inline">ListenToShell()</code>, <code class="inline">CommandFinished()</code> runs every time a command ends, with <code class="inline">LastCommandOk</code> and <code class="inline">LastExitCode</code> telling how (<code class="inline">CommandCount</code> counts them). An empty Enter doesn't count. <code class="inline">dana-signal reset</code> typed in the shell sends a signal of your own: <code class="inline">OnShellSignal("reset")</code>. With several terminals, the signal goes to the sketch on the one in front (where you just pressed Enter).</p>
+<div class="note"><strong>One-time setup.</strong> The shell has to say how each command ended. <em>Tools → Install PowerShell signals</em> in the IDE (or <code class="inline">ShellSignals.InstallForPowerShell()</code>, or the same item in an exported app's tray menu) adds a few lines at the end of your <code class="inline">$PROFILE</code> — Windows PowerShell's, and PowerShell 7's if you have it, asked to the shells themselves so a moved Documents folder doesn't matter. Open a new terminal afterwards.</div>
+<div class="note"><strong>oh-my-posh, starship, posh-git.</strong> Prompt themes replace the prompt when they load, so the lines wrap whatever prompt is active and wrap it again whenever the shell is idle and something replaced it (the same approach as Abyss Tide's hook), handing the theme the same <code class="inline">$?</code> and <code class="inline">$LASTEXITCODE</code> it would have seen: the theme still shows the error, and the sketch gets it too. Each wrapper keeps the prompt it wraps in a closure, so the chain of prompts can never loop back on itself (an earlier version could, and hung the console after an error), names it with a <code class="inline"># __PromptWrapper:name</code> comment, and looks for itself down that chain before wrapping, so two hooks that both re-wrap never wrap each other forever. If it's ever entered twice at once it returns a plain prompt instead of recursing.</div>
+<div class="note"><strong>Abyss Tide.</strong> If Abyss Tide's prompt hook is installed, sketches also read its signal file (<code class="inline">%LOCALAPPDATA%\AbyssTide\signal.txt</code>: "ok"/"error", no exit code) — nothing else to install. With both hooks, each command counts once, with Dana's exit code.</div>
+<div class="note"><strong>Not reacting?</strong> <em>Tools → Test: failed command</em> (or the tray menu's) sends the signal a failed command would: if the sketch reacts, the sketch side works. Then open a <em>new</em> terminal (open ones don't reload the profile), check that <code class="inline">Get-EventSubscriber</code> lists <code class="inline">PowerShell.OnIdle</code>, run the install again (it updates an older copy), and look at <code class="inline">Get-Content $env:LOCALAPPDATA\DanaProcessing\shell-signal.txt</code> after a command.</div>
+<div class="note"><strong>Privacy.</strong> The lines wrap your existing prompt and write only "ok"/"error", the exit code and the shell's process id to <code class="inline">%LOCALAPPDATA%\DanaProcessing\shell-signal.txt</code> — never the command itself — and <code class="inline">ShellSignals.Uninstall(profilePath)</code> removes them. The IDE's card warns when a sketch listens but the lines aren't installed, or are an older copy.</div>
+
+<h3 class="entry-title" id="shellsignals">ShellSignals.InstallForPowerShell() · Install(profilePath) · Uninstall(profilePath) · IsInstalled(profilePath) · PowerShellProfiles() · PowerShellSnippet · SignalFile</h3>
+<p class="entry-desc">The profile lines, and helpers to add or remove them. <code class="inline">Install</code> is safe to run again (it replaces its own block, marked by comments, and keeps the rest of the file and its line endings). The block, to paste by hand into <code class="inline">$PROFILE</code> if you prefer:</p>
+<div class="code-block">
+  <pre># &gt;&gt;&gt; DanaProcessing shell signals &gt;&gt;&gt;
+# Lets DanaProcessing sketches attached to this terminal react to commands.
+# Works with oh-my-posh, starship, Abyss Tide and custom prompts: it wraps whatever
+# prompt is active, wraps it again whenever something replaces it, and keeps $? and
+# $LASTEXITCODE for the prompt underneath. Check: Get-EventSubscriber shows PowerShell.OnIdle.
+if (-not (Test-Path variable:global:__danaWrap)) {
+    $global:__danaSignalFile = Join-Path $env:LOCALAPPDATA 'DanaProcessing\shell-signal.txt'
+    New-Item -ItemType Directory -Force (Split-Path $global:__danaSignalFile) | Out-Null
+    $global:__danaLastHistoryId = (Get-History -Count 1).Id
+    $global:__danaInPrompt = $false
+    function global:dana-signal([string]$name) {
+        [IO.File]::WriteAllText($global:__danaSignalFile, "signal $name $PID")
+    }
+    $global:__danaWrap = {
+        # Already in the prompt chain? Walk down through the wrappers (ours, Abyss Tide's, others
+        # that follow the '# __PromptWrapper:&lt;variable&gt;' convention) looking for this one.
+        $p = $function:prompt
+        for ($i = 0; $p -and $i -lt 30; $i++) {
+            $t = "$p"
+            if ($t -match '__DanaShellSignals|__danaSignalFile') { return }   # this hook (or an older copy)
+            if ($t -match '# __PromptWrapper:(\w+)') { $name = $Matches[1] }
+            elseif ($t -match '__AbyssTideMarker') { $name = '__AbyssTidePrompt' }
+            else { break }
+            $inner = $null
+            if ($p.Module) { $inner = $p.Module.SessionState.PSVariable.GetValue($name) }
+            if (-not $inner) { $inner = Get-Variable -Scope Global -Name $name -ValueOnly -ErrorAction Ignore }
+            $p = $inner
+        }
+        $inner = $function:prompt
+        $function:global:prompt = {
+            # __PromptWrapper:inner
+            # __DanaShellSignals
+            $ok = $?; $code = $global:LASTEXITCODE
+            if ($global:__danaInPrompt) { return "PS $($executionContext.SessionState.Path.CurrentLocation)&gt; " }
+            $global:__danaInPrompt = $true
+            try {
+                try {
+                    $last = Get-History -Count 1
+                    if ($last -and $last.Id -ne $global:__danaLastHistoryId) {
+                        $global:__danaLastHistoryId = $last.Id
+                        $line = if ($ok) { "ok 0 $PID" } elseif ($code) { "error $code $PID" } else { "error 1 $PID" }
+                        [IO.File]::WriteAllText($global:__danaSignalFile, $line)
+                    }
+                } catch { }
+                # The prompt underneath reads $? and $LASTEXITCODE too: hand them back.
+                $global:LASTEXITCODE = $code
+                if (-not $ok) { Write-Error '' -ErrorAction Ignore }
+                &amp; $inner
+            } finally {
+                $global:__danaInPrompt = $false
+            }
+        }.GetNewClosure()
+    }
+    &amp; $global:__danaWrap
+    $null = Register-EngineEvent -SourceIdentifier PowerShell.OnIdle -Action { &amp; $global:__danaWrap }
+}
+# &lt;&lt;&lt; DanaProcessing shell signals &lt;&lt;&lt;</pre>
+</div>
+
+<h3 class="entry-title" id="eco">DeltaTime <span class="sig-return">→ float</span> · EcoMode(on, fps, whenUnfocused) · NoEco() · IsEco · IsEcoEnabled <span class="sig-return">→ bool</span> · EcoFrameRate <span class="sig-return">→ int</span></h3>
+<p class="entry-desc">An attached sketch lives on the desktop all day, so it saves power by itself: while nobody can see it — another window covers the whole target, it isn't moving, and nothing has happened (input, a shell signal, a focus change) for 2 seconds — and whenever a laptop is on battery below 25 %. A terminal that's merely not in front (beside the window you're using, on another monitor) keeps its full frame rate; <code class="inline">EcoMode(whenUnfocused: true)</code> slows it down as soon as it isn't in front, which saves more, it drops to <code class="inline">EcoFrameRate</code> (15 by default). Anything happening brings it back to <code class="inline">FrameRate()</code> at once. <code class="inline">IsEco</code> says when it's slowed down. Use <code class="inline">DeltaTime</code> (seconds since the previous frame, at most 0.1) for anything that moves, so motion keeps its speed at any frame rate. <code class="inline">EcoMode(fps: 5)</code> changes the slow rate; <code class="inline">NoEco()</code> keeps the sketch at full speed always.</p>
+
+<h3 class="entry-title" id="tray-export">Export as a tray app</h3>
+<p class="entry-desc"><em>File → Export</em> on an <code class="inline">AttachedSketch</code> makes an app with no window of its own: it draws on the window its <code class="inline">Attach()</code> picks and lives in the system tray, next to the clock. The icon's menu shows what it's doing (the same text as the IDE's card) and has <em>Pause</em>/<em>Resume</em> (a click on the icon does the same), <em>Install PowerShell signals</em> and <em>Quit</em>. The export dialog says so instead of offering a title bar option.</p>
+
+<h3 class="entry-title" id="tray-install">Install it like Abyss Tide: install.ps1</h3>
+<p class="entry-desc">The export dialog of an <code class="inline">AttachedSketch</code> has two more options, both on by default. <strong>One sketch per terminal</strong> runs a copy of the sketch on every Windows Terminal window (as if its <code class="inline">Attach()</code> said <code class="inline">AttachMode.EachWindow</code>, whatever it says). <strong>PowerShell installer</strong> puts an <code class="inline">install.ps1</code> and a <code class="inline">LEEME.txt</code> next to the exe. Run it once (right click → Run with PowerShell, or <code class="inline">powershell -ExecutionPolicy Bypass -File .\install.ps1</code>) and, for the current user and without administrator rights, it copies the app to <code class="inline">%LOCALAPPDATA%\DanaProcessing\Sketches\&lt;name&gt;</code>, unblocks its files, adds the PowerShell prompt hook (so the sketch knows when a command fails), creates a shortcut in the Startup folder and starts it.</p>
+<pre class="code-block"><code>.\install.ps1                      # install, start with Windows, start now
+.\install.ps1 -NoAutostart         # without starting with Windows
+.\install.ps1 -NoShellHook         # without touching your PowerShell profile
+.\install.ps1 -Uninstall           # stop it and remove it
+.\install.ps1 -Uninstall -RemoveShellHook   # also remove the hook (shared by every Dana sketch)</code></pre>
+<p class="entry-desc"><strong>In its own Windows Terminal profile</strong> (a third option, on by default, needs the installer) does what Abyss Tide does: <code class="inline">install.ps1</code> adds a <em>PowerShell · &lt;name&gt;</em> profile through a Windows Terminal fragment, and lists it in your <code class="inline">settings.json</code> with a one-line entry like the ones Terminal writes itself (Terminal hides a fragment profile it has seen before but can't find there; a backup goes to <code class="inline">settings.json.bak-dana</code>), see-through at 25 % opacity with a dark scheme of its own, and the sketch draws <em>behind</em> the terminal over a dark backdrop. It shows only in that profile: the other, opaque profiles cover it. Restart Windows Terminal after installing to see the new profile; <code class="inline">-Uninstall</code> removes it. Without this option the sketch still draws behind every terminal, never over the text, and only shows in terminals whose profile is already see-through.</p>
+<div class="note">The exported app runs once per exe: starting it again (autostart plus a double-click, or reinstalling) doesn't put a second overlay on your terminals. The prompt hook is installed by the exe itself (<code class="inline">--install-shell-signals</code>), the same one the IDE's <em>Tools</em> menu installs.</div>
+
+<h3 class="entry-title" id="attached-how">How it works</h3>
+<p class="entry-desc">Each sketch runs on a thread of its own with a borderless, click-through window placed exactly over its target, and that thread sleeps until something happens: the next frame is due, or Windows, the input hooks or the shell wake it. Every frame it reads where the target is (DWM's visible bounds, its monitor's DPI, whether it's minimized or cloaked), resizes the surface if needed, runs the events and <code class="inline">Draw()</code>, and puts the pixels on screen: Skia draws straight into the bitmap the window shows, with no copy. Today: Windows only, drawn on the CPU.</p>
+<div class="note"><strong>Event-driven, not polled.</strong> Windows reports when the target moves, resizes, minimizes, hides, closes or loses the foreground (WinEvent hooks): a move takes the overlay along at once, between frames, so it doesn't trail a drag (Windows reports hundreds of moves a second while dragging, so they're merged: the overlay moves at most every 4 ms and the sketch keeps drawing frames throughout the drag); the rest wakes the sketch for a frame right away. A key, a click or a shell signal wakes it too — in eco mode as well, so the first event after a quiet spell isn't late. Shell signals are noticed the moment the file is written (a file watcher; a once-a-second poll is only the fallback), and with <code class="inline">AttachMode.EachWindow</code> a terminal you open gets its sketch as soon as it shows. Keyboard and mouse hooks live on another thread, so a slow <code class="inline">Draw()</code> never delays your typing.</div>
+<div class="note"><strong>How fast is it?</strong> The IDE's card shows it while the sketch runs: frames per second, what <code class="inline">Draw()</code> and putting the frame on screen cost, and how long the last shell signal, key and window move took to arrive (for example <em>60 fps · dibujo 3.1 ms · presentar 0.9 ms · señal 4 ms · tecla 2 ms · mover 1 ms</em>). For thousands of short lines, draw them in batches (<code class="inline">BeginShape(ShapeKind.Lines)</code>) with <code class="inline">StrokeWeight(0)</code> — a one-pixel hairline, Skia's fastest — as the flow field sample does: it went from 16 to 6 ms a frame.</div>
+
+<h3 class="entry-title" id="attached-example">Runnable example: water in the terminal</h3>
+<p class="entry-desc">Water that sloshes when you drag Windows Terminal, splashes when you type in it and dims when you switch away. <strong>Run in Dana</strong> opens it in the IDE; open Windows Terminal before pressing Run. It is also in <em>Sketch → Examples</em>.</p>
+<div class="code-block">
+  <pre id="attached-example-code"><span class="cm">// Water in the terminal: drag Windows Terminal around and the water inside</span>
+<span class="cm">// sloshes, hits the walls and splashes -- the same trick as a glass of</span>
+<span class="cm">// water in a moving car: what's inside feels the opposite of</span>
+<span class="cm">// TargetAcceleration.</span>
+<span class="cm">//</span>
+<span class="cm">// 1. Open Windows Terminal and press Run.</span>
+<span class="cm">// 2. Drag the window and let go suddenly. Shake it. Yank it down: the water jumps.</span>
+<span class="cm">// 3. Type in the terminal: every key drops a drop, Enter makes a splash.</span>
+<span class="cm">//    Click the water to drop one where you click.</span>
+<span class="cm">// 4. Switch to another window: the water dims until you come back.</span>
+<span class="cm">//</span>
+<span class="cm">// ListenToTargetKeys()/ListenToTargetMouse() read keys typed into the terminal</span>
+<span class="cm">// and clicks over it (the terminal still gets all of them). Windows only.</span>
+<span class="kw">public</span> <span class="kw">class</span> TerminalWater : <span class="tp">AttachedSketch</span>
+{
+    <span class="kw">const</span> <span class="kw">float</span> Cell = <span class="str">8</span>;          <span class="cm">// width of one water column, in pixels</span>
+    <span class="kw">const</span> <span class="kw">float</span> Gravity = <span class="str">900</span>;     <span class="cm">// px/s²</span>
+    <span class="kw">const</span> <span class="kw">float</span> Inertia = <span class="str">0.28f</span>;   <span class="cm">// how strongly the window's motion pushes the water</span>
+    <span class="kw">const</span> <span class="kw">float</span> FillLevel = <span class="str">0.3f</span>;  <span class="cm">// how full the window is</span>
+
+    <span class="kw">float</span>[] _h = <span class="kw">new</span> <span class="kw">float</span>[<span class="str">0</span>];     <span class="cm">// water height per column</span>
+    <span class="kw">float</span>[] _u = <span class="kw">new</span> <span class="kw">float</span>[<span class="str">0</span>];     <span class="cm">// flow between columns</span>
+    <span class="kw">float</span>[] _flux = <span class="kw">new</span> <span class="kw">float</span>[<span class="str">0</span>];
+    <span class="kw">int</span> _cols;
+    <span class="kw">float</span> _dim = <span class="str">1</span>;
+    <span class="kw">readonly</span> <span class="tp">List</span>&lt;<span class="tp">PVector</span>&gt; _drops = <span class="kw">new</span>();
+    <span class="kw">readonly</span> <span class="tp">List</span>&lt;<span class="tp">PVector</span>&gt; _dropSpeeds = <span class="kw">new</span>();
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Settings() =&gt; Attach(<span class="tp">WindowTarget</span>.Terminal);
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup()
+    {
+        ListenToTargetKeys();
+        ListenToTargetMouse();
+        Rebuild();
+    }
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> WindowResized() =&gt; Rebuild();
+
+    <span class="kw">void</span> Rebuild()
+    {
+        _cols = <span class="tp">Math</span>.Max(<span class="str">8</span>, (<span class="kw">int</span>)(Width / Cell));
+        _h = <span class="kw">new</span> <span class="kw">float</span>[_cols];
+        _u = <span class="kw">new</span> <span class="kw">float</span>[_cols + <span class="str">1</span>];
+        _flux = <span class="kw">new</span> <span class="kw">float</span>[_cols + <span class="str">1</span>];
+        <span class="kw">for</span> (<span class="kw">int</span> i = <span class="str">0</span>; i &lt; _cols; i++)
+            _h[i] = Height * FillLevel;
+    }
+
+    <span class="cm">// --- input from the terminal -------------------------------------------</span>
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> KeyTyped() =&gt; Drop(Random(Width), <span class="str">1</span>);
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> KeyPressed()
+    {
+        <span class="kw">if</span> (Key == ENTER)
+            <span class="kw">for</span> (<span class="kw">int</span> i = <span class="str">0</span>; i &lt; <span class="str">6</span>; i++)
+                Drop(Random(Width), <span class="str">2</span>);
+    }
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> MousePressed() =&gt; Drop(MouseX, <span class="str">1.5f</span>);
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> TargetShown() =&gt; Splash(_cols / <span class="str">2</span>, <span class="str">60</span>); <span class="cm">// welcome back</span>
+
+    <span class="kw">void</span> Drop(<span class="kw">float</span> x, <span class="kw">float</span> size)
+    {
+        _drops.Add(<span class="kw">new</span> <span class="tp">PVector</span>(x, -<span class="str">10</span>, size));
+        _dropSpeeds.Add(<span class="kw">new</span> <span class="tp">PVector</span>(Random(-<span class="str">20</span>, <span class="str">20</span>), Random(<span class="str">0</span>, <span class="str">80</span>)));
+    }
+
+    <span class="kw">void</span> Splash(<span class="kw">int</span> col, <span class="kw">float</span> amount)
+    {
+        <span class="kw">if</span> (col &lt; <span class="str">1</span> || col &gt;= _cols - <span class="str">1</span>) <span class="kw">return</span>;
+        <span class="kw">float</span> take = <span class="tp">Math</span>.Min(amount, _h[col] * <span class="str">0.5f</span>);
+        _h[col] -= take;               <span class="cm">// a dent in the surface...</span>
+        _h[col - <span class="str">1</span>] += take / <span class="str">2</span>;       <span class="cm">// ...pushes water to both sides: a wave</span>
+        _h[col + <span class="str">1</span>] += take / <span class="str">2</span>;
+    }
+
+    <span class="cm">// --- simulation -----------------------------------------------------------</span>
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        Clear();
+        <span class="kw">float</span> dt = DeltaTime;   <span class="cm">// real seconds: same speed at 60 fps or in eco mode</span>
+        <span class="kw">var</span> a = TargetAcceleration;
+        <span class="kw">float</span> fx = -a.X * Inertia;                                        <span class="cm">// sideways push</span>
+        <span class="kw">float</span> g = Constrain(Gravity - a.Y * Inertia, Gravity * <span class="str">0.25f</span>, Gravity * <span class="str">4</span>);  <span class="cm">// moving down = lighter</span>
+
+        Step(dt, fx, g);
+        UpdateDrops(dt, g);
+
+        _dim = Lerp(_dim, IsTargetFocused ? <span class="str">1</span> : <span class="str">0.45f</span>, <span class="str">0.08f</span>);
+        DrawWater();
+        DrawDrops();
+    }
+
+    <span class="kw">void</span> Step(<span class="kw">float</span> dt, <span class="kw">float</span> fx, <span class="kw">float</span> g)
+    {
+        <span class="kw">int</span> sub = <span class="str">8</span>;
+        <span class="kw">float</span> sdt = dt / sub;
+        <span class="kw">float</span> damp = Exp(-<span class="str">0.8f</span> * sdt);
+        <span class="kw">float</span> maxU = <span class="str">0.45f</span> * Cell / sdt;
+        <span class="kw">for</span> (<span class="kw">int</span> s = <span class="str">0</span>; s &lt; sub; s++)
+        {
+            <span class="kw">for</span> (<span class="kw">int</span> i = <span class="str">1</span>; i &lt; _cols; i++)
+            {
+                <span class="kw">float</span> v = _u[i] + sdt * (-g * (_h[i] - _h[i - <span class="str">1</span>]) / Cell + fx);
+                <span class="kw">if</span> (_h[i] &lt; <span class="str">0.5f</span> &amp;&amp; _h[i - <span class="str">1</span>] &lt; <span class="str">0.5f</span>) v = <span class="str">0</span>;
+                _u[i] = Constrain(v * damp, -maxU, maxU);
+            }
+            _u[<span class="str">0</span>] = _u[_cols] = <span class="str">0</span>;   <span class="cm">// the window's walls</span>
+            <span class="kw">for</span> (<span class="kw">int</span> i = <span class="str">1</span>; i &lt; _cols; i++)
+                _flux[i] = _u[i] * (_u[i] &gt; <span class="str">0</span> ? _h[i - <span class="str">1</span>] : _h[i]);
+            <span class="kw">for</span> (<span class="kw">int</span> i = <span class="str">0</span>; i &lt; _cols; i++)
+                _h[i] = Constrain(_h[i] - sdt * (_flux[i + <span class="str">1</span>] - _flux[i]) / Cell, <span class="str">0</span>, Height);
+        }
+
+        <span class="cm">// Keep the volume constant (rounding slowly leaks it).</span>
+        <span class="kw">float</span> target = FillLevel * Height * _cols, vol = <span class="str">0</span>;
+        <span class="kw">foreach</span> (<span class="kw">var</span> h <span class="kw">in</span> _h) vol += h;
+        <span class="kw">if</span> (vol &gt; <span class="str">1</span>)
+            <span class="kw">for</span> (<span class="kw">int</span> i = <span class="str">0</span>; i &lt; _cols; i++) _h[i] *= <span class="str">1</span> + (target / vol - <span class="str">1</span>) * <span class="str">0.1f</span>;
+    }
+
+    <span class="kw">void</span> UpdateDrops(<span class="kw">float</span> dt, <span class="kw">float</span> g)
+    {
+        <span class="kw">for</span> (<span class="kw">int</span> i = _drops.Count - <span class="str">1</span>; i &gt;= <span class="str">0</span>; i--)
+        {
+            <span class="kw">var</span> p = _drops[i];
+            <span class="kw">var</span> v = _dropSpeeds[i];
+            v.Y += g * dt;
+            p.X += v.X * dt;
+            p.Y += v.Y * dt;
+            <span class="kw">int</span> col = Constrain((<span class="kw">int</span>)(p.X / Cell), <span class="str">0</span>, _cols - <span class="str">1</span>);
+            <span class="kw">if</span> (p.Y &gt;= Height - _h[col])
+            {
+                Splash(col, <span class="str">6</span> * p.Z);
+                _drops.RemoveAt(i);
+                _dropSpeeds.RemoveAt(i);
+            }
+        }
+    }
+
+    <span class="kw">void</span> DrawWater()
+    {
+        <span class="cm">// The body: one polygon through the middle of every column's top.</span>
+        NoStroke();
+        Fill(<span class="str">20</span>, <span class="str">90</span>, <span class="str">170</span>, <span class="str">110</span> * _dim);
+        BeginShape();
+        Vertex(<span class="str">0</span>, Height);
+        Vertex(<span class="str">0</span>, Height - _h[<span class="str">0</span>]);
+        <span class="kw">for</span> (<span class="kw">int</span> i = <span class="str">0</span>; i &lt; _cols; i++)
+            Vertex(i * Cell + Cell / <span class="str">2</span>, Height - _h[i]);
+        Vertex(Width, Height - _h[_cols - <span class="str">1</span>]);
+        Vertex(Width, Height);
+        EndShape(close: <span class="kw">true</span>);
+
+        <span class="cm">// The surface line, brighter (foam) where it's steep.</span>
+        StrokeWeight(<span class="str">2</span>);
+        <span class="kw">for</span> (<span class="kw">int</span> i = <span class="str">1</span>; i &lt; _cols; i++)
+        {
+            <span class="kw">float</span> steep = Abs(_h[i] - _h[i - <span class="str">1</span>]);
+            Stroke(<span class="str">150</span>, <span class="str">230</span>, <span class="str">255</span>, (<span class="str">110</span> + <span class="tp">Math</span>.Min(steep * <span class="str">25</span>, <span class="str">145</span>)) * _dim);
+            Line((i - <span class="str">1</span>) * Cell + Cell / <span class="str">2</span>, Height - _h[i - <span class="str">1</span>], i * Cell + Cell / <span class="str">2</span>, Height - _h[i]);
+        }
+    }
+
+    <span class="kw">void</span> DrawDrops()
+    {
+        NoStroke();
+        Fill(<span class="str">170</span>, <span class="str">230</span>, <span class="str">255</span>, <span class="str">220</span> * _dim);
+        <span class="kw">foreach</span> (<span class="kw">var</span> p <span class="kw">in</span> _drops)
+            Ellipse(p.X, p.Y, <span class="str">4</span> * p.Z, <span class="str">6</span> * p.Z);
+    }
+}
+</pre>
+  <button class="dana-test-btn" data-target="attached-example-code" title="Run in DanaProcessing IDE">
+    <i class="ph-bold ph-play"></i>
+    <span class="dana-test-label">Test in Dana</span>
+  </button>
+</div>
+
+<h3 class="entry-title" id="attached-flow-example">Runnable example: a flow field per terminal</h3>
+<p class="entry-desc">Particles following a vector field, a different one on each Windows Terminal window. Dragging a terminal throws them back (inertia) and twists the field; a command that fails turns it into a red storm with the exit code, one that works calms it with a cyan pulse. Idea from <a href="https://openprocessing.org/sketch/3017881">"Vector field with particles"</a> by jcponcemath on OpenProcessing, written from scratch for Dana.</p>
+<div class="code-block">
+  <pre id="attached-flow-code"><span class="cm">// Flow field in the terminal: particles drift along a vector field drawn</span>
+<span class="cm">// behind Windows Terminal's text -- and every terminal window gets a field of its own.</span>
+<span class="cm">//</span>
+<span class="cm">// Idea from "Vector field with particles" by jcponcemath on OpenProcessing</span>
+<span class="cm">// (openprocessing.org/sketch/3017881); this is a fresh take written for Dana.</span>
+<span class="cm">//</span>
+<span class="cm">// 1. Open one or more Windows Terminal windows and press Run.</span>
+<span class="cm">// 2. Drag a terminal: the particles lag behind (inertia, -TargetAcceleration)</span>
+<span class="cm">//    and the field twists with the speed (TargetVelocity). Let go: it untwists.</span>
+<span class="cm">// 3. Run a command that fails (try:  cmd /c exit 3): the field becomes a red</span>
+<span class="cm">//    storm and shows the exit code. A command that works calms it with a cyan</span>
+<span class="cm">//    pulse. dana-signal reset draws a new field.</span>
+<span class="cm">//    Commands need the PowerShell snippet once: run ShellSignals.InstallForPowerShell()</span>
+<span class="cm">//    (or use the tray menu of the exported app), then open a new terminal.</span>
+<span class="kw">public</span> <span class="kw">class</span> TerminalFlowField : <span class="tp">AttachedSketch</span>
+{
+    <span class="kw">const</span> <span class="kw">int</span> Tail = <span class="str">10</span>;  <span class="cm">// positions kept per particle for its trail</span>
+
+    <span class="kw">sealed</span> <span class="kw">class</span> <span class="tp">Particle</span>
+    {
+        <span class="kw">public</span> <span class="kw">float</span> X, Y, VX, VY, Age, Life;
+        <span class="kw">public</span> <span class="kw">readonly</span> <span class="kw">float</span>[] TX = <span class="kw">new</span> <span class="kw">float</span>[Tail], TY = <span class="kw">new</span> <span class="kw">float</span>[Tail];
+        <span class="kw">public</span> <span class="kw">int</span> Head;
+    }
+
+    <span class="kw">readonly</span> <span class="tp">List</span>&lt;<span class="tp">Particle</span>&gt; _particles = <span class="kw">new</span>();
+
+    <span class="cm">// Trails are drawn in batches: every segment of the same color and alpha goes</span>
+    <span class="cm">// into one shape (BeginShape(ShapeKind.Lines) = one Skia call) instead of a</span>
+    <span class="cm">// Stroke() + Line() per segment, thousands of calls a frame otherwise.</span>
+    <span class="kw">const</span> <span class="kw">int</span> HueSteps = <span class="str">24</span>, AlphaSteps = <span class="str">8</span>;   <span class="cm">// 15° hue steps, 8 alpha levels</span>
+    <span class="kw">readonly</span> <span class="tp">List</span>&lt;<span class="kw">float</span>&gt;[] _batches = Enumerable.Range(<span class="str">0</span>, HueSteps * (AlphaSteps + <span class="str">1</span>)).Select(_ =&gt; <span class="kw">new</span> <span class="tp">List</span>&lt;<span class="kw">float</span>&gt;()).ToArray();
+    <span class="kw">float</span> _a, _b, _swirl, _phase;   <span class="cm">// the field's shape: different per window (each instance has its own seed)</span>
+    <span class="kw">float</span> _storm;                   <span class="cm">// 1 right after a failed command, fades out</span>
+    <span class="kw">float</span> _calm;                    <span class="cm">// 1 right after a command that worked</span>
+    <span class="kw">float</span> _twist;                   <span class="cm">// follows how fast the window is dragged</span>
+    <span class="kw">float</span> _ringRadius = -<span class="str">1</span>, _ringHue;
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Settings() =&gt;
+        Attach(<span class="tp">WindowTarget</span>.Terminal, mode: <span class="tp">AttachMode</span>.EachWindow);
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup()
+    {
+        ListenToShell();
+        ColorMode(<span class="tp">ColorSpaceMode</span>.HSB, <span class="str">360</span>, <span class="str">100</span>, <span class="str">100</span>, <span class="str">255</span>);
+        TextAlign(<span class="tp">TextAlignH</span>.Right, <span class="tp">TextAlignV</span>.Bottom);
+        NewField();
+        FitParticles();
+    }
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> WindowResized() =&gt; FitParticles();
+
+    <span class="kw">void</span> NewField()
+    {
+        _a = Random(<span class="str">1.5f</span>, <span class="str">3.5f</span>);
+        _b = Random(<span class="str">1.5f</span>, <span class="str">3.5f</span>);
+        _swirl = Random(-<span class="str">0.8f</span>, <span class="str">0.8f</span>);
+        _phase = Random(TWO_PI);
+    }
+
+    <span class="kw">void</span> FitParticles()
+    {
+        <span class="kw">int</span> wanted = Constrain(Width * Height / <span class="str">900</span>, <span class="str">150</span>, <span class="str">1000</span>);
+        <span class="kw">while</span> (_particles.Count &lt; wanted)
+            _particles.Add(Respawn(<span class="kw">new</span> <span class="tp">Particle</span>()));
+        <span class="kw">if</span> (_particles.Count &gt; wanted)
+            _particles.RemoveRange(wanted, _particles.Count - wanted);
+    }
+
+    <span class="tp">Particle</span> Respawn(<span class="tp">Particle</span> p)
+    {
+        p.X = Random(Width);
+        p.Y = Random(Height);
+        p.VX = p.VY = <span class="str">0</span>;
+        p.Age = <span class="str">0</span>;
+        p.Life = Random(<span class="str">2</span>, <span class="str">6</span>);
+        <span class="kw">for</span> (<span class="kw">int</span> i = <span class="str">0</span>; i &lt; Tail; i++) { p.TX[i] = p.X; p.TY[i] = p.Y; }
+        <span class="kw">return</span> p;
+    }
+
+    <span class="cm">// --- the vector field -------------------------------------------------------</span>
+
+    (<span class="kw">float</span> X, <span class="kw">float</span> Y) Field(<span class="kw">float</span> x, <span class="kw">float</span> y, <span class="kw">float</span> t)
+    {
+        <span class="cm">// Smooth swirls in coordinates centred on the window, scaled to it.</span>
+        <span class="kw">float</span> s = <span class="tp">Math</span>.Max(<span class="str">1</span>, <span class="tp">Math</span>.Min(Width, Height));
+        <span class="kw">float</span> u = (x - Width / <span class="str">2f</span>) / s * <span class="str">2</span>, v = (y - Height / <span class="str">2f</span>) / s * <span class="str">2</span>;
+        <span class="kw">float</span> fx = Sin(_a * v + _phase + t * <span class="str">0.2f</span>) - _swirl * v;
+        <span class="kw">float</span> fy = Cos(_b * u - _phase + t * <span class="str">0.15f</span>) + _swirl * u;
+
+        <span class="cm">// After an error: noisy turbulence on top.</span>
+        <span class="kw">if</span> (_storm &gt; <span class="str">0</span>)
+        {
+            <span class="kw">float</span> n = Noise(x * <span class="str">0.008f</span> + t * <span class="str">0.4f</span>, y * <span class="str">0.008f</span>) * TWO_PI * <span class="str">3</span>;
+            fx += Cos(n) * <span class="str">2.5f</span> * _storm;
+            fy += Sin(n) * <span class="str">2.5f</span> * _storm;
+        }
+
+        <span class="cm">// While the window is dragged: the whole field turns.</span>
+        <span class="kw">float</span> c = Cos(_twist), sn = Sin(_twist);
+        <span class="kw">return</span> (fx * c - fy * sn, fx * sn + fy * c);
+    }
+
+    <span class="cm">// --- the shell ----------------------------------------------------------------</span>
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> CommandFinished()
+    {
+        <span class="kw">if</span> (LastCommandOk)
+        {
+            _calm = <span class="str">1</span>;
+            Ring(<span class="str">170</span>);
+        }
+        <span class="kw">else</span>
+        {
+            _storm = <span class="str">1</span>;
+            Ring(<span class="str">5</span>);
+            <span class="kw">foreach</span> (<span class="kw">var</span> p <span class="kw">in</span> _particles)   <span class="cm">// a kick in every direction</span>
+            {
+                <span class="kw">float</span> a = Random(TWO_PI);
+                p.VX += Cos(a) * <span class="str">250</span>;
+                p.VY += Sin(a) * <span class="str">250</span>;
+            }
+        }
+    }
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> OnShellSignal(<span class="kw">string</span> name)
+    {
+        <span class="kw">if</span> (name == <span class="str">"reset"</span>)
+        {
+            NewField();
+            <span class="kw">foreach</span> (<span class="kw">var</span> p <span class="kw">in</span> _particles) Respawn(p);
+            Ring(<span class="str">270</span>);
+        }
+    }
+
+    <span class="kw">void</span> Ring(<span class="kw">float</span> hue)
+    {
+        _ringRadius = <span class="str">0</span>;
+        _ringHue = hue;
+    }
+
+    <span class="cm">// --- every frame ----------------------------------------------------------------</span>
+
+    <span class="kw">void</span> DrawBatches()
+    {
+        <span class="cm">// StrokeWeight(0) is a hairline: exactly one physical pixel at any DPI,</span>
+        <span class="cm">// and Skia's fastest antialiased line -- about 10x cheaper than 1.6 px</span>
+        <span class="cm">// with round ends (the trails are thousands of tiny segments).</span>
+        StrokeWeight(<span class="str">0</span>);
+        NoFill();
+        <span class="kw">for</span> (<span class="kw">int</span> b = <span class="str">0</span>; b &lt; _batches.Length; b++)
+        {
+            <span class="kw">var</span> batch = _batches[b];
+            <span class="kw">if</span> (batch.Count == <span class="str">0</span>) <span class="kw">continue</span>;
+            <span class="kw">int</span> hueStep = b / (AlphaSteps + <span class="str">1</span>), alphaStep = b % (AlphaSteps + <span class="str">1</span>);
+            Stroke(hueStep * (<span class="str">360f</span> / HueSteps), <span class="str">65</span> + <span class="str">35</span> * _storm, <span class="str">100</span>, <span class="str">255f</span> * alphaStep / AlphaSteps);
+            BeginShape(ShapeKind.Lines);
+            <span class="kw">for</span> (<span class="kw">int</span> i = <span class="str">0</span>; i &lt; batch.Count; i += <span class="str">2</span>)
+                Vertex(batch[i], batch[i + <span class="str">1</span>]);
+            EndShape();
+            batch.Clear();
+        }
+    }
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        Clear(); <span class="cm">// transparent: the terminal stays visible underneath</span>
+        <span class="kw">float</span> dt = DeltaTime;   <span class="cm">// real seconds: same speed at 60 fps or in eco mode</span>
+        <span class="kw">float</span> t = Millis() / <span class="str">1000f</span>;
+
+        _storm = <span class="tp">Math</span>.Max(<span class="str">0</span>, _storm - dt / <span class="str">2.5f</span>);
+        _calm = <span class="tp">Math</span>.Max(<span class="str">0</span>, _calm - dt / <span class="str">1.5f</span>);
+        _twist = Lerp(_twist, Constrain(TargetVelocity.X / <span class="str">1500f</span>, -<span class="str">1.3f</span>, <span class="str">1.3f</span>), <span class="tp">Math</span>.Min(<span class="str">1</span>, dt * <span class="str">4</span>));
+        <span class="kw">var</span> push = TargetAcceleration;
+        <span class="kw">float</span> speed = <span class="str">110</span> * (<span class="str">1</span> + <span class="str">1.5f</span> * _storm) * (<span class="str">1</span> - <span class="str">0.5f</span> * _calm);
+        <span class="kw">float</span> follow = <span class="tp">Math</span>.Min(<span class="str">1</span>, dt * <span class="str">3</span>);
+
+        <span class="kw">foreach</span> (<span class="kw">var</span> p <span class="kw">in</span> _particles)
+        {
+            <span class="kw">var</span> (fx, fy) = Field(p.X, p.Y, t);
+            <span class="cm">// Follow the field, and feel the window's motion the other way round.</span>
+            p.VX += (fx * speed - p.VX) * follow - push.X * <span class="str">0.15f</span> * dt;
+            p.VY += (fy * speed - p.VY) * follow - push.Y * <span class="str">0.15f</span> * dt;
+            p.X += p.VX * dt;
+            p.Y += p.VY * dt;
+            p.Age += dt;
+            p.Head = (p.Head + <span class="str">1</span>) % Tail;
+            p.TX[p.Head] = p.X;
+            p.TY[p.Head] = p.Y;
+
+            <span class="kw">if</span> (p.Age &gt; p.Life || p.X &lt; -<span class="str">20</span> || p.Y &lt; -<span class="str">20</span> || p.X &gt; Width + <span class="str">20</span> || p.Y &gt; Height + <span class="str">20</span>)
+            {
+                Respawn(p);
+                <span class="kw">continue</span>;
+            }
+
+            <span class="cm">// Blue-violet by direction; red in a storm; cyan when calm.</span>
+            <span class="kw">float</span> hue = <span class="str">190</span> + <span class="str">50</span> * Sin(Atan2(p.VY, p.VX));
+            hue = Lerp(hue, <span class="str">5</span>, _storm);
+            hue = Lerp(hue, <span class="str">175</span>, _calm * (<span class="str">1</span> - _storm));
+            <span class="kw">float</span> fade = <span class="tp">Math</span>.Min(<span class="str">1</span>, <span class="tp">Math</span>.Min(p.Age * <span class="str">2</span>, (p.Life - p.Age) * <span class="str">2</span>));
+            <span class="kw">int</span> hueStep = ((<span class="kw">int</span>)<span class="tp">Math</span>.Round(hue / (<span class="str">360f</span> / HueSteps)) % HueSteps + HueSteps) % HueSteps;
+            <span class="kw">for</span> (<span class="kw">int</span> k = <span class="str">1</span>; k &lt; Tail; k++)   <span class="cm">// oldest segment first, fainter</span>
+            {
+                <span class="kw">int</span> alphaStep = (<span class="kw">int</span>)<span class="tp">Math</span>.Round(fade * k / Tail * AlphaSteps);
+                <span class="kw">if</span> (alphaStep == <span class="str">0</span>) <span class="kw">continue</span>;
+                <span class="kw">int</span> i0 = (p.Head + k) % Tail, i1 = (p.Head + k + <span class="str">1</span>) % Tail;
+                <span class="kw">var</span> batch = _batches[hueStep * (AlphaSteps + <span class="str">1</span>) + alphaStep];
+                batch.Add(p.TX[i0]); batch.Add(p.TY[i0]); batch.Add(p.TX[i1]); batch.Add(p.TY[i1]);
+            }
+        }
+        DrawBatches();
+
+        <span class="cm">// The pulse after a command, from the centre outwards.</span>
+        <span class="kw">if</span> (_ringRadius &gt;= <span class="str">0</span>)
+        {
+            <span class="kw">float</span> max = Dist(<span class="str">0</span>, <span class="str">0</span>, Width, Height) / <span class="str">2</span>;
+            _ringRadius += <span class="str">700</span> * dt;
+            Stroke(_ringHue, <span class="str">80</span>, <span class="str">100</span>, <span class="str">220</span> * (<span class="str">1</span> - _ringRadius / max));
+            StrokeWeight(<span class="str">3</span>);
+            Ellipse(Width / <span class="str">2f</span>, Height / <span class="str">2f</span>, _ringRadius * <span class="str">2</span>, _ringRadius * <span class="str">2</span>);
+            <span class="kw">if</span> (_ringRadius &gt; max) _ringRadius = -<span class="str">1</span>;
+        }
+
+        <span class="kw">if</span> (_storm &gt; <span class="str">0</span>)
+        {
+            NoStroke();
+            Fill(<span class="str">5</span>, <span class="str">80</span>, <span class="str">100</span>, <span class="str">255</span> * _storm);
+            TextSize(<span class="str">28</span>);
+            Text(<span class="str">$"exit {LastExitCode}"</span>, Width - <span class="str">16</span>, Height - <span class="str">12</span>);
+        }
+    }
+}
+</pre>
+  <button class="dana-test-btn" data-target="attached-flow-code" title="Run in DanaProcessing IDE">
+    <i class="ph-bold ph-play"></i>
+    <span class="dana-test-label">Test in Dana</span>
+  </button>
+</div>
+
+<h3 class="entry-title" id="attached-cloth-example">Runnable example: cloth over the terminal</h3>
+<p class="entry-desc">A see-through cloth (points and sticks, Verlet integration) covers the whole Windows Terminal window, hanging from its top edge; it swings and folds while you drag the window, because it feels <code class="inline">-TargetAcceleration</code>. The cursor pushes it, a click cuts a hole, a failed command rips one and a command that works sends a gust through it. The cloth is filled as a few big shapes without antialiasing (fast, and neighbouring quads meet with no seams), with a weave of hairlines on top. Idea from <a href="https://openprocessing.org/sketch/2999200">"Cloth!!"</a> by Millie on OpenProcessing, written from scratch for Dana.</p>
+<div class="code-block">
+  <pre id="attached-cloth-code"><span class="cm">// Cloth on the terminal: the whole Windows Terminal window is covered by a</span>
+<span class="cm">// sheet of see-through cloth hanging from its top edge. Move the window and</span>
+<span class="cm">// the cloth swings, ripples and folds.</span>
+<span class="cm">//</span>
+<span class="cm">// Idea from "Cloth!!" by Millie on OpenProcessing (openprocessing.org/sketch/2999200);</span>
+<span class="cm">// its code is hidden, so this is written from scratch for Dana: a grid of</span>
+<span class="cm">// points joined by sticks (Verlet integration), pinned along the top, drawn</span>
+<span class="cm">// as one shaded mesh plus a fine weave.</span>
+<span class="cm">//</span>
+<span class="cm">// 1. Open Windows Terminal and press Run.</span>
+<span class="cm">// 2. Drag the terminal: the cloth lags behind and swings (-TargetAcceleration).</span>
+<span class="cm">//    Shake it hard and it flaps.</span>
+<span class="cm">// 3. Move the mouse through it to push it; click to cut a hole (the click</span>
+<span class="cm">//    still reaches the terminal). Too much stretch tears it too.</span>
+<span class="cm">// 4. A command that fails rips a hole and flashes red; one that works sends a</span>
+<span class="cm">//    gust of wind through it. dana-signal reset hangs a new cloth.</span>
+<span class="kw">public</span> <span class="kw">class</span> TerminalCloth : <span class="tp">AttachedSketch</span>
+{
+    <span class="kw">sealed</span> <span class="kw">class</span> Point
+    {
+        <span class="kw">public</span> <span class="kw">float</span> X, Y, OldX, OldY, RestX;
+        <span class="kw">public</span> <span class="kw">bool</span> Pinned;
+    }
+
+    <span class="kw">sealed</span> <span class="kw">class</span> Stick
+    {
+        <span class="kw">public</span> Point A, B;
+        <span class="kw">public</span> <span class="kw">float</span> Length;
+        <span class="kw">public</span> <span class="kw">bool</span> Broken;
+    }
+
+    <span class="kw">const</span> <span class="kw">float</span> Gravity = <span class="str">500</span>;       <span class="cm">// px/s²</span>
+    <span class="kw">const</span> <span class="kw">float</span> Inertia = <span class="str">0.7f</span>;      <span class="cm">// how much the window's motion moves the cloth</span>
+    <span class="kw">const</span> <span class="kw">float</span> TearStretch = <span class="str">3f</span>;    <span class="cm">// a stick breaks past this many times its length</span>
+
+    <span class="kw">readonly</span> <span class="tp">List</span>&lt;Point&gt; _points = <span class="kw">new</span>();
+    <span class="kw">readonly</span> <span class="tp">List</span>&lt;Stick&gt; _sticks = <span class="kw">new</span>();
+    Stick[] _right = <span class="kw">new</span> Stick[<span class="str">0</span>], _down = <span class="kw">new</span> Stick[<span class="str">0</span>];   <span class="cm">// the stick to the right of / below each point</span>
+    <span class="kw">int</span> _cols, _rows;
+    <span class="kw">float</span> _redness;                  <span class="cm">// 1 right after a failed command</span>
+    <span class="kw">float</span> _gust;                     <span class="cm">// 1 right after a command that worked</span>
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Settings() =&gt; Attach(<span class="tp">WindowTarget</span>.Terminal);
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Setup()
+    {
+        ListenToShell();
+        ListenToTargetMouse();
+        Hang();
+    }
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> WindowResized() =&gt; Hang();
+
+    <span class="cm">// A cloth exactly the size of the window, its top row pinned to the top edge.</span>
+    <span class="kw">void</span> Hang()
+    {
+        _points.Clear();
+        _sticks.Clear();
+        _cols = Constrain(Width / <span class="str">28</span>, <span class="str">12</span>, <span class="str">60</span>) + <span class="str">1</span>;
+        _rows = Constrain(Height / <span class="str">28</span>, <span class="str">8</span>, <span class="str">40</span>) + <span class="str">1</span>;
+        <span class="kw">float</span> sx = Width / (<span class="kw">float</span>)(_cols - <span class="str">1</span>), sy = Height / (<span class="kw">float</span>)(_rows - <span class="str">1</span>);
+        _right = <span class="kw">new</span> Stick[_cols * _rows];
+        _down = <span class="kw">new</span> Stick[_cols * _rows];
+        <span class="kw">for</span> (<span class="kw">int</span> r = <span class="str">0</span>; r &lt; _rows; r++)
+            <span class="kw">for</span> (<span class="kw">int</span> c = <span class="str">0</span>; c &lt; _cols; c++)
+            {
+                <span class="kw">float</span> x = c * sx, y = r * sy;
+                _points.Add(<span class="kw">new</span> Point { X = x, Y = y, OldX = x, OldY = y, RestX = x, Pinned = r == <span class="str">0</span> });
+            }
+        <span class="kw">for</span> (<span class="kw">int</span> r = <span class="str">0</span>; r &lt; _rows; r++)
+            <span class="kw">for</span> (<span class="kw">int</span> c = <span class="str">0</span>; c &lt; _cols; c++)
+            {
+                <span class="kw">int</span> i = r * _cols + c;
+                <span class="kw">if</span> (c + <span class="str">1</span> &lt; _cols) _right[i] = Join(_points[i], _points[i + <span class="str">1</span>], sx);
+                <span class="kw">if</span> (r + <span class="str">1</span> &lt; _rows) _down[i] = Join(_points[i], _points[i + _cols], sy);
+            }
+    }
+
+    Stick Join(Point a, Point b, <span class="kw">float</span> length)
+    {
+        <span class="kw">var</span> s = <span class="kw">new</span> Stick { A = a, B = b, Length = length };
+        _sticks.Add(s);
+        <span class="kw">return</span> s;
+    }
+
+    <span class="cm">// --- input ------------------------------------------------------------------</span>
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> MousePressed() =&gt; Cut(MouseX, MouseY, <span class="str">22</span>);
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> CommandFinished()
+    {
+        <span class="kw">if</span> (LastCommandOk) { _gust = <span class="str">1</span>; <span class="kw">return</span>; }
+        _redness = <span class="str">1</span>;
+        Cut(Random(Width * <span class="str">0.2f</span>, Width * <span class="str">0.8f</span>), Random(Height * <span class="str">0.3f</span>, Height * <span class="str">0.7f</span>), <span class="tp">Math</span>.Min(Width, Height) * <span class="str">0.12f</span>);
+    }
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> OnShellSignal(<span class="kw">string</span> name)
+    {
+        <span class="kw">if</span> (name == <span class="str">"reset"</span>) Hang();
+    }
+
+    <span class="kw">void</span> Cut(<span class="kw">float</span> x, <span class="kw">float</span> y, <span class="kw">float</span> radius)
+    {
+        <span class="kw">foreach</span> (<span class="kw">var</span> s <span class="kw">in</span> _sticks)
+        {
+            <span class="kw">float</span> mx = (s.A.X + s.B.X) / <span class="str">2</span>, my = (s.A.Y + s.B.Y) / <span class="str">2</span>;
+            <span class="kw">if</span> (Dist(mx, my, x, y) &lt; radius) s.Broken = <span class="kw">true</span>;
+        }
+    }
+
+    <span class="cm">// --- every frame ----------------------------------------------------------------</span>
+
+    <span class="kw">public</span> <span class="kw">override</span> <span class="kw">void</span> Draw()
+    {
+        Clear();
+        <span class="kw">float</span> dt = <span class="tp">Math</span>.Min(DeltaTime, <span class="str">1</span> / <span class="str">30f</span>);
+        <span class="kw">float</span> t = Millis() / <span class="str">1000f</span>;
+        <span class="kw">var</span> a = TargetAcceleration;
+        _redness = <span class="tp">Math</span>.Max(<span class="str">0</span>, _redness - dt / <span class="str">2</span>);
+        _gust = <span class="tp">Math</span>.Max(<span class="str">0</span>, _gust - dt / <span class="str">1.5f</span>);
+
+        <span class="cm">// A jerk of the window is felt, but capped: a real drag shouldn't throw the cloth off.</span>
+        <span class="kw">float</span> ax = Constrain(-a.X * Inertia, -<span class="str">5000</span>, <span class="str">5000</span>), ay = Constrain(-a.Y * Inertia, -<span class="str">5000</span>, <span class="str">5000</span>);
+        Simulate(dt, t, ax, Gravity + ay);
+        DrawMesh();
+        DrawWeave();
+    }
+
+    <span class="kw">void</span> Simulate(<span class="kw">float</span> dt, <span class="kw">float</span> t, <span class="kw">float</span> ax, <span class="kw">float</span> ay)
+    {
+        <span class="kw">bool</span> mouseInside = MouseX &gt;= <span class="str">0</span> &amp;&amp; MouseX &lt; Width &amp;&amp; MouseY &gt;= <span class="str">0</span> &amp;&amp; MouseY &lt; Height;
+        <span class="kw">float</span> gustX = _gust * <span class="str">2500</span>;
+
+        <span class="cm">// Verlet: the velocity is just "where it was" vs "where it is".</span>
+        <span class="kw">foreach</span> (<span class="kw">var</span> p <span class="kw">in</span> _points)
+        {
+            <span class="kw">if</span> (p.Pinned) <span class="kw">continue</span>;
+            <span class="kw">float</span> vx = (p.X - p.OldX) * <span class="str">0.985f</span>, vy = (p.Y - p.OldY) * <span class="str">0.985f</span>;
+            <span class="cm">// A light breeze so the cloth is never perfectly still, plus the gust.</span>
+            <span class="kw">float</span> breeze = (Noise(p.Y * <span class="str">0.004f</span>, t * <span class="str">0.4f</span>) - <span class="str">0.5f</span>) * <span class="str">90</span> + gustX * Noise(p.Y * <span class="str">0.01f</span>, t * <span class="str">3</span>);
+            p.OldX = p.X;
+            p.OldY = p.Y;
+            p.X += vx + (ax + breeze) * dt * dt;
+            p.Y += vy + ay * dt * dt;
+
+            <span class="cm">// The mouse pushes the cloth away (no click needed: MouseX/MouseY follow the cursor).</span>
+            <span class="kw">if</span> (mouseInside)
+            {
+                <span class="kw">float</span> d = Dist(p.X, p.Y, MouseX, MouseY);
+                <span class="kw">if</span> (d &lt; <span class="str">45</span> &amp;&amp; d &gt; <span class="str">0.01f</span>)
+                {
+                    p.X += (p.X - MouseX) / d * (<span class="str">45</span> - d) * <span class="str">0.25f</span>;
+                    p.Y += (p.Y - MouseY) / d * (<span class="str">45</span> - d) * <span class="str">0.25f</span>;
+                }
+            }
+        }
+
+        <span class="cm">// Sticks pull their two points back to their length, a few times per frame.</span>
+        <span class="kw">for</span> (<span class="kw">int</span> iteration = <span class="str">0</span>; iteration &lt; <span class="str">6</span>; iteration++)
+            <span class="kw">foreach</span> (<span class="kw">var</span> s <span class="kw">in</span> _sticks)
+            {
+                <span class="kw">if</span> (s.Broken) <span class="kw">continue</span>;
+                <span class="kw">float</span> dx = s.B.X - s.A.X, dy = s.B.Y - s.A.Y;
+                <span class="kw">float</span> d = <span class="tp">Math</span>.Max(<span class="str">0.001f</span>, Sqrt(dx * dx + dy * dy));
+                <span class="kw">if</span> (d &gt; s.Length * TearStretch) { s.Broken = <span class="kw">true</span>; <span class="kw">continue</span>; }
+                <span class="cm">// Cloth resists stretching fully and squeezing only a little, so it can fold.</span>
+                <span class="kw">float</span> stiffness = d &gt; s.Length ? <span class="str">1</span> : <span class="str">0.3f</span>;
+                <span class="kw">float</span> push = (d - s.Length) / d * (s.A.Pinned || s.B.Pinned ? <span class="str">1</span> : <span class="str">0.5f</span>) * stiffness;
+                <span class="kw">if</span> (!s.A.Pinned) { s.A.X += dx * push; s.A.Y += dy * push; }
+                <span class="kw">if</span> (!s.B.Pinned) { s.B.X -= dx * push; s.B.Y -= dy * push; }
+            }
+
+        <span class="cm">// Torn-off pieces that fell away stop below the window.</span>
+        <span class="kw">foreach</span> (<span class="kw">var</span> p <span class="kw">in</span> _points)
+            <span class="kw">if</span> (p.Y &gt; Height + <span class="str">300</span>) { p.Y = p.OldY = Height + <span class="str">300</span>; p.OldX = p.X; }
+    }
+
+    <span class="cm">// --- drawing --------------------------------------------------------------------</span>
+
+    <span class="cm">// The cloth itself: every quad whose four sides hold, filled with a shade for</span>
+    <span class="cm">// how the cloth bends there -- folds darker, stretched or swung parts lighter.</span>
+    <span class="cm">// Quads of the same shade go in one shape (one contour each): a handful of</span>
+    <span class="cm">// draw calls for the whole window instead of one per quad.</span>
+    <span class="kw">const</span> <span class="kw">int</span> Shades = <span class="str">6</span>;
+    <span class="kw">readonly</span> <span class="tp">List</span>&lt;<span class="kw">int</span>&gt;[] _byShade = Enumerable.Range(<span class="str">0</span>, Shades).Select(_ =&gt; <span class="kw">new</span> <span class="tp">List</span>&lt;<span class="kw">int</span>&gt;()).ToArray();
+
+    <span class="kw">void</span> DrawMesh()
+    {
+        <span class="kw">foreach</span> (<span class="kw">var</span> list <span class="kw">in</span> _byShade) list.Clear();
+        <span class="kw">for</span> (<span class="kw">int</span> r = <span class="str">0</span>; r &lt; _rows - <span class="str">1</span>; r++)
+            <span class="kw">for</span> (<span class="kw">int</span> c = <span class="str">0</span>; c &lt; _cols - <span class="str">1</span>; c++)
+            {
+                <span class="kw">int</span> i = r * _cols + c;
+                <span class="kw">if</span> (_right[i].Broken || _down[i].Broken || _right[i + _cols].Broken || _down[i + <span class="str">1</span>].Broken) <span class="kw">continue</span>;
+                _byShade[(<span class="kw">int</span>)(Light(i) * (Shades - <span class="str">0.01f</span>))].Add(i);
+            }
+
+        <span class="cm">// Without antialiasing: much faster for shapes this big, and neighbouring</span>
+        <span class="cm">// quads meet exactly (no faint seams). The weave drawn on top hides the edges.</span>
+        NoSmooth();
+        NoStroke();
+        <span class="kw">for</span> (<span class="kw">int</span> k = <span class="str">0</span>; k &lt; Shades; k++)
+        {
+            <span class="kw">if</span> (_byShade[k].Count == <span class="str">0</span>) <span class="kw">continue</span>;
+            <span class="kw">float</span> shade = k / (<span class="kw">float</span>)(Shades - <span class="str">1</span>);
+            Fill(Lerp(<span class="str">60</span>, <span class="str">150</span>, shade) + <span class="str">150</span> * _redness,
+                 Lerp(<span class="str">80</span>, <span class="str">190</span>, shade) * (<span class="str">1</span> - <span class="str">0.6f</span> * _redness),
+                 Lerp(<span class="str">150</span>, <span class="str">255</span>, shade) * (<span class="str">1</span> - <span class="str">0.5f</span> * _redness),
+                 Lerp(<span class="str">26</span>, <span class="str">62</span>, <span class="tp">Math</span>.Abs(shade - <span class="str">0.5f</span>) * <span class="str">2</span>) + <span class="str">45</span> * _redness);
+            BeginShape();
+            <span class="kw">foreach</span> (<span class="kw">int</span> i <span class="kw">in</span> _byShade[k])
+            {
+                BeginContour();
+                Vertex(_points[i].X, _points[i].Y);
+                Vertex(_points[i + <span class="str">1</span>].X, _points[i + <span class="str">1</span>].Y);
+                Vertex(_points[i + _cols + <span class="str">1</span>].X, _points[i + _cols + <span class="str">1</span>].Y);
+                Vertex(_points[i + _cols].X, _points[i + _cols].Y);
+                EndContour();
+            }
+            EndShape();
+        }
+        Smooth();
+    }
+
+    <span class="cm">// 0 (a fold) to 1 (stretched or swung out) for the quad at point i.</span>
+    <span class="kw">float</span> Light(<span class="kw">int</span> i)
+    {
+        Point a = _points[i], b = _points[i + <span class="str">1</span>], d = _points[i + _cols];
+        <span class="kw">float</span> span = Dist(a.X, a.Y, b.X, b.Y) / _right[i].Length;              <span class="cm">// &lt; 1 where it folds</span>
+        <span class="kw">float</span> slant = ((d.X - a.X) + (a.X - a.RestX) * <span class="str">0.15f</span>) / _down[i].Length;  <span class="cm">// swinging sideways</span>
+        <span class="kw">return</span> Constrain(<span class="str">0.5f</span> + (span - <span class="str">1</span>) * <span class="str">2.5f</span> + slant * <span class="str">0.6f</span>, <span class="str">0</span>, <span class="str">1</span>);
+    }
+
+    <span class="cm">// The weave: every stick as a hairline (Skia's fastest line), one shape per</span>
+    <span class="cm">// color; the stretched ones, warm, go in a second shape on top.</span>
+    <span class="kw">readonly</span> <span class="tp">List</span>&lt;Stick&gt; _stretched = <span class="kw">new</span>();
+
+    <span class="kw">void</span> DrawWeave()
+    {
+        StrokeWeight(<span class="str">0</span>);
+        Stroke(<span class="str">170</span> + <span class="str">85</span> * _redness, <span class="str">200</span> - <span class="str">120</span> * _redness, <span class="str">255</span> - <span class="str">150</span> * _redness, <span class="str">55</span>);
+        _stretched.Clear();
+        BeginShape(ShapeKind.Lines);
+        <span class="kw">foreach</span> (<span class="kw">var</span> s <span class="kw">in</span> _sticks)
+        {
+            <span class="kw">if</span> (s.Broken) <span class="kw">continue</span>;
+            <span class="kw">float</span> dx = s.B.X - s.A.X, dy = s.B.Y - s.A.Y;
+            <span class="kw">if</span> (dx * dx + dy * dy &gt; s.Length * s.Length * <span class="str">1.69f</span>) { _stretched.Add(s); <span class="kw">continue</span>; }   <span class="cm">// over 1.3x its length</span>
+            Vertex(s.A.X, s.A.Y);
+            Vertex(s.B.X, s.B.Y);
+        }
+        EndShape();
+
+        Stroke(<span class="str">255</span>, <span class="str">160</span> - <span class="str">100</span> * _redness, <span class="str">90</span> - <span class="str">60</span> * _redness, <span class="str">200</span>);
+        BeginShape(ShapeKind.Lines);
+        <span class="kw">foreach</span> (<span class="kw">var</span> s <span class="kw">in</span> _stretched)
+        {
+            Vertex(s.A.X, s.A.Y);
+            Vertex(s.B.X, s.B.Y);
+        }
+        EndShape();
+
+        <span class="cm">// The top hem the cloth hangs from.</span>
+        Stroke(<span class="str">220</span>, <span class="str">230</span>, <span class="str">255</span>, <span class="str">140</span>);
+        StrokeWeight(<span class="str">2</span>);
+        Line(<span class="str">0</span>, <span class="str">1</span>, Width, <span class="str">1</span>);
+    }
+}
+</pre>
+  <button class="dana-test-btn" data-target="attached-cloth-code" title="Run in DanaProcessing IDE">
+    <i class="ph-bold ph-play"></i>
+    <span class="dana-test-label">Test in Dana</span>
+  </button>
+</div>

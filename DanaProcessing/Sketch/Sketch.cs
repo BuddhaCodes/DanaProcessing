@@ -372,6 +372,18 @@ namespace DanaProcessing
         /// </summary>
         public virtual void Settings() { }
 
+        /// <summary>
+        /// Host hook: what every host runs once when a sketch starts --
+        /// Settings() then Setup(), the order Processing guarantees -- each
+        /// through <paramref name="run"/> (the host's crash handling), so a
+        /// Settings() that throws keeps Setup() from running on a half-built sketch.
+        /// </summary>
+        internal void RunStartup(Action<Action, string> run)
+        {
+            run(Settings, nameof(Settings));
+            run(Setup, nameof(Setup));
+        }
+
         // --- Mouse state (position only — buttons/events live in Sketch.Input.cs) ---
         public float MouseX { get; internal set; }
         public float MouseY { get; internal set; }

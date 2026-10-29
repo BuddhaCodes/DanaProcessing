@@ -35,7 +35,21 @@ namespace DanaProcessing.Ide.Localization
         public static AppLanguage Current { get; private set; } = AppLanguage.Spanish;
 
         /// <summary>Call once, at startup (App.Initialize(), same spot ClayTheme.Initialize() runs), before any window gets constructed — every Loc.Tr() call site reads Current at CONSTRUCTION time, not reactively.</summary>
-        public static void Initialize(AppLanguage language) => Current = language;
+        public static void Initialize(AppLanguage language)
+        {
+            Current = language;
+            DanaProcessing.UiText.English = language == AppLanguage.English;   // the attached-sketch card, tray menu... (core/host text)
+        }
+
+        /// <summary>
+        /// The language an exported sketch shows: the IDE's setting on this
+        /// machine if it has one, otherwise the system's (Spanish for es-*,
+        /// English for anything else) -- whoever got the export may never have
+        /// opened the IDE.
+        /// </summary>
+        public static AppLanguage ForExport(bool hasSavedSetting, AppLanguage saved, System.Globalization.CultureInfo culture) =>
+            hasSavedSetting ? saved
+            : culture.TwoLetterISOLanguageName == "es" ? AppLanguage.Spanish : AppLanguage.English;
 
         public static string Tr(string es, string en) => Current == AppLanguage.Spanish ? es : en;
     }
@@ -68,6 +82,16 @@ namespace DanaProcessing.Ide.Localization
                     "DanaProcessingIde");
                 Directory.CreateDirectory(dir);
                 return Path.Combine(dir, "locale-settings.json");
+            }
+        }
+
+        /// <summary>True if this machine has a saved language setting.</summary>
+        public static bool Exists
+        {
+            get
+            {
+                try { return File.Exists(FilePath); }
+                catch { return false; }
             }
         }
 

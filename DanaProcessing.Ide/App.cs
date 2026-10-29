@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml.Styling;
 using Avalonia.Themes.Fluent;
@@ -16,7 +17,10 @@ namespace DanaProcessing.Ide
             // Loc.Tr() call site is read once, when a control is constructed —
             // has to be set before MainWindow (or, for an exported standalone
             // sketch, ExportedSketchRunner's error window) builds anything.
-            Loc.Initialize(LocaleSettingsStore.Load().Language);
+            var language = LocaleSettingsStore.Load().Language;
+            if (Export.ExportedSketchRunner.SketchFilePath != null)
+                language = Loc.ForExport(LocaleSettingsStore.Exists, language, System.Globalization.CultureInfo.CurrentUICulture);
+            Loc.Initialize(language);
 
             // Has to happen before anything below touches ClayTheme (FluentTheme
             // itself doesn't, but CompletionWindowStyles() a few lines down does) —
@@ -64,10 +68,33 @@ namespace DanaProcessing.Ide
             {
                 if (ExportedSketchRunner.SketchFilePath is { } sketchFile)
                 {
-                    // Running as an exported standalone sketch (see
-                    // DanaProcessing.Ide.Export) — just the sketch's own window,
-                    // no editor/menu/title bar chrome at all.
-                    desktop.MainWindow = ExportedSketchRunner.BuildWindow(sketchFile);
+                    var compiled = ExportedSketchRunner.Compile(sketchFile);
+                    if (ExportedSketchRunner.RunsInTray(compiled))
+                    {
+                        // An exported AttachedSketch: no window at all, it draws
+                        // on another app's window and lives in the tray until
+                        // its menu's Quit.
+                        desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
+                        if (!ExportedSketchRunner.TryClaimSingleInstance())
+                        {
+                            // Already running (autostart + a double-click, or the
+                            // installer starting it again): one copy is enough.
+                            Avalonia.Threading.Dispatcher.UIThread.Post(() => desktop.Shutdown());
+                            base.OnFrameworkInitializationCompleted();
+                            return;
+                        }
+                        var sketch = (DanaProcessing.AttachedSketch)compiled.Sketch!;
+                        var tray = new DanaProcessing.AvaloniaHost.Attach.AttachedSketchTray(
+                            sketch, sketch.GetType().Name, () => desktop.Shutdown(), ExportedSketchRunner.Overrides);
+                        desktop.Exit += (_, _) => tray.Dispose();
+                    }
+                    else
+                    {
+                        // Running as an exported standalone sketch (see
+                        // DanaProcessing.Ide.Export) — just the sketch's own window,
+                        // no editor/menu/title bar chrome at all.
+                        desktop.MainWindow = ExportedSketchRunner.BuildWindow(compiled);
+                    }
                 }
                 else
                 {

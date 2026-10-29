@@ -2268,5 +2268,205 @@
   "name": "Invoke",
   "kind": "method",
   "target": "connectsignalr"
+ },
+ {
+  "name": "AttachedSketch",
+  "kind": "abstract class",
+  "target": "attachedsketch"
+ },
+ {
+  "name": "Attach",
+  "kind": "method",
+  "target": "attachedsketch"
+ },
+ {
+  "name": "WindowTarget",
+  "kind": "class",
+  "target": "windowtarget"
+ },
+ {
+  "name": "AttachLayer",
+  "kind": "enum",
+  "target": "windowtarget"
+ },
+ {
+  "name": "TargetX",
+  "kind": "property",
+  "target": "target-state"
+ },
+ {
+  "name": "TargetY",
+  "kind": "property",
+  "target": "target-state"
+ },
+ {
+  "name": "TargetScale",
+  "kind": "property",
+  "target": "target-state"
+ },
+ {
+  "name": "IsAttached",
+  "kind": "property",
+  "target": "target-state"
+ },
+ {
+  "name": "IsTargetFocused",
+  "kind": "property",
+  "target": "target-state"
+ },
+ {
+  "name": "TargetVelocity",
+  "kind": "property",
+  "target": "target-motion"
+ },
+ {
+  "name": "TargetAcceleration",
+  "kind": "property",
+  "target": "target-motion"
+ },
+ {
+  "name": "IsTargetMoving",
+  "kind": "property",
+  "target": "target-motion"
+ },
+ {
+  "name": "TargetAccelerationLimit",
+  "kind": "constant",
+  "target": "target-motion"
+ },
+ {
+  "name": "TargetMovingSpeed",
+  "kind": "constant",
+  "target": "target-motion"
+ },
+ {
+  "name": "TargetMoved",
+  "kind": "method",
+  "target": "target-events"
+ },
+ {
+  "name": "TargetFocused",
+  "kind": "method",
+  "target": "target-events"
+ },
+ {
+  "name": "TargetBlurred",
+  "kind": "method",
+  "target": "target-events"
+ },
+ {
+  "name": "TargetShown",
+  "kind": "method",
+  "target": "target-events"
+ },
+ {
+  "name": "TargetHidden",
+  "kind": "method",
+  "target": "target-events"
+ },
+ {
+  "name": "ListenToTargetKeys",
+  "kind": "method",
+  "target": "target-input"
+ },
+ {
+  "name": "ListenToTargetMouse",
+  "kind": "method",
+  "target": "target-input"
+ },
+ {
+  "name": "AttachMode",
+  "kind": "enum",
+  "target": "each-window"
+ },
+ {
+  "name": "InstanceNumber",
+  "kind": "property",
+  "target": "each-window"
+ },
+ {
+  "name": "MaxInstances",
+  "kind": "constant",
+  "target": "each-window"
+ },
+ {
+  "name": "ListenToShell",
+  "kind": "method",
+  "target": "shell-signals"
+ },
+ {
+  "name": "CommandFinished",
+  "kind": "method",
+  "target": "shell-signals"
+ },
+ {
+  "name": "OnShellSignal",
+  "kind": "method",
+  "target": "shell-signals"
+ },
+ {
+  "name": "LastCommandOk",
+  "kind": "property",
+  "target": "shell-signals"
+ },
+ {
+  "name": "LastExitCode",
+  "kind": "property",
+  "target": "shell-signals"
+ },
+ {
+  "name": "CommandCount",
+  "kind": "property",
+  "target": "shell-signals"
+ },
+ {
+  "name": "ShellSignal",
+  "kind": "struct",
+  "target": "shellsignals"
+ },
+ {
+  "name": "ShellSignalKind",
+  "kind": "enum",
+  "target": "shellsignals"
+ },
+ {
+  "name": "ShellSignals",
+  "kind": "static class",
+  "target": "shellsignals"
+ },
+ {
+  "name": "InstallForPowerShell",
+  "kind": "static method",
+  "target": "shellsignals"
+ },
+ {
+  "name": "DeltaTime",
+  "kind": "property",
+  "target": "eco"
+ },
+ {
+  "name": "EcoMode",
+  "kind": "method",
+  "target": "eco"
+ },
+ {
+  "name": "NoEco",
+  "kind": "method",
+  "target": "eco"
+ },
+ {
+  "name": "IsEco",
+  "kind": "property",
+  "target": "eco"
+ },
+ {
+  "name": "IsEcoEnabled",
+  "kind": "property",
+  "target": "eco"
+ },
+ {
+  "name": "EcoFrameRate",
+  "kind": "property",
+  "target": "eco"
  }
 ]

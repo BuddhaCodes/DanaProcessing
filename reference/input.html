@@ -137,6 +137,7 @@
 <div class="topic-group"><h2>Tooling</h2><ul>
 <li><a href="ide.html">The IDE</a></li>
 <li><a href="hosting.html">Avalonia host</a></li>
+<li><a href="attached.html">Attached sketches (beta)</a></li>
 <li><a href="enums.html">Enumerations</a></li>
 </ul></div>
 <p class="topics-all"><a href="a-z.html">All topics &amp; A–Z index</a></p></nav>
@@ -155,7 +156,7 @@
 </div>
 
 <h2 class="entry-title api" id="keytyped"><code>KeyTyped</code><span class="badge">virtual</span></h2><ul class="sigs" aria-label="Signatures"><li><code>KeyTyped() <span class="sig-return">→ void</span></code></li></ul>
-<p class="entry-desc">Fires for printable keys only (<code class="inline">Key != CODED</code>) — a companion to <code class="inline">KeyPressed()</code>/<code class="inline">KeyReleased()</code>, which fire for every key including arrows and modifiers.</p>
+<p class="entry-desc">Fires for printable keys only (<code class="inline">Key != CODED</code>), right after <code class="inline">KeyPressed()</code> — a companion to <code class="inline">KeyPressed()</code>/<code class="inline">KeyReleased()</code>, which fire for every key including arrows and modifiers. <code class="inline">Key</code> is the character the key types, so Shift and the keyboard layout count (<code class="inline">'A'</code>, <code class="inline">'ñ'</code>, <code class="inline">'@'</code>); Enter, Backspace, Tab, Esc and Delete are <code class="inline">ENTER</code>, <code class="inline">BACKSPACE</code>, <code class="inline">TAB</code>, <code class="inline">ESC</code> and <code class="inline">DELETE</code>; arrows and modifiers are <code class="inline">CODED</code> with <code class="inline">KeyCode</code> = <code class="inline">UP</code>, <code class="inline">DOWN</code>, <code class="inline">LEFT</code>, <code class="inline">RIGHT</code>, <code class="inline">SHIFT</code>, <code class="inline">CONTROL</code> or <code class="inline">ALT</code>. For a character, <code class="inline">KeyCode</code> is its upper-case code (<code class="inline">'A'</code> = 65).</p>
 
 <h2 class="entry-title api" id="focused"><code>Focused</code></h2><ul class="sigs" aria-label="Signatures"><li><code>Focused <span class="sig-return">→ bool</span></code></li></ul>
 <p class="entry-desc">Whether the sketch's window currently has input focus. Defaults to true; a host that embeds the sketch updates it as its window gains/loses focus.</p>

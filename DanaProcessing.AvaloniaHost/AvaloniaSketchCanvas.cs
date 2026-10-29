@@ -10,6 +10,7 @@ using Avalonia.Skia;
 using Avalonia.Threading;
 using SkiaSharp;
 using DanaProcessing;
+using DanaProcessing.AvaloniaHost.Attach;
 
 namespace DanaProcessing.AvaloniaHost
 {
@@ -115,7 +116,18 @@ namespace DanaProcessing.AvaloniaHost
         /// whatever the host decides. (The IDE no longer pauses on its own: a
         /// sketch there runs until its Stop button -- see RunsWhenHidden.)
         /// </summary>
-        public bool IsPaused { get; set; }
+        public bool IsPaused
+        {
+            get => _isPaused;
+            set
+            {
+                _isPaused = value;
+                if (_attachHost != null)
+                    _attachHost.IsPaused = value; // an attached sketch pauses on its window too
+            }
+        }
+
+        private bool _isPaused;
 
         /// <summary>
         /// Keep running the sketch while this control can't be seen -- hidden
@@ -137,11 +149,26 @@ namespace DanaProcessing.AvaloniaHost
         // (visible) and the UI thread (hidden, RunsWhenHidden) both draw there.
         private readonly object _frameLock = new();
 
+        // --- Attached sketches (AttachedSketch) ---------------------------------
+        // Such a sketch has no canvas here: an AttachedSketchFleet runs it on
+        // another app's window (Windows Terminal by default) and this control
+        // only shows a small placeholder with what the host is doing. Setup(),
+        // Draw(), Hot Reload, Stop and crashes still go through this control,
+        // so the IDE treats it like any other sketch.
+        private AttachedSketchFleet? _attachHost;
+        private long _attachPlaceholderTicks;
+
+        /// <summary>Size of the placeholder shown here while an AttachedSketch runs on another window.</summary>
+        public const int AttachedPreviewWidth = 520, AttachedPreviewHeight = 260;
+
+        /// <summary>The host running the current sketch on another window, or null for an ordinary sketch.</summary>
+        public AttachedSketchFleet? AttachHost => _attachHost;
+
         /// <summary>The current width the loaded sketch has requested via Size(w, h) — what this control asks the layout system for, not necessarily what the parent ends up giving it.</summary>
-        public int SketchWidth => _sketch.Width;
+        public int SketchWidth => _attachHost != null ? AttachedPreviewWidth : _sketch.Width;
 
         /// <summary>The current height the loaded sketch has requested via Size(w, h).</summary>
-        public int SketchHeight => _sketch.Height;
+        public int SketchHeight => _attachHost != null ? AttachedPreviewHeight : _sketch.Height;
 
         /// <summary>How many frames the loaded sketch has drawn (its FrameCount).</summary>
         public int SketchFrameCount => _sketch.FrameCount;
@@ -171,6 +198,19 @@ namespace DanaProcessing.AvaloniaHost
             SetTimerInterval(sketch.TargetFrameRate);
             _timer.Tick += (s, e) =>
             {
+                if (_attachHost != null)
+                {
+                    // The sketch draws on another window, on its own thread:
+                    // here only the placeholder repaints, four times a second.
+                    long nowTicks = Environment.TickCount64;
+                    if (!_stopped && IsEffectivelyVisible && nowTicks - _attachPlaceholderTicks >= 250)
+                    {
+                        _attachPlaceholderTicks = nowTicks;
+                        InvalidateVisual();
+                    }
+                    return;
+                }
+
                 if (_sketch.TargetFrameRate != _lastKnownFrameRate)
                     SetTimerInterval(_sketch.TargetFrameRate);
 
@@ -241,12 +281,15 @@ namespace DanaProcessing.AvaloniaHost
         {
             lock (_sketchLock)
             {
+                StopAttachHost(); // before OnStop(): no Draw() may be running on its thread
+                _attachHost = null;
                 if (!ReferenceEquals(_sketch, newSketch))
                     StopQuietly(_sketch); // the old sketch is gone for good: let it close its devices
 
                 _sketch.SizeChanged -= OnSketchSizeChanged;
                 _sketch = newSketch;
-                _sketch.SizeChanged += OnSketchSizeChanged;
+                if (newSketch is not AttachedSketch) // its size is the target's, not ours
+                    _sketch.SizeChanged += OnSketchSizeChanged;
                 _sketch.IgnoresAudio = !_connectsAudio;
 
                 _didSetup = false;
@@ -266,7 +309,13 @@ namespace DanaProcessing.AvaloniaHost
                 _stateEvery = 1;
                 _stateCountdown = 0;
                 _captureMsAverage = 0;
+
+                if (newSketch is AttachedSketch attached)
+                    StartAttachHost(attached);
             }
+
+            if (_attachHost != null)
+                SketchSizeChanged?.Invoke(AttachedPreviewWidth, AttachedPreviewHeight);
 
             // The old sketch's size no longer applies. Ask for a fresh layout
             // pass now — MeasureOverride below runs the new sketch's Setup()
@@ -289,6 +338,25 @@ namespace DanaProcessing.AvaloniaHost
         {
             lock (_sketchLock)
             {
+                if (_attachHost != null || newSketch is AttachedSketch)
+                {
+                    if (_attachHost == null || newSketch is not AttachedSketch attachedNew)
+                        return new SketchHotReload.Plan(false, new[]
+                        {
+                            UiText.Tr("el sketch cambió entre normal y adjunto (AttachedSketch)", "the sketch changed between normal and attached (AttachedSketch)"),
+                        });
+
+                    var attachPlan = _attachHost.HotReload(attachedNew);
+                    if (attachPlan.CanApply)
+                    {
+                        _sketch = attachedNew;
+                        _crashed = false;
+                        _crashException = null;
+                        _crashContext = "";
+                    }
+                    return attachPlan;
+                }
+
                 var plan = SketchHotReload.Analyze(_sketch, newSketch);
                 if (!plan.CanApply)
                     return plan;
@@ -341,7 +409,7 @@ namespace DanaProcessing.AvaloniaHost
             if (_offscreenSurface != null)
                 _sketch.SetCanvas(_offscreenSurface.Canvas, _offscreenSurface);
 
-            RunSafely(_sketch.Setup, "Setup");
+            _sketch.RunStartup(RunSafely); // Settings() then Setup()
             _didSetup = true;
 
             // Live loops start (or, if loops with the same names are already
@@ -383,6 +451,8 @@ namespace DanaProcessing.AvaloniaHost
         /// </summary>
         protected override Size MeasureOverride(Size availableSize)
         {
+            if (_attachHost != null)
+                return new Size(AttachedPreviewWidth, AttachedPreviewHeight);
             EnsureSetupRun();
             return new Size(_sketch.Width, _sketch.Height);
         }
@@ -402,7 +472,10 @@ namespace DanaProcessing.AvaloniaHost
         public void StopSketch()
         {
             lock (_sketchLock)
+            {
+                StopAttachHost();
                 StopQuietly(_sketch);
+            }
         }
 
         /// <summary>
@@ -419,6 +492,7 @@ namespace DanaProcessing.AvaloniaHost
             lock (_sketchLock)
             {
                 _stopped = true;
+                StopAttachHost();
                 StopQuietly(_sketch);
             }
             // A stopped sketch can't be rewound (nothing runs to show or
@@ -426,6 +500,9 @@ namespace DanaProcessing.AvaloniaHost
             _frozen = false;
             _stepOnce = false;
             _resumeRequest = -1;
+            if (_attachHost != null)
+                lock (_frameLock)
+                    DrawAttachedPlaceholder(); // "■ Detenido" (a stopped canvas only re-blits)
             RaiseHistoryChanged();
             Dispatcher.UIThread.Post(InvalidateVisual);
         }
@@ -542,33 +619,24 @@ namespace DanaProcessing.AvaloniaHost
             }
 
             _sketch.IsKeyPressed = true;
-            SetSketchKeyFrom(e.Key);
-            if (_inputRecorder != null && _sketch.Key != '\0')
+            SetSketchKeyFrom(e.Key, e.KeySymbol);
+            if (_inputRecorder != null && _sketch.Key != '\0' && _sketch.Key != Sketch.CODED)
                 _inputRecorder.Key(_sketch.Key == ' ' ? "space" : _sketch.Key.ToString());
-            RunInput(_sketch.KeyPressed, "KeyPressed");
+            RunInput(_sketch.RaiseKeyDown, "KeyPressed"); // KeyPressed(), then KeyTyped() for printable keys
         }
 
         private void OnKeyUp(object? sender, KeyEventArgs e)
         {
             _sketch.IsKeyPressed = false;
-            SetSketchKeyFrom(e.Key);
+            SetSketchKeyFrom(e.Key, e.KeySymbol);
             RunInput(_sketch.KeyReleased, "KeyReleased");
         }
 
-        private void SetSketchKeyFrom(Key key)
+        private void SetSketchKeyFrom(Key key, string? keySymbol)
         {
-            if (key >= Key.A && key <= Key.Z)
-                _sketch.Key = (char)('a' + (key - Key.A));
-            else if (key >= Key.D0 && key <= Key.D9)
-                _sketch.Key = (char)('0' + (key - Key.D0));
-            else if (key == Key.Space)
-                _sketch.Key = ' ';
-            else if (key == Key.OemPlus || key == Key.Add)
-                _sketch.Key = '+';
-            else if (key == Key.OemMinus || key == Key.Subtract)
-                _sketch.Key = '-';
-            else
-                _sketch.Key = '\0';
+            var (ch, code) = CanvasKeyMapping.Map(key, keySymbol);
+            _sketch.Key = ch;
+            _sketch.SetKeyCode(code);
         }
 
         /// <summary>Shows/hides the sketch's [Tweak] panel (its values and MIDI connections stay).</summary>
@@ -1006,6 +1074,9 @@ namespace DanaProcessing.AvaloniaHost
         /// </summary>
         private bool AdvanceFrame(SKCanvas? leasedCanvas, double scaling)
         {
+            if (_attachHost != null)
+                return DrawAttachedPlaceholder();
+
             if (!_didSetup)
                 EnsureSetupRun(); // fallback: normally already run by MeasureOverride before the first Render
             else
@@ -1144,6 +1215,149 @@ namespace DanaProcessing.AvaloniaHost
             leasedCanvas.Restore();
         }
 
+        // ------------------------------------------------------------ attached sketches
+
+        /// <summary>
+        /// Hands <paramref name="sketch"/> to a new AttachedSketchFleet (one host, or one per window). Called
+        /// from LoadSketch under _sketchLock. This control never runs its
+        /// Setup() (_didSetup = true): the host does, at the target's size.
+        /// </summary>
+        private void StartAttachHost(AttachedSketch sketch)
+        {
+            _didSetup = true;
+            var host = new AttachedSketchFleet(sketch, _connectsAudio) { IsPaused = _isPaused };
+
+            // Both raised on the host thread, never while it waits on _sketchLock.
+            host.Crashed += (ex, context) =>
+            {
+                _crashed = true;
+                _crashException = ex;
+                _crashContext = context;
+                try { Crashed?.Invoke(ex, context); } catch { /* a listener's bug must not mask the sketch's */ }
+                Dispatcher.UIThread.Post(InvalidateVisual);
+            };
+            host.StatusChanged += () => Dispatcher.UIThread.Post(InvalidateVisual);
+            host.ExitRequested += () => Dispatcher.UIThread.Post(Stop);
+
+            _attachHost = host;
+            host.Start();
+        }
+
+        /// <summary>
+        /// Stops the attached sketch's thread and removes its overlay. Does not
+        /// run OnStop(). The host stays in _attachHost (stopped) so the
+        /// placeholder keeps its size and says so; the next LoadSketch drops it.
+        /// </summary>
+        private void StopAttachHost() => _attachHost?.Stop();
+
+        /// <summary>
+        /// Instead of a frame: a card saying where the sketch is drawing (or
+        /// what it's waiting for). The sketch's error, if it crashed, on top.
+        /// </summary>
+        private bool DrawAttachedPlaceholder()
+        {
+            var host = _attachHost;
+            if (host == null)
+                return false;
+
+            const int w = AttachedPreviewWidth, h = AttachedPreviewHeight;
+            EnsureOffscreenSurface(w, h);
+            if (_offscreenSurface == null)
+                return false;
+
+            var canvas = _offscreenSurface.Canvas;
+            canvas.Save();
+            if (_offscreenScale > 1)
+                canvas.Scale(_offscreenScale);
+
+            if (_crashed && _crashException != null)
+            {
+                DrawErrorOverlay(canvas, _crashException, _crashContext, w, h);
+            }
+            else
+            {
+                var (accent, title) = host.State switch
+                {
+                    AttachState.Attached => (new SKColor(90, 200, 150), UiText.Tr("Corriendo sobre otra ventana", "Running on another window")),
+                    AttachState.Searching => (new SKColor(230, 180, 80), UiText.Tr("Esperando la ventana…", "Waiting for the window…")),
+                    AttachState.TargetHidden => (new SKColor(150, 150, 170), UiText.Tr("Ventana oculta", "Window hidden")),
+                    AttachState.Unsupported => (new SKColor(220, 90, 90), UiText.Tr("Sketch adjunto no disponible", "Attached sketch not available")),
+                    AttachState.Stopped => (new SKColor(150, 150, 170), UiText.Tr("Detenido", "Stopped")),
+                    AttachState.Paused => (new SKColor(150, 150, 170), UiText.Tr("En pausa", "Paused")),
+                    _ => (new SKColor(150, 150, 170), UiText.Tr("Iniciando…", "Starting…")),
+                };
+
+                canvas.Clear(new SKColor(22, 24, 32));
+                using var border = new SKPaint { Style = SKPaintStyle.Stroke, Color = accent, StrokeWidth = 2, IsAntialias = true };
+                canvas.DrawRoundRect(new SKRect(6, 6, w - 6, h - 6), 12, 12, border);
+
+                using var titlePaint = new SKPaint { Color = accent, IsAntialias = true };
+                using var bodyPaint = new SKPaint { Color = new SKColor(225, 228, 238), IsAntialias = true };
+                using var dimPaint = new SKPaint { Color = new SKColor(150, 155, 175), IsAntialias = true };
+                using var titleFont = new SKFont { Size = 22, Embolden = true };
+                using var bodyFont = new SKFont { Size = 15 };
+                using var dimFont = new SKFont { Size = 13 };
+
+                float x = 28, y = 56;
+                // A status dot, drawn: symbols like ▶ ⏸ ■ aren't in every UI font (they came out as boxes).
+                canvas.DrawCircle(x + 6, y - 8, 6, titlePaint);
+                canvas.DrawText(title, x + 20, y, SKTextAlign.Left, titleFont, titlePaint);
+                y += 36;
+                foreach (var line in WrapText(host.StatusText, 56))
+                {
+                    canvas.DrawText(line, x, y, SKTextAlign.Left, bodyFont, bodyPaint);
+                    y += 21;
+                }
+
+                // Speed: fps, what a frame costs, how fast events reach the sketch.
+                if (host.State == AttachState.Attached)
+                    canvas.DrawText(host.Stats.Format(), x, y + 2, SKTextAlign.Left, dimFont, dimPaint);
+
+                // What the sketch is using: windows, hooks, shell signals, eco.
+                DrawBadges(canvas, host.CurrentBadges(), x, h - 92);
+
+                var sketch = host.Sketch;
+                y = h - 52;
+                canvas.DrawText(AttachedCardInfoLine(sketch.GetType().Name, sketch.Layer, sketch.FrameCount), x, y, SKTextAlign.Left, dimFont, dimPaint);
+                string footer = host.UsesShellSignals && !host.ShellSnippetInstalled
+                    ? UiText.Tr("Shell: falta el snippet de PowerShell (ShellSignals.InstallForPowerShell())",
+                                "Shell: the PowerShell snippet is missing (ShellSignals.InstallForPowerShell())")
+                    : UiText.Tr("Los clics pasan a la ventana. Stop quita el sketch.", "Clicks go through to the window. Stop removes the sketch.");
+                canvas.DrawText(footer, x, y + 20, SKTextAlign.Left, dimFont, dimPaint);
+            }
+
+            canvas.Restore();
+            canvas.Flush();
+            return true;
+        }
+
+        /// <summary>The card's info line: "MySketch · capa encima · cuadro 120" / "MySketch · layer above · frame 120".</summary>
+        internal static string AttachedCardInfoLine(string sketchName, AttachLayer layer, int frame) =>
+            UiText.Tr($"{sketchName} · capa {(layer == AttachLayer.Above ? "encima" : "detrás")} · cuadro {frame}",
+                      $"{sketchName} · layer {(layer == AttachLayer.Above ? "above" : "behind")} · frame {frame}");
+
+        /// <summary>Small pills (TECLADO, SHELL, ECO...) left to right from (x, y).</summary>
+        private static void DrawBadges(SKCanvas canvas, IReadOnlyList<string> badges, float x, float y)
+        {
+            using var font = new SKFont { Size = 11, Embolden = true };
+            using var fill = new SKPaint { Color = new SKColor(255, 255, 255, 22), IsAntialias = true };
+            using var edge = new SKPaint { Color = new SKColor(255, 255, 255, 70), Style = SKPaintStyle.Stroke, IsAntialias = true };
+            using var text = new SKPaint { Color = new SKColor(225, 228, 238), IsAntialias = true };
+            foreach (var badge in badges)
+            {
+                // Hooks read input from another app: they get a warm color so they stand out.
+                bool hook = badge == AttachedSketchFleet.KeyboardBadge || badge == AttachedSketchFleet.MouseBadge;
+                fill.Color = hook ? new SKColor(240, 170, 60, 50) : new SKColor(255, 255, 255, 22);
+                edge.Color = hook ? new SKColor(240, 170, 60, 160) : new SKColor(255, 255, 255, 70);
+                float w = font.MeasureText(badge) + 16;
+                var rect = new SKRect(x, y, x + w, y + 20);
+                canvas.DrawRoundRect(rect, 10, 10, fill);
+                canvas.DrawRoundRect(rect, 10, 10, edge);
+                canvas.DrawText(badge, x + 8, y + 14, SKTextAlign.Left, font, text);
+                x += w + 6;
+            }
+        }
+
         private void DrawErrorOverlay(SKCanvas canvas, Exception ex, string context, int width, int height)
         {
             canvas.Clear(new SKColor(30, 8, 8));
@@ -1157,10 +1371,10 @@ namespace DanaProcessing.AvaloniaHost
             using var footerPaint = new SKPaint { Color = new SKColor(180, 180, 180), TextSize = 12, IsAntialias = true };
 
             float x = 24, y = 44;
-            canvas.DrawText("Error en el sketch — ejecucion pausada", x, y, titlePaint);
+            canvas.DrawText(UiText.Tr("Error en el sketch — ejecución pausada", "Error in the sketch — execution paused"), x, y, titlePaint);
 
             y += 34;
-            canvas.DrawText($"En {context}():  {ex.GetType().Name}", x, y, bodyPaint);
+            canvas.DrawText(UiText.Tr($"En {context}():  {ex.GetType().Name}", $"In {context}():  {ex.GetType().Name}"), x, y, bodyPaint);
 
             y += 24;
             foreach (var line in WrapText(ex.Message, 64))
@@ -1183,7 +1397,7 @@ namespace DanaProcessing.AvaloniaHost
                 }
             }
 
-            canvas.DrawText("Corrige el codigo y prueba de nuevo.", x, height - 20, footerPaint);
+            canvas.DrawText(UiText.Tr("Corrige el código y prueba de nuevo.", "Fix the code and try again."), x, height - 20, footerPaint);
         }
 
         private static IEnumerable<string> WrapText(string text, int maxCharsPerLine)
