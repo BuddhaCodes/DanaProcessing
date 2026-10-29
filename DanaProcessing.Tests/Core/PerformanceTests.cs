@@ -46,20 +46,43 @@ public class PerformanceTests
     [Fact]
     public void Repeated_runs_do_not_pile_up_in_memory()
     {
+        // The count is process-wide: sketches compiled by tests that ran before
+        // this one (and may still be referenced) count too. Measure only what
+        // these 25 runs leave behind.
+        int before = LoadedAfterGc(int.MaxValue);
+
         for (int i = 0; i < 25; i++)
-        {
-            var r = SketchCompiler.Compile(Trivial);
-            Assert.True(r.Success);
-            r.Sketch!.Draw();
-        }
-        for (int i = 0; i < 5 && SketchCompiler.LoadedSketchAssemblies > 6; i++)
+            CompileAndDraw();
+
+        int after = LoadedAfterGc(before + 6);
+        int added = after - before;
+        string alive = string.Join(", ", SketchCompiler.LoadedSketchTypeNames()
+            .GroupBy(n => n).Select(g => $"{g.Key} x{g.Count()}"));
+        _log.WriteLine($"before: {before}, after 25 runs: {after} sketch assemblies still loaded ({alive})");
+        Assert.True(added <= 6, $"25 runs left {added} sketch assemblies loaded (before {before}, after {after}): {alive}");
+    }
+
+    // Its own method so no local in the test keeps the last sketch alive.
+    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+    private static void CompileAndDraw()
+    {
+        var r = SketchCompiler.Compile(Trivial);
+        Assert.True(r.Success);
+        r.Sketch!.Draw();
+    }
+
+    private static int LoadedAfterGc(int target)
+    {
+        for (int i = 0; i < 5 && SketchCompiler.LoadedSketchAssemblies > target; i++)
         {
             GC.Collect();
             GC.WaitForPendingFinalizers();
             GC.Collect();
         }
-        _log.WriteLine($"after 25 runs: {SketchCompiler.LoadedSketchAssemblies} sketch assemblies still loaded");
-        Assert.InRange(SketchCompiler.LoadedSketchAssemblies, 0, 6);
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        GC.Collect();
+        return SketchCompiler.LoadedSketchAssemblies;
     }
 
     private sealed class Circles : Sketch
