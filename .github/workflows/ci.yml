@@ -50,13 +50,16 @@ jobs:
           -c Release --no-build
           --logger "console;verbosity=normal"
           --logger "trx;LogFileName=results.trx"
+          --blame-hang-timeout 15m
 
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: test-results-${{ matrix.os }}
-          path: DanaProcessing.Tests/TestResults/*.trx
+          path: |
+            DanaProcessing.Tests/TestResults/*.trx
+            DanaProcessing.Tests/TestResults/**/Sequence_*.xml
 
       - name: Upload exported reels
         if: always()
