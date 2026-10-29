@@ -203,7 +203,10 @@ public class Renderer3DTests
         if (!OperatingSystem.IsMacOS()) return;
         // Tests run on worker threads: exactly the case that used to hang forever.
         var attempt = Task.Run(() => new Host().CreateGraphics(8, 8, RendererKind.Renderer3D));
-        Assert.True(attempt.Wait(TimeSpan.FromSeconds(30)) || attempt.IsFaulted, "creating the context hung");
+        // Wait for it to finish either way (Wait() would rethrow the failure we're expecting).
+        bool finished = ((IAsyncResult)attempt).AsyncWaitHandle.WaitOne(TimeSpan.FromSeconds(30));
+        Assert.True(finished, "creating the context hung");
+        Assert.True(attempt.IsFaulted, "a 3D context off the main thread should fail on macOS");
         var error = Assert.IsType<InvalidOperationException>(attempt.Exception?.InnerException);
         Assert.Contains("hilo principal", error.Message);
     }
