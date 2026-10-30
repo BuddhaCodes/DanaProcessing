@@ -148,6 +148,7 @@
 <div class="topic-group"><h2>Tooling</h2><ul>
 <li><a href="ide.html">The IDE</a></li>
 <li><a href="hosting.html">Avalonia host</a></li>
+<li><a href="attached.html">Attached sketches (beta)</a></li>
 <li><a href="enums.html">Enumerations</a></li>
 </ul></div>
 <p class="topics-all"><a href="a-z.html">All topics &amp; A–Z index</a></p></nav>
@@ -199,7 +200,7 @@
 <p class="entry-desc">Width/height of the sketch's backing buffer in actual pixels, like Processing's <code class="inline">pixelWidth</code>/<code class="inline">pixelHeight</code>. Since DanaProcessing always draws at 1:1 (see <code class="inline">PixelDensity()</code> above), these are always equal to <code class="inline">Width</code>/<code class="inline">Height</code> — kept so sketches ported from Processing that read them directly (e.g. when indexing <code class="inline">LoadPixels()</code>'s array by hand) keep working unchanged.</p>
 
 <h2 class="entry-title api" id="settings"><code>Settings</code><span class="badge">virtual</span></h2><ul class="sigs" aria-label="Signatures"><li><code>Settings() <span class="sig-return">→ void</span></code></li></ul>
-<p class="entry-desc">Runs once, before <code class="inline">Setup()</code>, like Processing's <code class="inline">settings()</code>. The host is responsible for calling it immediately before <code class="inline">Setup()</code>.</p>
+<p class="entry-desc">Runs once, before <code class="inline">Setup()</code>, like Processing's <code class="inline">settings()</code>. The IDE, exported apps and <a href="attached.html">attached sketches</a> call it immediately before <code class="inline">Setup()</code>, so a <code class="inline">Size()</code> there is already in effect when <code class="inline">Setup()</code> runs; if it throws, <code class="inline">Setup()</code> doesn't run.</p>
 <div class="note"><strong>Optional in C#.</strong> Real Processing needs this only because <code class="inline">size()</code> is special-cased by the preprocessor and can't take a variable inside <code class="inline">setup()</code>. Plain C# has no such restriction — <code class="inline">Size()</code> works fine called directly inside <code class="inline">Setup()</code> too. Overriding <code class="inline">Settings()</code> is provided purely so sketches ported from Processing that rely on the setup-order guarantee (<code class="inline">settings()</code> strictly before <code class="inline">setup()</code>) keep behaving the same way.</div>
 
 <h2 class="entry-title api" id="window-management"><code>FullScreen · WindowMove · WindowResize · WindowResizable · WindowTitle · WindowRatio</code></h2><ul class="sigs" aria-label="Signatures"><li><code>FullScreen(<span class="tp">bool</span> fullScreen = true)</code></li><li><code>WindowMove(x, y)</code></li><li><code>WindowResize(w, h)</code></li><li><code>WindowResizable(<span class="tp">bool</span>)</code></li><li><code>WindowTitle(<span class="tp">string</span>)</code></li><li><code>WindowRatio(w, h)</code></li></ul>

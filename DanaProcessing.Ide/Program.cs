@@ -41,8 +41,18 @@ namespace DanaProcessing.Ide
             AppDomain.CurrentDomain.UnhandledException += (_, e) =>
             {
                 if (e.ExceptionObject is Exception ex)
+                {
+                    ErrorLog.Write(ex, "AppDomain.UnhandledException");
                     CrashReportStore.WriteBestEffort(CrashReportStore.Build(ex, "AppDomain.UnhandledException"));
+                }
             };
+
+            // An exception on the UI thread surfaces in the debugger at
+            // StartWithClassicDesktopLifetime with no hint of where it came
+            // from; the log keeps its real stack (see ErrorLog). Not handled
+            // here: what happens next is unchanged.
+            Avalonia.Threading.Dispatcher.UIThread.UnhandledException += (_, e) =>
+                ErrorLog.Write(e.Exception, "Dispatcher.UIThread.UnhandledException");
 
             // An exported standalone sketch (see DanaProcessing.Ide.Export) is a
             // plain copy of this same exe with a "sketch.cs" file dropped next to
@@ -52,6 +62,14 @@ namespace DanaProcessing.Ide
             // Dana" web button into always reopening THIS exported copy instead
             // of the real IDE from then on.
             ExportedSketchRunner.DetectAndStash();
+
+            // An exported sketch's install.ps1 runs it with --install-shell-signals /
+            // --uninstall-shell-signals: do that one job and exit, no UI.
+            if (ExportedSketchRunner.SketchFilePath is not null && ExportedSketchRunner.HandleCommandLine(args) is int exitCode)
+            {
+                Environment.ExitCode = exitCode;
+                return;
+            }
 
             if (ExportedSketchRunner.SketchFilePath is null)
             {

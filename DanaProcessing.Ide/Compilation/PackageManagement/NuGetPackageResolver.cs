@@ -56,10 +56,11 @@ namespace DanaProcessing.Ide.Compilation.PackageManagement
     /// `dotnet restore` would silently fail there, so this talks to the NuGet
     /// v3 API directly via the same client libraries the SDK itself uses.
     ///
-    /// Deliberately simpler than a full `dotnet restore`: nuget.org only (no
-    /// nuget.config / private feeds), a simple "direct dependency wins, otherwise
-    /// the highest version anyone asked for wins" rule instead of a real
-    /// SAT-based dependency resolver, and a small denylist of
+    /// Deliberately simpler than a full `dotnet restore`: nuget.org plus one
+    /// optional local folder feed (<see cref="LocalFeedDirectory"/>, checked
+    /// first) and no nuget.config / private feeds, a simple "direct dependency
+    /// wins, otherwise the highest version anyone asked for wins" rule instead
+    /// of a real SAT-based dependency resolver, and a small denylist of
     /// netstandard2.0 compatibility-shim packages net10.0 already provides
     /// (downloading a differently-versioned copy of one of those would only
     /// risk shadowing the runtime's own). Good enough for the kind of single
@@ -72,6 +73,52 @@ namespace DanaProcessing.Ide.Compilation.PackageManagement
         private static readonly NuGetFramework TargetFramework = NuGetFramework.ParseFolder("net10.0");
         private static readonly FrameworkReducer Reducer = new();
         private static readonly SourceRepository SourceRepo = Repository.Factory.GetCoreV3(SourceUrl);
+
+        /// <summary>
+        /// Carpeta con .nupkg propios (p. ej. KludgeLight.Core) que se consulta ANTES que
+        /// nuget.org. Por defecto %AppData%/DanaProcessingIde/local-feed; la variable de
+        /// entorno DANA_LOCAL_NUGET la sustituye. Si no existe, todo sigue como antes.
+        /// </summary>
+        public static string LocalFeedDirectory
+        {
+            get
+            {
+                var env = Environment.GetEnvironmentVariable("DANA_LOCAL_NUGET");
+                return !string.IsNullOrWhiteSpace(env)
+                    ? env
+                    : Path.Combine(
+                        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                        "DanaProcessingIde", "local-feed");
+            }
+        }
+
+        private static async Task<FindPackageByIdResource?> GetLocalFindResourceAsync(CancellationToken ct)
+        {
+            var dir = LocalFeedDirectory;
+            if (!Directory.Exists(dir) || Directory.GetFiles(dir, "*.nupkg", SearchOption.AllDirectories).Length == 0)
+                return null;
+            try
+            {
+                return await Repository.Factory.GetCoreV3(dir).GetResourceAsync<FindPackageByIdResource>(ct);
+            }
+            catch
+            {
+                return null; // un feed local roto no debe impedir usar nuget.org
+            }
+        }
+
+        /// <summary>
+        /// Sufijo de caché para un paquete del feed local: la fecha del .nupkg. Así, al volver a
+        /// empaquetar la misma versión (lo normal mientras se desarrolla) se extrae de nuevo en
+        /// lugar de reutilizar la copia vieja.
+        /// </summary>
+        private static string LocalCacheSuffix(string id, NuGetVersion version)
+        {
+            var name = $"{id}.{version.ToNormalizedString()}.nupkg";
+            var file = Directory.GetFiles(LocalFeedDirectory, "*.nupkg", SearchOption.AllDirectories)
+                .FirstOrDefault(f => string.Equals(Path.GetFileName(f), name, StringComparison.OrdinalIgnoreCase));
+            return file is null ? "-local" : $"-local-{File.GetLastWriteTimeUtc(file).Ticks}";
+        }
 
         /// <summary>
         /// Runtime identifiers to look under runtimes/ for, most specific first
@@ -150,6 +197,8 @@ namespace DanaProcessing.Ide.Compilation.PackageManagement
                 return new NuGetResolutionResult(packages, errors);
             }
 
+            var localFind = await GetLocalFindResourceAsync(ct);
+
             var queue = new Queue<(string Id, string? VersionSpec)>();
             foreach (var d in directives)
                 queue.Enqueue((d.Id, d.Version));
@@ -171,10 +220,32 @@ namespace DanaProcessing.Ide.Compilation.PackageManagement
                 if (!upgrading)
                     progress?.Report(Loc.Tr($"Resolviendo {id}{(versionSpec is null ? "" : " " + versionSpec)}...", $"Resolving {id}{(versionSpec is null ? "" : " " + versionSpec)}..."));
 
-                NuGetVersion? version;
+                NuGetVersion? version = null;
+                var source = findResource;
+                string cacheSuffix = "";
+
+                // Primero el feed local: los paquetes propios no están en nuget.org.
+                if (localFind != null)
+                {
+                    try
+                    {
+                        var localVersion = await ResolveVersionAsync(localFind, cache, logger, id, versionSpec, ct);
+                        if (localVersion != null && (await localFind.DoesPackageExistAsync(id, localVersion, cache, logger, ct)))
+                        {
+                            version = localVersion;
+                            source = localFind;
+                            cacheSuffix = LocalCacheSuffix(id, localVersion);
+                        }
+                    }
+                    catch
+                    {
+                        // no está en el feed local: se busca en nuget.org
+                    }
+                }
+
                 try
                 {
-                    version = await ResolveVersionAsync(findResource, cache, logger, id, versionSpec, ct);
+                    version ??= await ResolveVersionAsync(findResource, cache, logger, id, versionSpec, ct);
                 }
                 catch (Exception ex)
                 {
@@ -199,7 +270,7 @@ namespace DanaProcessing.Ide.Compilation.PackageManagement
 
                 try
                 {
-                    var (assemblyPaths, dependencies, nativeDirectory) = await GetOrDownloadAsync(findResource, cache, logger, id, version, progress, ct);
+                    var (assemblyPaths, dependencies, nativeDirectory) = await GetOrDownloadAsync(source, cache, logger, id, version, progress, ct, cacheSuffix);
                     var entry = new ResolvedNuGetPackage(id, version.ToNormalizedString(), assemblyPaths, nativeDirectory);
                     if (upgrading)
                     {
@@ -329,9 +400,9 @@ namespace DanaProcessing.Ide.Compilation.PackageManagement
         /// records its net10.0-nearest dependency group for the caller to enqueue.</summary>
         private static async Task<(IReadOnlyList<string> AssemblyPaths, IReadOnlyList<PackageDependency> Dependencies, string? NativeDirectory)> GetOrDownloadAsync(
             FindPackageByIdResource findResource, SourceCacheContext cache, ILogger logger,
-            string id, NuGetVersion version, IProgress<string>? progress, CancellationToken ct)
+            string id, NuGetVersion version, IProgress<string>? progress, CancellationToken ct, string cacheSuffix = "")
         {
-            var packageDir = CombineInside(CacheRoot, Path.Combine(id.ToLowerInvariant(), version.ToNormalizedString()));
+            var packageDir = CombineInside(CacheRoot, Path.Combine(id.ToLowerInvariant(), version.ToNormalizedString() + cacheSuffix));
             var libDir = Path.Combine(packageDir, "lib");
             var nativeDir = Path.Combine(packageDir, "native");
             // "-v2": packages cached before runtimes/ support had no native/ folder
