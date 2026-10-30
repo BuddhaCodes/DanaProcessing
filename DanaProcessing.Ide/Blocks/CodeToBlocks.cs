@@ -37,7 +37,8 @@ namespace DanaProcessing.Ide.Blocks
     {
         public static CodeToBlocksResult Convert(string source, BlockView view = BlockView.Lines)
         {
-            var tree = CSharpSyntaxTree.ParseText(source);
+            // English code (turtle, side, MakeSquare...) reads the same as Spanish.
+            var tree = CSharpSyntaxTree.ParseText(CodeWords.ToSpanish(source));
             var root = tree.GetCompilationUnitRoot();
             var program = new BlockProgram { View = view };
             var reader = new Reader(program, tree);

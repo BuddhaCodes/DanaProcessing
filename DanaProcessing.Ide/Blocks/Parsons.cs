@@ -138,7 +138,7 @@ namespace DanaProcessing.Ide.Blocks
                     depth++;
             }
 
-            if (CallsItself(ordered) is { } method)
+            if (CallsItself(ordered) is { } spanishName && CodeWords.Word(spanishName) is var method)
                 return Fail(Loc.Tr($"{method} se llama a sí mismo: no terminaría nunca.", $"{method} calls itself: it would never end."));
 
             var compiled = SketchCompiler.Compile(Assemble(puzzle, ordered, withGuide: false));
@@ -268,7 +268,7 @@ namespace DanaProcessing.Ide.Blocks
                 Id = "spiral", ShapeOf = "spiral",
                 TitleEs = "La espiral con una variable", TitleEn = "The spiral with a variable",
                 GoalEs = "\"lado\" empieza en 10 y crece 10 en cada vuelta.",
-                GoalEn = "\"lado\" starts at 10 and grows by 10 each time round.",
+                GoalEn = "\"side\" starts at 10 and grows by 10 each time round.",
                 Fields = new[] { "float lado = 0;" },
                 Lines = new[] { S, "lado = 10;", "for (int i = 0; i < 12; i++) {", "tortuga.Forward(lado);", R90, "lado = lado + 10;", End, End },
             },
@@ -277,7 +277,7 @@ namespace DanaProcessing.Ide.Blocks
                 Id = "method", ShapeOf = "two-squares",
                 TitleEs = "Un método propio", TitleEn = "A method of your own",
                 GoalEs = "Cuadrado() dibuja un cuadrado; Setup lo usa dos veces. Ordená los dos métodos.",
-                GoalEn = "Cuadrado() draws a square; Setup uses it twice. Put both methods in order.",
+                GoalEn = "MakeSquare() draws a square; Setup uses it twice. Put both methods in order.",
                 Lines = new[]
                 {
                     S, "Cuadrado();", "tortuga.PenUp();", R90, "tortuga.Forward(75);", "tortuga.TurnLeft(90);", "tortuga.PenDown();", "Cuadrado();", End,

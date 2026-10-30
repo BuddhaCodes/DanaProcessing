@@ -265,7 +265,7 @@ namespace DanaProcessing.Ide.Blocks
         {
             var text = new TextBlock { FontFamily = BlocksChrome.FontCode, FontSize = 15.5, VerticalAlignment = VerticalAlignment.Center, TextWrapping = TextWrapping.NoWrap };
             var inlines = new InlineCollection();
-            foreach (var (part, kind) in CSharpTokens.Split(line.Trim()))
+            foreach (var (part, kind) in CSharpTokens.Split(CodeWords.Localize(line.Trim())))
                 inlines.Add(new Run(part)
                 {
                     Foreground = new SolidColorBrush(Color(kind, dark)),
