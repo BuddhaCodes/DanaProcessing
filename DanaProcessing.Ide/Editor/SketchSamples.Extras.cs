@@ -11,8 +11,9 @@ namespace DanaProcessing.Ide.Editor
     /// </summary>
     public static partial class SketchSamples
     {
-        // The 1.x additions, then the live-performance ones (SketchSamples.Live.cs).
-        private static SketchSample[] Extras => ExtrasV1.Concat(Live).ToArray();
+        // The 1.x additions, then the live-performance ones (SketchSamples.Live.cs),
+        // then attached sketches (SketchSamples.Attached.cs).
+        private static SketchSample[] Extras => ExtrasV1.Concat(Live).Concat(Attached).ToArray();
 
         private static readonly SketchSample[] ExtrasV1 =
         {
@@ -2305,6 +2306,8 @@ public class MySketch : Sketch
 using System;
 using System.Collections.Generic;
 using NAudio.Midi;
+// Dana has its own MidiMessage (OnMidi): NAudio's is written out in full, NAudio.Midi.MidiMessage,
+// or the compiler can't tell which one you mean.
 
 // Balls bouncing in a box -- every wall they hit plays a note through MIDI
 // output 0, from a minor pentatonic scale (so it always sounds good). On
@@ -2379,7 +2382,7 @@ public class MySketch : Sketch
 
         if (program != _sentProgram)
         {
-            Send(MidiMessage.ChangePatch(Constrain(program, 0, 127), 1));
+            Send(NAudio.Midi.MidiMessage.ChangePatch(Constrain(program, 0, 127), 1));
             _sentProgram = program;
         }
 
@@ -2433,7 +2436,7 @@ public class MySketch : Sketch
     private void PlayNote(int note, int velocity)
     {
         note = Constrain(note, 0, 127);
-        Send(MidiMessage.StartNote(note, Constrain(velocity, 1, 127), 1));
+        Send(NAudio.Midi.MidiMessage.StartNote(note, Constrain(velocity, 1, 127), 1));
         _sounding.Add((note, Millis() + noteLength));
     }
 
@@ -2444,12 +2447,12 @@ public class MySketch : Sketch
         {
             if (_sounding[i].OffAt > now)
                 continue;
-            Send(MidiMessage.StopNote(_sounding[i].Note, 0, 1));
+            Send(NAudio.Midi.MidiMessage.StopNote(_sounding[i].Note, 0, 1));
             _sounding.RemoveAt(i);
         }
     }
 
-    private void Send(MidiMessage message)
+    private void Send(NAudio.Midi.MidiMessage message)
     {
         try { _midi?.Send(message.RawData); }
         catch { /* device unplugged: keep drawing, just silently */ }
@@ -2471,7 +2474,7 @@ public class MySketch : Sketch
     public override void OnStop()
     {
         foreach (var (note, _) in _sounding)
-            Send(MidiMessage.StopNote(note, 0, 1));
+            Send(NAudio.Midi.MidiMessage.StopNote(note, 0, 1));
         _sounding.Clear();
         _midi?.Dispose();
         _midi = null;

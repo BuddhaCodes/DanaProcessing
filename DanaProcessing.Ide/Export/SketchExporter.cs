@@ -47,7 +47,8 @@ namespace DanaProcessing.Ide.Export
             bool windowless = false,
             IProgress<string>? progress = null,
             CancellationToken ct = default,
-            string? sketchFolder = null)
+            string? sketchFolder = null,
+            AttachedExportOptions? attached = null)
         {
             var installDir = AppContext.BaseDirectory;
             var exportFolder = Path.Combine(destinationParentFolder, SanitizeFolderName(sketchName));
@@ -136,6 +137,31 @@ namespace DanaProcessing.Ide.Export
 
                 if (windowless)
                     await File.WriteAllTextAsync(Path.Combine(exportFolder, ExportedSketchRunner.WindowlessMarkerFileName), "", ct);
+
+                if (attached?.EachWindow == true)
+                    await File.WriteAllTextAsync(Path.Combine(exportFolder, ExportedSketchRunner.EachWindowMarkerFileName), "", ct);
+
+                if (attached?.UseGpu == true)
+                    await File.WriteAllTextAsync(Path.Combine(exportFolder, ExportedSketchRunner.GpuMarkerFileName), "", ct);
+
+                if (attached?.PowerShellInstaller == true)
+                {
+                    // Like Abyss Tide: install.ps1 copies the app to %LOCALAPPDATA%,
+                    // starts it with Windows and adds the prompt hook.
+                    var exe = PowerShellInstaller.FindExe(exportFolder, Path.GetFileName(Environment.ProcessPath));
+                    if (exe is null)
+                        progress?.Report(Loc.Tr("Sin install.ps1: no encontré el .exe exportado (el instalador es solo para Windows).",
+                                                "No install.ps1: couldn't find the exported .exe (the installer is Windows only)."));
+                    else
+                    {
+                        if (attached.TerminalProfile)
+                            TerminalProfile.Write(exportFolder, sketchName);   // the sketch behind the terminal, in its own see-through profile
+                        PowerShellInstaller.Write(exportFolder, sketchName, exe, attached.EachWindow, english: Loc.Current == AppLanguage.English,
+                                                  terminalProfile: attached.TerminalProfile);
+                        progress?.Report(Loc.Tr($"Instalador: {PowerShellInstaller.ScriptFileName} (clic derecho → Ejecutar con PowerShell)",
+                                                $"Installer: {PowerShellInstaller.ScriptFileName} (right click → Run with PowerShell)"));
+                    }
+                }
             }
             catch (Exception ex)
             {

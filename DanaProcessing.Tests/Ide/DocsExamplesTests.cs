@@ -64,7 +64,9 @@ public class DocsExamplesTests
         Assert.True(examples.Count >= 34, $"only {examples.Count} runnable examples");
         Assert.Contains(examples, e => e.Id == "tutorial-6-code" && e.Page == "reference/tutorial.html");
         Assert.Contains(examples, e => e.Id == "from-processing-code");
-        Assert.All(examples, e => Assert.Contains(": Sketch", e.Code));
+        // A sketch, or an attached one (it draws on another window: see attached.html).
+        Assert.All(examples, e => Assert.Matches(": (Attached)?Sketch\\b", e.Code));
+        Assert.Contains(examples, e => e.Id == "attached-example-code" && e.Page == "reference/attached.html");
         Assert.Equal(examples.Count, examples.Select(e => e.Id).Distinct().Count());
     }
 

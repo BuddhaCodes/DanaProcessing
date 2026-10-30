@@ -3967,13 +3967,9 @@ using NAudio.Wave;
 // bars is what makes all 40 read as one coherent, evenly-alive spectrum
 // instead of ""one giant bar plus 39 quiet ones.""
 //
-// Known caveat: nothing in the engine calls a cleanup hook on the old
-// Sketch instance when you press Run again (there's no IDisposable/Stop()
-// contract yet), so the WASAPI capture started in Setup() keeps running
-// in the background even after a re-Run. It's harmless -- Windows allows
-// many simultaneous loopback captures, and the orphaned one just feeds a
-// Sketch instance nobody's drawing anymore -- but press S first if you'd
-// rather stop it by hand before closing the IDE.
+// The WASAPI capture started in Setup() is stopped in OnStop(), which runs
+// when you press Stop, Run again or close the IDE -- otherwise it would keep
+// feeding a Sketch instance nobody's drawing anymore.
 public class MySketch : Sketch
 {
     private const int FftSize = 1024;   // must be a power of two
@@ -4332,7 +4328,7 @@ public class MySketch : Sketch
         float energy = Constrain(_lastOverallLevel, 0f, 1f);
         _currentDuration = exploding
             ? Lerp(ExplodeMsMax, ExplodeMsMin, energy)
-            : Lerp(ReassembleMsMax, ReassembleMsMin, energy);s
+            : Lerp(ReassembleMsMax, ReassembleMsMin, energy);
 
 
         if (exploding)
@@ -4404,6 +4400,8 @@ public class MySketch : Sketch
         else
             StartCapture();
     }
+
+    public override void OnStop() => StopCapture();
 
     private void StartCapture()
     {

@@ -17,11 +17,20 @@ namespace DanaProcessing.Ide.Export
     /// whole Settings-style window for one checkbox. Mirrors ConfirmDialog's
     /// own plain-native-chrome, ShowDialog&lt;T&gt; shape.
     /// </summary>
+    /// <summary>What the export dialog chose. Attached is set only for an AttachedSketch.</summary>
+    public sealed record ExportChoice(bool Windowless, AttachedExportOptions? Attached);
+
     public class ExportOptionsWindow : Window
     {
         private readonly CheckBox _windowlessCheckBox;
+        private readonly CheckBox _eachWindowCheckBox;
+        private readonly CheckBox _installerCheckBox;
+        private readonly CheckBox _profileCheckBox;
+        private readonly CheckBox _gpuCheckBox;
 
-        public ExportOptionsWindow()
+        /// <param name="attachedSketch">The sketch is an AttachedSketch: it exports as a tray app, so there's no window to choose a title bar for.</param>
+        /// <param name="eachWindowByDefault">The sketch already asks for AttachMode.EachWindow (the box starts checked either way: one sketch per terminal is the usual wish).</param>
+        public ExportOptionsWindow(bool attachedSketch = false, bool eachWindowByDefault = true)
         {
             Title = Loc.Tr("Opciones de exportación", "Export options");
             Width = 440;
@@ -86,7 +95,11 @@ namespace DanaProcessing.Ide.Export
                 Padding = new Thickness(16, 8),
                 FontSize = 12.5,
             };
-            exportButton.Click += (_, _) => Close(_windowlessCheckBox.IsChecked == true);
+            exportButton.Click += (_, _) => Close(new ExportChoice(
+                _windowlessCheckBox.IsChecked == true,
+                attachedSketch ? new AttachedExportOptions(_eachWindowCheckBox.IsChecked == true, _installerCheckBox.IsChecked == true,
+                                                           _installerCheckBox.IsChecked == true && _profileCheckBox.IsChecked == true,
+                                                           _gpuCheckBox.IsChecked == true) : null));
 
             var buttonRow = new StackPanel
             {
@@ -96,7 +109,74 @@ namespace DanaProcessing.Ide.Export
                 Children = { cancelButton, exportButton },
             };
 
-            var body = new StackPanel { Children = { heading, _windowlessCheckBox, hint, buttonRow } };
+            _eachWindowCheckBox = new CheckBox
+            {
+                Content = Loc.Tr("Un sketch por cada terminal (también cada panel dividido)", "One sketch per terminal (each split pane too)"),
+                FontFamily = ClayTheme.FontBody,
+                FontSize = 13,
+                Foreground = ClayTheme.TextPrimary,
+                Margin = new Thickness(24, 14, 24, 0),
+                IsChecked = eachWindowByDefault,
+                IsVisible = attachedSketch,
+            };
+            _installerCheckBox = new CheckBox
+            {
+                Content = Loc.Tr("Instalador de PowerShell (como Abyss Tide)", "PowerShell installer (like Abyss Tide)"),
+                FontFamily = ClayTheme.FontBody,
+                FontSize = 13,
+                Foreground = ClayTheme.TextPrimary,
+                Margin = new Thickness(24, 8, 24, 0),
+                IsChecked = true,
+                IsVisible = attachedSketch,
+            };
+            _profileCheckBox = new CheckBox
+            {
+                Content = Loc.Tr("En su propio perfil de Windows Terminal", "In its own Windows Terminal profile"),
+                FontFamily = ClayTheme.FontBody,
+                FontSize = 13,
+                Foreground = ClayTheme.TextPrimary,
+                Margin = new Thickness(44, 4, 24, 0),
+                IsChecked = true,
+                IsVisible = attachedSketch,
+            };
+            _gpuCheckBox = new CheckBox
+            {
+                Content = Loc.Tr("Usar la GPU (DirectComposition)", "Use the GPU (DirectComposition)"),
+                FontFamily = ClayTheme.FontBody,
+                FontSize = 13,
+                Foreground = ClayTheme.TextPrimary,
+                Margin = new Thickness(24, 8, 24, 0),
+                IsChecked = true,
+                IsVisible = attachedSketch,
+            };
+
+            // The profile is installed by install.ps1: without the installer there's nothing to put it in.
+            _installerCheckBox.IsCheckedChanged += (_, _) => _profileCheckBox.IsEnabled = _installerCheckBox.IsChecked == true;
+
+            var attachedHint = new TextBlock
+            {
+                Text = Loc.Tr(
+                    "Un sketch por terminal: cada ventana de Windows Terminal, y cada panel si la divides, tiene su propia copia, aunque el Attach() del sketch diga otra cosa. Instalador: junto al .exe va install.ps1; al ejecutarlo se copia a %LOCALAPPDATA%\\DanaProcessing\\Sketches, arranca con Windows, añade el hook del prompt (para saber si un comando falló) y arranca ya. install.ps1 -Uninstall lo quita. Perfil propio: como Abyss Tide, añade a Windows Terminal un perfil translúcido para que el sketch se vea a través de él; sin esta opción el sketch sigue detrás de todas las terminales (nunca encima del texto) y solo se ve en las que ya tengan un perfil translúcido. GPU: los frames llegan a la pantalla como los de Windows Terminal (DirectComposition, al ritmo del refresco) en vez de copiarse enteros en cada frame; si la GPU no arranca, vuelve sola al modo CPU (la tarjeta lo dice con la insignia GPU).",
+                    "One sketch per terminal: every Windows Terminal window, and every pane when you split it, gets its own copy, whatever the sketch's Attach() says. Installer: install.ps1 goes next to the .exe; running it copies the app to %LOCALAPPDATA%\\DanaProcessing\\Sketches, starts it with Windows, adds the prompt hook (so it knows when a command fails) and starts it. install.ps1 -Uninstall removes it. Own profile: like Abyss Tide, it adds a see-through profile to Windows Terminal so the sketch shows through it; without it the sketch is still behind every terminal (never over the text) and only shows in the ones whose profile is already see-through. GPU: frames reach the screen the way Windows Terminal's do (DirectComposition, in step with the refresh) instead of being copied whole every frame; if the GPU can't start, it goes back to CPU by itself (the GPU badge tells)."),
+                Foreground = ClayTheme.TextMuted,
+                FontFamily = ClayTheme.FontBody,
+                FontSize = 11.5,
+                TextWrapping = TextWrapping.Wrap,
+                Margin = new Thickness(24, 6, 24, 0),
+                IsVisible = attachedSketch,
+            };
+
+            if (attachedSketch)
+            {
+                _windowlessCheckBox.IsVisible = false;
+                _windowlessCheckBox.IsChecked = false;
+                hint.Text = Loc.Tr(
+                    "Este es un sketch adjunto (AttachedSketch): la app exportada no tiene ventana propia. Se dibuja sobre la ventana que elige en Attach() y vive en la bandeja del sistema, junto al reloj: su menú dice qué está haciendo y permite pausarla, instalar las señales de PowerShell y salir.",
+                    "This is an attached sketch (AttachedSketch): the exported app has no window of its own. It draws on the window its Attach() picks and lives in the system tray, next to the clock: its menu says what it's doing and can pause it, install the PowerShell signals and quit.");
+                hint.Margin = new Thickness(24, 16, 24, 0);
+            }
+
+            var body = new StackPanel { Children = { heading, _windowlessCheckBox, hint, _eachWindowCheckBox, _installerCheckBox, _profileCheckBox, _gpuCheckBox, attachedHint, buttonRow } };
 
             Content = new DockPanel
             {
@@ -164,8 +244,12 @@ namespace DanaProcessing.Ide.Export
             return root;
         }
 
-        /// <summary>Null if cancelled (Cancelar, the ✕ button, Alt+F4, etc.);
-        /// otherwise true/false for whether "windowless" was checked.</summary>
-        public static Task<bool?> ShowAsync(Window owner) => new ExportOptionsWindow().ShowDialog<bool?>(owner);
+        /// <summary>Null if cancelled (Cancelar, the ✕ button, Alt+F4, etc.); otherwise what was chosen.</summary>
+        public static Task<ExportChoice?> ShowAsync(Window owner, bool attachedSketch = false, bool eachWindowByDefault = true) =>
+            new ExportOptionsWindow(attachedSketch, eachWindowByDefault).ShowDialog<ExportChoice?>(owner);
+
+        /// <summary>Whether <paramref name="source"/> declares an AttachedSketch (exports as a tray app). A text check, like the IDE's other pre-compile hints.</summary>
+        public static bool IsAttachedSketchSource(string source) =>
+            System.Text.RegularExpressions.Regex.IsMatch(source, @":\s*AttachedSketch\b");
     }
 }

@@ -133,6 +133,18 @@ namespace DanaProcessing
                 KeyTyped();
         }
 
+        /// <summary>
+        /// Host hook for a key going down, once Key/KeyCode are set: KeyPressed(),
+        /// then KeyTyped() when the key typed something (Key isn't CODED or '\0'),
+        /// like Processing's keyPressed()/keyTyped() pair.
+        /// </summary>
+        internal void RaiseKeyDown()
+        {
+            KeyPressed();
+            if (Key != '\0')
+                RaiseKeyTyped();
+        }
+
         // =====================================================================
         // Time — https://processing.org/reference/millis_.html.
         // =====================================================================

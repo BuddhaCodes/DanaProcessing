@@ -242,6 +242,26 @@ namespace DanaProcessing.Ide.Compilation
         }
 
         /// <summary>
+        /// The sketch classes of the compiled assemblies still in memory (tests and
+        /// diagnostics): when runs pile up, this says which sketches are being kept alive.
+        /// </summary>
+        internal static IReadOnlyList<string> LoadedSketchTypeNames()
+        {
+            lock (RecentContexts)
+            {
+                AllContexts.RemoveAll(w => !w.IsAlive);
+                return AllContexts
+                    .Select(w => w.Target as AssemblyLoadContext)
+                    .Where(c => c != null)
+                    .SelectMany(c => c!.Assemblies)
+                    .SelectMany(a => { try { return a.GetTypes(); } catch { return Array.Empty<Type>(); } })
+                    .Where(t => typeof(Sketch).IsAssignableFrom(t) && !t.IsAbstract)
+                    .Select(t => t.Name)
+                    .ToList();
+            }
+        }
+
+        /// <summary>
         /// Compiles a sketch. <paramref name="optimize"/> turns the C# optimizer on (Settings &gt;
         /// Running sketches &gt; Optimized code): heavy loops run up to ~2x faster, but the JIT
         /// then inlines and reorders, so a crash's line number can be off by a little.

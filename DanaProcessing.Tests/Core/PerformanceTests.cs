@@ -46,33 +46,43 @@ public class PerformanceTests
     [Fact]
     public void Repeated_runs_do_not_pile_up_in_memory()
     {
-        // The count is process-wide: sketches compiled by OTHER tests (and still
-        // referenced by them, e.g. a sketch the audio engine last activated) are
-        // in it too, which made an absolute "at most 6" flaky depending on test
-        // order. What this test is about is that ITS 25 runs don't pile up.
-        static void Collect()
+        // The count is process-wide: sketches compiled by tests that ran before
+        // this one (and may still be referenced) count too. Measure only what
+        // these 25 runs leave behind.
+        int before = LoadedAfterGc(int.MaxValue);
+
+        for (int i = 0; i < 25; i++)
+            CompileAndDraw();
+
+        int after = LoadedAfterGc(before + 6);
+        int added = after - before;
+        string alive = string.Join(", ", SketchCompiler.LoadedSketchTypeNames()
+            .GroupBy(n => n).Select(g => $"{g.Key} x{g.Count()}"));
+        _log.WriteLine($"before: {before}, after 25 runs: {after} sketch assemblies still loaded ({alive})");
+        Assert.True(added <= 6, $"25 runs left {added} sketch assemblies loaded (before {before}, after {after}): {alive}");
+    }
+
+    // Its own method so no local in the test keeps the last sketch alive.
+    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+    private static void CompileAndDraw()
+    {
+        var r = SketchCompiler.Compile(Trivial);
+        Assert.True(r.Success);
+        r.Sketch!.Draw();
+    }
+
+    private static int LoadedAfterGc(int target)
+    {
+        for (int i = 0; i < 5 && SketchCompiler.LoadedSketchAssemblies > target; i++)
         {
             GC.Collect();
             GC.WaitForPendingFinalizers();
             GC.Collect();
         }
-        Collect();
-        int before = SketchCompiler.LoadedSketchAssemblies;
-
-        for (int i = 0; i < 25; i++)
-        {
-            var r = SketchCompiler.Compile(Trivial);
-            Assert.True(r.Success);
-            r.Sketch!.Draw();
-        }
-        // The compiler keeps the last 4 loaded on purpose (running sketch, hot
-        // reload candidate...); everything older must be gone.
-        int allowed = before + 4;
-        for (int i = 0; i < 5 && SketchCompiler.LoadedSketchAssemblies > allowed; i++)
-            Collect();
-        int after = SketchCompiler.LoadedSketchAssemblies;
-        _log.WriteLine($"after 25 runs: {after} sketch assemblies still loaded ({before} before)");
-        Assert.InRange(after, 0, allowed);
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        GC.Collect();
+        return SketchCompiler.LoadedSketchAssemblies;
     }
 
     private sealed class Circles : Sketch

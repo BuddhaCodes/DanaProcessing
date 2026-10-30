@@ -1327,6 +1327,8 @@ namespace DanaProcessing.Ide
             {
                 BuildMenuItem("✦", Loc.Tr("Asistente", "Assistant"), "Ctrl+I", OpenAgentWindow),
                 MenuSeparator(),
+                BuildMenuItem("⌁", Loc.Tr("Instalar señales de PowerShell", "Install PowerShell signals"), null, () => _ = InstallShellSignalsAsync()),
+                BuildMenuItem("✕", Loc.Tr("Probar: comando fallido", "Test: failed command"), null, SendTestShellError),
                 BuildMenuItem("⚙", Loc.Tr("Configuración...", "Settings..."), "Ctrl+,", OpenSettings),
             });
 
@@ -2191,10 +2193,10 @@ namespace DanaProcessing.Ide
             if (string.IsNullOrWhiteSpace(source))
                 return;
 
-            var exportOptions = await ExportOptionsWindow.ShowAsync(this);
+            var exportOptions = await ExportOptionsWindow.ShowAsync(this, ExportOptionsWindow.IsAttachedSketchSource(source));
             if (exportOptions is null)
                 return; // cancelled
-            var windowless = exportOptions.Value;
+            var windowless = exportOptions.Windowless;
 
             var topLevel = TopLevel.GetTopLevel(this);
             if (topLevel?.StorageProvider is null)
@@ -2226,7 +2228,8 @@ namespace DanaProcessing.Ide
                 var progress = new Progress<string>(message =>
                     _outputText.Text = string.IsNullOrEmpty(_outputText.Text) ? message : _outputText.Text + Environment.NewLine + message);
 
-                var result = await SketchExporter.ExportAsync(source, destinationFolder, sketchName, windowless, progress, sketchFolder: ActiveSketchFolder);
+                var result = await SketchExporter.ExportAsync(source, destinationFolder, sketchName, windowless, progress,
+                    sketchFolder: ActiveSketchFolder, attached: exportOptions.Attached);
 
                 if (result.Success)
                 {
@@ -2490,6 +2493,50 @@ namespace DanaProcessing.Ide
             _outputText.Text = string.IsNullOrEmpty(_outputText.Text) ? line : _outputText.Text + Environment.NewLine + line;
             RefreshBottomPanelVisibility();
             ShowTransientStatus(message);
+        }
+
+        /// <summary>
+        /// Tools > Install PowerShell signals: adds ShellSignals' snippet to
+        /// $PROFILE (Windows PowerShell, and PowerShell 7 if present) so attached
+        /// sketches hear CommandFinished(). Finding $PROFILE runs powershell.exe,
+        /// so it happens off the UI thread.
+        /// </summary>
+        private async Task InstallShellSignalsAsync()
+        {
+            ShowTransientStatus(Loc.Tr("Instalando señales de PowerShell…", "Installing PowerShell signals…"));
+            try
+            {
+                var changed = await Task.Run(ShellSignals.InstallForPowerShell);
+                var profiles = string.Join(", ", ShellSignals.PowerShellProfiles());
+                ShowTransientStatus(changed.Count > 0
+                    ? Loc.Tr($"Señales instaladas en {profiles}: abre una terminal nueva.", $"Signals installed in {profiles}: open a new terminal.")
+                    : Loc.Tr($"Las señales ya estaban instaladas ({profiles}).", $"The signals were already installed ({profiles})."));
+            }
+            catch (Exception ex)
+            {
+                ShowTransientStatus(Loc.Tr($"No se pudieron instalar las señales: {ex.Message}", $"Couldn't install the signals: {ex.Message}"));
+            }
+        }
+
+        /// <summary>
+        /// Tools > Test: failed command. Writes the same line the PowerShell hook
+        /// writes when a command fails, so an attached sketch that listens to
+        /// the shell reacts right away: if it does, the sketch side works and a
+        /// missing reaction from a real command is the hook's (see attached.html#shell-signals).
+        /// </summary>
+        private void SendTestShellError()
+        {
+            try
+            {
+                ShellSignals.SendTest(new ShellSignal(ShellSignalKind.Error, 1, "", 0));
+                ShowTransientStatus(Loc.Tr(
+                    "Señal de prueba enviada: un sketch que escucha al shell debería reaccionar como ante un error.",
+                    "Test signal sent: a sketch listening to the shell should react as if a command failed."));
+            }
+            catch (Exception ex)
+            {
+                ShowTransientStatus(Loc.Tr($"No se pudo enviar la señal: {ex.Message}", $"Couldn't send the signal: {ex.Message}"));
+            }
         }
 
         private void ShowTransientStatus(string message)

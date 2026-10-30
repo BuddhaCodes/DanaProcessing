@@ -82,6 +82,7 @@
       "pages": [
         "ide",
         "hosting",
+        "attached",
         "enums"
       ]
     }

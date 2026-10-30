@@ -292,7 +292,10 @@ namespace DanaProcessing.Ide.Editor
             {
                 _diagnosticsTimer.Stop();
                 TypingActivityChanged?.Invoke(false);
-                await RefreshDiagnosticsAsync();
+                // An async void handler: anything that escapes here would take the
+                // whole IDE down from the dispatcher. Squiggles are best-effort.
+                try { await RefreshDiagnosticsAsync(); }
+                catch (Exception ex) { DanaProcessing.Ide.CrashReporting.ErrorLog.Write(ex, "Diagnósticos en vivo"); }
             };
 
             _editor.TextChanged += (_, _) =>
