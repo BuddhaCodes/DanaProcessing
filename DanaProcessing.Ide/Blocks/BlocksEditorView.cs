@@ -46,6 +46,11 @@ namespace DanaProcessing.Ide.Blocks
         private bool _stepping;
         private int _stepShown = -1;
         private readonly Button[] _compactable;
+        private readonly StackPanel _toolbarLeft, _toolbarRight;
+        private readonly Button _listenButton;
+        private readonly DispatcherTimer _speechTimer;
+        private bool _readAloud;
+        private Challenge? _shownChallenge;
         private bool _slow, _codeVisible;
         private readonly Button _tilesButton, _linesButton;
         private readonly DispatcherTimer _checkTimer;
@@ -148,12 +153,12 @@ namespace DanaProcessing.Ide.Blocks
                                            "Opens this program as ordinary C# so you can keep writing it"));
             convert.Click += (_, _) => ConvertToCodeRequested?.Invoke(BlockCodeGenerator.Generate(_workspace.Program).Source);
 
-            var left = new StackPanel
+            var left = _toolbarLeft = new StackPanel
             {
                 Orientation = Orientation.Horizontal, Spacing = 6,
                 Children = { run, _nextStep, stop, BlocksChrome.Divider(), _slowToggle, _stepToggle, BlocksChrome.Divider(), undo, redo },
             };
-            var right = new StackPanel
+            var right = _toolbarRight = new StackPanel
             {
                 Orientation = Orientation.Horizontal, Spacing = 6, HorizontalAlignment = HorizontalAlignment.Right,
                 Children = { viewSwitch, BlocksChrome.Divider(), challenges, _codeToggle, convert },
@@ -210,6 +215,36 @@ namespace DanaProcessing.Ide.Blocks
                 Background = BlocksChrome.GoldSoft, CornerRadius = new CornerRadius(12), Padding = new Thickness(12, 8),
                 Margin = new Thickness(0, 10, 0, 0), IsVisible = false, Child = _hintText,
             };
+            // Escuchar: the computer's own voice reads the goal (and the hint,
+            // if it's open) for children who don't read well yet. After the
+            // first time, results are read out too.
+            _listenButton = BlocksChrome.Button(BlocksChrome.Icons.Speaker, Loc.Tr("Escuchar", "Listen"));
+            ToolTip.SetTip(_listenButton, Loc.Tr("La computadora lee el reto en voz alta", "The computer reads the challenge aloud"));
+            _listenButton.IsVisible = Narrator.IsAvailable;
+            _listenButton.Click += (_, _) =>
+            {
+                if (Narrator.IsSpeaking)
+                {
+                    Narrator.Stop();
+                    return;
+                }
+                _readAloud = true;
+                var text = _challengeGoal.Text ?? "";
+                if (_hintBox.IsVisible)
+                    text += ". " + Loc.Tr("Pista: ", "Hint: ") + _hintText.Text;
+                if (_resultBanner.IsVisible)
+                    text = _resultText.Text + ". " + text;
+                Say(text);
+            };
+            _speechTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(200) };
+            _speechTimer.Tick += (_, _) =>
+            {
+                bool speaking = Narrator.IsSpeaking;
+                ShowToggle(_listenButton, speaking);
+                if (!speaking)
+                    _speechTimer.Stop();
+            };
+
             _hintButton = BlocksChrome.Button(BlocksChrome.Icons.Bulb, Loc.Tr("Pista", "Hint"));
             _hintButton.Click += (_, _) =>
             {
@@ -248,11 +283,11 @@ namespace DanaProcessing.Ide.Blocks
             var cardText = new StackPanel { Children = { overline, _challengeGoal, _challengeTrail } };
             var cardTop = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto") };
             Grid.SetColumn(cardText, 1);
-            Grid.SetColumn(_hintButton, 2);
-            _hintButton.VerticalAlignment = VerticalAlignment.Top;
+            var cardButtons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, VerticalAlignment = VerticalAlignment.Top, Children = { _listenButton, _hintButton } };
+            Grid.SetColumn(cardButtons, 2);
             cardTop.Children.Add(badge);
             cardTop.Children.Add(cardText);
-            cardTop.Children.Add(_hintButton);
+            cardTop.Children.Add(cardButtons);
             _challengeCard = new Border
             {
                 Background = Brushes.White, CornerRadius = new CornerRadius(18), Padding = new Thickness(16, 14),
@@ -369,10 +404,17 @@ namespace DanaProcessing.Ide.Blocks
 
         private void Compact(double width)
         {
-            // Measured with every label showing: ~1180 px, plus ~190 for "Siguiente paso".
-            double needed = 1190 + (_nextStep.IsVisible ? 190 : 0);
+            if (width <= 0)
+                return;
+            // Try with every label; if the two halves don't fit side by side, icons only.
             foreach (var b in _compactable)
-                BlocksChrome.ShowLabel(b, width >= needed);
+                BlocksChrome.ShowLabel(b, true);
+            _toolbarLeft.Measure(Size.Infinity);
+            _toolbarRight.Measure(Size.Infinity);
+            bool fits = _toolbarLeft.DesiredSize.Width + _toolbarRight.DesiredSize.Width + 16 <= width;
+            if (!fits)
+                foreach (var b in _compactable)
+                    BlocksChrome.ShowLabel(b, false);
         }
 
         /// <summary>An on/off button: "on" gets the warm gold look.</summary>
@@ -411,6 +453,9 @@ namespace DanaProcessing.Ide.Blocks
 
         private void ShowChallenge(Challenge? challenge)
         {
+            if (!ReferenceEquals(challenge, _shownChallenge))
+                Narrator.Stop();
+            _shownChallenge = challenge;
             _challengeCard.IsVisible = challenge is not null;
             _resultBanner.IsVisible = false;
             _hintBox.IsVisible = false;
@@ -666,8 +711,19 @@ namespace DanaProcessing.Ide.Blocks
             };
             _resultText.Text = result.Message;
             _nextButton.IsVisible = result.Passed;
+            if (_readAloud)
+                Say(result.Message);
             _resultStars.IsVisible = result.Passed;
             FillStars(_resultStars, result.Stars, 24);
+        }
+
+        private void Say(string text)
+        {
+            if (Narrator.Speak(text, Loc.Current == AppLanguage.Spanish))
+            {
+                ShowToggle(_listenButton, true);
+                _speechTimer.Start();
+            }
         }
 
         private static void FillStars(StackPanel panel, int stars, double size)
