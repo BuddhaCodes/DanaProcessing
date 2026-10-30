@@ -462,7 +462,8 @@ namespace DanaProcessing.Ide.Blocks
             ShowToggle(_hintButton, false);
             if (challenge is null)
                 return;
-            var all = ChallengeCatalog.All.ToList();
+            // A teacher's challenge counts within the teacher's list.
+            var all = (ChallengeCatalog.All.Contains(challenge) ? ChallengeCatalog.All : ChallengeCatalog.Teacher).ToList();
             int number = all.IndexOf(challenge) + 1;
             var progress = ChallengeProgress.Load();
             _challengeNumber.Text = number.ToString();

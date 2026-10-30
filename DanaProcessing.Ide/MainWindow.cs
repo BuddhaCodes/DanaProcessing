@@ -1284,6 +1284,7 @@ namespace DanaProcessing.Ide
                 BuildMenuItem("＋", Loc.Tr("Nuevo", "New"), "Ctrl+N", NewSketch),
                 BuildMenuItem("🧩", Loc.Tr("Nuevo con bloques", "New with blocks"), null, NewBlocksProgram),
                 BuildMenuItem("🏆", Loc.Tr("Retos con bloques...", "Block challenges..."), null, OpenChallenges),
+                BuildMenuItem("📝", Loc.Tr("Crear un reto con estos bloques...", "Create a challenge from these blocks..."), null, CreateChallenge),
                 BuildMenuItem("📂", Loc.Tr("Abrir...", "Open..."), "Ctrl+O", () => _ = _editorView.OpenFileAsync()),
                 MenuSeparator(),
                 BuildMenuItem("💾", Loc.Tr("Guardar", "Save"), "Ctrl+S", () => _ = _editorView.SaveActiveTabAsync()),
@@ -1387,6 +1388,26 @@ namespace DanaProcessing.Ide
             var window = new ChallengesWindow();
             window.ChallengeChosen += OpenChallenge;
             window.Show(this);
+        }
+
+        /// <summary>
+        /// For teachers: the blocks tab on screen is the answer; a dialog asks
+        /// for the name, goal and hint and saves it as a .danareto challenge.
+        /// </summary>
+        private void CreateChallenge()
+        {
+            if (_editorView.ActiveTab?.Blocks is not { } program)
+            {
+                ShowTransientStatus(Loc.Tr("Primero abrí una pestaña de bloques con tu solución.", "First open a blocks tab with your answer."));
+                return;
+            }
+            var dialog = new CreateChallengeDialog(program);
+            dialog.Closed += (_, _) =>
+            {
+                if (dialog.SavedPath is not null)
+                    ShowTransientStatus(Loc.Tr("Reto guardado. Está en Retos con bloques → Retos de tu docente.", "Challenge saved. It's in Block challenges → Your teacher's challenges."));
+            };
+            dialog.ShowDialog(this);
         }
 
         /// <summary>Opens a challenge -- or switches to the tab already working on it.</summary>
