@@ -81,6 +81,9 @@ namespace DanaProcessing.Ide.Blocks
         /// <summary>The challenge this program is the answer to, if any (see Challenges).</summary>
         public string? ChallengeId { get; set; }
 
+        /// <summary>How the program is shown: picture tiles (6-8 years) or sentences on lines (9-12).</summary>
+        public BlockView View { get; set; } = BlockView.Tiles;
+
         /// <summary>A new block of <paramref name="type"/> with a fresh id and every slot at its default.</summary>
         public Block NewBlock(string type)
         {
@@ -179,6 +182,7 @@ namespace DanaProcessing.Ide.Blocks
         {
             WriteIndented = true,
             DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+            Converters = { new JsonStringEnumConverter() }, // "View": "Lines", readable in the file
         };
 
         public string ToJson() => JsonSerializer.Serialize(this, Json);

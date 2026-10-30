@@ -1368,10 +1368,14 @@ namespace DanaProcessing.Ide
             blocks.ChallengeRequested += OpenChallenge;
         }
 
-        /// <summary>A new tab with an empty block program (just "al empezar", to start from).</summary>
-        private void NewBlocksProgram()
+        /// <summary>A new tab with an empty block program (just "al empezar", to start from), shown the way picked for its age.</summary>
+        private void NewBlocksProgram() => _ = NewBlocksProgramAsync();
+
+        private async Task NewBlocksProgramAsync()
         {
-            var program = new BlockProgram { Name = Loc.Tr("Mi programa", "My program") };
+            if (await NewBlocksDialog.ShowAsync(this) is not { } view)
+                return;
+            var program = new BlockProgram { Name = Loc.Tr("Mi programa", "My program"), View = view };
             program.AddStack(40, 40, BlockCatalog.Start);
             _editorView.AddBlocksTab(program);
         }

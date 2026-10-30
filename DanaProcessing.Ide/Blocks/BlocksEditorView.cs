@@ -39,7 +39,8 @@ namespace DanaProcessing.Ide.Blocks
         private readonly Button _nextButton, _hintButton;
         private readonly TextBlock _hintText;
         private readonly Button _slowToggle, _codeToggle;
-        private bool _slow, _codeVisible = true;
+        private bool _slow, _codeVisible;
+        private readonly Button _tilesButton, _linesButton;
         private readonly DispatcherTimer _checkTimer;
 
         private EditorTab? _tab;
@@ -97,15 +98,25 @@ namespace DanaProcessing.Ide.Blocks
             var challenges = BigButton("🏆  " + Loc.Tr("Retos", "Challenges"), "clay-secondary");
             challenges.Click += (_, _) => ChallengesRequested?.Invoke();
 
-            _codeToggle = BigButton("</>  " + Loc.Tr("Código", "Code"), "clay-secondary");
-            ToolTip.SetTip(_codeToggle, Loc.Tr("Mostrar u ocultar el código C# de tus bloques", "Show or hide the C# of your blocks"));
+            // The same program, two ways of seeing it: picture tiles for the
+            // youngest, sentences beside their C# for the next step up.
+            _tilesButton = BigButton(Loc.Tr("Fichas", "Tiles"), "clay-secondary");
+            ToolTip.SetTip(_tilesButton, Loc.Tr("Fichas con dibujos, casi sin leer (6 a 8 años)", "Picture tiles, almost no reading (ages 6-8)"));
+            _tilesButton.Click += (_, _) => _workspace.SetView(BlockView.Tiles);
+            _linesButton = BigButton(Loc.Tr("Renglones", "Lines"), "clay-secondary");
+            ToolTip.SetTip(_linesButton, Loc.Tr("Frases en renglones, cada una al lado de su C# (9 a 12 años)", "Sentences on lines, each beside its C# (ages 9-12)"));
+            _linesButton.Click += (_, _) => _workspace.SetView(BlockView.Lines);
+            var viewSwitch = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 2, Children = { _tilesButton, _linesButton } };
+
+            _codeToggle = BigButton("</>  " + Loc.Tr("Todo el código", "All the code"), "clay-secondary");
+            ToolTip.SetTip(_codeToggle, Loc.Tr("Mostrar u ocultar el programa completo en C#", "Show or hide the whole program in C#"));
             _codeToggle.Click += (_, _) =>
             {
                 _codeVisible = !_codeVisible;
                 SetCodeVisible(_codeVisible);
                 ShowToggle(_codeToggle, _codeVisible);
             };
-            ShowToggle(_codeToggle, true);
+            ShowToggle(_codeToggle, false);
 
             var convert = BigButton(Loc.Tr("Pasar a código  ➜", "Turn into code  ➜"), "clay-secondary");
             ToolTip.SetTip(convert, Loc.Tr("Abre este programa como código C# normal, para seguir escribiéndolo",
@@ -113,7 +124,7 @@ namespace DanaProcessing.Ide.Blocks
             convert.Click += (_, _) => ConvertToCodeRequested?.Invoke(BlockCodeGenerator.Generate(_workspace.Program).Source);
 
             var left = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Children = { run, stop, _slowToggle, undo, redo } };
-            var right = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, HorizontalAlignment = HorizontalAlignment.Right, Children = { challenges, _codeToggle, convert } };
+            var right = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, HorizontalAlignment = HorizontalAlignment.Right, Children = { viewSwitch, challenges, _codeToggle, convert } };
             var toolbar = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*"), Margin = new Thickness(12, 6, 12, 8) };
             Grid.SetColumn(right, 1);
             toolbar.Children.Add(left);
@@ -223,6 +234,10 @@ namespace DanaProcessing.Ide.Blocks
 
             _checkTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(250) };
             _checkTimer.Tick += (_, _) => PollTurtleChallenge();
+
+            // Both views show the C# themselves (Renglones line by line; Fichas
+            // under "Todo el código"): the full program panel starts closed.
+            SetCodeVisible(false);
         }
 
         /// <summary>An on/off button: "on" gets the accent look, "off" the plain one.</summary>
@@ -256,7 +271,14 @@ namespace DanaProcessing.Ide.Blocks
             var challenge = ChallengeCatalog.Get(program.ChallengeId);
             _workspace.Load(program, challenge?.Palette);
             ShowChallenge(challenge);
+            ShowViewButtons();
             RefreshCode();
+        }
+
+        private void ShowViewButtons()
+        {
+            ShowToggle(_tilesButton, _workspace.View == BlockView.Tiles);
+            ShowToggle(_linesButton, _workspace.View == BlockView.Lines);
         }
 
         private void ShowChallenge(Challenge? challenge)
@@ -283,6 +305,7 @@ namespace DanaProcessing.Ide.Blocks
             _tab.Blocks = _workspace.Program;
             _tab.RefreshFromBlocks();
             _resultBanner.IsVisible = false;
+            ShowViewButtons();
             RefreshCode();
         }
 

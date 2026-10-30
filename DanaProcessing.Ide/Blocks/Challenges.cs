@@ -50,6 +50,9 @@ namespace DanaProcessing.Ide.Blocks
         /// <summary>The program the challenge starts from (just the hat, usually).</summary>
         public Func<BlockProgram>? Start { get; init; }
 
+        /// <summary>How it opens: picture tiles for the first steps, sentences once there's reading to do.</summary>
+        public BlockView View { get; init; } = BlockView.Tiles;
+
         public string Title => Loc.Tr(TitleEs, TitleEn);
         public string Goal => Loc.Tr(GoalEs, GoalEn);
         public string Hint => Loc.Tr(HintEs, HintEn);
@@ -61,6 +64,7 @@ namespace DanaProcessing.Ide.Blocks
             var p = Start?.Invoke() ?? StartWith(BlockCatalog.Start);
             p.Name = Title;
             p.ChallengeId = Id;
+            p.View = View;
             return p;
         }
 
@@ -354,7 +358,7 @@ namespace DanaProcessing.Ide.Blocks
             },
             new Challenge
             {
-                Id = "paint", Icon = "🖌",
+                Id = "paint", View = BlockView.Lines, Icon = "🖌",
                 TitleEs = "Pintar con el mouse", TitleEn = "Paint with the mouse",
                 GoalEs = "Hacé que, al mover el mouse, quede pintado un caminito de círculos.",
                 GoalEn = "Make a trail of circles appear wherever you move the mouse.",
@@ -376,7 +380,7 @@ namespace DanaProcessing.Ide.Blocks
             },
             new Challenge
             {
-                Id = "points", Icon = "⭐",
+                Id = "points", View = BlockView.Lines, Icon = "⭐",
                 TitleEs = "Clic y puntos", TitleEn = "Click and score",
                 GoalEs = "Cada clic suma un punto. ¡Y que se vean los puntos!",
                 GoalEn = "Every click adds a point. And show the score!",

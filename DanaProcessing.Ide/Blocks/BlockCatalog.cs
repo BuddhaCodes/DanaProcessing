@@ -115,8 +115,8 @@ namespace DanaProcessing.Ide.Blocks
             new BlockDef(Click, BlockCategory.Events, BlockShape.Hat, "👆", "al hacer clic", "when clicked", Array.Empty<SlotDef>()),
             new BlockDef(Key, BlockCategory.Events, BlockShape.Hat, "⌨", "al tocar una tecla", "when a key is pressed", Array.Empty<SlotDef>()),
 
-            new BlockDef(Forward, BlockCategory.Turtle, BlockShape.Statement, "⬆", "avanzar {steps}", "move {steps}", new[] { S("steps", SlotKind.Steps, "100") }),
-            new BlockDef(Back, BlockCategory.Turtle, BlockShape.Statement, "⬇", "retroceder {steps}", "move back {steps}", new[] { S("steps", SlotKind.Steps, "100") }),
+            new BlockDef(Forward, BlockCategory.Turtle, BlockShape.Statement, "⬆", "avanzar {steps} pasos", "move {steps} steps", new[] { S("steps", SlotKind.Steps, "100") }),
+            new BlockDef(Back, BlockCategory.Turtle, BlockShape.Statement, "⬇", "retroceder {steps} pasos", "move back {steps} steps", new[] { S("steps", SlotKind.Steps, "100") }),
             new BlockDef(Right, BlockCategory.Turtle, BlockShape.Statement, "↻", "girar a la derecha {angle}", "turn right {angle}", new[] { S("angle", SlotKind.Angle, "90") }),
             new BlockDef(Left, BlockCategory.Turtle, BlockShape.Statement, "↺", "girar a la izquierda {angle}", "turn left {angle}", new[] { S("angle", SlotKind.Angle, "90") }),
             new BlockDef(PenUp, BlockCategory.Turtle, BlockShape.Statement, "✋", "levantar el lápiz", "pen up", Array.Empty<SlotDef>()),
@@ -131,7 +131,7 @@ namespace DanaProcessing.Ide.Blocks
             new BlockDef(Square, BlockCategory.Draw, BlockShape.Statement, "⬜", "cuadrado {color} {size} en {place}", "square {color} {size} at {place}",
                 new[] { S("color", SlotKind.Color, "blue"), S("size", SlotKind.Size, "50"), S("place", SlotKind.Place, "center") }),
 
-            new BlockDef(Repeat, BlockCategory.Control, BlockShape.CBlock, "🔂", "repetir {times}", "repeat {times}", new[] { S("times", SlotKind.Count, "4") }),
+            new BlockDef(Repeat, BlockCategory.Control, BlockShape.CBlock, "🔂", "repetir {times} veces", "repeat {times} times", new[] { S("times", SlotKind.Count, "4") }),
             new BlockDef(If, BlockCategory.Control, BlockShape.CBlock, "❓", "si {cond}", "if {cond}", new[] { S("cond", SlotKind.Condition, "mouse") }),
 
             new BlockDef(MusicLoop, BlockCategory.Music, BlockShape.Hat, "🎵", "música que se repite", "music that repeats", Array.Empty<SlotDef>()),
