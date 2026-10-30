@@ -94,6 +94,10 @@ namespace DanaProcessing.Ide.Agent
             if (owner.EditorView.ActiveTab is null)
                 return "No hay ningún sketch abierto para editar.";
 
+            if (owner.EditorView.ActiveTab.Blocks is not null)
+                return "El sketch abierto está hecho con bloques: su código sale de los bloques y no se puede reemplazar como texto. "
+                     + "Pedile al usuario que use \"Pasar a código\" si quiere editarlo como C#.";
+
             var newSource = sourceEl.GetString() ?? "";
             context.NoteSourceBeforeAgentEdit(owner.EditorView.ActiveSourceText);
             owner.EditorView.ReplaceActiveSourceText(newSource);

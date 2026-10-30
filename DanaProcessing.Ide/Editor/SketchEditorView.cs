@@ -15,6 +15,7 @@ using AvaloniaEdit;
 using AvaloniaEdit.CodeCompletion;
 using AvaloniaEdit.Search;
 using AvaloniaEdit.TextMate;
+using DanaProcessing.Ide.Blocks;
 using DanaProcessing.Ide.Compilation;
 using DanaProcessing.Ide.Compilation.PackageManagement;
 using DanaProcessing.Ide.Localization;
@@ -74,6 +75,13 @@ namespace DanaProcessing.Ide.Editor
         private readonly TextEditor _editor;
         private readonly SearchPanel _searchPanel;
         private readonly Border _emptyStateOverlay;
+
+        // A blocks tab shows this instead of the text editor (see ShowEditorFor).
+        private readonly BlocksEditorView _blocksView = new() { IsVisible = false };
+        private Border _editorContainer = null!;
+
+        /// <summary>The block editor shown for blocks tabs; MainWindow wires its Run/Stop/challenge buttons.</summary>
+        public BlocksEditorView BlocksView => _blocksView;
 
         // FIX: ThemeName.DarkPlus pinta el texto base en gris claro/blanco,
         // pensado para un editor de fondo oscuro. Nuestro editor tiene fondo
@@ -184,6 +192,7 @@ namespace DanaProcessing.Ide.Editor
                                 // to OpenTabs.CollectionChanged below) takes over
                                 // with its own "crear un nuevo sketch" prompt.
                                 _activeTab = null;
+                                ShowEditorFor(null);
                                 ActiveTabChanged?.Invoke();
                                 ClearDiagnosticsDisplay();
                             }
@@ -444,7 +453,8 @@ namespace DanaProcessing.Ide.Editor
             DockPanel.SetDock(tabStripRow, Dock.Top);
             mainPanel.Children.Add(tabStripRow);
 
-            var editorArea = new Panel { Children = { editorContainer, _emptyStateOverlay } };
+            _editorContainer = editorContainer;
+            var editorArea = new Panel { Children = { editorContainer, _blocksView, _emptyStateOverlay } };
             mainPanel.Children.Add(editorArea);
 
             Content = mainPanel;
@@ -655,6 +665,30 @@ namespace DanaProcessing.Ide.Editor
 
         public string? ActiveSourceText => _activeTab?.Document.Text;
 
+        /// <summary>What Run compiles for the active tab (see EditorTab.RunSource).</summary>
+        public string? ActiveRunSource => _activeTab?.RunSource;
+
+        /// <summary>Opens <paramref name="program"/> in a new blocks tab.</summary>
+        public EditorTab AddBlocksTab(BlockProgram program, string? filePath = null)
+        {
+            var tab = new EditorTab(filePath, program);
+            OpenTabs.Add(tab);
+            _tabStrip.SelectedItem = tab;
+            ActivateTab(tab); // same reason as AddNewTab
+            return tab;
+        }
+
+        /// <summary>Switches to the open tab working on <paramref name="challengeId"/>, if there is one.</summary>
+        public bool ActivateChallengeTab(string challengeId)
+        {
+            var tab = OpenTabs.FirstOrDefault(t => t.Blocks?.ChallengeId == challengeId);
+            if (tab is null)
+                return false;
+            _tabStrip.SelectedItem = tab;
+            ActivateTab(tab);
+            return true;
+        }
+
         /// <summary>The tab currently shown in the editor, or null when the last tab was
         /// just closed and the empty state is showing instead. MainWindow uses this
         /// (together with ActiveTabChanged) to know whether the Hot Reload button's
@@ -679,7 +713,7 @@ namespace DanaProcessing.Ide.Editor
         /// live diagnostics update themselves; a no-op if there's no active tab.</summary>
         public void ApplyPackageDirectives(IReadOnlyList<PackageDirective> directives)
         {
-            if (_activeTab is null)
+            if (_activeTab is null || _activeTab.Blocks is not null)
                 return;
 
             _activeTab.Document.Text = PackageDirectiveParser.Apply(_activeTab.Document.Text, directives);
@@ -694,7 +728,7 @@ namespace DanaProcessing.Ide.Editor
         /// tool-result error rather than silently doing nothing.</summary>
         public void ReplaceActiveSourceText(string newSource)
         {
-            if (_activeTab is null)
+            if (_activeTab is null || _activeTab.Blocks is not null)
                 return;
 
             _activeTab.Document.Text = newSource;
@@ -715,9 +749,20 @@ namespace DanaProcessing.Ide.Editor
             LiveDiagnosticsChanged?.Invoke(Array.Empty<LiveDiagnosticInfo>());
         }
 
+        /// <summary>The text editor for a code tab, the block editor for a blocks tab.</summary>
+        private void ShowEditorFor(EditorTab? tab)
+        {
+            bool blocks = tab?.Blocks is not null;
+            _blocksView.IsVisible = blocks;
+            _editorContainer.IsVisible = !blocks;
+            if (blocks)
+                _blocksView.ShowTab(tab!);
+        }
+
         private void ActivateTab(EditorTab tab)
         {
             _activeTab = tab;
+            ShowEditorFor(tab);
             ActiveTabChanged?.Invoke();
             _editor.Document = tab.Document;
             _completionEngine.UpdateText(tab.Document.Text);
@@ -831,6 +876,11 @@ namespace DanaProcessing.Ide.Editor
         /// <summary>Marks the line a running sketch crashed on (red band behind it) and moves the caret there.</summary>
         public void MarkRuntimeError(int line, string message)
         {
+            if (_activeTab?.Blocks is not null)
+            {
+                _blocksView.ShowErrorAt(line);
+                return;
+            }
             if (line < 1 || line > _editor.Document.LineCount)
                 return;
             _runtimeError.Line = line;
@@ -870,8 +920,17 @@ namespace DanaProcessing.Ide.Editor
             _searchPanel.Reactivate();
         }
 
-        public void Undo() { if (_editor.CanUndo) _editor.Undo(); }
-        public void Redo() { if (_editor.CanRedo) _editor.Redo(); }
+        public void Undo()
+        {
+            if (_activeTab?.Blocks is not null) _blocksView.Undo();
+            else if (_editor.CanUndo) _editor.Undo();
+        }
+
+        public void Redo()
+        {
+            if (_activeTab?.Blocks is not null) _blocksView.Redo();
+            else if (_editor.CanRedo) _editor.Redo();
+        }
 
         private TextBox? _goToLineInput;
         private Border? _goToLineBox;
@@ -954,6 +1013,8 @@ namespace DanaProcessing.Ide.Editor
         /// </summary>
         public void FormatDocument()
         {
+            if (_activeTab?.Blocks is not null)
+                return; // generated code is already formatted, and read-only
             var doc = _editor.Document;
             var original = doc.Text;
             try
@@ -996,6 +1057,7 @@ namespace DanaProcessing.Ide.Editor
                     FilePath = tab.FilePath,
                     Dirty = tab.IsDirty,
                     Text = tab.FilePath is null || tab.IsDirty ? tab.Document.Text : null,
+                    Blocks = tab.Blocks is not null && (tab.FilePath is null || tab.IsDirty) ? tab.Blocks.ToJson() : null,
                     Caret = tab == _activeTab ? _editor.CaretOffset : 0,
                 });
             }
@@ -1013,6 +1075,13 @@ namespace DanaProcessing.Ide.Editor
             for (int i = 0; i < session.Tabs.Count; i++)
             {
                 var saved = session.Tabs[i];
+                if (RestoreBlocksTab(saved) is { } blocksTab)
+                {
+                    OpenTabs.Add(blocksTab);
+                    if (i == session.Active || active is null)
+                        active = blocksTab;
+                    continue;
+                }
                 string? text = saved.Text;
                 try
                 {
@@ -1041,6 +1110,28 @@ namespace DanaProcessing.Ide.Editor
             _editor.CaretOffset = Math.Clamp(caret, 0, active.Document.TextLength);
             Dispatcher.UIThread.Post(() => _editor.TextArea.Caret.BringCaretToView());
             return true;
+        }
+
+        /// <summary>A blocks tab from the session (its unsaved program, or its saved file), or null if this wasn't one.</summary>
+        private static EditorTab? RestoreBlocksTab(EditorSessionTab saved)
+        {
+            bool isBlocksFile = saved.FilePath?.EndsWith(BlockProgram.FileExtension, StringComparison.OrdinalIgnoreCase) == true;
+            if (saved.Blocks is null && !isBlocksFile)
+                return null;
+            try
+            {
+                var json = saved.Blocks ?? (File.Exists(saved.FilePath) ? File.ReadAllText(saved.FilePath!) : null);
+                if (json is null)
+                    return null;
+                var tab = new EditorTab(saved.FilePath, BlockProgram.FromJson(json));
+                if (saved.Dirty)
+                    tab.IsDirty = true;
+                return tab;
+            }
+            catch
+            {
+                return null; // a damaged entry: skip it, like a missing file
+            }
         }
 
         public void GoToOffset(int offset)
@@ -1190,13 +1281,30 @@ namespace DanaProcessing.Ide.Editor
             {
                 Title = Loc.Tr("Abrir sketch", "Open sketch"),
                 AllowMultiple = false,
-                FileTypeFilter = new[] { new FilePickerFileType("C# / Sketch") { Patterns = new[] { "*.cs" } } }
+                FileTypeFilter = new[]
+                {
+                    new FilePickerFileType(Loc.Tr("Sketch o bloques", "Sketch or blocks")) { Patterns = new[] { "*.cs", "*" + BlockProgram.FileExtension } },
+                    new FilePickerFileType("C# / Sketch") { Patterns = new[] { "*.cs" } },
+                    new FilePickerFileType(Loc.Tr("Programa con bloques", "Block program")) { Patterns = new[] { "*" + BlockProgram.FileExtension } },
+                }
             });
             if (files.Count == 0)
                 return;
 
             var path = files[0].Path.LocalPath;
             var text = await File.ReadAllTextAsync(path);
+            if (path.EndsWith(BlockProgram.FileExtension, StringComparison.OrdinalIgnoreCase))
+            {
+                BlockProgram program;
+                try { program = BlockProgram.FromJson(text); }
+                catch (Exception ex)
+                {
+                    StatusMessageRequested?.Invoke(Loc.Tr($"No se pudo abrir el programa de bloques: {ex.Message}", $"Could not open the block program: {ex.Message}"));
+                    return;
+                }
+                AddBlocksTab(program, path);
+                return;
+            }
             AddNewTab(path, text);
         }
 
@@ -1211,7 +1319,7 @@ namespace DanaProcessing.Ide.Editor
                 return;
             }
 
-            await File.WriteAllTextAsync(_activeTab.FilePath, _activeTab.Document.Text);
+            await File.WriteAllTextAsync(_activeTab.FilePath, FileContents(_activeTab));
             _activeTab.MarkSaved();
             TabSaved?.Invoke(_activeTab);
         }
@@ -1225,22 +1333,30 @@ namespace DanaProcessing.Ide.Editor
             if (topLevel?.StorageProvider is null)
                 return;
 
+            bool blocks = _activeTab.Blocks is not null;
             var file = await topLevel.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
             {
-                Title = Loc.Tr("Guardar sketch", "Save sketch"),
-                SuggestedFileName = _activeTab.FilePath is null ? "Sketch.cs" : Path.GetFileName(_activeTab.FilePath),
-                DefaultExtension = "cs",
-                FileTypeChoices = new[] { new FilePickerFileType("C# / Sketch") { Patterns = new[] { "*.cs" } } }
+                Title = blocks ? Loc.Tr("Guardar programa con bloques", "Save block program") : Loc.Tr("Guardar sketch", "Save sketch"),
+                SuggestedFileName = _activeTab.FilePath is not null ? Path.GetFileName(_activeTab.FilePath)
+                                    : blocks ? BlockCodeGenerator.ClassName(_activeTab.Blocks!.Name) + BlockProgram.FileExtension
+                                    : "Sketch.cs",
+                DefaultExtension = blocks ? BlockProgram.FileExtension.TrimStart('.') : "cs",
+                FileTypeChoices = blocks
+                    ? new[] { new FilePickerFileType(Loc.Tr("Programa con bloques", "Block program")) { Patterns = new[] { "*" + BlockProgram.FileExtension } } }
+                    : new[] { new FilePickerFileType("C# / Sketch") { Patterns = new[] { "*.cs" } } }
             });
             if (file is null)
                 return;
 
             var path = file.Path.LocalPath;
-            await File.WriteAllTextAsync(path, _activeTab.Document.Text);
+            await File.WriteAllTextAsync(path, FileContents(_activeTab));
             _activeTab.FilePath = path;
             _activeTab.MarkSaved();
             TabSaved?.Invoke(_activeTab);
         }
+
+        /// <summary>A code tab saves its text; a blocks tab saves its program (the code can always be made again from it).</summary>
+        private static string FileContents(EditorTab tab) => tab.Blocks?.ToJson() ?? tab.Document.Text;
 
         /// <summary>
         /// What "Nuevo", the "+" tab button, and the empty-state prompt all
