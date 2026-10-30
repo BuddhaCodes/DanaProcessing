@@ -1632,6 +1632,8 @@ namespace DanaProcessing.Ide
 
                 if (!resolution.Success)
                 {
+                    LastCompileErrors = resolution.Errors.ToList();
+                    LastRunRestoreFailed = true;
                     _outputText.Text = string.Join(Environment.NewLine, resolution.Errors);
                     _runTabDot.Fill = ClayTheme.Danger;
                     SetBottomTab(BottomTab.Run);
@@ -1906,19 +1908,20 @@ namespace DanaProcessing.Ide
         // internal (was private) so Agent mode's run_sketch tool can trigger
         // exactly the same Run a human pressing the button would -- no
         // separate/duplicated compile-and-load path to keep in sync.
-        internal async Task RunCurrentSketchAsync()
+        internal async Task<RunOutcome> RunCurrentSketchAsync()
         {
             if (_isRunning)
-                return;
+                return RunOutcome.Busy;
 
             _isRunning = true;
             _runButton.IsEnabled = false;
             _hotReloadButton.IsEnabled = false;
             try
             {
+                LastRunRestoreFailed = false;
                 var result = await ResolveAndCompileActiveSketchAsync();
                 if (result is null)
-                    return;
+                    return LastRunRestoreFailed ? RunOutcome.RestoreFailed : RunOutcome.NothingToRun;
 
                 if (result.Success)
                 {
@@ -1945,6 +1948,7 @@ namespace DanaProcessing.Ide
                     // user tap "Resultado" themselves.
                     if (_isNarrow == true)
                         SetNarrowPane(showCanvas: true);
+                    return RunOutcome.Started;
                 }
                 else
                 {
@@ -1959,7 +1963,15 @@ namespace DanaProcessing.Ide
                     _statusDot.Fill = ClayTheme.Danger;
                     _statusLabel.Text = Loc.Tr("Error de compilación", "Compile error");
                     ((Border)_statusPill).Background = ClayTheme.DangerSurface;
+                    return RunOutcome.CompileFailed;
                 }
+            }
+            catch (Exception ex)
+            {
+                // Run is fire-and-forget from buttons and menus: anything that
+                // escapes here would vanish without a trace. Show it instead.
+                ShowRunFailure(ex);
+                return RunOutcome.Failed;
             }
             finally
             {
@@ -1967,6 +1979,26 @@ namespace DanaProcessing.Ide
                 _runButton.IsEnabled = true;
                 UpdateHotReloadButtonEnabled();
             }
+        }
+
+        /// <summary>True when the last ResolveAndCompileActiveSketchAsync gave up because NuGet restore failed.</summary>
+        private bool LastRunRestoreFailed { get; set; }
+
+        /// <summary>An unexpected failure while starting a sketch (not a compile error):
+        /// shown in the Run tab like any other error, and kept in LastCompileErrors.</summary>
+        private void ShowRunFailure(Exception ex)
+        {
+            var message = Loc.Tr("No se pudo iniciar el sketch: ", "Could not start the sketch: ")
+                          + $"{ex.GetType().Name}: {ex.Message}";
+            DanaLogger.ErrorFromException(ex, "Run");
+            LastCompileErrors = new[] { message };
+            _outputText.Text = message;
+            _runTabDot.Fill = ClayTheme.Danger;
+            SetBottomTab(BottomTab.Run);
+            RefreshBottomPanelVisibility();
+            _statusDot.Fill = ClayTheme.Danger;
+            _statusLabel.Text = Loc.Tr("Error al iniciar", "Start failed");
+            ((Border)_statusPill).Background = ClayTheme.DangerSurface;
         }
 
         /// <summary>Hot reload on save: guarding on the exact same condition
@@ -2063,6 +2095,10 @@ namespace DanaProcessing.Ide
                 if (_isNarrow == true)
                     SetNarrowPane(showCanvas: true);
             }
+            catch (Exception ex)
+            {
+                ShowRunFailure(ex);
+            }
             finally
             {
                 _isRunning = false;
@@ -2126,6 +2162,10 @@ namespace DanaProcessing.Ide
                 _fastRunWindow = new AvaloniaSketchWindow(result.Sketch!, title);
                 _fastRunWindow.Closed += (_, _) => _fastRunWindow = null;
                 _fastRunWindow.Show();
+            }
+            catch (Exception ex)
+            {
+                ShowRunFailure(ex);
             }
             finally
             {
@@ -2525,10 +2565,36 @@ namespace DanaProcessing.Ide
             _outputPanel.IsVisible = hasLive || hasRun || hasReferences;
         }
 
-        public void LoadAndRunSketch(string source)
+        /// <summary>
+        /// A sketch that arrived through a danaide:// link (the docs site's
+        /// "Test in Dana" button -- or any other web page, since anyone can
+        /// build such a link). Opened in a new tab but NOT run: running it
+        /// would execute code from the web, and download any `// nuget:`
+        /// packages it names, without the user ever seeing it. Run stays one
+        /// click away, after they've had the chance to read it.
+        /// </summary>
+        public void OpenSketchFromLink(string source)
         {
             _editorView.AddNewTab(null, source);
-            _ = RunCurrentSketchAsync();
+
+            var packages = PackageDirectiveParser.Parse(source);
+            var warning = Loc.Tr(
+                "Este sketch se abrió desde un link. Revisá el código antes de apretar Run: se ejecuta en tu computadora con tus permisos.",
+                "This sketch was opened from a link. Read the code before pressing Run: it runs on your computer with your permissions.");
+            if (packages.Count > 0)
+            {
+                var names = string.Join(", ", packages.Select(d => d.Version is null ? d.Id : $"{d.Id} {d.Version}"));
+                warning += Environment.NewLine + Loc.Tr(
+                    $"Al ejecutarlo también se descargan estos paquetes NuGet: {names}.",
+                    $"Running it also downloads these NuGet packages: {names}.");
+            }
+
+            _outputText.Text = warning;
+            SetBottomTab(BottomTab.Run);
+            RefreshBottomPanelVisibility();
+            _statusDot.Fill = ClayTheme.Accent;
+            _statusLabel.Text = Loc.Tr("Sketch abierto desde un link: revisalo y apretá Run", "Sketch opened from a link: review it, then press Run");
+            ((Border)_statusPill).Background = ClayTheme.SurfaceHigher;
         }
     }
 

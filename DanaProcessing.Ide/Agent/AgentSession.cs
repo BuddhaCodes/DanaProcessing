@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -48,7 +49,22 @@ namespace DanaProcessing.Ide.Agent
             _apiKey = settings.ApiKey ?? "";
             _model = settings.Model;
             _provider = AgentProviders.Resolve(settings.Provider);
+            _toolContext = new AgentToolContext
+            {
+                ConfirmPackages = packages => Editor.ConfirmDialog.ShowAsync(
+                    owner,
+                    Localization.Loc.Tr("El agente quiere usar paquetes NuGet", "The agent wants to use NuGet packages"),
+                    Localization.Loc.Tr(
+                        "El agente agregó al sketch estos paquetes, que se van a descargar de nuget.org y ejecutar en tu computadora:\n\n",
+                        "The agent added these packages to the sketch; they will be downloaded from nuget.org and run on your computer:\n\n")
+                        + string.Join("\n", packages.Select(d => "• " + (d.Version is null ? d.Id : $"{d.Id} {d.Version}")))
+                        + Localization.Loc.Tr("\n\n¿Permitirlo?", "\n\nAllow it?"),
+                    Localization.Loc.Tr("Permitir", "Allow"),
+                    Localization.Loc.Tr("No permitir", "Don't allow")),
+            };
         }
+
+        private readonly AgentToolContext _toolContext;
 
         private readonly ILlmProvider _provider;
         private readonly string _apiKey;
@@ -62,6 +78,11 @@ namespace DanaProcessing.Ide.Agent
 
         public async Task SendUserMessageAsync(string userText, CancellationToken ct)
         {
+            // A turn interrupted mid-tool (a new message, Stop) leaves an
+            // assistant tool call with no result; both APIs reject every later
+            // request until each call has one, so close them off first.
+            RepairDanglingToolCalls(_messages);
+
             if (string.IsNullOrWhiteSpace(_apiKey))
             {
                 _messages.Add(new AgentMessage(AgentRole.User, userText, null, null));
@@ -108,7 +129,7 @@ namespace DanaProcessing.Ide.Agent
                     foreach (var call in result.ToolCalls)
                     {
                         StatusChanged?.Invoke(StatusTextFor(call.Name));
-                        toolResults.Add(await AgentTools.ExecuteAsync(call, _owner, ct));
+                        toolResults.Add(await AgentTools.ExecuteAsync(call, _owner, _toolContext, ct));
                         if (myGeneration != _generation)
                             return;
                     }
@@ -121,9 +142,43 @@ namespace DanaProcessing.Ide.Agent
                     "No pude terminar en el número de pasos permitido -- probá pedírmelo de nuevo, de forma más específica.", null, null));
                 MessagesChanged?.Invoke();
             }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                // Superseded by a newer message or Stop: nothing to report, and
+                // the caller fire-and-forgets this task, so don't let it fault.
+            }
             finally
             {
                 StatusChanged?.Invoke(null);
+            }
+        }
+
+        /// <summary>
+        /// Gives every assistant tool call that has no matching result a
+        /// synthetic "cancelled" one, inserted right after it -- the order both
+        /// providers require (tool_use immediately answered by tool_result).
+        /// </summary>
+        internal static void RepairDanglingToolCalls(List<AgentMessage> messages)
+        {
+            for (int i = 0; i < messages.Count; i++)
+            {
+                var message = messages[i];
+                if (message.Role != AgentRole.Assistant || message.ToolCalls is not { Count: > 0 } calls)
+                    continue;
+
+                var next = i + 1 < messages.Count ? messages[i + 1] : null;
+                var existing = next?.Role == AgentRole.ToolResult ? next.ToolResults ?? Array.Empty<AgentToolResult>() : null;
+                var answered = new HashSet<string>(existing?.Select(r => r.ToolCallId) ?? Enumerable.Empty<string>());
+                var missing = calls.Where(c => !answered.Contains(c.Id))
+                                   .Select(c => new AgentToolResult(c.Id, "Cancelado: el usuario interrumpió este paso antes de que terminara."))
+                                   .ToList();
+                if (missing.Count == 0)
+                    continue;
+
+                if (existing != null)
+                    messages[i + 1] = next! with { ToolResults = existing.Concat(missing).ToList() };
+                else
+                    messages.Insert(i + 1, new AgentMessage(AgentRole.ToolResult, null, null, missing));
             }
         }
 
@@ -132,6 +187,7 @@ namespace DanaProcessing.Ide.Agent
             "read_sketch" => "Leyendo el sketch...",
             "edit_sketch" => "Editando el sketch...",
             "run_sketch" => "Ejecutando el sketch...",
+            "look_at_canvas" => "Mirando el canvas...",
             "search_docs" => "Buscando en la documentación...",
             _ => $"Usando {toolName}...",
         };

@@ -304,14 +304,41 @@ namespace DanaProcessing.Ide.Compilation
             pdb.Seek(0, SeekOrigin.Begin);
             var assembly = LoadCollectible(ms, pdb);
 
-            var sketchType = assembly.GetTypes()
-                .FirstOrDefault(t => typeof(Sketch).IsAssignableFrom(t) && !t.IsAbstract);
+            Type[] types;
+            try
+            {
+                types = assembly.GetTypes();
+            }
+            catch (ReflectionTypeLoadException ex)
+            {
+                // Typically a `// nuget:` package whose own dependency couldn't be loaded.
+                var reasons = ex.LoaderExceptions.Where(e => e != null).Select(e => e!.Message).Distinct();
+                return new CompileResult(null, new[] { Loc.Tr("No se pudieron cargar los tipos del sketch: ", "Could not load the sketch's types: ") + string.Join(" ", reasons) });
+            }
+
+            var sketchType = types.FirstOrDefault(t => typeof(Sketch).IsAssignableFrom(t) && !t.IsAbstract);
 
             if (sketchType is null)
                 return new CompileResult(null, new[] { Loc.Tr("No se encontro ninguna clase publica que herede de Sketch.", "No public class inheriting from Sketch was found.") });
 
-            var instance = (Sketch)Activator.CreateInstance(sketchType)!;
-            return new CompileResult(instance, Array.Empty<string>());
+            try
+            {
+                var instance = (Sketch)Activator.CreateInstance(sketchType)!;
+                return new CompileResult(instance, Array.Empty<string>());
+            }
+            catch (Exception ex) when (ex is TargetInvocationException or MissingMethodException or MemberAccessException)
+            {
+                // The sketch's constructor or a field initializer threw (or there's
+                // no public parameterless constructor). It compiled, but there's no
+                // sketch to run: report it like a compile error, with its line.
+                var info = SketchCrashInfo.From(ex, sketchType.Name);
+                var where = info.Line > 0 ? $"{SketchFileName}({info.Line},1): " : "";
+                return new CompileResult(null, new[]
+                {
+                    where + Loc.Tr($"error al crear {sketchType.Name} (constructor o inicializador de campo): {info.ExceptionName}: {info.Message}",
+                                   $"error creating {sketchType.Name} (constructor or field initializer): {info.ExceptionName}: {info.Message}"),
+                });
+            }
         }
 
         /// <summary>

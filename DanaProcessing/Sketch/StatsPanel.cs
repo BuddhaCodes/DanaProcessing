@@ -33,9 +33,9 @@ namespace DanaProcessing
 
         // Paints are created once and reused every frame.
         private readonly SKPaint _bg = new() { Color = new SKColor(12, 14, 20, 225), IsAntialias = true };
-        private readonly SKPaint _title = new() { Color = new SKColor(140, 220, 160), IsAntialias = true, TextSize = 12, FakeBoldText = true };
-        private readonly SKPaint _text = new() { Color = new SKColor(225, 228, 235), IsAntialias = true, TextSize = 12 };
-        private readonly SKPaint _dim = new() { Color = new SKColor(150, 156, 170), IsAntialias = true, TextSize = 11 };
+        private readonly TextStyle _title = new(new SKColor(140, 220, 160), 12, bold: true);
+        private readonly TextStyle _text = new(new SKColor(225, 228, 235), 12);
+        private readonly TextStyle _dim = new(new SKColor(150, 156, 170), 11);
         private readonly SKPaint _ok = new() { Color = new SKColor(110, 210, 140) };
         private readonly SKPaint _slow = new() { Color = new SKColor(240, 110, 90) };
         private readonly SKPaint _budget = new() { Color = new SKColor(255, 255, 255, 70), StrokeWidth = 1 };

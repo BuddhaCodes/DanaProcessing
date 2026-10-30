@@ -74,14 +74,14 @@ namespace DanaProcessing
         private readonly SKPaint _fill = new() { Color = new SKColor(255, 170, 90), IsAntialias = true };
         private readonly SKPaint _knob = new() { Color = SKColors.White, IsAntialias = true };
         private readonly SKPaint _box = new() { Color = new SKColor(255, 255, 255, 140), IsAntialias = true, Style = SKPaintStyle.Stroke, StrokeWidth = 1.5f };
-        private readonly SKPaint _title = new() { Color = new SKColor(255, 200, 140), IsAntialias = true, TextSize = 12, FakeBoldText = true };
-        private readonly SKPaint _label = new() { Color = new SKColor(225, 228, 235), IsAntialias = true, TextSize = 12 };
-        private readonly SKPaint _value = new() { Color = new SKColor(160, 166, 180), IsAntialias = true, TextSize = 12 };
-        private readonly SKPaint _midi = new() { Color = new SKColor(90, 215, 205), IsAntialias = true, TextSize = 11, FakeBoldText = true };
+        private readonly TextStyle _title = new(new SKColor(255, 200, 140), 12, bold: true);
+        private readonly TextStyle _label = new(new SKColor(225, 228, 235), 12);
+        private readonly TextStyle _value = new(new SKColor(160, 166, 180), 12);
+        private readonly TextStyle _midi = new(new SKColor(90, 215, 205), 11, bold: true);
         private readonly SKPaint _midiFill = new() { Color = new SKColor(90, 215, 205), IsAntialias = true };
         private readonly SKPaint _midiOutline = new() { Color = new SKColor(90, 215, 205), IsAntialias = true, Style = SKPaintStyle.Stroke, StrokeWidth = 1.5f };
-        private readonly SKPaint _pillText = new() { Color = new SKColor(18, 20, 28), IsAntialias = true, TextSize = 10.5f, FakeBoldText = true };
-        private readonly SKPaint _warn = new() { Color = new SKColor(240, 130, 110), IsAntialias = true, TextSize = 11 };
+        private readonly TextStyle _pillText = new(new SKColor(18, 20, 28), 10.5f, bold: true);
+        private readonly TextStyle _warn = new(new SKColor(240, 130, 110), 11);
 
         // ---------------------------------------------------------------
         // Rows

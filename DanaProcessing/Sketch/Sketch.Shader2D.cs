@@ -150,7 +150,7 @@ namespace DanaProcessing
                 firstLine = firstLine.Substring(0, 110) + "...";
 
             using var bg = new SKPaint { Color = new SKColor(60, 10, 10, 220) };
-            using var text = new SKPaint { Color = new SKColor(255, 190, 190), TextSize = 12, IsAntialias = true };
+            using var text = new TextStyle(new SKColor(255, 190, 190), 12);
             float width = text.MeasureText(firstLine) + 16;
             Canvas.Save();
             Canvas.DrawRect(SKRect.Create(8, Height - 30, width, 22), bg);

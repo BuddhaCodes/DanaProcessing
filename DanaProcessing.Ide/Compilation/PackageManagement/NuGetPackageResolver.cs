@@ -58,8 +58,9 @@ namespace DanaProcessing.Ide.Compilation.PackageManagement
     ///
     /// Deliberately simpler than a full `dotnet restore`: nuget.org plus one
     /// optional local folder feed (<see cref="LocalFeedDirectory"/>, checked
-    /// first) and no nuget.config / private feeds, "first-resolved version wins" instead of
-    /// a real SAT-based dependency resolver, and a small denylist of
+    /// first) and no nuget.config / private feeds, a simple "direct dependency
+    /// wins, otherwise the highest version anyone asked for wins" rule instead
+    /// of a real SAT-based dependency resolver, and a small denylist of
     /// netstandard2.0 compatibility-shim packages net10.0 already provides
     /// (downloading a differently-versioned copy of one of those would only
     /// risk shadowing the runtime's own). Good enough for the kind of single
@@ -180,7 +181,12 @@ namespace DanaProcessing.Ide.Compilation.PackageManagement
         {
             var packages = new List<ResolvedNuGetPackage>();
             var errors = new List<string>();
-            var resolved = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            // id -> version currently chosen, and where its entry sits in `packages`.
+            var chosen = new Dictionary<string, (NuGetVersion Version, int Index)>(StringComparer.OrdinalIgnoreCase);
+            // The sketch's own directives: what the user wrote is never overridden.
+            var direct = new HashSet<string>(directives.Select(d => d.Id), StringComparer.OrdinalIgnoreCase);
+            // Ids that already failed once: reported once, not again for every package depending on them.
+            var failed = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
             using var cache = new SourceCacheContext();
             var logger = NullLogger.Instance;
@@ -200,10 +206,19 @@ namespace DanaProcessing.Ide.Compilation.PackageManagement
             while (queue.Count > 0)
             {
                 var (id, versionSpec) = queue.Dequeue();
-                if (SkipIds.Contains(id) || !resolved.Add(id))
+                if (SkipIds.Contains(id) || failed.Contains(id))
                     continue;
 
-                progress?.Report(Loc.Tr($"Resolviendo {id}{(versionSpec is null ? "" : " " + versionSpec)}...", $"Resolving {id}{(versionSpec is null ? "" : " " + versionSpec)}..."));
+                // Already have this package: keep it unless a dependency needs a
+                // newer one than we picked (two packages sharing a dependency at
+                // different minimums -- taking the first one seen could hand the
+                // other a version that's missing methods it calls).
+                bool upgrading = chosen.TryGetValue(id, out var current);
+                if (upgrading && (direct.Contains(id) || SatisfiedBy(versionSpec, current.Version)))
+                    continue;
+
+                if (!upgrading)
+                    progress?.Report(Loc.Tr($"Resolviendo {id}{(versionSpec is null ? "" : " " + versionSpec)}...", $"Resolving {id}{(versionSpec is null ? "" : " " + versionSpec)}..."));
 
                 NuGetVersion? version = null;
                 var source = findResource;
@@ -234,32 +249,78 @@ namespace DanaProcessing.Ide.Compilation.PackageManagement
                 }
                 catch (Exception ex)
                 {
+                    if (!upgrading) failed.Add(id);
                     errors.Add(Loc.Tr($"No se pudo conectar a NuGet.org para resolver '{id}': {ex.Message}", $"Could not connect to NuGet.org to resolve '{id}': {ex.Message}"));
                     continue;
                 }
 
                 if (version is null)
                 {
+                    if (upgrading)
+                        continue; // keep the one we have; the mismatch may still work at runtime
+                    failed.Add(id);
                     errors.Add(versionSpec is null
                         ? Loc.Tr($"No se encontro el paquete '{id}' en NuGet.org.", $"Package '{id}' was not found on NuGet.org.")
                         : Loc.Tr($"No se encontro una version de '{id}' que satisfaga '{versionSpec}' en NuGet.org.", $"No version of '{id}' satisfying '{versionSpec}' was found on NuGet.org."));
                     continue;
                 }
 
+                if (upgrading && version <= current.Version)
+                    continue;
+
                 try
                 {
                     var (assemblyPaths, dependencies, nativeDirectory) = await GetOrDownloadAsync(source, cache, logger, id, version, progress, ct, cacheSuffix);
-                    packages.Add(new ResolvedNuGetPackage(id, version.ToNormalizedString(), assemblyPaths, nativeDirectory));
+                    var entry = new ResolvedNuGetPackage(id, version.ToNormalizedString(), assemblyPaths, nativeDirectory);
+                    if (upgrading)
+                    {
+                        packages[current.Index] = entry;
+                        chosen[id] = (version, current.Index);
+                    }
+                    else
+                    {
+                        chosen[id] = (version, packages.Count);
+                        packages.Add(entry);
+                    }
                     foreach (var dep in dependencies)
                         queue.Enqueue((dep.Id, dep.VersionRange?.OriginalString));
                 }
                 catch (Exception ex)
                 {
+                    if (!upgrading) failed.Add(id);
                     errors.Add(Loc.Tr($"No se pudo descargar '{id}' {version.ToNormalizedString()}: {ex.Message}", $"Could not download '{id}' {version.ToNormalizedString()}: {ex.Message}"));
                 }
             }
 
             return new NuGetResolutionResult(packages, errors);
+        }
+
+        /// <summary>Whether <paramref name="version"/> meets a dependency's version
+        /// requirement (NuGet range syntax; a bare "1.2" means "1.2 or newer"; none
+        /// means any version).</summary>
+        internal static bool SatisfiedBy(string? versionSpec, NuGetVersion version) =>
+            string.IsNullOrWhiteSpace(versionSpec)
+            || !VersionRange.TryParse(versionSpec, out var range)
+            || range.Satisfies(version);
+
+        /// <summary>
+        /// <paramref name="root"/> joined with a path that came from inside a
+        /// downloaded package, refusing anything that would land outside
+        /// <paramref name="root"/> ("../../.bashrc", an absolute path...). A
+        /// .nupkg is just a zip someone else built: its entry names are data,
+        /// not something to hand straight to the file system.
+        /// </summary>
+        internal static string CombineInside(string root, string relative)
+        {
+            var fullRoot = Path.GetFullPath(root);
+            var full = Path.GetFullPath(Path.Combine(fullRoot, relative));
+            var rootWithSep = fullRoot.EndsWith(Path.DirectorySeparatorChar) ? fullRoot : fullRoot + Path.DirectorySeparatorChar;
+            var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+            if (Path.IsPathRooted(relative) || !full.StartsWith(rootWithSep, comparison))
+                throw new InvalidDataException(Loc.Tr(
+                    $"El paquete contiene una ruta no permitida: '{relative}'.",
+                    $"The package contains a disallowed path: '{relative}'."));
+            return full;
         }
 
         /// <summary>Searches nuget.org the same way Visual Studio's "Buscar" tab
@@ -341,7 +402,7 @@ namespace DanaProcessing.Ide.Compilation.PackageManagement
             FindPackageByIdResource findResource, SourceCacheContext cache, ILogger logger,
             string id, NuGetVersion version, IProgress<string>? progress, CancellationToken ct, string cacheSuffix = "")
         {
-            var packageDir = Path.Combine(CacheRoot, id.ToLowerInvariant(), version.ToNormalizedString() + cacheSuffix);
+            var packageDir = CombineInside(CacheRoot, Path.Combine(id.ToLowerInvariant(), version.ToNormalizedString() + cacheSuffix));
             var libDir = Path.Combine(packageDir, "lib");
             var nativeDir = Path.Combine(packageDir, "native");
             // "-v2": packages cached before runtimes/ support had no native/ folder
@@ -481,7 +542,7 @@ namespace DanaProcessing.Ide.Compilation.PackageManagement
                 foreach (var item in items)
                 {
                     var relative = item.Substring(prefix.Length).Replace('/', Path.DirectorySeparatorChar);
-                    var destPath = Path.Combine(nativeDir, relative);
+                    var destPath = CombineInside(nativeDir, relative);
                     Directory.CreateDirectory(Path.GetDirectoryName(destPath)!);
                     using var entryStream = reader.GetStream(item);
                     using var destStream = File.Create(destPath);

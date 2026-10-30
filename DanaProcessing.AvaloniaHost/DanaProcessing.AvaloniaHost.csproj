@@ -21,13 +21,13 @@
       We still need plain SkiaSharp for the SKCanvas/SKPaint types themselves.
     -->
     <!--
-      Avalonia.Desktop 12 -> Avalonia.Skia 12 requires SkiaSharp >= 3.119.3-preview.1.1.
+      Avalonia.Desktop 12.0.5 -> Avalonia.Skia 12.0.5 requires SkiaSharp >= 3.119.4.
       The core library pins the very same version, so everything compiles
       against the SkiaSharp that actually runs.
     -->
-    <PackageReference Include="SkiaSharp" Version="3.119.3-preview.1.1" />
-    <PackageReference Include="Avalonia" Version="12.0.0" />
-    <PackageReference Include="Avalonia.Desktop" Version="12.0.0" />
+    <PackageReference Include="SkiaSharp" Version="3.119.4" />
+    <PackageReference Include="Avalonia" Version="12.0.5" />
+    <PackageReference Include="Avalonia.Desktop" Version="12.0.5" />
     <ProjectReference Include="..\DanaProcessing\DanaProcessing.csproj" />
   </ItemGroup>
 

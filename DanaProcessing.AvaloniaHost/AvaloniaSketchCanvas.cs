@@ -284,7 +284,10 @@ namespace DanaProcessing.AvaloniaHost
                 StopAttachHost(); // before OnStop(): no Draw() may be running on its thread
                 _attachHost = null;
                 if (!ReferenceEquals(_sketch, newSketch))
+                {
                     StopQuietly(_sketch); // the old sketch is gone for good: let it close its devices
+                    DisposeQuietly(_sketch); // ...and its native resources (a 3D sketch's GL context)
+                }
 
                 _sketch.SizeChanged -= OnSketchSizeChanged;
                 _sketch = newSketch;
@@ -458,14 +461,6 @@ namespace DanaProcessing.AvaloniaHost
         }
 
         /// <summary>
-        /// Input events arrive on the UI thread while Draw() runs on the
-        /// render thread. Processing runs them on one thread, between
-        /// frames, and sketches rely on that (adding to a list in
-        /// MousePressed() while Draw() loops over it). Taking the same lock
-        /// as the frame gives the same guarantee: an event waits for the
-        /// current Draw() to finish and never runs in the middle of one.
-        /// </summary>
-        /// <summary>
         /// Tells the running sketch it's done (its OnStop() runs once). For a
         /// host that's going away -- a closing window, the IDE shutting down.
         /// </summary>
@@ -507,6 +502,18 @@ namespace DanaProcessing.AvaloniaHost
             Dispatcher.UIThread.Post(InvalidateVisual);
         }
 
+        private static void DisposeQuietly(Sketch sketch)
+        {
+            try
+            {
+                sketch.Dispose();
+            }
+            catch (Exception ex)
+            {
+                DanaLogger.ErrorFromException(ex, "Error liberando el sketch anterior");
+            }
+        }
+
         private static void StopQuietly(Sketch sketch)
         {
             try
@@ -520,6 +527,14 @@ namespace DanaProcessing.AvaloniaHost
             }
         }
 
+        /// <summary>
+        /// Input events arrive on the UI thread while Draw() runs on the
+        /// render thread. Processing runs them on one thread, between
+        /// frames, and sketches rely on that (adding to a list in
+        /// MousePressed() while Draw() loops over it). Taking the same lock
+        /// as the frame gives the same guarantee: an event waits for the
+        /// current Draw() to finish and never runs in the middle of one.
+        /// </summary>
         private void RunInput(Action userCode, string context)
         {
             if (_frozen || _stopped)
@@ -1365,10 +1380,10 @@ namespace DanaProcessing.AvaloniaHost
             using var borderPaint = new SKPaint { Style = SKPaintStyle.Stroke, Color = new SKColor(220, 60, 60), StrokeWidth = 4, IsAntialias = true };
             canvas.DrawRect(new SKRect(4, 4, width - 4, height - 4), borderPaint);
 
-            using var titlePaint = new SKPaint { Color = new SKColor(255, 120, 120), TextSize = 22, IsAntialias = true, FakeBoldText = true };
-            using var bodyPaint = new SKPaint { Color = new SKColor(255, 210, 210), TextSize = 15, IsAntialias = true };
-            using var dimPaint = new SKPaint { Color = new SKColor(200, 150, 150), TextSize = 12, IsAntialias = true };
-            using var footerPaint = new SKPaint { Color = new SKColor(180, 180, 180), TextSize = 12, IsAntialias = true };
+            using var titlePaint = new TextStyle(new SKColor(255, 120, 120), 22, bold: true);
+            using var bodyPaint = new TextStyle(new SKColor(255, 210, 210), 15);
+            using var dimPaint = new TextStyle(new SKColor(200, 150, 150), 12);
+            using var footerPaint = new TextStyle(new SKColor(180, 180, 180), 12);
 
             float x = 24, y = 44;
             canvas.DrawText(UiText.Tr("Error en el sketch — ejecución pausada", "Error in the sketch — execution paused"), x, y, titlePaint);

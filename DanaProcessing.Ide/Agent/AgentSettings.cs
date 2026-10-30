@@ -68,10 +68,28 @@ namespace DanaProcessing.Ide.Agent
             }
         }
 
-        public static void Save(AgentSettings settings)
+        public static void Save(AgentSettings settings) => Save(settings, FilePath);
+
+        /// <summary>Writes the settings to <paramref name="path"/>. The file holds an
+        /// API key in plain text, so on macOS/Linux it's readable by its owner only
+        /// (0600) -- the default umask would leave it world-readable (0644). On
+        /// Windows the per-user AppData folder's ACL already restricts it.</summary>
+        internal static void Save(AgentSettings settings, string path)
         {
             var json = JsonSerializer.Serialize(settings, JsonOptions);
-            File.WriteAllText(FilePath, json);
+            if (OperatingSystem.IsWindows())
+            {
+                File.WriteAllText(path, json);
+                return;
+            }
+
+            const UnixFileMode OwnerOnly = UnixFileMode.UserRead | UnixFileMode.UserWrite;
+            var options = new FileStreamOptions { Mode = FileMode.Create, Access = FileAccess.Write, UnixCreateMode = OwnerOnly };
+            using (var stream = new FileStream(path, options))
+            using (var writer = new StreamWriter(stream))
+                writer.Write(json);
+            // UnixCreateMode only applies to a NEW file: tighten one saved by an older version too.
+            File.SetUnixFileMode(path, OwnerOnly);
         }
     }
 }

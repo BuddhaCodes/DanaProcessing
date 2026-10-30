@@ -10,6 +10,9 @@ name: CI
 on:
   push:
   pull_request:
+  # build-release.yml calls this same workflow so nothing is packaged and
+  # published from a commit whose tests fail.
+  workflow_call:
 
 jobs:
   test:
