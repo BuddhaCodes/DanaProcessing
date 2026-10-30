@@ -38,8 +38,8 @@ namespace DanaProcessing
         /// the moment the size actually changes, rather than only finding out
         /// on the next frame it happens to render.
         ///
-        /// Pass RendererKind.Renderer3D to opt into the (not yet implemented)
-        /// GPU 3D pipeline, mirroring Processing's size(w, h, P3D) — like
+        /// Pass RendererKind.Renderer3D to opt into the GPU 3D pipeline (OpenGL,
+        /// see Renderer3DBackend), mirroring Processing's size(w, h, P3D) — like
         /// Processing, the renderer can't change after it's been set once.
         /// </summary>
         public void Size(int w, int h, RendererKind renderer = RendererKind.Renderer2D)
@@ -128,7 +128,20 @@ namespace DanaProcessing
             if (method == null)
                 throw new ArgumentException($"Thread(): no se encontró un método sin parámetros llamado '{methodName}' en {GetType().Name}.", nameof(methodName));
 
-            System.Threading.Tasks.Task.Run(() => method.Invoke(this, null));
+            System.Threading.Tasks.Task.Run(() =>
+            {
+                try
+                {
+                    method.Invoke(this, null);
+                }
+                catch (Exception ex)
+                {
+                    // Nobody awaits this task: without this, a crash in the
+                    // background method would vanish without a trace.
+                    var inner = ex is System.Reflection.TargetInvocationException { InnerException: { } i } ? i : ex;
+                    DanaLogger.ErrorFromException(inner, $"Thread(\"{methodName}\")");
+                }
+            });
         }
 
         /// <summary>Raised when the sketch calls Redraw() — meaningful only while NoLoop() is in effect, like Processing's redraw() forcing exactly one extra frame. The host should subscribe and render a single frame in response; looping sketches can ignore this since they're already rendering continuously.</summary>
@@ -410,6 +423,21 @@ namespace DanaProcessing
         public virtual void OnStop() { }
 
         private bool _stopped;
+
+        /// <summary>
+        /// Frees what this sketch owns beyond its paints: the 3D renderer's GL
+        /// context, hidden window, framebuffers and textures, which nothing else
+        /// releases (the GC can't -- they're native). A host calls this when the
+        /// sketch is gone for good (Run replaced it), NOT after a hot reload,
+        /// which hands these same objects to the new instance.
+        /// </summary>
+        public override void Dispose()
+        {
+            var backend = _backend;
+            _backend = null;
+            base.Dispose();
+            backend?.Dispose();
+        }
 
         /// <summary>Host hook: runs OnStop() at most once per sketch instance.</summary>
         internal void RaiseStopped()

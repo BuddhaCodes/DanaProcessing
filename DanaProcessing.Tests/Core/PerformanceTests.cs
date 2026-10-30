@@ -46,20 +46,33 @@ public class PerformanceTests
     [Fact]
     public void Repeated_runs_do_not_pile_up_in_memory()
     {
+        // The count is process-wide: sketches compiled by OTHER tests (and still
+        // referenced by them, e.g. a sketch the audio engine last activated) are
+        // in it too, which made an absolute "at most 6" flaky depending on test
+        // order. What this test is about is that ITS 25 runs don't pile up.
+        static void Collect()
+        {
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            GC.Collect();
+        }
+        Collect();
+        int before = SketchCompiler.LoadedSketchAssemblies;
+
         for (int i = 0; i < 25; i++)
         {
             var r = SketchCompiler.Compile(Trivial);
             Assert.True(r.Success);
             r.Sketch!.Draw();
         }
-        for (int i = 0; i < 5 && SketchCompiler.LoadedSketchAssemblies > 6; i++)
-        {
-            GC.Collect();
-            GC.WaitForPendingFinalizers();
-            GC.Collect();
-        }
-        _log.WriteLine($"after 25 runs: {SketchCompiler.LoadedSketchAssemblies} sketch assemblies still loaded");
-        Assert.InRange(SketchCompiler.LoadedSketchAssemblies, 0, 6);
+        // The compiler keeps the last 4 loaded on purpose (running sketch, hot
+        // reload candidate...); everything older must be gone.
+        int allowed = before + 4;
+        for (int i = 0; i < 5 && SketchCompiler.LoadedSketchAssemblies > allowed; i++)
+            Collect();
+        int after = SketchCompiler.LoadedSketchAssemblies;
+        _log.WriteLine($"after 25 runs: {after} sketch assemblies still loaded ({before} before)");
+        Assert.InRange(after, 0, allowed);
     }
 
     private sealed class Circles : Sketch

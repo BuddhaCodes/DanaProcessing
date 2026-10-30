@@ -19,6 +19,13 @@ on:
 permissions:
   contents: write # necesario para que vpk pueda crear/actualizar el Release
 
+# Un solo release a la vez: dos pushes seguidos a master no pueden subir
+# paquetes de vpk al mismo Release en paralelo. El segundo espera al primero
+# (no lo cancela: un release a medio subir es peor que uno que llega tarde).
+concurrency:
+  group: build-release-${{ github.ref }}
+  cancel-in-progress: false
+
 env:
   # Pineado a una versión real y conocida -- sin esto, los 4 jobs podrían
   # terminar resolviendo versiones de vpk distintas entre sí si "latest"
@@ -28,11 +35,18 @@ env:
   VPK_VERSION: "1.2.161"
 
 jobs:
+  # La misma suite de ci.yml, en los tres SO. Todo lo que empaqueta o publica
+  # depende de este job (vía read-version), así que un master con tests rotos
+  # no llega a nadie como update.
+  tests:
+    uses: ./.github/workflows/ci.yml
+
   # Reads <Version> once (see DanaProcessing.Ide.csproj) instead of every
   # platform job doing its own copy of this step -- every other job depends
   # on this one so the tag on the final Release always matches what got
   # packed, and macOS's bundle needs the same value too.
   read-version:
+    needs: tests
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}

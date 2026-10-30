@@ -1023,7 +1023,7 @@ namespace DanaProcessing.Ide.Theme
                     {
                         var searchBox = new TextBox
                         {
-                            Watermark = "Buscar...",
+                            PlaceholderText = "Buscar...",
                             Width = 160,
                             Background = Brushes.Transparent,
                             BorderThickness = new Thickness(0),

@@ -77,9 +77,9 @@ namespace DanaProcessing.Ide
 
                     // Launched via the "Test in Dana" web button (danaide://run?code=...)
                     // — Program.cs already decoded the payload before Avalonia's
-                    // lifetime even started, so just hand it to the window.
+                    // lifetime even started. Opened for review, never auto-run.
                     if (PendingSketch.InitialSource is { } source)
-                        mainWindow.LoadAndRunSketch(source);
+                        mainWindow.OpenSketchFromLink(source);
                 }
 
                 // --- pruebas anteriores, por si necesitas volver a ellas ---

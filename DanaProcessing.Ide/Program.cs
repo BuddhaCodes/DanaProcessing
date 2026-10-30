@@ -125,6 +125,7 @@ namespace DanaProcessing.Ide
         /// rewritten if the exe has moved) on every startup instead of once at
         /// install time, so it stays correct after e.g. an xcopy update.
         /// </summary>
+        [System.Runtime.Versioning.SupportedOSPlatform("windows")] // only called under OperatingSystem.IsWindows()
         private static void RegisterUrlProtocolIfNeeded()
         {
             try
