@@ -63,6 +63,9 @@ namespace DanaProcessing.Ide.Blocks
     {
         BlockView Kind { get; }
 
+        /// <summary>The fonts this view draws with (the workspace's own labels follow them).</summary>
+        BlockStyle Style { get; }
+
         /// <summary>How close (world units) the pointer has to be to a place for a dragged column to snap there.</summary>
         float SnapRadius { get; }
 

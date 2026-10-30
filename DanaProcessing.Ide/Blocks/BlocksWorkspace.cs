@@ -20,7 +20,6 @@ namespace DanaProcessing.Ide.Blocks
         private const float DragThreshold = 5;
         private const int GlowMs = 400;
 
-        private readonly BlockStyle _style = new();
         private IBlockRenderer _renderer = new TileRenderer();
 
         public BlocksWorkspace(BlockProgram program, IReadOnlyCollection<string>? palette = null) => Load(program, palette);
@@ -557,6 +556,7 @@ namespace DanaProcessing.Ide.Blocks
             var kind = block.Def.Slot(slot).Kind;
             var picker = new Picker { Block = block, Slot = slot };
             const float pad = 14, gap = 8, maxRow = 480;
+            float titleH = TitleHeight;
             float x = 0, y = 0, rowH = 0, widest = 0;
             var placed = new List<(SlotChoice, SKRect)>();
             foreach (var choice in SlotChoices.For(kind))
@@ -568,14 +568,15 @@ namespace DanaProcessing.Ide.Blocks
                 rowH = Math.Max(rowH, size.Height);
                 widest = Math.Max(widest, x - gap);
             }
-            float panelW = widest + pad * 2, panelH = y + rowH + pad * 2;
+            float panelW = Math.Max(widest, _renderer.Style.Text.MeasureText(PickerQuestion(kind)) + 8) + pad * 2;
+            float panelH = titleH + y + rowH + pad * 2;
             float left = Math.Clamp(anchor.Left, PaletteW + 6, Math.Max(PaletteW + 6, ViewWidth - panelW - 6));
             float top = anchor.Bottom + 10;
             if (top + panelH > ViewHeight - 6)
                 top = Math.Max(6, anchor.Top - panelH - 10);
             picker.Panel = new SKRect(left, top, left + panelW, top + panelH);
             foreach (var (choice, r) in placed)
-                picker.Options.Add((choice, new SKRect(left + pad + r.Left, top + pad + r.Top, left + pad + r.Right, top + pad + r.Bottom)));
+                picker.Options.Add((choice, new SKRect(left + pad + r.Left, top + titleH + pad + r.Top, left + pad + r.Right, top + titleH + pad + r.Bottom)));
             _picker = picker;
             Invalidated?.Invoke();
         }
@@ -665,7 +666,7 @@ namespace DanaProcessing.Ide.Blocks
                 return;
             using var ink = new SKPaint { Color = BlockStyle.Muted, IsAntialias = true };
             canvas.DrawText(Loc.Tr("Arrastrá bloques desde la izquierda", "Drag blocks from the left"),
-                PaletteW + (ViewWidth - PaletteW) / 2, ViewHeight / 2, SKTextAlign.Center, _style.Text, ink);
+                PaletteW + (ViewWidth - PaletteW) / 2, ViewHeight / 2, SKTextAlign.Center, _renderer.Style.Text, ink);
         }
 
         private void PaintZoomButtons(SKCanvas canvas)
@@ -724,7 +725,7 @@ namespace DanaProcessing.Ide.Blocks
                 else
                     BlockIcons.DrawCategory(canvas, category, icon, SKColors.White);
                 using (var ink = new SKPaint { Color = BlockStyle.Ink, IsAntialias = true })
-                    canvas.DrawText(BlockCatalog.CategoryName(category), rect.MidX, y + 61, SKTextAlign.Center, _style.Small, ink);
+                    canvas.DrawText(BlockCatalog.CategoryName(category), rect.MidX, y + 61, SKTextAlign.Center, _renderer.Style.Small, ink);
                 y += 76;
             }
 
@@ -742,9 +743,29 @@ namespace DanaProcessing.Ide.Blocks
                 BlockIcons.DrawPath(canvas, "M4 7h16M10 11v6M14 11v6M5 7l1 13h12l1-13M9 7V4h6v3", false,
                     new SKRect(PaletteW / 2 - 28, ViewHeight / 2 - 70, PaletteW / 2 + 28, ViewHeight / 2 - 14), red, 2);
                 using var ink = new SKPaint { Color = red, IsAntialias = true };
-                canvas.DrawText(Loc.Tr("Soltá acá para borrar", "Drop here to delete"), PaletteW / 2, ViewHeight / 2 + 20, SKTextAlign.Center, _style.Text, ink);
+                canvas.DrawText(Loc.Tr("Soltá acá para borrar", "Drop here to delete"), PaletteW / 2, ViewHeight / 2 + 20, SKTextAlign.Center, _renderer.Style.Text, ink);
             }
         }
+
+        private const float TitleHeight = 30;
+
+        /// <summary>What the picker asks, in a child's words.</summary>
+        internal static string PickerQuestion(SlotKind kind) => kind switch
+        {
+            SlotKind.Steps => Loc.Tr("¿Cuántos pasos?", "How many steps?"),
+            SlotKind.Angle => Loc.Tr("¿Cuánto gira?", "How far to turn?"),
+            SlotKind.Count => Loc.Tr("¿Cuántas veces?", "How many times?"),
+            SlotKind.Thickness => Loc.Tr("¿Qué tan gruesa?", "How thick?"),
+            SlotKind.Color => Loc.Tr("¿Qué color?", "Which color?"),
+            SlotKind.Size => Loc.Tr("¿Qué tamaño?", "What size?"),
+            SlotKind.Place => Loc.Tr("¿Dónde?", "Where?"),
+            SlotKind.Note => Loc.Tr("¿Qué nota?", "Which note?"),
+            SlotKind.Drum => Loc.Tr("¿Qué tambor?", "Which drum?"),
+            SlotKind.Beats => Loc.Tr("¿Cuánto dura?", "How long?"),
+            SlotKind.Instrument => Loc.Tr("¿Qué instrumento?", "Which instrument?"),
+            SlotKind.Condition => Loc.Tr("¿Cuándo?", "When?"),
+            _ => "",
+        };
 
         private void PaintPicker(SKCanvas canvas, Picker picker)
         {
@@ -756,6 +777,12 @@ namespace DanaProcessing.Ide.Blocks
             string current = picker.Block.Value(picker.Slot);
             var kind = picker.Block.Def.Slot(picker.Slot).Kind;
             var accent = BlockStyle.CategoryColor(picker.Block.Def.Category);
+            using (var title = new SKPaint { Color = BlockStyle.Darker(accent, 0.6f), IsAntialias = true })
+            {
+                var font = _renderer.Style.Text;
+                float baseline = BlockStyle.Baseline(font, picker.Panel.Top + 14 + TitleHeight / 2 - 2);
+                canvas.DrawText(PickerQuestion(kind), picker.Panel.Left + 16, baseline, SKTextAlign.Left, font, title);
+            }
             foreach (var (choice, r) in picker.Options)
                 _renderer.PaintOption(canvas, kind, choice, r, choice.Value == current, accent);
         }
@@ -789,7 +816,6 @@ namespace DanaProcessing.Ide.Blocks
         public void Dispose()
         {
             _renderer.Dispose();
-            _style.Dispose();
         }
     }
 }

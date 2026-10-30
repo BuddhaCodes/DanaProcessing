@@ -22,7 +22,8 @@ namespace DanaProcessing.Ide.Blocks
         private const float Radius = 22;
         private const float SlotH = 38;
 
-        private readonly BlockStyle _style = new();
+        private readonly BlockStyle _style = new(BlockView.Tiles);
+        public BlockStyle Style => _style;
 
         public BlockView Kind => BlockView.Tiles;
         public float SnapRadius => 64;

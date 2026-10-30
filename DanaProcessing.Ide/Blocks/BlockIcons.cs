@@ -21,39 +21,30 @@ namespace DanaProcessing.Ide.Blocks
         public SKFont Small { get; }
         public SKFont Number { get; }
         public SKFont Mono { get; }
-
-        public BlockStyle()
-        {
-            var bold = Face(SKFontStyle.Bold, Sans);
-            var semi = Face(new SKFontStyle(600, 5, SKFontStyleSlant.Upright), Sans);
-            var regular = Face(SKFontStyle.Normal, Sans);
-            var mono = Face(SKFontStyle.Normal, "JetBrains Mono", "Cascadia Code", "Consolas", "Menlo", "SF Mono",
-                            "DejaVu Sans Mono", "Liberation Mono", "Courier New");
-            Text = new SKFont(semi, 17) { Edging = SKFontEdging.Antialias, Subpixel = true };
-            TextLight = new SKFont(regular, 15) { Edging = SKFontEdging.Antialias, Subpixel = true };
-            Small = new SKFont(regular, 12) { Edging = SKFontEdging.Antialias, Subpixel = true };
-            Number = new SKFont(bold, 15) { Edging = SKFontEdging.Antialias, Subpixel = true };
-            Mono = new SKFont(mono, 13) { Edging = SKFontEdging.Antialias, Subpixel = true };
-        }
-
-        private static readonly string[] Sans = { "Inter", "Segoe UI", "SF Pro Text", "Helvetica Neue", "Noto Sans", "DejaVu Sans", "Arial" };
+        public SKFont MonoBold { get; }
 
         /// <summary>
-        /// The first of <paramref name="families"/> this computer really has.
-        /// SKTypeface.FromFamilyName never says "not found" -- it quietly hands
-        /// back some other font -- so the family name has to be checked.
+        /// Fichas use Andika (drawn for children learning to read: a single-
+        /// story "a", an "l" with a tail, no I/l/1 mix-ups); Renglones use
+        /// Atkinson Hyperlegible, made for low-vision readers and a little more
+        /// grown-up. The C# is IBM Plex Mono. All three ship inside the IDE
+        /// (SIL Open Font License), so every computer shows the same letters.
         /// </summary>
-        private static SKTypeface Face(SKFontStyle style, params string[] families)
+        public BlockStyle(BlockView view = BlockView.Tiles)
         {
-            foreach (var family in families)
-            {
-                var face = SKTypeface.FromFamilyName(family, style);
-                if (face != null && string.Equals(face.FamilyName, family, StringComparison.OrdinalIgnoreCase))
-                    return face;
-                face?.Dispose();
-            }
-            return SKTypeface.FromFamilyName(null, style) ?? SKTypeface.Default;
+            bool kids = view == BlockView.Tiles;
+            var regular = kids ? BundledFonts.AndikaRegular : BundledFonts.AtkinsonRegular;
+            var bold = kids ? BundledFonts.AndikaBold : BundledFonts.AtkinsonBold;
+            Text = Font(kids ? bold : regular, 17);
+            TextLight = Font(regular, 15);
+            Small = Font(kids ? bold : regular, kids ? 12.5f : 12);
+            Number = Font(bold, 15.5f);
+            Mono = Font(BundledFonts.PlexMono, 13);
+            MonoBold = Font(BundledFonts.PlexMonoSemiBold, 13);
         }
+
+        private static SKFont Font(SKTypeface face, float size) =>
+            new(face, size) { Edging = SKFontEdging.Antialias, Subpixel = true, Hinting = SKFontHinting.Slight };
 
         public static float Baseline(SKFont font, float middle)
         {
@@ -82,7 +73,39 @@ namespace DanaProcessing.Ide.Blocks
             Small.Dispose();
             Number.Dispose();
             Mono.Dispose();
+            MonoBold.Dispose();
         }
+    }
+
+    /// <summary>
+    /// The typefaces embedded in the IDE (Theme/Fonts). Loaded once and kept
+    /// for the life of the app -- fonts share them, so they're never disposed.
+    /// If a resource is somehow missing, the system's default face stands in.
+    /// </summary>
+    internal static class BundledFonts
+    {
+        private static readonly Lazy<SKTypeface> _andikaRegular = Load("Andika-Regular.ttf");
+        private static readonly Lazy<SKTypeface> _andikaBold = Load("Andika-Bold.ttf");
+        private static readonly Lazy<SKTypeface> _atkinsonRegular = Load("AtkinsonHyperlegible-Regular.ttf");
+        private static readonly Lazy<SKTypeface> _atkinsonBold = Load("AtkinsonHyperlegible-Bold.ttf");
+        private static readonly Lazy<SKTypeface> _plexMono = Load("IBMPlexMono-Regular.ttf");
+        private static readonly Lazy<SKTypeface> _plexMonoSemiBold = Load("IBMPlexMono-SemiBold.ttf");
+
+        public static SKTypeface AndikaRegular => _andikaRegular.Value;
+        public static SKTypeface AndikaBold => _andikaBold.Value;
+        public static SKTypeface AtkinsonRegular => _atkinsonRegular.Value;
+        public static SKTypeface AtkinsonBold => _atkinsonBold.Value;
+        public static SKTypeface PlexMono => _plexMono.Value;
+        public static SKTypeface PlexMonoSemiBold => _plexMonoSemiBold.Value;
+
+        private static Lazy<SKTypeface> Load(string file) => new(() =>
+        {
+            using var stream = typeof(BundledFonts).Assembly.GetManifestResourceStream("DanaProcessing.Ide.Fonts." + file);
+            if (stream == null)
+                return SKTypeface.Default;
+            using var data = SKData.Create(stream);
+            return SKTypeface.FromData(data) ?? SKTypeface.Default;
+        });
     }
 
     /// <summary>

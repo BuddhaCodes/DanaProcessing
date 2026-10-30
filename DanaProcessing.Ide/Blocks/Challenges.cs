@@ -149,11 +149,11 @@ namespace DanaProcessing.Ide.Blocks
             int stars = count <= best ? 3 : count <= best * 2 ? 2 : 1;
             string message = stars switch
             {
-                3 => Loc.Tr("¡Lo lograste! ⭐⭐⭐", "You did it! ⭐⭐⭐"),
-                2 => Loc.Tr($"¡Lo lograste! ⭐⭐ Se puede hacer con {best} bloques: ¿te animás?",
-                            $"You did it! ⭐⭐ It can be done with {best} blocks: want to try?"),
-                _ => Loc.Tr($"¡Lo lograste! ⭐ Se puede hacer con muchos menos bloques ({best}). ¿Probás con \"repetir\"?",
-                            $"You did it! ⭐ It can be done with far fewer blocks ({best}). Try \"repeat\"?"),
+                3 => Loc.Tr("¡Lo lograste!", "You did it!"),
+                2 => Loc.Tr($"¡Lo lograste! Se puede hacer con {best} bloques: ¿te animás?",
+                            $"You did it! It can be done with {best} blocks: want to try?"),
+                _ => Loc.Tr($"¡Lo lograste! Se puede hacer con muchos menos bloques ({best}). ¿Probás con \"repetir\"?",
+                            $"You did it! It can be done with far fewer blocks ({best}). Try \"repeat\"?"),
             };
             return new ChallengeResult(true, stars, message);
 

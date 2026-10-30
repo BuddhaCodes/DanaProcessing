@@ -28,13 +28,13 @@ namespace DanaProcessing.Ide.Blocks
             var heading = new TextBlock
             {
                 Text = Loc.Tr("¿Para quién es el programa?", "Who is the program for?"),
-                FontSize = 22, FontFamily = ClayTheme.FontDisplay, FontWeight = FontWeight.SemiBold, Foreground = ClayTheme.TextPrimary,
+                FontSize = 26, FontFamily = BlocksChrome.FontKids, FontWeight = FontWeight.Bold, Foreground = BlocksChrome.Ink,
             };
             var note = new TextBlock
             {
                 Text = Loc.Tr("Es el mismo programa de las dos formas: se puede cambiar después con el botón Fichas / Renglones.",
                               "It's the same program either way: switch later with the Tiles / Lines button."),
-                FontSize = 13, FontFamily = ClayTheme.FontBody, Foreground = ClayTheme.TextSecondary, TextWrapping = TextWrapping.Wrap,
+                FontSize = 15, FontFamily = BlocksChrome.FontUi, Foreground = BlocksChrome.InkSoft, TextWrapping = TextWrapping.Wrap,
                 Margin = new Thickness(0, 4, 0, 18),
             };
 
@@ -53,19 +53,33 @@ namespace DanaProcessing.Ide.Blocks
 
         private Button Card(string title, string age, string text, BlockView view)
         {
+            bool kids = view == BlockView.Tiles;
+            var (fill, edge) = kids ? ("#FF9F43", "#D97A1E") : ("#4F9BD9", "#2F78B5");
+            var badge = new Border
+            {
+                Width = 52, Height = 52, CornerRadius = new CornerRadius(15), HorizontalAlignment = HorizontalAlignment.Left,
+                Background = BlocksChrome.Brush(fill), BoxShadow = BoxShadows.Parse("0 3 0 0 " + edge), Margin = new Thickness(0, 0, 0, 8),
+                Child = new StrokeIcon(kids ? BlocksChrome.Icons.Tiles : BlocksChrome.Icons.Lines, 26, thickness: 2.4)
+                {
+                    Foreground = Brushes.White, HorizontalAlignment = HorizontalAlignment.Center,
+                },
+            };
             var card = new Button
             {
-                Padding = new Thickness(18), CornerRadius = new CornerRadius(20), Background = ClayTheme.Surface,
-                BorderThickness = new Thickness(0), HorizontalAlignment = HorizontalAlignment.Stretch,
-                HorizontalContentAlignment = HorizontalAlignment.Left,
+                Padding = new Thickness(20), CornerRadius = new CornerRadius(20), Background = Brushes.White,
+                BorderThickness = new Thickness(1.5), BorderBrush = BlocksChrome.Line, HorizontalAlignment = HorizontalAlignment.Stretch,
+                HorizontalContentAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Stretch,
+                VerticalContentAlignment = VerticalAlignment.Top,
+                Cursor = new Avalonia.Input.Cursor(Avalonia.Input.StandardCursorType.Hand),
                 Content = new StackPanel
                 {
-                    Spacing = 6,
+                    Spacing = 4,
                     Children =
                     {
-                        new TextBlock { Text = age, FontSize = 12, FontWeight = FontWeight.SemiBold, Foreground = ClayTheme.TextMuted, FontFamily = ClayTheme.FontBody },
-                        new TextBlock { Text = title, FontSize = 22, FontWeight = FontWeight.Bold, Foreground = ClayTheme.TextPrimary, FontFamily = ClayTheme.FontDisplay },
-                        new TextBlock { Text = text, FontSize = 14, Foreground = ClayTheme.TextSecondary, FontFamily = ClayTheme.FontBody, TextWrapping = TextWrapping.Wrap },
+                        badge,
+                        new TextBlock { Text = title, FontSize = 24, LineHeight = 32, FontWeight = FontWeight.Bold, Foreground = BlocksChrome.Ink, FontFamily = kids ? BlocksChrome.FontKids : BlocksChrome.FontUi },
+                        new TextBlock { Text = age.ToUpperInvariant(), FontSize = 12, LetterSpacing = 1.2, FontWeight = FontWeight.Bold, Foreground = BlocksChrome.InkMuted, FontFamily = BlocksChrome.FontUi },
+                        new TextBlock { Text = text, FontSize = 15, Foreground = BlocksChrome.InkSoft, FontFamily = BlocksChrome.FontUi, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 6, 0, 0) },
                     },
                 },
             };

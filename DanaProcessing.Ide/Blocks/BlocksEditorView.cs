@@ -33,8 +33,9 @@ namespace DanaProcessing.Ide.Blocks
         private readonly GridSplitter _splitter;
         private readonly ColumnDefinition _codeColumn;
         private readonly Border _challengeCard;
-        private readonly TextBlock _challengeTitle, _challengeGoal, _challengeIcon;
-        private readonly Border _resultBanner;
+        private readonly TextBlock _challengeTitle, _challengeGoal, _challengeNumber;
+        private readonly StackPanel _challengeStars, _challengeTrail, _resultStars;
+        private readonly Border _resultBanner, _resultIcon, _hintBox;
         private readonly TextBlock _resultText;
         private readonly Button _nextButton, _hintButton;
         private readonly TextBlock _hintText;
@@ -63,6 +64,7 @@ namespace DanaProcessing.Ide.Blocks
         public BlocksEditorView()
         {
             Styles.AddRange(ClayTheme.ButtonEffectStyles());
+            Styles.AddRange(BlocksChrome.Styles());
 
             _workspace = new BlocksWorkspace(new BlockProgram());
             _canvas = new BlocksCanvas(_workspace);
@@ -70,16 +72,16 @@ namespace DanaProcessing.Ide.Blocks
             _workspace.SelectionChanged += OnSelectionChanged;
 
             // ---------------- toolbar ----------------
-            var run = BigButton("▶  " + Loc.Tr("Probar", "Try it"), "clay-run");
+            // Left: what makes the program go. Right: how to look at it and
+            // where to go next. Icons are drawn (not emoji), so they look the
+            // same on every computer.
+            var run = BlocksChrome.Button(BlocksChrome.Icons.Play, Loc.Tr("Probar", "Try it"), "go");
             run.Click += (_, _) => RunRequested?.Invoke();
-            var stop = BigButton("⏹", "clay-secondary");
+            var stop = BlocksChrome.Button(BlocksChrome.Icons.Stop, null);
             ToolTip.SetTip(stop, Loc.Tr("Detener", "Stop"));
             stop.Click += (_, _) => StopRequested?.Invoke();
 
-            // Plain theme buttons that show their on/off state themselves: the
-            // Fluent ToggleButton look (white text, blue when on) doesn't fit
-            // the Clay palette and was hard to read.
-            _slowToggle = BigButton("🐢  " + Loc.Tr("Lento", "Slow"), "clay-secondary");
+            _slowToggle = BlocksChrome.Button(BlocksChrome.Icons.Turtle, Loc.Tr("Lento", "Slow"));
             ToolTip.SetTip(_slowToggle, Loc.Tr("La tortuga camina despacito, para ver cada paso", "The turtle walks slowly so you can see each step"));
             _slowToggle.Click += (_, _) =>
             {
@@ -88,27 +90,32 @@ namespace DanaProcessing.Ide.Blocks
                 ShowToggle(_slowToggle, _slow);
             };
 
-            var undo = BigButton("↶", "clay-secondary");
+            var undo = BlocksChrome.Button(BlocksChrome.Icons.Undo, null);
             ToolTip.SetTip(undo, Loc.Tr("Deshacer", "Undo"));
             undo.Click += (_, _) => _workspace.Undo();
-            var redo = BigButton("↷", "clay-secondary");
+            var redo = BlocksChrome.Button(BlocksChrome.Icons.Redo, null);
             ToolTip.SetTip(redo, Loc.Tr("Rehacer", "Redo"));
             redo.Click += (_, _) => _workspace.Redo();
 
-            var challenges = BigButton("🏆  " + Loc.Tr("Retos", "Challenges"), "clay-secondary");
-            challenges.Click += (_, _) => ChallengesRequested?.Invoke();
-
             // The same program, two ways of seeing it: picture tiles for the
             // youngest, sentences beside their C# for the next step up.
-            _tilesButton = BigButton(Loc.Tr("Fichas", "Tiles"), "clay-secondary");
+            _tilesButton = BlocksChrome.Button(BlocksChrome.Icons.Tiles, Loc.Tr("Fichas", "Tiles"), "seg");
             ToolTip.SetTip(_tilesButton, Loc.Tr("Fichas con dibujos, casi sin leer (6 a 8 años)", "Picture tiles, almost no reading (ages 6-8)"));
             _tilesButton.Click += (_, _) => _workspace.SetView(BlockView.Tiles);
-            _linesButton = BigButton(Loc.Tr("Renglones", "Lines"), "clay-secondary");
+            _linesButton = BlocksChrome.Button(BlocksChrome.Icons.Lines, Loc.Tr("Renglones", "Lines"), "seg");
             ToolTip.SetTip(_linesButton, Loc.Tr("Frases en renglones, cada una al lado de su C# (9 a 12 años)", "Sentences on lines, each beside its C# (ages 9-12)"));
             _linesButton.Click += (_, _) => _workspace.SetView(BlockView.Lines);
-            var viewSwitch = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 2, Children = { _tilesButton, _linesButton } };
+            var viewSwitch = new Border
+            {
+                Background = BlocksChrome.Well, CornerRadius = new CornerRadius(12), Padding = new Thickness(3),
+                VerticalAlignment = VerticalAlignment.Center,
+                Child = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 2, Children = { _tilesButton, _linesButton } },
+            };
 
-            _codeToggle = BigButton("</>  " + Loc.Tr("Todo el código", "All the code"), "clay-secondary");
+            var challenges = BlocksChrome.Button(BlocksChrome.Icons.Trophy, Loc.Tr("Retos", "Challenges"));
+            challenges.Click += (_, _) => ChallengesRequested?.Invoke();
+
+            _codeToggle = BlocksChrome.Button(BlocksChrome.Icons.Code, Loc.Tr("Código", "Code"));
             ToolTip.SetTip(_codeToggle, Loc.Tr("Mostrar u ocultar el programa completo en C#", "Show or hide the whole program in C#"));
             _codeToggle.Click += (_, _) =>
             {
@@ -116,30 +123,82 @@ namespace DanaProcessing.Ide.Blocks
                 SetCodeVisible(_codeVisible);
                 ShowToggle(_codeToggle, _codeVisible);
             };
-            ShowToggle(_codeToggle, false);
 
-            var convert = BigButton(Loc.Tr("Pasar a código  ➜", "Turn into code  ➜"), "clay-secondary");
+            var convert = BlocksChrome.Button(BlocksChrome.Icons.Forward, Loc.Tr("Pasar a código", "Turn into code"), "outline");
+            // Arrow after the words: "blocks -> code".
+            if (convert.Content is StackPanel convertRow && convertRow.Children.Count == 2)
+                convertRow.Children.Move(0, 1);
             ToolTip.SetTip(convert, Loc.Tr("Abre este programa como código C# normal, para seguir escribiéndolo",
                                            "Opens this program as ordinary C# so you can keep writing it"));
             convert.Click += (_, _) => ConvertToCodeRequested?.Invoke(BlockCodeGenerator.Generate(_workspace.Program).Source);
 
-            var left = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Children = { run, stop, _slowToggle, undo, redo } };
-            var right = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, HorizontalAlignment = HorizontalAlignment.Right, Children = { viewSwitch, challenges, _codeToggle, convert } };
-            var toolbar = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*"), Margin = new Thickness(12, 6, 12, 8) };
+            var left = new StackPanel
+            {
+                Orientation = Orientation.Horizontal, Spacing = 6,
+                Children = { run, stop, BlocksChrome.Divider(), _slowToggle, BlocksChrome.Divider(), undo, redo },
+            };
+            var right = new StackPanel
+            {
+                Orientation = Orientation.Horizontal, Spacing = 6, HorizontalAlignment = HorizontalAlignment.Right,
+                Children = { viewSwitch, BlocksChrome.Divider(), challenges, _codeToggle, convert },
+            };
+            var toolbar = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*"), Margin = new Thickness(14, 10, 14, 10) };
             Grid.SetColumn(right, 1);
             toolbar.Children.Add(left);
             toolbar.Children.Add(right);
 
             // ---------------- challenge card ----------------
-            _challengeIcon = new TextBlock { FontSize = 34, Foreground = ClayTheme.TextPrimary, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 14, 0) };
-            _challengeTitle = new TextBlock { FontSize = 13, FontFamily = ClayTheme.FontBody, Foreground = ClayTheme.TextMuted, FontWeight = FontWeight.SemiBold };
-            _challengeGoal = new TextBlock { FontSize = 20, FontFamily = ClayTheme.FontDisplay, Foreground = ClayTheme.TextPrimary, TextWrapping = TextWrapping.Wrap, FontWeight = FontWeight.SemiBold };
-            _hintText = new TextBlock { FontSize = 15, FontFamily = ClayTheme.FontBody, Foreground = ClayTheme.TextSecondary, TextWrapping = TextWrapping.Wrap, IsVisible = false, Margin = new Thickness(0, 6, 0, 0) };
-            _hintButton = BigButton("💡  " + Loc.Tr("Pista", "Hint"), "clay-secondary");
-            _hintButton.Click += (_, _) => _hintText.IsVisible = !_hintText.IsVisible;
+            // [ 3 ]  RETO 3 · CUADRADO  ★★☆          [ Pista ]
+            //        Dibujá un cuadrado usando "repetir".
+            //        ● ● ◉ ○ ○ ○ ...  (where you are among all the challenges)
+            _challengeNumber = new TextBlock
+            {
+                FontFamily = BlocksChrome.FontKids, FontSize = 24, FontWeight = FontWeight.Bold, Foreground = Brushes.White,
+                HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center,
+            };
+            var badge = new Border
+            {
+                Width = 52, Height = 52, CornerRadius = new CornerRadius(16), Background = BlocksChrome.Brush("#FF9F43"),
+                BoxShadow = BoxShadows.Parse("0 3 0 0 #D97A1E"), Margin = new Thickness(0, 2, 16, 0), VerticalAlignment = VerticalAlignment.Top,
+                Child = _challengeNumber,
+            };
+            _challengeTitle = new TextBlock
+            {
+                FontSize = 12.5, FontFamily = BlocksChrome.FontUi, Foreground = BlocksChrome.InkMuted, FontWeight = FontWeight.Bold,
+                LetterSpacing = 1.2, VerticalAlignment = VerticalAlignment.Center,
+            };
+            _challengeStars = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 2, Margin = new Thickness(10, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+            _challengeGoal = new TextBlock
+            {
+                FontSize = 21, FontFamily = BlocksChrome.FontKids, Foreground = BlocksChrome.Ink, TextWrapping = TextWrapping.Wrap,
+                FontWeight = FontWeight.Bold, Margin = new Thickness(0, 2, 0, 0),
+            };
+            _challengeTrail = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 5, Margin = new Thickness(0, 8, 0, 0) };
+            _hintText = new TextBlock
+            {
+                FontSize = 16, FontFamily = BlocksChrome.FontKids, Foreground = BlocksChrome.InkSoft, TextWrapping = TextWrapping.Wrap,
+            };
+            _hintBox = new Border
+            {
+                Background = BlocksChrome.GoldSoft, CornerRadius = new CornerRadius(12), Padding = new Thickness(12, 8),
+                Margin = new Thickness(0, 10, 0, 0), IsVisible = false, Child = _hintText,
+            };
+            _hintButton = BlocksChrome.Button(BlocksChrome.Icons.Bulb, Loc.Tr("Pista", "Hint"));
+            _hintButton.Click += (_, _) =>
+            {
+                _hintBox.IsVisible = !_hintBox.IsVisible;
+                ShowToggle(_hintButton, _hintBox.IsVisible);
+            };
 
-            _resultText = new TextBlock { FontSize = 16, FontFamily = ClayTheme.FontBody, Foreground = ClayTheme.TextPrimary, TextWrapping = TextWrapping.Wrap, VerticalAlignment = VerticalAlignment.Center, FontWeight = FontWeight.SemiBold };
-            _nextButton = BigButton(Loc.Tr("Siguiente reto  ▶", "Next challenge  ▶"), "clay-run");
+            _resultIcon = new Border { Width = 34, Height = 34, CornerRadius = new CornerRadius(17), Margin = new Thickness(0, 0, 12, 0), VerticalAlignment = VerticalAlignment.Center };
+            _resultText = new TextBlock
+            {
+                FontSize = 17, FontFamily = BlocksChrome.FontKids, Foreground = BlocksChrome.Ink, TextWrapping = TextWrapping.Wrap,
+                VerticalAlignment = VerticalAlignment.Center, FontWeight = FontWeight.Bold,
+            };
+            _nextButton = BlocksChrome.Button(BlocksChrome.Icons.Forward, Loc.Tr("Siguiente reto", "Next challenge"), "go");
+            if (_nextButton.Content is StackPanel nextRow && nextRow.Children.Count == 2)
+                nextRow.Children.Move(0, 1);
             _nextButton.Click += (_, _) =>
             {
                 if (_workspace.Program.ChallengeId is { } id && ChallengeCatalog.Next(id) is { } next)
@@ -147,31 +206,37 @@ namespace DanaProcessing.Ide.Blocks
                 else
                     ChallengesRequested?.Invoke();
             };
-            var resultRow = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
-            Grid.SetColumn(_nextButton, 1);
+            _resultStars = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 3, Margin = new Thickness(0, 0, 14, 0), VerticalAlignment = VerticalAlignment.Center };
+            var resultRow = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,Auto,*,Auto") };
+            Grid.SetColumn(_resultStars, 1);
+            Grid.SetColumn(_resultText, 2);
+            Grid.SetColumn(_nextButton, 3);
+            resultRow.Children.Add(_resultIcon);
+            resultRow.Children.Add(_resultStars);
             resultRow.Children.Add(_resultText);
             resultRow.Children.Add(_nextButton);
-            _resultBanner = new Border { CornerRadius = new CornerRadius(14), Padding = new Thickness(14, 10), Margin = new Thickness(0, 10, 0, 0), IsVisible = false, Child = resultRow };
+            _resultBanner = new Border { CornerRadius = new CornerRadius(14), Padding = new Thickness(12, 10), Margin = new Thickness(0, 12, 0, 0), IsVisible = false, Child = resultRow };
 
-            var cardText = new StackPanel { Children = { _challengeTitle, _challengeGoal, _hintText } };
+            var overline = new StackPanel { Orientation = Orientation.Horizontal, Children = { _challengeTitle, _challengeStars } };
+            var cardText = new StackPanel { Children = { overline, _challengeGoal, _challengeTrail } };
             var cardTop = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto") };
             Grid.SetColumn(cardText, 1);
             Grid.SetColumn(_hintButton, 2);
             _hintButton.VerticalAlignment = VerticalAlignment.Top;
-            cardTop.Children.Add(_challengeIcon);
+            cardTop.Children.Add(badge);
             cardTop.Children.Add(cardText);
             cardTop.Children.Add(_hintButton);
             _challengeCard = new Border
             {
-                Background = ClayTheme.Surface, CornerRadius = new CornerRadius(18), Padding = new Thickness(16, 12),
-                Margin = new Thickness(12, 0, 12, 8), BoxShadow = ClayTheme.ShadowSubtle, IsVisible = false,
-                Child = new StackPanel { Children = { cardTop, _resultBanner } },
+                Background = Brushes.White, CornerRadius = new CornerRadius(18), Padding = new Thickness(16, 14),
+                Margin = new Thickness(14, 0, 14, 10), BoxShadow = BoxShadows.Parse("0 0 0 1 #EAE3D7, 0 4 14 0 #12000000"), IsVisible = false,
+                Child = new StackPanel { Children = { cardTop, _hintBox, _resultBanner } },
             };
 
             // ---------------- code panel ----------------
             _code = new TextEditor
             {
-                IsReadOnly = true, ShowLineNumbers = true, FontFamily = ClayTheme.FontMono, FontSize = 13,
+                IsReadOnly = true, ShowLineNumbers = true, FontFamily = BlocksChrome.FontCode, FontSize = 13.5,
                 Background = new SolidColorBrush(Avalonia.Media.Color.Parse("#FAF8F5")), Foreground = ClayTheme.TextPrimary,
                 Padding = new Thickness(10, 8), HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto,
             };
@@ -184,13 +249,13 @@ namespace DanaProcessing.Ide.Blocks
 
             var codeHeader = new TextBlock
             {
-                Text = Loc.Tr("Tus bloques en C#", "Your blocks in C#"), FontSize = 13, FontWeight = FontWeight.SemiBold,
-                Foreground = ClayTheme.TextSecondary, FontFamily = ClayTheme.FontBody, Margin = new Thickness(12, 8, 12, 6),
+                Text = Loc.Tr("Tus bloques en C#", "Your blocks in C#"), FontSize = 15, FontWeight = FontWeight.Bold,
+                Foreground = BlocksChrome.Ink, FontFamily = BlocksChrome.FontUi, Margin = new Thickness(14, 12, 14, 2),
             };
             var codeHint = new TextBlock
             {
-                Text = Loc.Tr("Tocá un bloque para ver su código", "Click a block to see its code"), FontSize = 11.5,
-                Foreground = ClayTheme.TextMuted, FontFamily = ClayTheme.FontBody, Margin = new Thickness(12, 0, 12, 6),
+                Text = Loc.Tr("Tocá un bloque para ver su código", "Click a block to see its code"), FontSize = 13,
+                Foreground = BlocksChrome.InkMuted, FontFamily = BlocksChrome.FontUi, Margin = new Thickness(14, 0, 14, 8),
             };
             var codeStack = new DockPanel();
             DockPanel.SetDock(codeHeader, Dock.Top);
@@ -200,20 +265,20 @@ namespace DanaProcessing.Ide.Blocks
             codeStack.Children.Add(_code);
             _codePanel = new Border
             {
-                Background = new SolidColorBrush(Avalonia.Media.Color.Parse("#FAF8F5")), CornerRadius = new CornerRadius(12),
-                BorderBrush = new SolidColorBrush(Avalonia.Media.Color.Parse("#E8E2DA")), BorderThickness = new Thickness(1),
+                Background = new SolidColorBrush(Avalonia.Media.Color.Parse("#FAF8F5")), CornerRadius = new CornerRadius(16),
+                BorderBrush = BlocksChrome.Line, BorderThickness = new Thickness(1),
                 ClipToBounds = true, Child = codeStack,
             };
 
             var canvasFrame = new Border
             {
-                CornerRadius = new CornerRadius(12), ClipToBounds = true,
-                BorderBrush = new SolidColorBrush(Avalonia.Media.Color.Parse("#E8E2DA")), BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(16), ClipToBounds = true,
+                BorderBrush = BlocksChrome.Line, BorderThickness = new Thickness(1),
                 Child = _canvas,
             };
 
             _codeColumn = new ColumnDefinition(new GridLength(360));
-            var content = new Grid { Margin = new Thickness(12, 0, 12, 12) };
+            var content = new Grid { Margin = new Thickness(14, 0, 14, 14) };
             content.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
             content.ColumnDefinitions.Add(new ColumnDefinition(new GridLength(8)));
             content.ColumnDefinitions.Add(_codeColumn);
@@ -240,18 +305,8 @@ namespace DanaProcessing.Ide.Blocks
             SetCodeVisible(false);
         }
 
-        /// <summary>An on/off button: "on" gets the accent look, "off" the plain one.</summary>
-        private static void ShowToggle(Button button, bool on)
-        {
-            button.Classes.Set("clay-run", on);
-            button.Classes.Set("clay-secondary", !on);
-        }
-
-        private static Button BigButton(string text, string cls) => new()
-        {
-            Content = text, Classes = { cls }, FontSize = 15, Padding = new Thickness(14, 8),
-            VerticalAlignment = VerticalAlignment.Center,
-        };
+        /// <summary>An on/off button: "on" gets the warm gold look.</summary>
+        private static void ShowToggle(Button button, bool on) => button.Classes.Set("on", on);
 
         // =================================================================
         // Showing a tab
@@ -279,24 +334,46 @@ namespace DanaProcessing.Ide.Blocks
         {
             ShowToggle(_tilesButton, _workspace.View == BlockView.Tiles);
             ShowToggle(_linesButton, _workspace.View == BlockView.Lines);
+            // The challenge speaks in the same letters as the blocks.
+            var font = _workspace.View == BlockView.Tiles ? BlocksChrome.FontKids : BlocksChrome.FontUi;
+            _challengeGoal.FontFamily = _hintText.FontFamily = _resultText.FontFamily = font;
         }
 
         private void ShowChallenge(Challenge? challenge)
         {
             _challengeCard.IsVisible = challenge is not null;
             _resultBanner.IsVisible = false;
-            _hintText.IsVisible = false;
+            _hintBox.IsVisible = false;
+            ShowToggle(_hintButton, false);
             if (challenge is null)
                 return;
-            int number = ChallengeCatalog.All.ToList().IndexOf(challenge) + 1;
-            _challengeIcon.Text = challenge.Icon;
-            _challengeTitle.Text = Loc.Tr($"RETO {number} · ", $"CHALLENGE {number} · ") + challenge.Title.ToUpperInvariant()
-                                   + Stars(ChallengeProgress.Load().GetValueOrDefault(challenge.Id));
+            var all = ChallengeCatalog.All.ToList();
+            int number = all.IndexOf(challenge) + 1;
+            var progress = ChallengeProgress.Load();
+            _challengeNumber.Text = number.ToString();
+            _challengeTitle.Text = Loc.Tr($"RETO {number} · ", $"CHALLENGE {number} · ") + challenge.Title.ToUpperInvariant();
             _challengeGoal.Text = challenge.Goal;
             _hintText.Text = challenge.Hint;
-        }
 
-        private static string Stars(int n) => n <= 0 ? "" : "   " + new string('★', n) + new string('☆', 3 - n);
+            int stars = progress.GetValueOrDefault(challenge.Id);
+            _challengeStars.Children.Clear();
+            FillStars(_challengeStars, stars, 15);
+
+            // The trail: done ones filled, this one a ring, the rest pale.
+            _challengeTrail.Children.Clear();
+            foreach (var c in all)
+            {
+                bool current = c == challenge, done = progress.GetValueOrDefault(c.Id) > 0;
+                _challengeTrail.Children.Add(new Border
+                {
+                    Width = current ? 14 : 9, Height = current ? 14 : 9, CornerRadius = new CornerRadius(7),
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Background = current ? Brushes.White : done ? BlocksChrome.Go : BlocksChrome.Well,
+                    BorderBrush = current ? BlocksChrome.Brush("#FF9F43") : null,
+                    BorderThickness = new Thickness(current ? 3 : 0),
+                });
+            }
+        }
 
         private void OnProgramChanged()
         {
@@ -414,19 +491,35 @@ namespace DanaProcessing.Ide.Blocks
 
         private void ShowResult(Challenge challenge, ChallengeResult result)
         {
-            _resultBanner.IsVisible = true;
-            _resultBanner.Background = result.Passed ? ClayTheme.SuccessSurface : new SolidColorBrush(Avalonia.Media.Color.Parse("#FFF1E0"));
-            _resultText.Text = result.Message;
-            _nextButton.IsVisible = result.Passed;
             if (result.Passed)
             {
                 ChallengeProgress.Record(challenge.Id, result.Stars);
                 ShowChallenge(challenge);
-                _resultBanner.IsVisible = true;
-                _nextButton.Content = ChallengeCatalog.Next(challenge.Id) is null
+                BlocksChrome.SetText(_nextButton, ChallengeCatalog.Next(challenge.Id) is null
                     ? Loc.Tr("Ver todos los retos", "See all challenges")
-                    : Loc.Tr("Siguiente reto  ▶", "Next challenge  ▶");
+                    : Loc.Tr("Siguiente reto", "Next challenge"));
             }
+            _resultBanner.IsVisible = true;
+            _resultBanner.Background = BlocksChrome.Brush(result.Passed ? "#E6F5EB" : "#FFF1E0");
+            _resultIcon.Background = result.Passed ? BlocksChrome.Go : BlocksChrome.Brush("#FF9F43");
+            _resultIcon.Child = new StrokeIcon(result.Passed ? BlocksChrome.Icons.Check : BlocksChrome.Icons.Retry, 20, thickness: 2.8)
+            {
+                Foreground = Brushes.White, HorizontalAlignment = HorizontalAlignment.Center,
+            };
+            _resultText.Text = result.Message;
+            _nextButton.IsVisible = result.Passed;
+            _resultStars.IsVisible = result.Passed;
+            FillStars(_resultStars, result.Stars, 24);
+        }
+
+        private static void FillStars(StackPanel panel, int stars, double size)
+        {
+            panel.Children.Clear();
+            for (int i = 0; i < 3; i++)
+                panel.Children.Add(new StrokeIcon(BlocksChrome.Icons.Star, size, filled: i < stars)
+                {
+                    Foreground = i < stars ? BlocksChrome.Gold : BlocksChrome.Brush("#D9CFBF"),
+                });
         }
 
         /// <summary>Soft yellow band behind the selected block's lines.</summary>

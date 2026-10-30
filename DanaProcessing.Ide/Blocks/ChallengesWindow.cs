@@ -34,13 +34,22 @@ namespace DanaProcessing.Ide.Blocks
             var heading = new TextBlock
             {
                 Text = Loc.Tr("Elegí un reto", "Pick a challenge"),
-                FontSize = 26, FontFamily = ClayTheme.FontDisplay, FontWeight = FontWeight.SemiBold,
-                Foreground = ClayTheme.TextPrimary,
+                FontSize = 28, FontFamily = BlocksChrome.FontKids, FontWeight = FontWeight.Bold, Foreground = BlocksChrome.Ink,
             };
-            var summary = new TextBlock
+            var summaryStar = new StrokeIcon(BlocksChrome.Icons.Star, 18, filled: true) { Foreground = BlocksChrome.Gold };
+            var summary = new StackPanel
             {
-                Text = Loc.Tr($"Tenés {earned} de {total} estrellas ★", $"You have {earned} of {total} stars ★"),
-                FontSize = 15, FontFamily = ClayTheme.FontBody, Foreground = ClayTheme.TextSecondary, Margin = new Thickness(0, 4, 0, 16),
+                Orientation = Orientation.Horizontal, Spacing = 6, Margin = new Thickness(0, 4, 0, 20),
+                Children =
+                {
+                    summaryStar,
+                    new TextBlock
+                    {
+                        Text = Loc.Tr($"{earned} de {total} estrellas", $"{earned} of {total} stars"),
+                        FontSize = 16, FontFamily = BlocksChrome.FontUi, FontWeight = FontWeight.Bold, Foreground = BlocksChrome.InkSoft,
+                        VerticalAlignment = VerticalAlignment.Center,
+                    },
+                },
             };
 
             var cards = new WrapPanel { Orientation = Orientation.Horizontal };
@@ -48,34 +57,52 @@ namespace DanaProcessing.Ide.Blocks
             foreach (var challenge in ChallengeCatalog.All)
             {
                 int stars = progress.GetValueOrDefault(challenge.Id);
+                bool lines = challenge.View == BlockView.Lines;
+                // Orange for the Fichas challenges, blue for Renglones: the
+                // older-kids ones look a step up at a glance.
+                var (fill, edge) = lines ? ("#4F9BD9", "#2F78B5") : ("#FF9F43", "#D97A1E");
+                var starRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 3, HorizontalAlignment = HorizontalAlignment.Center };
+                for (int i = 0; i < 3; i++)
+                    starRow.Children.Add(new StrokeIcon(BlocksChrome.Icons.Star, 20, filled: i < stars)
+                    {
+                        Foreground = i < stars ? BlocksChrome.Gold : BlocksChrome.Brush("#D9CFBF"),
+                    });
                 var card = new Button
                 {
-                    Width = 190, Height = 170, Margin = new Thickness(0, 0, 14, 14), Padding = new Thickness(12),
-                    Background = stars > 0 ? ClayTheme.SuccessSurface : ClayTheme.Surface,
-                    CornerRadius = new CornerRadius(20), BorderThickness = new Thickness(0),
+                    Width = 184, Height = 186, Margin = new Thickness(0, 0, 14, 14), Padding = new Thickness(12),
+                    Background = stars > 0 ? BlocksChrome.Brush("#EEF8F1") : Brushes.White,
+                    CornerRadius = new CornerRadius(20), BorderThickness = new Thickness(1.5),
+                    BorderBrush = stars > 0 ? BlocksChrome.Brush("#BFE3CB") : BlocksChrome.Line,
+                    Cursor = new Avalonia.Input.Cursor(Avalonia.Input.StandardCursorType.Hand),
                     HorizontalContentAlignment = HorizontalAlignment.Center, VerticalContentAlignment = VerticalAlignment.Center,
                     Content = new StackPanel
                     {
-                        Spacing = 4, HorizontalAlignment = HorizontalAlignment.Center,
+                        Spacing = 6, HorizontalAlignment = HorizontalAlignment.Center,
                         Children =
                         {
-                            new TextBlock { Text = challenge.Icon, FontSize = 40, Foreground = ClayTheme.TextPrimary, HorizontalAlignment = HorizontalAlignment.Center },
-                            new TextBlock
+                            new Border
                             {
-                                Text = Loc.Tr($"Reto {number}", $"Challenge {number}"), FontSize = 12, Foreground = ClayTheme.TextMuted,
-                                FontFamily = ClayTheme.FontBody, HorizontalAlignment = HorizontalAlignment.Center,
+                                Width = 50, Height = 50, CornerRadius = new CornerRadius(15), HorizontalAlignment = HorizontalAlignment.Center,
+                                Background = BlocksChrome.Brush(fill), BoxShadow = BoxShadows.Parse("0 3 0 0 " + edge),
+                                Child = new TextBlock
+                                {
+                                    Text = number.ToString(), FontSize = 22, FontWeight = FontWeight.Bold, FontFamily = BlocksChrome.FontKids,
+                                    Foreground = Brushes.White, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center,
+                                },
                             },
                             new TextBlock
                             {
-                                Text = challenge.Title, FontSize = 16, FontWeight = FontWeight.SemiBold, Foreground = ClayTheme.TextPrimary,
-                                FontFamily = ClayTheme.FontDisplay, TextAlignment = TextAlignment.Center, TextWrapping = TextWrapping.Wrap,
+                                Text = challenge.Title, FontSize = 17, FontWeight = FontWeight.Bold, Foreground = BlocksChrome.Ink,
+                                FontFamily = lines ? BlocksChrome.FontUi : BlocksChrome.FontKids, TextAlignment = TextAlignment.Center,
+                                TextWrapping = TextWrapping.Wrap, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 4, 0, 0),
+                            },
+                            new TextBlock
+                            {
+                                Text = lines ? Loc.Tr("RENGLONES", "LINES") : Loc.Tr("FICHAS", "TILES"), FontSize = 11, LetterSpacing = 1.2,
+                                FontWeight = FontWeight.Bold, FontFamily = BlocksChrome.FontUi, Foreground = BlocksChrome.InkMuted,
                                 HorizontalAlignment = HorizontalAlignment.Center,
                             },
-                            new TextBlock
-                            {
-                                Text = new string('★', stars) + new string('☆', 3 - stars), FontSize = 20,
-                                Foreground = new SolidColorBrush(Avalonia.Media.Color.Parse("#F2B705")), HorizontalAlignment = HorizontalAlignment.Center,
-                            },
+                            starRow,
                         },
                     },
                 };

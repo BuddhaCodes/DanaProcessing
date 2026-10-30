@@ -31,7 +31,8 @@ namespace DanaProcessing.Ide.Blocks
         private static readonly SKColor CodeInk = new(233, 228, 218);
         private static readonly SKColor CodeMuted = new(181, 172, 156);
 
-        private readonly BlockStyle _style = new();
+        private readonly BlockStyle _style = new(BlockView.Lines);
+        public BlockStyle Style => _style;
 
         public BlockView Kind => BlockView.Lines;
         public float SnapRadius => 34;
@@ -268,7 +269,15 @@ namespace DanaProcessing.Ide.Blocks
             using (var margin = new SKPaint { Color = Margin, StrokeWidth = 2 })
                 canvas.DrawLine(X0 - 18, -Far, X0 - 18, Far, margin);
             using (var csharp = new SKPaint { Color = CodeMuted, IsAntialias = true })
-                canvas.DrawText("C#", scene.CodeX + CodeW - 30, -14, SKTextAlign.Right, _style.Small, csharp);
+            {
+                // A small tab over the code, like the name of a file in an editor.
+                var tab = new SKRect(scene.CodeX - 8, -34, scene.CodeX + 30, -10);
+                using var tabBg = new SKPaint { Color = new SKColor(255, 255, 255, 22), IsAntialias = true };
+                canvas.DrawRoundRect(tab, 6, 6, tabBg);
+                canvas.DrawText("C#", tab.MidX, BlockStyle.Baseline(_style.MonoBold, tab.MidY), SKTextAlign.Center, _style.MonoBold, csharp);
+                canvas.DrawText(Loc.Tr("lo que lee la computadora", "what the computer reads"), tab.Right + 10,
+                    BlockStyle.Baseline(_style.Small, tab.MidY), SKTextAlign.Left, _style.Small, csharp);
+            }
 
             using var rule = new SKPaint { Color = Rule, StrokeWidth = 1 };
             using var number = new SKPaint { Color = new SKColor(140, 132, 118), IsAntialias = true };
@@ -334,12 +343,34 @@ namespace DanaProcessing.Ide.Blocks
             if (code.Length == 0)
                 return;
             var lines = code.Split('\n');
-            using var ink = new SKPaint { Color = comment ? CodeMuted : CodeInk, IsAntialias = true };
-            float lineH = 17;
+            float lineH = 18;
             float first = top + RowH / 2 - (lines.Length - 1) * lineH / 2;
+            using var paint = new SKPaint { IsAntialias = true };
             for (int i = 0; i < lines.Length; i++)
-                canvas.DrawText(lines[i], codeX, BlockStyle.Baseline(_style.Mono, first + i * lineH), SKTextAlign.Left, _style.Mono, ink);
+            {
+                float x = codeX, y = BlockStyle.Baseline(_style.Mono, first + i * lineH);
+                foreach (var (text, kind) in CSharpTokens.Split(lines[i]))
+                {
+                    var font = kind == CSharpTokens.Kind.Keyword ? _style.MonoBold : _style.Mono;
+                    paint.Color = comment ? CodeMuted.WithAlpha(170) : CodeColor(kind);
+                    canvas.DrawText(text, x, y, SKTextAlign.Left, font, paint);
+                    x += font.MeasureText(text);
+                }
+            }
         }
+
+        // Warm, low-glare colors for the dark code column -- distinct enough
+        // to tell a keyword from a number at a glance, never neon.
+        private static SKColor CodeColor(CSharpTokens.Kind kind) => kind switch
+        {
+            CSharpTokens.Kind.Keyword => new SKColor(242, 140, 108),
+            CSharpTokens.Kind.Number => new SKColor(184, 214, 130),
+            CSharpTokens.Kind.String => new SKColor(236, 200, 120),
+            CSharpTokens.Kind.Comment => new SKColor(135, 127, 114),
+            CSharpTokens.Kind.Call => new SKColor(132, 196, 236),
+            CSharpTokens.Kind.Punctuation => new SKColor(170, 162, 148),
+            _ => CodeInk,
+        };
 
         private void PaintSentence(SKCanvas canvas, Block b, float x, float top, byte alpha)
         {

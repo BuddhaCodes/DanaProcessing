@@ -34,6 +34,17 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Bundled fonts (SIL Open Font License, texts alongside): Andika for the
+         Fichas blocks view, Atkinson Hyperlegible for Renglones and the blocks
+         editor chrome, IBM Plex Mono for the C# shown beside the blocks.
+         Embedded twice: as manifest resources for the Skia-drawn canvas
+         (BundledFonts) and as avares:// resources for Avalonia text. -->
+    <EmbeddedResource Include="Theme\Fonts\*.ttf" LogicalName="DanaProcessing.Ide.Fonts.%(Filename)%(Extension)" />
+    <AvaloniaResource Include="Theme\Fonts\*.ttf" />
+    <None Include="Theme\Fonts\OFL-*.txt" CopyToOutputDirectory="PreserveNewest" Link="Licenses\Fonts\%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- Lets the test project reach internal helpers (agent message repair, URL parsing...). -->
     <InternalsVisibleTo Include="DanaProcessing.Tests" />
   </ItemGroup>
