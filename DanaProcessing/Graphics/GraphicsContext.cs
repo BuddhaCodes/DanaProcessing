@@ -130,7 +130,13 @@ namespace DanaProcessing
 
         private readonly SKPaint _fillPaint = new SKPaint { Style = SKPaintStyle.Fill, IsAntialias = true, Color = SKColors.White };
         private readonly SKPaint _strokePaint = new SKPaint { Style = SKPaintStyle.Stroke, IsAntialias = true, Color = SKColors.Black, StrokeWidth = 1 };
-        private readonly SKPaint _textPaint = new SKPaint { Color = SKColors.White, IsAntialias = true, TextSize = 16 };
+        private readonly SKPaint _textPaint = new SKPaint { Color = SKColors.White, IsAntialias = true };
+        // Size, typeface and edging live on an SKFont in SkiaSharp 3 (the SKPaint
+        // versions are obsolete). Set up exactly like the font SkiaSharp derived
+        // from the old text paint (SKPaint.ToFont()): linear (unrounded) advances,
+        // so TextWidth() at 17.3 isn't the same as at 18, and Edging following
+        // Smooth()/NoSmooth() the way _textPaint.IsAntialias used to.
+        private readonly SKFont _textFont = new SKFont { Size = 16, Edging = SKFontEdging.Antialias, LinearMetrics = true };
         private bool _fillEnabled = true;
         private bool _strokeEnabled = true;
         private ColorSpaceMode _colorMode = ColorSpaceMode.RGB;
@@ -381,6 +387,7 @@ namespace DanaProcessing
             _fillPaint.IsAntialias = on;
             _strokePaint.IsAntialias = on;
             _textPaint.IsAntialias = on;
+            _textFont.Edging = on ? SKFontEdging.Antialias : SKFontEdging.Alias;
         }
 
         // =====================================================================
@@ -507,7 +514,7 @@ namespace DanaProcessing
                 StrokeWeight = _strokePaint.StrokeWidth,
                 StrokeCap = _strokePaint.StrokeCap,
                 StrokeJoin = _strokePaint.StrokeJoin,
-                TextSize = _textPaint.TextSize,
+                TextSize = _textFont.Size,
                 TextAlignH = _textAlignH,
                 TextAlignV = _textAlignV,
                 TextLeading = _textLeading,
@@ -548,7 +555,7 @@ namespace DanaProcessing
             _strokePaint.StrokeWidth = s.StrokeWeight;
             _strokePaint.StrokeCap = s.StrokeCap;
             _strokePaint.StrokeJoin = s.StrokeJoin;
-            _textPaint.TextSize = s.TextSize;
+            _textFont.Size = s.TextSize;
             _textAlignH = s.TextAlignH;
             _textAlignV = s.TextAlignV;
             _textLeading = s.TextLeading;
@@ -1370,7 +1377,7 @@ namespace DanaProcessing
         private TextAlignV _textAlignV = TextAlignV.Baseline;
         private float? _textLeading;
 
-        public void TextSize(float size) => _textPaint.TextSize = SnapTextSize(size);
+        public void TextSize(float size) => _textFont.Size = SnapTextSize(size);
 
         private float _textSizeSnap;
 
@@ -1405,12 +1412,12 @@ namespace DanaProcessing
         {
             float widest = 0f;
             foreach (var line in text.Split('\n'))
-                widest = Math.Max(widest, _textPaint.MeasureText(line));
+                widest = Math.Max(widest, _textFont.MeasureText(line, _textPaint));
             return widest;
         }
 
-        public float TextAscent() => -_textPaint.FontMetrics.Ascent;
-        public float TextDescent() => _textPaint.FontMetrics.Descent;
+        public float TextAscent() => -_textFont.Metrics.Ascent;
+        public float TextDescent() => _textFont.Metrics.Descent;
 
         // Typeface loaded directly by path via TextFont(string, ...) — this
         // class created it, so this class owns and disposes it. A typeface
@@ -1426,16 +1433,16 @@ namespace DanaProcessing
             _ownedTypeface?.Dispose();
             _ownedTypeface = path == null ? null : SKTypeface.FromFile(path)
                 ?? throw new InvalidOperationException($"No se pudo cargar la fuente: '{path}'. Verifica la ruta y el formato.");
-            _textPaint.Typeface = _ownedTypeface;
+            _textFont.Typeface = _ownedTypeface;
             if (size.HasValue)
-                _textPaint.TextSize = SnapTextSize(size.Value);
+                _textFont.Size = SnapTextSize(size.Value);
         }
 
         /// <summary>Sets the current font from a PFont previously obtained via LoadFont()/CreateFont(), like Processing's textFont(font, size). If size is omitted, uses the size the PFont was created/loaded at.</summary>
         public void TextFont(PFont font, float? size = null)
         {
-            _textPaint.Typeface = font.Typeface;
-            _textPaint.TextSize = SnapTextSize(size ?? font.Size);
+            _textFont.Typeface = font.Typeface;
+            _textFont.Size = SnapTextSize(size ?? font.Size);
         }
 
         /// <summary>Draws text at (x, y), per the current TextAlign. Multi-line strings ('\n') are split and spaced using the current TextLeading.</summary>
@@ -1445,25 +1452,25 @@ namespace DanaProcessing
             if (text.IndexOf('\n') < 0)
             {
                 // The common case -- one line, often one character -- without the Split().
-                Canvas.DrawText(text, ResolveTextX(x, text), ResolveTextY(y), _textPaint);
+                Canvas.DrawText(text, ResolveTextX(x, text), ResolveTextY(y), SKTextAlign.Left, _textFont, _textPaint);
                 return;
             }
             var lines = text.Split('\n');
-            float leading = _textLeading ?? _textPaint.FontSpacing;
+            float leading = _textLeading ?? _textFont.Spacing;
 
             for (int i = 0; i < lines.Length; i++)
             {
                 float lineY = y + i * leading;
                 float lineX = ResolveTextX(x, lines[i]);
-                Canvas.DrawText(lines[i], lineX, ResolveTextY(lineY), _textPaint);
+                Canvas.DrawText(lines[i], lineX, ResolveTextY(lineY), SKTextAlign.Left, _textFont, _textPaint);
             }
         }
 
         private float ResolveTextX(float x, string line) => _textAlignH switch
         {
             TextAlignH.Left => x,
-            TextAlignH.Center => x - _textPaint.MeasureText(line) / 2f,
-            TextAlignH.Right => x - _textPaint.MeasureText(line),
+            TextAlignH.Center => x - _textFont.MeasureText(line, _textPaint) / 2f,
+            TextAlignH.Right => x - _textFont.MeasureText(line, _textPaint),
             _ => throw new ArgumentOutOfRangeException()
         };
 
@@ -1992,8 +1999,9 @@ namespace DanaProcessing
                 return;
             _fillPaint.Dispose();
             _strokePaint.Dispose();
-            _ownedTypeface?.Dispose(); // NO tocar _textPaint.Typeface directamente: si el font activo vino de TextFont(PFont), ese typeface pertenece al PFont, no a este GraphicsContext.
+            _ownedTypeface?.Dispose(); // NO tocar _textFont.Typeface directamente: si el font activo vino de TextFont(PFont), ese typeface pertenece al PFont, no a este GraphicsContext.
             _textPaint.Dispose();
+            _textFont.Dispose();
             _shapePath?.Dispose();
             _disposed = true;
         }

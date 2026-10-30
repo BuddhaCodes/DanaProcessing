@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -7,8 +8,8 @@ using System.Threading.Tasks;
 namespace DanaProcessing.Ide.Agent
 {
     /// <summary>
-    /// The four tools Agent mode gives the model for v1 -- read/edit/run the
-    /// active sketch, and search the API reference. Each ExecuteAsync call is
+    /// The five tools Agent mode gives the model -- read/edit/run the active
+    /// sketch, look at what it draws, and search the API reference. Each ExecuteAsync call is
     /// wrapped so a tool NEVER throws out to AgentSession: a failure (bad
     /// arguments, no active tab, a compile error) becomes the tool's own
     /// RESULT text instead, exactly like a real tool call that "failed" in a
@@ -45,7 +46,7 @@ namespace DanaProcessing.Ide.Agent
                 """{"type":"object","properties":{"query":{"type":"string","description":"Un nombre de método o palabra clave para buscar, por ejemplo 'PVector' o 'lights'."}},"required":["query"]}"""),
         };
 
-        public static async Task<AgentToolResult> ExecuteAsync(AgentToolCall call, MainWindow owner, CancellationToken ct)
+        public static async Task<AgentToolResult> ExecuteAsync(AgentToolCall call, MainWindow owner, AgentToolContext context, CancellationToken ct)
         {
             try
             {
@@ -55,12 +56,16 @@ namespace DanaProcessing.Ide.Agent
                 string result = call.Name switch
                 {
                     "read_sketch" => ReadSketch(owner),
-                    "edit_sketch" => EditSketch(owner, call.ArgumentsJson),
-                    "run_sketch" => await RunSketchAsync(owner, ct),
+                    "edit_sketch" => EditSketch(owner, context, call.ArgumentsJson),
+                    "run_sketch" => await RunSketchAsync(owner, context, ct),
                     "search_docs" => SearchDocs(call.ArgumentsJson),
                     _ => $"Herramienta desconocida: '{call.Name}'.",
                 };
                 return new AgentToolResult(call.Id, result);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                return new AgentToolResult(call.Id, $"'{call.Name}' fue cancelada.");
             }
             catch (Exception ex)
             {
@@ -80,7 +85,7 @@ namespace DanaProcessing.Ide.Agent
                 : source;
         }
 
-        private static string EditSketch(MainWindow owner, string argumentsJson)
+        private static string EditSketch(MainWindow owner, AgentToolContext context, string argumentsJson)
         {
             using var doc = JsonDocument.Parse(string.IsNullOrWhiteSpace(argumentsJson) ? "{}" : argumentsJson);
             if (!doc.RootElement.TryGetProperty("source", out var sourceEl) || sourceEl.ValueKind != JsonValueKind.String)
@@ -89,19 +94,57 @@ namespace DanaProcessing.Ide.Agent
             if (owner.EditorView.ActiveTab is null)
                 return "No hay ningún sketch abierto para editar.";
 
-            owner.EditorView.ReplaceActiveSourceText(sourceEl.GetString() ?? "");
+            var newSource = sourceEl.GetString() ?? "";
+            context.NoteSourceBeforeAgentEdit(owner.EditorView.ActiveSourceText);
+            owner.EditorView.ReplaceActiveSourceText(newSource);
+            context.NoteAgentWrote(owner.EditorView.ActiveSourceText ?? newSource);
             return "Listo -- el sketch fue reemplazado con el nuevo código.";
         }
 
-        private static async Task<string> RunSketchAsync(MainWindow owner, CancellationToken ct)
+        private static async Task<string> RunSketchAsync(MainWindow owner, AgentToolContext context, CancellationToken ct)
         {
-            if (string.IsNullOrWhiteSpace(owner.EditorView.ActiveSourceText))
+            var source = owner.EditorView.ActiveSourceText;
+            if (string.IsNullOrWhiteSpace(source))
                 return "No hay ningún sketch abierto para ejecutar.";
 
-            await owner.RunCurrentSketchAsync();
+            // Packages the agent added get the user's OK before anything is
+            // downloaded or loaded -- see AgentToolContext for why.
+            var unapproved = context.Unapproved(source);
+            if (unapproved.Count > 0)
+            {
+                bool allowed = context.ConfirmPackages != null && await context.ConfirmPackages(unapproved);
+                if (!allowed)
+                {
+                    var names = string.Join(", ", unapproved.Select(d => d.Version is null ? d.Id : $"{d.Id} {d.Version}"));
+                    return $"El usuario NO autorizó descargar y ejecutar estos paquetes NuGet: {names}. El sketch no se ejecutó. "
+                         + "Sacá esas directivas `// nuget:` (o preguntale al usuario) antes de volver a intentar.";
+                }
+                context.Approve(unapproved);
+            }
 
-            if (owner.LastCompileErrors.Count > 0)
-                return "Error de compilación:\n" + string.Join("\n", owner.LastCompileErrors);
+            // Another Run (the user's, or a previous one still restoring
+            // packages) may be in progress: wait for it rather than reporting
+            // on a run that never happened.
+            RunOutcome outcome;
+            var busyDeadline = DateTime.UtcNow.AddSeconds(60);
+            while ((outcome = await owner.RunCurrentSketchAsync()) == RunOutcome.Busy)
+            {
+                if (DateTime.UtcNow > busyDeadline)
+                    return "No se pudo ejecutar: hay otra ejecución en curso que no terminó en 60 segundos.";
+                await Task.Delay(100, ct);
+            }
+
+            switch (outcome)
+            {
+                case RunOutcome.RestoreFailed:
+                    return "No se pudieron restaurar los paquetes NuGet, así que el sketch no se ejecutó:\n" + string.Join("\n", owner.LastCompileErrors);
+                case RunOutcome.CompileFailed:
+                    return "Error de compilación:\n" + string.Join("\n", owner.LastCompileErrors);
+                case RunOutcome.Failed:
+                    return "El sketch no se pudo iniciar:\n" + string.Join("\n", owner.LastCompileErrors);
+                case RunOutcome.NothingToRun:
+                    return "No hay ningún sketch abierto para ejecutar.";
+            }
 
             // Setup()/Draw() only corren en el próximo frame compuesto,
             // asíncronamente en el hilo de render -- si hubo una excepción en
