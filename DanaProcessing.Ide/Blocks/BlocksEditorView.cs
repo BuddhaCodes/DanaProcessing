@@ -39,7 +39,13 @@ namespace DanaProcessing.Ide.Blocks
         private readonly TextBlock _resultText;
         private readonly Button _nextButton, _hintButton;
         private readonly TextBlock _hintText;
-        private readonly Button _slowToggle, _codeToggle;
+        private readonly Button _slowToggle, _codeToggle, _stepToggle, _nextStep;
+        private readonly Border _stepStrip;
+        private readonly TextBlock _stepCode, _stepHelp;
+        private readonly DispatcherTimer _stepTimer;
+        private bool _stepping;
+        private int _stepShown = -1;
+        private readonly Button[] _compactable;
         private bool _slow, _codeVisible;
         private readonly Button _tilesButton, _linesButton;
         private readonly DispatcherTimer _checkTimer;
@@ -90,6 +96,16 @@ namespace DanaProcessing.Ide.Blocks
                 ShowToggle(_slowToggle, _slow);
             };
 
+            // Paso a paso: the program waits before each block until the child
+            // clicks "Siguiente paso"; that block and its C# stay lit meanwhile.
+            _stepToggle = BlocksChrome.Button(BlocksChrome.Icons.Steps, Loc.Tr("Paso a paso", "Step by step"));
+            ToolTip.SetTip(_stepToggle, Loc.Tr("El programa espera antes de cada bloque: vos decidís cuándo sigue",
+                                               "The program waits before each block: you decide when it goes on"));
+            _stepToggle.Click += (_, _) => SetStepping(!_stepping);
+            _nextStep = BlocksChrome.Button(BlocksChrome.Icons.NextStep, Loc.Tr("Siguiente paso", "Next step"), "step");
+            _nextStep.IsVisible = false;
+            _nextStep.Click += (_, _) => Turtle.Stepper?.Step();
+
             var undo = BlocksChrome.Button(BlocksChrome.Icons.Undo, null);
             ToolTip.SetTip(undo, Loc.Tr("Deshacer", "Undo"));
             undo.Click += (_, _) => _workspace.Undo();
@@ -135,14 +151,25 @@ namespace DanaProcessing.Ide.Blocks
             var left = new StackPanel
             {
                 Orientation = Orientation.Horizontal, Spacing = 6,
-                Children = { run, stop, BlocksChrome.Divider(), _slowToggle, BlocksChrome.Divider(), undo, redo },
+                Children = { run, _nextStep, stop, BlocksChrome.Divider(), _slowToggle, _stepToggle, BlocksChrome.Divider(), undo, redo },
             };
             var right = new StackPanel
             {
                 Orientation = Orientation.Horizontal, Spacing = 6, HorizontalAlignment = HorizontalAlignment.Right,
                 Children = { viewSwitch, BlocksChrome.Divider(), challenges, _codeToggle, convert },
             };
+            // On a narrow window the secondary buttons keep only their icons.
+            _compactable = new[] { _slowToggle, _stepToggle, challenges, _codeToggle };
+            foreach (var b in _compactable)
+                if (ToolTip.GetTip(b) is null && b.Content is StackPanel r && r.Children.OfType<TextBlock>().FirstOrDefault() is { } label)
+                    ToolTip.SetTip(b, label.Text);
             var toolbar = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*"), Margin = new Thickness(14, 10, 14, 10) };
+            toolbar.SizeChanged += (_, e) => Compact(e.NewSize.Width);
+            _nextStep.PropertyChanged += (_, e) =>
+            {
+                if (e.Property == IsVisibleProperty)
+                    Compact(toolbar.Bounds.Width);
+            };
             Grid.SetColumn(right, 1);
             toolbar.Children.Add(left);
             toolbar.Children.Add(right);
@@ -270,11 +297,43 @@ namespace DanaProcessing.Ide.Blocks
                 ClipToBounds = true, Child = codeStack,
             };
 
+            // While stepping: the block that just went, as C#, and what to do next.
+            _stepCode = new TextBlock
+            {
+                FontFamily = BlocksChrome.FontCode, FontSize = 16, Foreground = BlocksChrome.Brush("#F3EEE4"),
+                VerticalAlignment = VerticalAlignment.Center,
+            };
+            _stepHelp = new TextBlock
+            {
+                FontFamily = BlocksChrome.FontUi, FontSize = 14, FontWeight = FontWeight.Bold, Foreground = BlocksChrome.Brush("#FFD35E"),
+                VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(14, 0, 0, 0),
+            };
+            _stepStrip = new Border
+            {
+                Background = BlocksChrome.Brush("#EE24211D"), CornerRadius = new CornerRadius(14), Padding = new Thickness(10, 8, 16, 8),
+                HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Bottom, Margin = new Thickness(340, 0, 80, 18),
+                BoxShadow = BoxShadows.Parse("0 6 20 0 #33000000"), IsVisible = false, IsHitTestVisible = false,
+                Child = new StackPanel
+                {
+                    Orientation = Orientation.Horizontal,
+                    Children =
+                    {
+                        new Border
+                        {
+                            Background = BlocksChrome.Brush("#3A3631"), CornerRadius = new CornerRadius(7), Padding = new Thickness(7, 2),
+                            Margin = new Thickness(0, 0, 10, 0), VerticalAlignment = VerticalAlignment.Center,
+                            Child = new TextBlock { Text = "C#", FontFamily = BlocksChrome.FontCode, FontSize = 12, FontWeight = FontWeight.SemiBold, Foreground = BlocksChrome.Brush("#B5AC9C") },
+                        },
+                        _stepCode,
+                        _stepHelp,
+                    },
+                },
+            };
             var canvasFrame = new Border
             {
                 CornerRadius = new CornerRadius(16), ClipToBounds = true,
                 BorderBrush = BlocksChrome.Line, BorderThickness = new Thickness(1),
-                Child = _canvas,
+                Child = new Grid { Children = { _canvas, _stepStrip } },
             };
 
             _codeColumn = new ColumnDefinition(new GridLength(360));
@@ -297,12 +356,23 @@ namespace DanaProcessing.Ide.Blocks
             root.Children.Add(content);
             Content = root;
 
+            _stepTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(80) };
+            _stepTimer.Tick += (_, _) => ShowStep();
+
             _checkTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(250) };
             _checkTimer.Tick += (_, _) => PollTurtleChallenge();
 
             // Both views show the C# themselves (Renglones line by line; Fichas
             // under "Todo el código"): the full program panel starts closed.
             SetCodeVisible(false);
+        }
+
+        private void Compact(double width)
+        {
+            // Measured with every label showing: ~1180 px, plus ~190 for "Siguiente paso".
+            double needed = 1190 + (_nextStep.IsVisible ? 190 : 0);
+            foreach (var b in _compactable)
+                BlocksChrome.ShowLabel(b, width >= needed);
         }
 
         /// <summary>An on/off button: "on" gets the warm gold look.</summary>
@@ -449,6 +519,8 @@ namespace DanaProcessing.Ide.Blocks
             _running = sketch;
             _runStarted = DateTime.UtcNow;
             _workspace.LastHit = id => sketch.LastBlockHit(id);
+            if (_stepping)
+                StartStepping();
             _canvas.Animating = true;
             _resultBanner.IsVisible = false;
 
@@ -466,8 +538,94 @@ namespace DanaProcessing.Ide.Blocks
         {
             _running = null;
             _checkTimer.Stop();
+            StopStepping();
             _workspace.LastHit = null;
             _canvas.Animating = false;
+        }
+
+        // =================================================================
+        // Step by step
+        // =================================================================
+
+        private void SetStepping(bool on)
+        {
+            _stepping = on;
+            ShowToggle(_stepToggle, on);
+            if (on && _running is not null)
+                StartStepping();
+            else if (!on)
+            {
+                StopStepping();
+                if (_running is { } sketch)
+                    _workspace.LastHit = id => sketch.LastBlockHit(id);
+            }
+        }
+
+        /// <summary>From now on the running program waits for a click before each block.</summary>
+        private void StartStepping()
+        {
+            var stepper = new BlockStepper();
+            Turtle.Stepper = stepper;
+            // Only the block that went last is lit, and it stays lit while waiting.
+            _workspace.LastHit = id => id == stepper.Current ? Environment.TickCount64 : 0;
+            _stepShown = -1;
+            _nextStep.IsVisible = true;
+            _stepStrip.IsVisible = true;
+            _stepTimer.Start();
+            ShowStep();
+        }
+
+        private void StopStepping()
+        {
+            Turtle.Stepper = null; // anything still queued runs on freely
+            _stepTimer.Stop();
+            _nextStep.IsVisible = false;
+            _stepStrip.IsVisible = false;
+        }
+
+        /// <summary>Keeps the strip (the current block's C#) and the "next step" button up to date.</summary>
+        private void ShowStep()
+        {
+            if (Turtle.Stepper is not { } stepper)
+                return;
+            int current = stepper.Current;
+            if (current != _stepShown)
+            {
+                _stepShown = current;
+                if (current >= 0)
+                    OnSelectionChanged(current); // the full code panel follows too
+            }
+            _stepCode.Text = current >= 0 ? CodeOf(current) : Loc.Tr("(todavía nada)", "(nothing yet)");
+            bool waiting = stepper.Waiting;
+            bool finished = !waiting && _running is { } sketch && TurtlesDone(sketch);
+            bool noTurtle = _running is { } s && (DateTime.UtcNow - _runStarted).TotalSeconds > 1 && NoTurtles(s);
+            _nextStep.IsEnabled = waiting;
+            _stepHelp.Text = noTurtle
+                ? Loc.Tr("Paso a paso es para programas con la tortuga", "Step by step works with turtle programs")
+                : waiting
+                ? Loc.Tr("Tocá «Siguiente paso»", "Press \u201cNext step\u201d")
+                : finished ? Loc.Tr("¡Terminó!", "All done!") : Loc.Tr("La tortuga está caminando…", "The turtle is walking…");
+        }
+
+        private static bool NoTurtles(Sketch sketch)
+        {
+            lock (sketch.Turtles)
+                return sketch.Turtles.Count == 0;
+        }
+
+        private static bool TurtlesDone(Sketch sketch)
+        {
+            lock (sketch.Turtles)
+                return sketch.Turtles.Count > 0 && sketch.Turtles.All(t => t.IsDone);
+        }
+
+        /// <summary>The C# a block became (its first line, trimmed), as the child would read it.</summary>
+        private string CodeOf(int blockId)
+        {
+            if (_clean is null || !_clean.BlockLines.TryGetValue(blockId, out var lines))
+                return "";
+            var all = _clean.Source.Split('\n');
+            return lines.First >= 1 && lines.First <= all.Length ? all[lines.First - 1].Trim() : "";
         }
 
         private void PollTurtleChallenge()

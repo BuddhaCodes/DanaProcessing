@@ -94,6 +94,12 @@ namespace DanaProcessing
         /// </summary>
         internal static float SpeedFactor { get; set; } = 1;
 
+        /// <summary>
+        /// The IDE's "step by step" switch: while set, every turtle waits for
+        /// a click before each command that comes from a block. Null = run freely.
+        /// </summary>
+        internal static BlockStepper? Stepper { get; set; }
+
         /// <summary>Whether the turtle itself is drawn (its lines always are).</summary>
         public bool Visible { get; set; } = true;
 
@@ -219,6 +225,10 @@ namespace DanaProcessing
                 if (_current is null)
                 {
                     if (_queue.Count == 0)
+                        return;
+                    // Step by step: a block's command waits for its click
+                    // (never when finishing everything at once).
+                    if (!instant && _queue.Peek().Block >= 0 && Stepper is { } stepper && !stepper.TryTake(_queue.Peek().Block))
                         return;
                     var next = _queue.Dequeue();
                     _current = next;

@@ -113,6 +113,51 @@ public class TurtleTests
     }
 
     [Fact]
+    public void Step_by_step_waits_for_a_click_before_each_block()
+    {
+        var s = new TurtleSketch();
+        Offscreen.Run(s, frames: 1);
+        var stepper = new BlockStepper();
+        try
+        {
+            // It was already allowed to start the walk before stepping was
+            // switched on (frame 1): stepping starts from the next block.
+            s.Tick(1000); s.RenderFrame();
+            Turtle.Stepper = stepper;
+            Assert.Equal(0, s.LastBlockHit(8));
+
+            for (int i = 0; i < 5; i++) { s.Tick(200); s.RenderFrame(); }
+            Assert.Equal(0, s.LastBlockHit(8));                 // the turn waits...
+            Assert.True(stepper.Waiting);
+            Assert.False(s.T.IsDone);
+            Assert.Equal(-1, stepper.Current);
+
+            stepper.Step();
+            stepper.Step();                                      // a double click is still one step
+            for (int i = 0; i < 4; i++) { s.Tick(100); s.RenderFrame(); } // ...until the click
+            Assert.NotEqual(0, s.LastBlockHit(8));
+            Assert.Equal(8, stepper.Current);
+            Assert.False(stepper.Waiting);
+            Assert.True(s.T.IsDone);
+        }
+        finally { Turtle.Stepper = null; }
+    }
+
+    [Fact]
+    public void Finishing_at_once_ignores_step_by_step()
+    {
+        var t = new Turtle(0, 0);
+        try
+        {
+            Turtle.Stepper = new BlockStepper();
+            t.Block = 3; t.Forward(50);
+            t.Finish();
+            Assert.True(t.IsDone);
+        }
+        finally { Turtle.Stepper = null; }
+    }
+
+    [Fact]
     public void Slow_motion_factor_slows_every_turtle()
     {
         var s = new TurtleSketch();
