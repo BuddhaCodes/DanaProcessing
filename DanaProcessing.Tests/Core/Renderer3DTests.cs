@@ -6,7 +6,9 @@ namespace DanaProcessing.Tests.Core;
 /// The GPU 3D renderer (RendererKind.Renderer3D): background, per-vertex colors, translucency,
 /// additive light, the depth hints, live textures and 2D drawn over 3D. Each test draws into
 /// a small offscreen 3D buffer and reads pixels back. On a machine with no OpenGL at all the
-/// buffer can't be made and the tests have nothing to check.
+/// buffer can't be made and the tests have nothing to check -- and on macOS neither, since GLFW
+/// only makes contexts on the main thread and tests run on worker threads (the renderer says so
+/// right away instead of hanging; see the last test).
 /// </summary>
 [Collection("OpenGL")]
 public class Renderer3DTests
@@ -193,6 +195,20 @@ public class Renderer3DTests
         });
         if (img == null) return;
         Near(img.Get(40, 30), 255, 128, 0, "white texture tinted orange");
+    }
+
+    [Fact]
+    public void On_macOS_a_3D_context_off_the_main_thread_fails_at_once_instead_of_hanging()
+    {
+        if (!OperatingSystem.IsMacOS()) return;
+        // Tests run on worker threads: exactly the case that used to hang forever.
+        var attempt = Task.Run(() => new Host().CreateGraphics(8, 8, RendererKind.Renderer3D));
+        // Wait for it to finish either way (Wait() would rethrow the failure we're expecting).
+        bool finished = ((IAsyncResult)attempt).AsyncWaitHandle.WaitOne(TimeSpan.FromSeconds(30));
+        Assert.True(finished, "creating the context hung");
+        Assert.True(attempt.IsFaulted, "a 3D context off the main thread should fail on macOS");
+        var error = Assert.IsType<InvalidOperationException>(attempt.Exception?.InnerException);
+        Assert.Contains("hilo principal", error.Message);
     }
 
     [Fact]
