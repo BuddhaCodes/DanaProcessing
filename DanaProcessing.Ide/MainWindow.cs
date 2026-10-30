@@ -1285,6 +1285,7 @@ namespace DanaProcessing.Ide
                 BuildMenuItem("🧩", Loc.Tr("Nuevo con bloques", "New with blocks"), null, NewBlocksProgram),
                 BuildMenuItem("🏆", Loc.Tr("Retos con bloques...", "Block challenges..."), null, OpenChallenges),
                 BuildMenuItem("📝", Loc.Tr("Crear un reto con estos bloques...", "Create a challenge from these blocks..."), null, CreateChallenge),
+                BuildMenuItem("🔤", Loc.Tr("Ordenar el código...", "Put the code in order..."), null, () => new ParsonsWindow().Show(this)),
                 BuildMenuItem("📂", Loc.Tr("Abrir...", "Open..."), "Ctrl+O", () => _ = _editorView.OpenFileAsync()),
                 MenuSeparator(),
                 BuildMenuItem("💾", Loc.Tr("Guardar", "Save"), "Ctrl+S", () => _ = _editorView.SaveActiveTabAsync()),
