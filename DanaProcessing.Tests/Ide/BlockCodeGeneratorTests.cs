@@ -7,7 +7,7 @@ namespace DanaProcessing.Tests.Ide;
 public class BlockCodeGeneratorTests
 {
     private static readonly string[] Hats =
-        { BlockCatalog.Start, BlockCatalog.Forever, BlockCatalog.Click, BlockCatalog.Key, BlockCatalog.MusicLoop };
+        { BlockCatalog.Start, BlockCatalog.Forever, BlockCatalog.Click, BlockCatalog.Key, BlockCatalog.MusicLoop, BlockCatalog.Define };
 
     private static void AssertCompiles(BlockProgram p, string what)
     {
@@ -235,5 +235,127 @@ public class BlockCodeGeneratorTests
         Assert.Same(iff.Body, where!.Value.List);
         Assert.Same(iff, where.Value.Owner);
         Assert.Null(p.Locate(12345));
+    }
+
+    // =================================================================
+    // Variables, own blocks, random
+    // =================================================================
+
+    private static Block Add(BlockProgram p, List<Block> into, string type, params (string Slot, string Value)[] values)
+    {
+        var b = p.NewBlock(type);
+        foreach (var (slot, value) in values)
+            b.Values[slot] = value;
+        into.Add(b);
+        return b;
+    }
+
+    [Fact]
+    public void A_variable_grows_a_spiral()
+    {
+        // guardar 10 en lado; repetir 8: avanzar lado, girar 90, cambiar lado en +10
+        var p = new BlockProgram();
+        var script = p.AddStack(0, 0, BlockCatalog.Start).Blocks;
+        Add(p, script, BlockCatalog.VarSet, ("value", "10"), ("var", "lado"));
+        var loop = Add(p, script, BlockCatalog.Repeat, ("times", "8"));
+        Add(p, loop.Body!, BlockCatalog.Forward, ("steps", "var:lado"));
+        Add(p, loop.Body!, BlockCatalog.Right, ("angle", "90"));
+        Add(p, loop.Body!, BlockCatalog.VarChange, ("var", "lado"), ("amount", "10"));
+
+        var code = BlockCodeGenerator.Generate(p).Source;
+        Assert.Contains("float lado = 0;", code);
+        Assert.Contains("lado = 10;", code);
+        Assert.Contains("tortuga.Forward(lado);", code);
+        Assert.Contains("lado = lado + 10;", code);
+        Assert.DoesNotContain("contador", code); // only the variables that are used
+
+        var run = HeadlessBlockRunner.Run(p);
+        Assert.True(run.Compiled, string.Join("\n", run.Errors));
+        var lengths = run.TurtleLines.Select(l => (int)Math.Round(l.Length)).ToArray();
+        Assert.Equal(new[] { 10, 20, 30, 40, 50, 60, 70, 80 }, lengths);
+    }
+
+    [Fact]
+    public void Changing_by_a_negative_amount_subtracts()
+    {
+        var p = new BlockProgram();
+        var script = p.AddStack(0, 0, BlockCatalog.Start).Blocks;
+        Add(p, script, BlockCatalog.VarChange, ("var", "contador"), ("amount", "-5"));
+        Add(p, script, BlockCatalog.VarShow, ("var", "contador"));
+        var code = BlockCodeGenerator.Generate(p).Source;
+        Assert.Contains("contador = contador - 5;", code);
+        Assert.Contains("Text(\"contador: \" + contador", code);
+        AssertCompiles(p, "subtract and show");
+    }
+
+    [Fact]
+    public void Teaching_the_turtle_a_new_word_makes_a_method_and_using_it_calls_it()
+    {
+        // para hacer un cuadrado: repetir 4 (avanzar 50, girar 90)
+        // al empezar: hacer un cuadrado, avanzar 100, hacer un cuadrado
+        var p = new BlockProgram();
+        var define = p.AddStack(300, 0, BlockCatalog.Define);
+        define.Blocks[0].Values["fn"] = "square";
+        var loop = Add(p, define.Blocks, BlockCatalog.Repeat, ("times", "4"));
+        Add(p, loop.Body!, BlockCatalog.Forward, ("steps", "50"));
+        Add(p, loop.Body!, BlockCatalog.Right, ("angle", "90"));
+
+        var main = p.AddStack(0, 0, BlockCatalog.Start).Blocks;
+        Add(p, main, BlockCatalog.Call, ("fn", "square"));
+        Add(p, main, BlockCatalog.PenUp);
+        Add(p, main, BlockCatalog.Forward, ("steps", "100"));
+        Add(p, main, BlockCatalog.PenDown);
+        Add(p, main, BlockCatalog.Call, ("fn", "square"));
+
+        var generated = BlockCodeGenerator.Generate(p);
+        Assert.Contains("void Cuadrado()", generated.Source);
+        Assert.Equal(2, generated.Source.Split("Cuadrado();").Length - 1);
+        Assert.True(generated.BlockLines.ContainsKey(define.Blocks[0].Id), "the define block maps to its method");
+
+        var run = HeadlessBlockRunner.Run(p);
+        Assert.True(run.Compiled, string.Join("\n", run.Errors));
+        Assert.Equal(8, run.TurtleLines.Count); // two squares, the walk between them with the pen up
+    }
+
+    [Fact]
+    public void A_word_that_uses_itself_is_left_out_instead_of_looping_forever()
+    {
+        var p = new BlockProgram();
+        var a = p.AddStack(300, 0, BlockCatalog.Define);
+        a.Blocks[0].Values["fn"] = "flower";
+        Add(p, a.Blocks, BlockCatalog.Forward, ("steps", "10"));
+        Add(p, a.Blocks, BlockCatalog.Call, ("fn", "flower"));          // itself
+        Add(p, a.Blocks, BlockCatalog.Call, ("fn", "jump"));            // through "jump"
+        var b = p.AddStack(600, 0, BlockCatalog.Define);
+        b.Blocks[0].Values["fn"] = "jump";
+        Add(p, b.Blocks, BlockCatalog.Call, ("fn", "flower"));
+        var main = p.AddStack(0, 0, BlockCatalog.Start).Blocks;
+        Add(p, main, BlockCatalog.Call, ("fn", "flower"));
+        Add(p, main, BlockCatalog.Call, ("fn", "trick"));               // never defined
+
+        var code = BlockCodeGenerator.Generate(p).Source;
+        Assert.Contains("no puede usarse dentro de sí mismo", code);
+        Assert.Contains("todavía no tiene bloques", code);
+        Assert.DoesNotContain("MiTruco();", code);
+        var run = HeadlessBlockRunner.Run(p);                           // finishes: no endless recursion
+        Assert.True(run.Compiled, string.Join("\n", run.Errors));
+        Assert.Single(run.TurtleLines);
+    }
+
+    [Fact]
+    public void Random_and_arrow_key_choices_compile()
+    {
+        var p = new BlockProgram();
+        var forever = p.AddStack(0, 0, BlockCatalog.Forever).Blocks;
+        foreach (var cond in new[] { "right", "left", "up", "down", "space", "mouseRight", "mouseTop", "counter10" })
+        {
+            var ifBlock = Add(p, forever, BlockCatalog.If, ("cond", cond));
+            Add(p, ifBlock.Body!, BlockCatalog.Forward, ("steps", "random"));
+            Add(p, ifBlock.Body!, BlockCatalog.Right, ("angle", "random"));
+        }
+        var rep = Add(p, forever, BlockCatalog.Repeat, ("times", "random"));
+        Add(p, rep.Body!, BlockCatalog.VarSet, ("value", "random"), ("var", "angulo"));
+        AssertCompiles(p, "random and keys");
+        Assert.Contains("float contador = 0;", BlockCodeGenerator.Generate(p).Source);
     }
 }

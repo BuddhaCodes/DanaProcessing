@@ -195,6 +195,7 @@ namespace DanaProcessing.Ide.Blocks
                 case BlockCatalog.Forever: return "void Draw() {";
                 case BlockCatalog.Click: return "void MousePressed() {";
                 case BlockCatalog.Key: return "void KeyPressed() {";
+                case BlockCatalog.Define: return $"void {SlotChoices.Get(SlotKind.Function, b.Value("fn")).Code}() {{";
                 case BlockCatalog.MusicLoop: return $"async Task Musica{(music != null && music.TryGetValue(b.Id, out var n) ? n : 1)}() {{";
             }
             if (!clean.BlockLines.TryGetValue(b.Id, out var range))

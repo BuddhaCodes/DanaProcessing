@@ -153,6 +153,11 @@ namespace DanaProcessing.Ide.Blocks
             [BlockCatalog.Instrument] = new("M3 12c2.5-6 4.5 6 7 0s4.5 6 7 0 3 3 4 0"),
             [BlockCatalog.ScoreReset] = new("M4 4v6h6M4.5 10a8 8 0 1 1 1.9 7.5"),
             [BlockCatalog.ScoreAdd] = new(Star),
+            [BlockCatalog.VarSet] = new("M4 8l8-4 8 4v8l-8 4-8-4z M4 8l8 4 8-4 M12 12v8"),
+            [BlockCatalog.VarChange] = new("M4 8l8-4 8 4v8l-8 4-8-4z M9 12h6 M12 9v6"),
+            [BlockCatalog.VarShow] = new("M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 9a3 3 0 1 0 0 6a3 3 0 1 0 0-6"),
+            [BlockCatalog.Define] = new("M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z M18 15l.8 2.2L21 18l-2.2.8L18 21l-.8-2.2L15 18l2.2-.8z"),
+            [BlockCatalog.Call] = new("M4 20L15 9 M13 7l4 4 M18 3v3 M16.5 4.5h3 M20 9v2 M19 10h2 M10 3v2 M9 4h2"),
             [BlockCatalog.ScoreShow] = new("M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 9a3 3 0 1 0 0 6a3 3 0 1 0 0-6"),
         };
 
@@ -190,6 +195,8 @@ namespace DanaProcessing.Ide.Blocks
                 case BlockCategory.Control: DrawPath(canvas, Repeat, false, rect, color, 2.4f); break;
                 case BlockCategory.Music: DrawPath(canvas, Note, false, rect, color, 2.2f); break;
                 case BlockCategory.Score: DrawPath(canvas, Star, false, rect, color, 2.2f); break;
+                case BlockCategory.Variables: DrawPath(canvas, "M4 8l8-4 8 4v8l-8 4-8-4z M4 8l8 4 8-4 M12 12v8", false, rect, color, 2.2f); break;
+                case BlockCategory.MyBlocks: DrawPath(canvas, "M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z M18 15l.8 2.2L21 18l-2.2.8L18 21l-.8-2.2L15 18l2.2-.8z", false, rect, color, 2.2f); break;
             }
         }
 
@@ -240,6 +247,34 @@ namespace DanaProcessing.Ide.Blocks
             using var line = new SKPaint { Color = ink, IsAntialias = true, Style = SKPaintStyle.Stroke, StrokeWidth = 2.4f, StrokeCap = SKStrokeCap.Round };
             float.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var n);
             var choice = SlotChoices.Get(kind, value);
+
+            // A variable or "al azar" where a number goes: a word in a pill
+            // (a die for random), the same in every kind of slot.
+            if (SlotChoices.IsSpecial(value) || kind is SlotKind.Variable or SlotKind.Function)
+            {
+                var pill = new SKRect(r.Left + 2, r.MidY - 13, r.Right - 2, r.MidY + 13);
+                using (var bg = new SKPaint { Color = SKColors.White.WithAlpha((byte)(ink.Alpha * 0.92f)), IsAntialias = true })
+                    canvas.DrawRoundRect(pill, 13, 13, bg);
+                if (value == "random")
+                {
+                    var die = new SKRect(pill.MidX - 11, pill.MidY - 11, pill.MidX + 11, pill.MidY + 11);
+                    using var dieInk = new SKPaint { Color = BlockStyle.Ink, IsAntialias = true, Style = SKPaintStyle.Stroke, StrokeWidth = 2 };
+                    canvas.DrawRoundRect(die, 4, 4, dieInk);
+                    using var dot = new SKPaint { Color = BlockStyle.Ink, IsAntialias = true };
+                    canvas.DrawCircle(die.Left + 6, die.Top + 6, 2.2f, dot);
+                    canvas.DrawCircle(die.MidX, die.MidY, 2.2f, dot);
+                    canvas.DrawCircle(die.Right - 6, die.Bottom - 6, 2.2f, dot);
+                }
+                else
+                {
+                    var font = style.Small;
+                    string label = choice.Label;
+                    while (label.Length > 3 && font.MeasureText(label) > pill.Width - 10)
+                        label = label[..^2] + "…";
+                    Text(canvas, font, label, pill.MidX, pill.MidY, BlockStyle.Ink);
+                }
+                return;
+            }
 
             switch (kind)
             {
@@ -375,6 +410,24 @@ namespace DanaProcessing.Ide.Blocks
                         case "mouse": BlockIcons.DrawPath(canvas, "M12 3a6 6 0 0 0-6 6v6a6 6 0 0 0 12 0V9a6 6 0 0 0-6-6zM12 3v6", false, box, ink, 2.2f); break;
                         case "key": BlockIcons.DrawPath(canvas, "M4 6h16v12H4zM8 14h8", false, box, ink, 2.2f); break;
                         case "coin": canvas.DrawCircle(box.MidX, box.MidY, 12, faint); Text(canvas, style.Number, "?", box.MidX, box.MidY, ink); break;
+                        case "right": BlockIcons.DrawPath(canvas, "M4 12h16M14 6l6 6-6 6", false, box, ink, 2.6f); break;
+                        case "left": BlockIcons.DrawPath(canvas, "M20 12H4M10 6l-6 6 6 6", false, box, ink, 2.6f); break;
+                        case "up": BlockIcons.DrawPath(canvas, "M12 20V4M6 10l6-6 6 6", false, box, ink, 2.6f); break;
+                        case "down": BlockIcons.DrawPath(canvas, "M12 4v16M6 14l6 6 6-6", false, box, ink, 2.6f); break;
+                        case "space": BlockIcons.DrawPath(canvas, "M3 10v4h18v-4", false, box, ink, 2.6f); break;
+                        case "mouseRight":
+                        case "mouseTop":
+                        {
+                            var frame = new SKRect(r.MidX - 19, r.MidY - 13, r.MidX + 19, r.MidY + 13);
+                            canvas.DrawRoundRect(frame, 4, 4, faint);
+                            var half = value == "mouseRight" ? new SKRect(frame.MidX, frame.Top, frame.Right, frame.Bottom) : new SKRect(frame.Left, frame.Top, frame.Right, frame.MidY);
+                            using (var shade = new SKPaint { Color = ink.WithAlpha((byte)(ink.Alpha * 0.45f)), IsAntialias = true })
+                                canvas.DrawRoundRect(half, 4, 4, shade);
+                            break;
+                        }
+                        case "counter10":
+                            Text(canvas, style.Number, "≥10", box.MidX, box.MidY, ink);
+                            break;
                         default:
                             BlockIcons.DrawPath(canvas, "M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z", false, new SKRect(box.Left - 8, box.Top, box.Right - 8, box.Bottom), ink, 2);
                             Text(canvas, style.Number, "10", box.Right + 8, box.MidY, ink);

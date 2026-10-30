@@ -259,7 +259,12 @@ namespace DanaProcessing.Ide.Blocks
         // =================================================================
 
         public IReadOnlyList<BlockCategory> VisibleCategories() =>
-            BlockCatalog.Categories.Where(c => BlockCatalog.InCategory(c).Any(d => Palette is null || Palette.Contains(d.Type))).ToList();
+            BlockCatalog.Categories
+                .Where(c => BlockCatalog.InCategory(c).Any(d => Palette is null || Palette.Contains(d.Type)))
+                // Variables and "Inventar" are for Renglones -- unless a challenge asks for them, or the program already has them.
+                .Where(c => View == BlockView.Lines || !BlockCatalog.IsForOlderKids(c) || Palette is not null
+                            || Program.AllBlocks().Any(b => b.Def.Category == c))
+                .ToList();
 
         public void ShowCategory(BlockCategory category)
         {
@@ -631,7 +636,7 @@ namespace DanaProcessing.Ide.Blocks
             float titleH = TitleHeight;
             float x = 0, y = 0, rowH = 0, widest = 0;
             var placed = new List<(SlotChoice, SKRect)>();
-            foreach (var choice in SlotChoices.For(kind))
+            foreach (var choice in SlotChoices.For(kind, withVariables: View == BlockView.Lines))
             {
                 var size = _renderer.OptionSize(kind, choice);
                 if (x > 0 && x + size.Width > maxRow) { x = 0; y += rowH + gap; rowH = 0; }
@@ -836,6 +841,10 @@ namespace DanaProcessing.Ide.Blocks
             SlotKind.Beats => Loc.Tr("¿Cuánto dura?", "How long?"),
             SlotKind.Instrument => Loc.Tr("¿Qué instrumento?", "Which instrument?"),
             SlotKind.Condition => Loc.Tr("¿Cuándo?", "When?"),
+            SlotKind.Variable => Loc.Tr("¿Qué variable?", "Which variable?"),
+            SlotKind.Number => Loc.Tr("¿Qué número?", "Which number?"),
+            SlotKind.Amount => Loc.Tr("¿Cuánto cambia?", "Change by how much?"),
+            SlotKind.Function => Loc.Tr("¿Qué palabra nueva?", "Which new word?"),
             _ => "",
         };
 

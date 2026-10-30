@@ -370,6 +370,67 @@ public class BlocksWorkspacePaintTests
     }
 }
 
+public class BlocksWorkspaceNewWordsTests
+{
+    [Theory]
+    [MemberData(nameof(BlocksWorkspaceTests.Views), MemberType = typeof(BlocksWorkspaceTests))]
+    public void A_new_word_s_name_can_be_picked_on_its_start_block(BlockView view)
+    {
+        var p = new BlockProgram { View = view };
+        var define = p.AddStack(40, 40, BlockCatalog.Define);
+        var loop = p.NewBlock(BlockCatalog.Repeat);
+        var forward = p.NewBlock(BlockCatalog.Forward);
+        forward.Values["steps"] = "var:lado";
+        loop.Body!.Add(forward);
+        loop.Body!.Add(p.NewBlock(BlockCatalog.Right));
+        var change = p.NewBlock(BlockCatalog.VarChange);
+        loop.Body!.Add(change);
+        define.Blocks.Add(loop);
+        var main = p.AddStack(40, view == BlockView.Lines ? 420 : 260, BlockCatalog.Start, BlockCatalog.VarSet, BlockCatalog.Call);
+
+        var ws = new BlocksWorkspace(p) { ViewWidth = 1200, ViewHeight = 760 };
+        using var surface = SKSurface.Create(new SKImageInfo(1200, 760));
+        ws.Paint(surface.Canvas);
+        var dir = Environment.GetEnvironmentVariable("DANA_BLOCKS_SHOTS");
+        if (!string.IsNullOrEmpty(dir))
+        {
+            Directory.CreateDirectory(dir);
+            using var image = surface.Snapshot();
+            using var data = image.Encode(SKEncodedImageFormat.Png, 100);
+            File.WriteAllBytes(Path.Combine(dir, $"{view}-11-new-words.png"), data.ToArray());
+        }
+
+        var slot = ws.ScreenRectOfSlot(define.Blocks[0].Id, "fn");
+        Assert.NotNull(slot);
+        ws.PointerDown(new SKPoint(slot!.Value.MidX, slot.Value.MidY));
+        ws.PointerUp(new SKPoint(slot.Value.MidX, slot.Value.MidY));
+        var names = ws.PickerOptions.Select(o => o.Choice.Value).ToList();
+        Assert.Contains("flower", names);
+
+        // The steps picker offers the variables in Renglones only.
+        ws.PointerDown(new SKPoint(5000, 5000)); ws.PointerUp(new SKPoint(5000, 5000));
+        var steps = ws.ScreenRectOfSlot(forward.Id, "steps")!.Value;
+        ws.PointerDown(new SKPoint(steps.MidX, steps.MidY));
+        ws.PointerUp(new SKPoint(steps.MidX, steps.MidY));
+        bool offersVariables = ws.PickerOptions.Any(o => o.Choice.Value == "var:lado");
+        Assert.Equal(view == BlockView.Lines, offersVariables);
+        Assert.Contains(ws.PickerOptions, o => o.Choice.Value == "random");
+    }
+
+    [Fact]
+    public void Fichas_keeps_variables_and_new_words_off_its_palette_unless_the_program_uses_them()
+    {
+        var p = new BlockProgram { View = BlockView.Tiles };
+        p.AddStack(40, 40, BlockCatalog.Start, BlockCatalog.Forward);
+        var ws = new BlocksWorkspace(p);
+        Assert.DoesNotContain(BlockCategory.Variables, ws.VisibleCategories());
+        Assert.DoesNotContain(BlockCategory.MyBlocks, ws.VisibleCategories());
+        ws.SetView(BlockView.Lines);
+        Assert.Contains(BlockCategory.Variables, ws.VisibleCategories());
+        Assert.Contains(BlockCategory.MyBlocks, ws.VisibleCategories());
+    }
+}
+
 /// <summary>Fingers on a touch screen: wobbly taps, swiping the palette, pinching to zoom.</summary>
 public class BlocksWorkspaceTouchTests
 {
