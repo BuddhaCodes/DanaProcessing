@@ -58,10 +58,13 @@ namespace DanaProcessing.Ide.Blocks
         public const string TurtleField = "tortuga";
         public const string ScoreField = "puntos";
 
-        public static GeneratedCode Generate(BlockProgram program, bool instrument = false, ChallengeScene? scene = null)
+        /// <param name="english">Names in the code (the turtle, variables, own words): English or Spanish; null = the IDE's language.</param>
+        public static GeneratedCode Generate(BlockProgram program, bool instrument = false, ChallengeScene? scene = null, bool? english = null)
         {
-            var g = new Writer(program, instrument);
-            return g.Run(scene);
+            var code = new Writer(program, instrument).Run(scene);
+            return english ?? CodeWords.English
+                ? new GeneratedCode(CodeWords.ToEnglish(code.Source), code.BlockLines)
+                : code;
         }
 
         /// <summary>A valid C# class name from whatever the program is called ("Mi dibujo 2" -> "MiDibujo2").</summary>
@@ -84,7 +87,7 @@ namespace DanaProcessing.Ide.Blocks
                 }
             }
             if (sb.Length == 0 || char.IsDigit(sb[0]))
-                sb.Insert(0, "Programa");
+                sb.Insert(0, Loc.Tr("Programa", "Program"));
             var result = sb.ToString();
             return result == "Sketch" || result == "Turtle" ? result + "1" : result;
         }
@@ -100,6 +103,10 @@ namespace DanaProcessing.Ide.Blocks
 
             private readonly List<BlockStack> _scripts;
             private readonly bool _usesTurtle, _usesScore, _usesSquare;
+            private readonly List<SlotChoice> _variables;
+            // The child's own blocks: name -> the names it uses, and which
+            // calls would loop forever (a word explained with itself).
+            private readonly Dictionary<string, HashSet<string>> _calls = new();
 
             public Writer(BlockProgram program, bool instrument)
             {
@@ -111,7 +118,55 @@ namespace DanaProcessing.Ide.Blocks
                 _usesSquare = running.Any(b => b.Type == BlockCatalog.Square);
                 _usesScore = running.Any(b => b.Def.Category == BlockCategory.Score
                                               || (b.Type == BlockCatalog.If && b.Value("cond") == "score10"));
+
+                var usedNames = new HashSet<string>();
+                foreach (var b in running)
+                {
+                    foreach (var slot in b.Def.Slots)
+                    {
+                        var value = b.Value(slot.Name);
+                        if (slot.Kind == SlotKind.Variable)
+                            usedNames.Add(value);
+                        else if (value.StartsWith(SlotChoices.VariablePrefix, StringComparison.Ordinal))
+                            usedNames.Add(value[SlotChoices.VariablePrefix.Length..]);
+                        else if (slot.Kind == SlotKind.Condition && value == "counter10")
+                            usedNames.Add("contador");
+                    }
+                }
+                _variables = SlotChoices.Variables.Where(v => usedNames.Contains(v.Value)).ToList();
+
+                foreach (var define in _scripts.Where(s => s.Hat!.Type == BlockCatalog.Define))
+                {
+                    var name = define.Hat!.Value("fn");
+                    if (!_calls.TryGetValue(name, out var calls))
+                        _calls[name] = calls = new HashSet<string>();
+                    foreach (var b in define.Blocks.Skip(1).SelectMany(x => x.SelfAndDescendants()).Where(x => x.Type == BlockCatalog.Call))
+                        calls.Add(b.Value("fn"));
+                }
             }
+
+            /// <summary>Whether <paramref name="from"/> ends up using <paramref name="target"/> (directly or through other words).</summary>
+            private bool Reaches(string from, string target)
+            {
+                var seen = new HashSet<string>();
+                var todo = new Stack<string>();
+                todo.Push(from);
+                while (todo.Count > 0)
+                {
+                    var n = todo.Pop();
+                    if (!seen.Add(n) || !_calls.TryGetValue(n, out var next))
+                        continue;
+                    foreach (var m in next)
+                    {
+                        if (m == target)
+                            return true;
+                        todo.Push(m);
+                    }
+                }
+                return false;
+            }
+
+            private string? _defining;
 
             private List<BlockStack> ScriptsFor(string hat) => _scripts.Where(s => s.Hat!.Type == hat).ToList();
 
@@ -125,6 +180,7 @@ namespace DanaProcessing.Ide.Blocks
                 bool fields = false;
                 if (_usesTurtle) { Line($"Turtle {TurtleField};"); fields = true; }
                 if (_usesScore) { Line($"int {ScoreField} = 0;"); fields = true; }
+                foreach (var v in _variables) { Line($"float {v.Code} = 0;"); fields = true; }
                 if (fields) Blank();
 
                 // Setup: always there -- the size and a white page come first,
@@ -161,6 +217,20 @@ namespace DanaProcessing.Ide.Blocks
 
                 Event(BlockCatalog.Click, "public override void MousePressed()");
                 Event(BlockCatalog.Key, "public override void KeyPressed()");
+
+                // The child's own words, each a method: "para hacer un cuadrado" -> void Cuadrado().
+                foreach (var group in ScriptsFor(BlockCatalog.Define).GroupBy(s => s.Hat!.Value("fn")))
+                {
+                    var choice = SlotChoices.Get(SlotKind.Function, group.Key);
+                    Blank();
+                    Line($"void {choice.Code}()");
+                    Open();
+                    _defining = group.Key;
+                    foreach (var script in group)
+                        Script(script);
+                    _defining = null;
+                    Close();
+                }
 
                 int n = 1;
                 foreach (var loop in ScriptsFor(BlockCatalog.MusicLoop))
@@ -278,6 +348,38 @@ namespace DanaProcessing.Ide.Blocks
                             Line(Loc.Tr("// \"esperar\" solo funciona dentro de \"música que se repite\"",
                                         "// \"wait\" only works inside \"music that repeats\""));
                         break;
+
+                    case BlockCatalog.VarSet: Line($"{Code("var")} = {Code("value")};"); break;
+                    case BlockCatalog.VarChange:
+                    {
+                        string v = Code("var"), amount = Code("amount");
+                        Line(amount.StartsWith('-') ? $"{v} = {v} - {amount[1..]};" : $"{v} = {v} + {amount};");
+                        break;
+                    }
+                    case BlockCatalog.VarShow:
+                    {
+                        // Each variable on its own line of the canvas, so two "mostrar" don't overlap.
+                        int row = SlotChoices.Variables.ToList().FindIndex(v => v.Value == b.Value("var"));
+                        Line("Fill(30, 30, 30);");
+                        Line("TextSize(28);");
+                        Line($"Text(\"{Name("var")}: \" + {Code("var")}, 20, {40 + Math.Max(0, row) * 36});");
+                        break;
+                    }
+
+                    case BlockCatalog.Call:
+                    {
+                        var fn = b.Value("fn");
+                        string method = Code("fn");
+                        if (!_calls.ContainsKey(fn))
+                            Line(Loc.Tr($"// \"{Name("fn")}\" todavía no tiene bloques: armalo con \"para hacer {Name("fn")}\"",
+                                        $"// \"{Name("fn")}\" has no blocks yet: build it with \"to make {Name("fn")}\""));
+                        else if (_defining is { } current && (fn == current || Reaches(fn, current)))
+                            // Would call itself forever (and crash): leave it out, and say why.
+                            Line(Loc.Tr($"// \"{Name("fn")}\" no puede usarse dentro de sí mismo", $"// \"{Name("fn")}\" can't be used inside itself"));
+                        else
+                            Line($"{method}();");
+                        break;
+                    }
 
                     case BlockCatalog.ScoreReset: Line($"{ScoreField} = 0;"); break;
                     case BlockCatalog.ScoreAdd: Line($"{ScoreField} = {ScoreField} + 1;"); break;
