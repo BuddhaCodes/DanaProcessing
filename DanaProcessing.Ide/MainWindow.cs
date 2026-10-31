@@ -1287,6 +1287,7 @@ namespace DanaProcessing.Ide
                 BuildMenuItem("📝", Loc.Tr("Crear un reto con estos bloques...", "Create a challenge from these blocks..."), null, CreateChallenge),
                 BuildMenuItem("🔤", Loc.Tr("Ordenar el código...", "Put the code in order..."), null, () => new ParsonsWindow().Show(this)),
                 BuildMenuItem("🧩", Loc.Tr("Pasar este código a bloques", "Turn this code into blocks"), null, () => _ = CodeToBlocksAsync()),
+                BuildMenuItem("🏫", Loc.Tr("Modo aula...", "Classroom..."), null, OpenClassroom),
                 BuildMenuItem("📂", Loc.Tr("Abrir...", "Open..."), "Ctrl+O", () => _ = _editorView.OpenFileAsync()),
                 MenuSeparator(),
                 BuildMenuItem("💾", Loc.Tr("Guardar", "Save"), "Ctrl+S", () => _ = _editorView.SaveActiveTabAsync()),
@@ -1452,6 +1453,14 @@ namespace DanaProcessing.Ide
             }
             result.Program.Name = System.IO.Path.GetFileNameWithoutExtension(tab.FilePath) is { Length: > 0 } file ? file : result.Program.Name;
             _editorView.AddBlocksTab(result.Program);
+        }
+
+        /// <summary>Modo aula: hand in progress, the class gallery, the teacher's summary. All files, no server.</summary>
+        private void OpenClassroom()
+        {
+            var window = new ClassroomWindow(() => _editorView.ActiveTab?.Blocks);
+            window.OpenProgram += program => _editorView.AddBlocksTab(program);
+            window.Show(this);
         }
 
         /// <summary>Opens a challenge -- or switches to the tab already working on it.</summary>

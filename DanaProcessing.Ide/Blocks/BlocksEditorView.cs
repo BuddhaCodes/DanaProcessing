@@ -698,6 +698,7 @@ namespace DanaProcessing.Ide.Blocks
             if (result.Passed)
             {
                 ChallengeProgress.Record(challenge.Id, result.Stars);
+                Classroom.SaveSolution(challenge.Id, _workspace.Program); // to hand in (Modo aula)
                 ShowChallenge(challenge);
                 BlocksChrome.SetText(_nextButton, ChallengeCatalog.Next(challenge.Id) is null
                     ? Loc.Tr("Ver todos los retos", "See all challenges")

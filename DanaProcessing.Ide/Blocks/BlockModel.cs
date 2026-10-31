@@ -84,6 +84,9 @@ namespace DanaProcessing.Ide.Blocks
         /// <summary>How the program is shown: picture tiles (6-8 years) or sentences on lines (9-12).</summary>
         public BlockView View { get; set; } = BlockView.Tiles;
 
+        /// <summary>Who made it, when it's shared in a class gallery (see Classroom).</summary>
+        public string? Author { get; set; }
+
         /// <summary>A new block of <paramref name="type"/> with a fresh id and every slot at its default.</summary>
         public Block NewBlock(string type)
         {
