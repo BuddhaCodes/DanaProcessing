@@ -83,6 +83,16 @@ namespace DanaProcessing.Ide.Blocks
                     : Loc.Tr("Hechos con DanaProcessing, a la medida de tu clase.", "Made with DanaProcessing, for your class."),
                 FontSize = 15, FontFamily = BlocksChrome.FontUi, Foreground = BlocksChrome.InkSoft, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 10),
             };
+            // The next level: real C# lines to put in order.
+            var parsons = BlocksChrome.Button(BlocksChrome.Icons.Code, Loc.Tr("Ordenar el código", "Put the code in order"), "outline");
+            ToolTip.SetTip(parsons, Loc.Tr("El paso siguiente: líneas de C# de verdad, mezcladas, para ordenar", "The next step: real C# lines, shuffled, to put in order"));
+            parsons.Click += (_, _) =>
+            {
+                new ParsonsWindow().Show(Owner as Window ?? this);
+                Close();
+            };
+            summary.Children.Add(new Border { Width = 18 });
+            summary.Children.Add(parsons);
             var teacherButtons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Margin = new Thickness(0, 0, 0, 14), Children = { open, folder } };
 
             var content = new ScrollViewer
