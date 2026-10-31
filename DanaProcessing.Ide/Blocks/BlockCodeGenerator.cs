@@ -58,10 +58,13 @@ namespace DanaProcessing.Ide.Blocks
         public const string TurtleField = "tortuga";
         public const string ScoreField = "puntos";
 
-        public static GeneratedCode Generate(BlockProgram program, bool instrument = false, ChallengeScene? scene = null)
+        /// <param name="english">Names in the code (the turtle, variables, own words): English or Spanish; null = the IDE's language.</param>
+        public static GeneratedCode Generate(BlockProgram program, bool instrument = false, ChallengeScene? scene = null, bool? english = null)
         {
-            var g = new Writer(program, instrument);
-            return g.Run(scene);
+            var code = new Writer(program, instrument).Run(scene);
+            return english ?? CodeWords.English
+                ? new GeneratedCode(CodeWords.ToEnglish(code.Source), code.BlockLines)
+                : code;
         }
 
         /// <summary>A valid C# class name from whatever the program is called ("Mi dibujo 2" -> "MiDibujo2").</summary>
@@ -84,7 +87,7 @@ namespace DanaProcessing.Ide.Blocks
                 }
             }
             if (sb.Length == 0 || char.IsDigit(sb[0]))
-                sb.Insert(0, "Programa");
+                sb.Insert(0, Loc.Tr("Programa", "Program"));
             var result = sb.ToString();
             return result == "Sketch" || result == "Turtle" ? result + "1" : result;
         }

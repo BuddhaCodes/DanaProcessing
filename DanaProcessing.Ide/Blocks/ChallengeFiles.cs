@@ -145,7 +145,7 @@ namespace DanaProcessing.Ide.Blocks
                 Id = ChallengeFiles.IdPrefix + Id,
                 TitleEs = Title, TitleEn = Title,
                 GoalEs = Goal, GoalEn = Goal,
-                HintEs = string.IsNullOrWhiteSpace(Hint) ? Loc.Tr("Pedile una pista a tu docente.", "Ask your teacher for a hint.") : Hint,
+                HintEs = string.IsNullOrWhiteSpace(Hint) ? "Pedile una pista a tu docente." : Hint,
                 HintEn = string.IsNullOrWhiteSpace(Hint) ? "Ask your teacher for a hint." : Hint,
                 Icon = "📝",
                 View = View,
