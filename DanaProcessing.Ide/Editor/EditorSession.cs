@@ -20,6 +20,8 @@ namespace DanaProcessing.Ide.Editor
         public string? Text { get; set; }
         public bool Dirty { get; set; }
         public int Caret { get; set; }
+        /// <summary>A blocks tab's program (JSON), stored like Text: for untitled tabs and unsaved edits.</summary>
+        public string? Blocks { get; set; }
     }
 
     /// <summary>JSON under the IDE's AppData folder, same place as its other settings.</summary>

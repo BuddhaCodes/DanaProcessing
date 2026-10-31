@@ -93,6 +93,15 @@ namespace DanaProcessing
 
                 newField.SetValue(newSketch, oldField.GetValue(oldSketch));
             }
+
+            // Turtles came along (the field holding them, and the sketch's list of
+            // them), but each one still points at the old instance: it would keep
+            // drawing on that one's canvas. Move them over.
+            // (A sketch made without running its constructor has no list at all.)
+            if (newSketch.Turtles is { } turtles)
+                lock (turtles)
+                    foreach (var turtle in turtles)
+                        turtle.Rebind(newSketch);
         }
 
         /// <summary>

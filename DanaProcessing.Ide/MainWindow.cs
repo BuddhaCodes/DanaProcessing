@@ -13,6 +13,7 @@ using Avalonia.Threading;
 using DanaProcessing;
 using DanaProcessing.Audio;
 using DanaProcessing.AvaloniaHost;
+using DanaProcessing.Ide.Blocks;
 using DanaProcessing.Ide.Compilation;
 using DanaProcessing.Ide.CrashReporting;
 using DanaProcessing.Ide.Compilation.PackageManagement;
@@ -197,6 +198,7 @@ namespace DanaProcessing.Ide
             _editorView.ReferencesFound += UpdateReferencesFound;
             _editorView.StatusMessageRequested += ShowTransientStatus;
             _editorView.TabSaved += OnTabSaved;
+            WireBlocksView();
             _editorView.TypingActivityChanged += OnTypingActivityChanged;
             // A running sketch keeps running -- while you type, on the "Code"
             // pane of a narrow window, minimized -- in step with its sound,
@@ -1280,6 +1282,8 @@ namespace DanaProcessing.Ide
             var fileMenu = BuildTextMenu(Loc.Tr("Archivo", "File"), new Control[]
             {
                 BuildMenuItem("＋", Loc.Tr("Nuevo", "New"), "Ctrl+N", NewSketch),
+                BuildMenuItem("🧩", Loc.Tr("Nuevo con bloques", "New with blocks"), null, NewBlocksProgram),
+                BuildMenuItem("🏆", Loc.Tr("Retos con bloques...", "Block challenges..."), null, OpenChallenges),
                 BuildMenuItem("📂", Loc.Tr("Abrir...", "Open..."), "Ctrl+O", () => _ = _editorView.OpenFileAsync()),
                 MenuSeparator(),
                 BuildMenuItem("💾", Loc.Tr("Guardar", "Save"), "Ctrl+S", () => _ = _editorView.SaveActiveTabAsync()),
@@ -1351,6 +1355,56 @@ namespace DanaProcessing.Ide
         }
 
         private void NewSketch() => _ = ReplaceContextIfConfirmedAsync(() => _editorView.ReplaceAllTabs());
+
+        // ================================================================
+        // BLOCKS MODE
+        // ================================================================
+
+        private void WireBlocksView()
+        {
+            var blocks = _editorView.BlocksView;
+            blocks.RunRequested += () => _ = RunCurrentSketchAsync();
+            blocks.StopRequested += StopCurrentSketch;
+            blocks.ConvertToCodeRequested += code => _editorView.AddNewTab(null, code);
+            blocks.ChallengesRequested += OpenChallenges;
+            blocks.ChallengeRequested += OpenChallenge;
+        }
+
+        /// <summary>A new tab with an empty block program (just "al empezar", to start from), shown the way picked for its age.</summary>
+        private void NewBlocksProgram() => _ = NewBlocksProgramAsync();
+
+        private async Task NewBlocksProgramAsync()
+        {
+            if (await NewBlocksDialog.ShowAsync(this) is not { } view)
+                return;
+            var program = new BlockProgram { Name = Loc.Tr("Mi programa", "My program"), View = view };
+            program.AddStack(40, 40, BlockCatalog.Start);
+            _editorView.AddBlocksTab(program);
+        }
+
+        private void OpenChallenges()
+        {
+            var window = new ChallengesWindow();
+            window.ChallengeChosen += OpenChallenge;
+            window.Show(this);
+        }
+
+        /// <summary>Opens a challenge -- or switches to the tab already working on it.</summary>
+        private void OpenChallenge(Challenge challenge)
+        {
+            if (!_editorView.ActivateChallengeTab(challenge.Id))
+                _editorView.AddBlocksTab(challenge.NewProgram());
+        }
+
+        /// <summary>A sketch just started in the canvas: if it came from the blocks tab on screen, its blocks light up as they run.</summary>
+        private void NotifyBlocksView(Sketch sketch)
+        {
+            var blocks = _editorView.BlocksView;
+            if (_editorView.ActiveTab is { Blocks: not null } tab && ReferenceEquals(blocks.Tab, tab))
+                blocks.SketchStarted(sketch);
+            else
+                blocks.SketchStopped();
+        }
 
         private void OpenSamples() =>
             new SamplesWindow(source => _ = ReplaceContextIfConfirmedAsync(() => _editorView.ReplaceAllTabs(null, source))).ShowDialog(this);
@@ -1599,7 +1653,8 @@ namespace DanaProcessing.Ide
         /// </summary>
         private async Task<CompileResult?> ResolveAndCompileActiveSketchAsync()
         {
-            var source = _editorView.ActiveSourceText;
+            // A blocks tab runs its program with the lines that light blocks up.
+            var source = _editorView.ActiveRunSource;
             if (string.IsNullOrWhiteSpace(source))
                 return null;
 
@@ -2058,6 +2113,8 @@ namespace DanaProcessing.Ide
                 }
 
                 var plan = _canvas.HotReloadSketch(result.Sketch!);
+                if (plan.CanApply)
+                    NotifyBlocksView(result.Sketch!); // the new instance is the one running now
 
                 if (!plan.CanApply)
                 {
@@ -2441,6 +2498,7 @@ namespace DanaProcessing.Ide
                 return;
             _canvas.Stop();
             AudioEngine.StopEverything();
+            _editorView.BlocksView.SketchStopped();
             _runningTab = null; // nothing live to hot-reload into any more
             UpdateHotReloadButtonEnabled();
             _statusDot.Fill = ClayTheme.TextMuted;

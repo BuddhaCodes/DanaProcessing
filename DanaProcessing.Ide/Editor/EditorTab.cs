@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.IO;
 using System.Runtime.CompilerServices;
 using AvaloniaEdit.Document;
+using DanaProcessing.Ide.Blocks;
 using DanaProcessing.Ide.Localization;
 
 namespace DanaProcessing.Ide.Editor
@@ -48,9 +49,50 @@ namespace DanaProcessing.Ide.Editor
             }
         }
 
-        /// <summary>Text shown on the tab header: file name (or "Sin nombre") plus a dirty marker.</summary>
+        /// <summary>Text shown on the tab header: file name (or "Sin nombre") plus a dirty marker; 🧩 for a blocks tab.</summary>
         public string Title =>
-            (FilePath is null ? Loc.Tr("Sin nombre", "Untitled") : Path.GetFileNameWithoutExtension(FilePath)) + (IsDirty ? " *" : "");
+            (Blocks is null ? "" : "🧩 ")
+            + (FilePath is not null ? Path.GetFileNameWithoutExtension(FilePath)
+               : Blocks is not null ? Blocks.Name
+               : Loc.Tr("Sin nombre", "Untitled"))
+            + (IsDirty ? " *" : "");
+
+        /// <summary>
+        /// The block program, for a tab made with blocks (null for an ordinary
+        /// code tab). Its <see cref="Document"/> then always holds the C# the
+        /// blocks become -- read-only for the child, but it's what live
+        /// diagnostics, "Pasar a código" and exporting see.
+        /// </summary>
+        public BlockProgram? Blocks { get; set; }
+
+        /// <summary>A blocks tab showing <paramref name="program"/>.</summary>
+        public EditorTab(string? filePath, BlockProgram program)
+            : this(filePath, BlockCodeGenerator.Generate(program).Source)
+        {
+            Blocks = program;
+        }
+
+        /// <summary>Regenerates <see cref="Document"/> after the blocks changed (which marks the tab dirty).</summary>
+        public void RefreshFromBlocks()
+        {
+            if (Blocks is null)
+                return;
+            var source = BlockCodeGenerator.Generate(Blocks).Source;
+            if (Document.Text != source)
+                Document.Text = source;
+            else
+                IsDirty = true; // moved a block without changing the code: still worth saving
+            OnPropertyChanged(nameof(Title));
+        }
+
+        /// <summary>
+        /// What Run compiles: the document for a code tab; for a blocks tab, the
+        /// same program with the lines that light blocks up, plus the
+        /// challenge's guide if it's a challenge.
+        /// </summary>
+        public string RunSource => Blocks is null
+            ? Document.Text
+            : BlockCodeGenerator.Generate(Blocks, instrument: true, scene: ChallengeCatalog.Get(Blocks.ChallengeId)?.Scene()).Source;
 
         public EditorTab(string? filePath, string initialText)
         {
