@@ -62,6 +62,8 @@ namespace DanaProcessing.Ide.Blocks
             public const string Bulb = "M9 18h6 M10 21h4 M12 3a6 6 0 0 0-3.8 10.6c.6.5.8 1.3.8 2.4h6c0-1.1.2-1.9.8-2.4A6 6 0 0 0 12 3z";
             public const string Star = "M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z";
             public const string Check = "M5 12.5l4.5 4.5L19 7.5";
+            public const string Steps = "M8 17c-1.6 0-2.8-1.6-2.8-4.2S6.4 7.5 8 7.5s2.8 2.4 2.8 5.1S9.6 17 8 17z M6.5 20.5h3 M16 13c-1.6 0-2.8-1.6-2.8-4.2S14.4 3.5 16 3.5s2.8 2.4 2.8 5.1S17.6 13 16 13z M14.5 16.5h3";
+            public const string NextStep = "M5 5v14 M9 6.5v11l9-5.5z";
             public const string Retry = "M20 12a8 8 0 1 1-2.6-5.9 M20 4v5h-5";
         }
 
@@ -89,6 +91,16 @@ namespace DanaProcessing.Ide.Blocks
                 foreach (var child in row.Children)
                     if (child is TextBlock t)
                         t.Text = text;
+        }
+
+        /// <summary>Shows or hides a button's label (narrow windows keep just the icon; the tooltip still says what it is).</summary>
+        public static void ShowLabel(Button button, bool show)
+        {
+            if (button.Content is StackPanel row)
+                foreach (var child in row.Children)
+                    if (child is TextBlock t)
+                        t.IsVisible = show;
+            button.Classes.Set("icon", !show);
         }
 
         public static Control Divider() => new Border
@@ -135,6 +147,16 @@ namespace DanaProcessing.Ide.Blocks
                 Presenter(x => x.OfType<Button>().Class("bk").Class("go"), Go, Brushes.White, "0 3 0 0 #2C8550"),
                 Presenter(x => x.OfType<Button>().Class("bk").Class("go").Class(":pointerover"), Brush("#46B872"), Brushes.White, "0 3 0 0 #2C8550"),
                 Presenter(x => x.OfType<Button>().Class("bk").Class("go").Class(":pressed"), GoEdge, Brushes.White, "0 1 0 0 #2C8550"),
+
+                // "Siguiente paso": gold, the color of a lit block.
+                Rule(x => x.OfType<Button>().Class("bk").Class("step"),
+                    (TemplatedControl.PaddingProperty, new Thickness(18, 0, 20, 0)),
+                    (TemplatedControl.FontSizeProperty, 16.5),
+                    (Layoutable.MinHeightProperty, 46.0)),
+                Presenter(x => x.OfType<Button>().Class("bk").Class("step"), Brush("#FFC93C"), Ink, "0 3 0 0 #D49A12"),
+                Presenter(x => x.OfType<Button>().Class("bk").Class("step").Class(":pointerover"), Brush("#FFD35E"), Ink, "0 3 0 0 #D49A12"),
+                Presenter(x => x.OfType<Button>().Class("bk").Class("step").Class(":pressed"), Brush("#F2B705"), Ink, "0 1 0 0 #D49A12"),
+                Presenter(x => x.OfType<Button>().Class("bk").Class("step").Class(":disabled"), Brush("#F3EBD9"), InkMuted),
 
                 // A white card with a hairline: secondary actions that lead somewhere.
                 Presenter(x => x.OfType<Button>().Class("bk").Class("outline"), Brushes.White, Ink, "0 0 0 1.5 #E2D9CB"),
