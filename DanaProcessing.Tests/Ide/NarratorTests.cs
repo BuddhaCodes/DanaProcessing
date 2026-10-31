@@ -34,22 +34,36 @@ namespace DanaProcessing.Tests.Ide
         }
 
         [Fact]
-        public void Speaks_with_the_system_voice_when_there_is_one_and_stops_on_request()
+        public void Speaking_starts_a_process_and_stop_ends_it()
         {
+            // Never the real voice in tests: it would make noise, and its
+            // audio libraries have no business in the test run.
+            if (System.OperatingSystem.IsWindows())
+                return;
             Narrator.Reset();
             if (!Narrator.IsAvailable)
             {
                 Assert.False(Narrator.Speak("hola", spanish: true)); // no voice: quietly does nothing
                 return;
             }
-            if (!System.OperatingSystem.IsLinux())
-                return; // don't make noise on developers' Windows/Mac machines
-
-            Assert.True(Narrator.Speak("Hola, esto es una prueba bastante larga para poder detenerla a mitad de camino.", spanish: true));
-            Assert.True(Narrator.IsSpeaking);
-            Narrator.Stop();
-            Assert.False(Narrator.IsSpeaking);
-            Assert.False(Narrator.Speak("   ", spanish: true));
+            Narrator.TestCommand = () =>
+            {
+                var info = new ProcessStartInfo("sleep");
+                info.ArgumentList.Add("30");
+                return info;
+            };
+            try
+            {
+                Assert.True(Narrator.Speak("Hola", spanish: true));
+                Assert.True(Narrator.IsSpeaking);
+                Narrator.Stop();
+                Assert.False(Narrator.IsSpeaking);
+                Assert.False(Narrator.Speak("   ", spanish: true));
+            }
+            finally
+            {
+                Narrator.TestCommand = null;
+            }
         }
     }
 }

@@ -37,12 +37,24 @@ namespace DanaProcessing.Ide.Blocks
             if (_engine.Value is not { } engine || string.IsNullOrWhiteSpace(text))
                 return false;
             Stop();
-            var info = StartInfo(engine, Clean(text), spanish);
+            var info = TestCommand?.Invoke() ?? StartInfo(engine, Clean(text), spanish);
             info.UseShellExecute = false;
             info.CreateNoWindow = true;
+            // The voice's own chatter (audio warnings...) is read and dropped,
+            // never written into the IDE's console: the child doesn't share it.
+            info.RedirectStandardInput = true;
+            info.RedirectStandardOutput = true;
+            info.RedirectStandardError = true;
             try
             {
                 var process = Process.Start(info);
+                if (process is not null)
+                {
+                    process.OutputDataReceived += (_, _) => { };
+                    process.ErrorDataReceived += (_, _) => { };
+                    process.BeginOutputReadLine();
+                    process.BeginErrorReadLine();
+                }
                 lock (Gate)
                     _speaking = process;
                 return process is not null;
@@ -219,5 +231,8 @@ namespace DanaProcessing.Ide.Blocks
 
         /// <summary>For tests: look for an engine again.</summary>
         internal static void Reset() => _engine = new Lazy<Engine?>(Find);
+
+        /// <summary>For tests: the program started instead of the real voice (so tests never make sound).</summary>
+        internal static Func<ProcessStartInfo>? TestCommand { get; set; }
     }
 }
