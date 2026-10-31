@@ -42,6 +42,10 @@ namespace DanaProcessing.Ide.Blocks
             SlotKind.Beats => 72,
             SlotKind.Instrument => 86,
             SlotKind.Condition => 64,
+            SlotKind.Variable => 84,
+            SlotKind.Number => 64,
+            SlotKind.Amount => 56,
+            SlotKind.Function => 100,
             _ => 60,
         };
 
@@ -54,6 +58,9 @@ namespace DanaProcessing.Ide.Blocks
             var def = b.Def;
             switch (def.Shape)
             {
+                case BlockShape.Hat when def.Slots.Count > 0:
+                    // "para hacer {un cuadrado}": the icon and the name to pick, no label.
+                    return new SKSize(Math.Max(TileMinW, def.Slots.Sum(sl => SlotWidth(sl.Kind)) + 40), TileH);
                 case BlockShape.Hat:
                     // Wide enough for its little label ("al tocar una tecla"), for the grown-ups.
                     return new SKSize(Math.Max(TileMinW, _style.Small.MeasureText(def.Label) + 30), TileH);
@@ -290,6 +297,12 @@ namespace DanaProcessing.Ide.Blocks
                 canvas.DrawRoundRect(shape, paint);
             Highlight(canvas, shape, lit, selected);
 
+            if (def.Shape == BlockShape.Hat && def.Slots.Count > 0)
+            {
+                BlockIcons.Draw(canvas, def.Type, new SKRect(face.MidX - 21, face.Top + 12, face.MidX + 21, face.Top + 54), white, 2.6f);
+                PaintSlots(canvas, v, white, alpha);
+                return;
+            }
             if (def.Shape == BlockShape.Hat)
             {
                 BlockIcons.Draw(canvas, def.Type, new SKRect(face.MidX - 20, face.Top + 16, face.MidX + 20, face.Top + 56), white, 2.6f);
