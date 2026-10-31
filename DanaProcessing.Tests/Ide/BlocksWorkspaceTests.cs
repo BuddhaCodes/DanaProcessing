@@ -369,3 +369,88 @@ public class BlocksWorkspacePaintTests
         Assert.Equal(0, invalidations);
     }
 }
+
+/// <summary>Fingers on a touch screen: wobbly taps, swiping the palette, pinching to zoom.</summary>
+public class BlocksWorkspaceTouchTests
+{
+    private const int W = 1200, H = 760;
+
+    private static BlocksWorkspace NewWorkspace(BlockProgram p, BlockView view)
+    {
+        p.View = view;
+        var ws = new BlocksWorkspace(p) { ViewWidth = W, ViewHeight = H };
+        using var surface = SKSurface.Create(new SKImageInfo(W, H));
+        ws.Paint(surface.Canvas);
+        return ws;
+    }
+
+    private static (BlocksWorkspace Ws, Block Forward) OneForward(BlockView view)
+    {
+        var p = new BlockProgram();
+        var forward = p.AddStack(40, 40, BlockCatalog.Start, BlockCatalog.Forward).Blocks[1];
+        return (NewWorkspace(p, view), forward);
+    }
+
+    [Theory]
+    [MemberData(nameof(BlocksWorkspaceTests.Views), MemberType = typeof(BlocksWorkspaceTests))]
+    public void A_wobbly_finger_tap_on_a_value_still_opens_the_picker(BlockView view)
+    {
+        var (ws, forward) = OneForward(view);
+        var slot = ws.ScreenRectOfSlot(forward.Id, "steps")!.Value;
+        var at = new SKPoint(slot.MidX, slot.MidY);
+        var wobble = new SKPoint(at.X + 7, at.Y + 5);   // ~9 px: a drag for a mouse, a tap for a finger
+
+        ws.PointerDown(at, touch: true);
+        ws.PointerMove(wobble);
+        ws.PointerUp(wobble);
+        Assert.False(ws.IsDragging);
+        Assert.NotEmpty(ws.PickerOptions);
+    }
+
+    [Theory]
+    [MemberData(nameof(BlocksWorkspaceTests.Views), MemberType = typeof(BlocksWorkspaceTests))]
+    public void Swiping_up_on_the_palette_scrolls_it_and_sideways_pulls_a_block_out(BlockView view)
+    {
+        var (ws, _) = OneForward(view);
+        ws.ViewHeight = 300; // a short window: the turtle blocks don't all fit
+        ws.ShowCategory(BlockCategory.Turtle);
+        var item = ws.PaletteRectOf(BlockCatalog.Forward)!.Value;
+        var at = new SKPoint(item.MidX, item.MidY);
+        int blocks = ws.Program.AllBlocks().Count();
+
+        ws.PointerDown(at, touch: true);
+        ws.PointerMove(new SKPoint(at.X + 2, at.Y - 40));
+        ws.PointerMove(new SKPoint(at.X + 3, at.Y - 120));
+        ws.PointerUp(new SKPoint(at.X + 3, at.Y - 120));
+        Assert.False(ws.IsDragging);
+        Assert.True(ws.PaletteScroll < 0, "the palette moved up");
+        Assert.Equal(blocks, ws.Program.AllBlocks().Count());
+
+        item = ws.PaletteRectOf(BlockCatalog.Forward)!.Value;
+        at = new SKPoint(item.MidX, item.MidY);
+        ws.PointerDown(at, touch: true);
+        ws.PointerMove(new SKPoint(at.X + 60, at.Y + 4));
+        Assert.True(ws.IsDragging, "sideways: the block comes out");
+        ws.PointerUp(new SKPoint(700, 500));
+        Assert.Equal(blocks + 1, ws.Program.AllBlocks().Count());
+    }
+
+    [Fact]
+    public void Two_fingers_pinch_to_zoom_around_where_they_are()
+    {
+        var (ws, _) = OneForward(BlockView.Tiles);
+        var a = new SKPoint(600, 300);
+        var b = new SKPoint(800, 300);
+
+        ws.PointerDown(a, touch: true);                    // the first finger lands on empty space...
+        Assert.True(ws.PinchStart(a, b));                   // ...then the second
+        ws.PinchMove(new SKPoint(550, 300), new SKPoint(850, 300)); // 200 -> 300 px apart
+        Assert.Equal(1.5f, ws.Zoom, 3);
+        ws.PinchMove(new SKPoint(100, 300), new SKPoint(1100, 300));
+        Assert.Equal(2f, ws.Zoom, 3);                       // never more than 2x
+        ws.PinchEnd();
+        ws.PointerUp(b);                                    // nothing else happens when the fingers lift
+        Assert.False(ws.IsDragging);
+        Assert.Null(ws.SelectedBlockId);
+    }
+}

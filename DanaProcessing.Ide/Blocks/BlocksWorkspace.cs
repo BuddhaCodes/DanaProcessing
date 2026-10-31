@@ -62,7 +62,16 @@ namespace DanaProcessing.Ide.Blocks
         private readonly Stack<string> _undo = new(), _redo = new();
 
         // A press that hasn't turned into a click or a drag yet.
-        private sealed record Press(SKPoint Start, Block? Block, string? Slot, Block? Template, SKRect TemplateRect, bool Pan, SKPoint ScrollAtStart);
+        private sealed record Press(SKPoint Start, Block? Block, string? Slot, Block? Template, SKRect TemplateRect, bool Pan, SKPoint ScrollAtStart)
+        {
+            /// <summary>A finger, not a mouse: it wobbles more, and a vertical swipe on the palette scrolls it.</summary>
+            public bool Touch { get; init; }
+            /// <summary>Swiping the palette up or down: the palette scroll when the finger went down.</summary>
+            public float? PaletteSwipeFrom { get; set; }
+        }
+
+        /// <summary>A finger has to move this far (a mouse: <see cref="DragThreshold"/>) before a tap becomes a drag.</summary>
+        private const float TouchDragThreshold = 12;
         private Press? _press;
 
         private sealed class Drag
@@ -277,7 +286,7 @@ namespace DanaProcessing.Ide.Blocks
         // Pointer
         // =================================================================
 
-        public void PointerDown(SKPoint p)
+        public void PointerDown(SKPoint p, bool touch = false)
         {
             if (_picker is { } picker)
             {
@@ -331,17 +340,20 @@ namespace DanaProcessing.Ide.Blocks
                 {
                     if (rect.Contains(p))
                     {
-                        _press = new Press(p, null, null, template, rect, false, default);
+                        _press = new Press(p, null, null, template, rect, false, default) { Touch = touch };
                         return;
                     }
                 }
+                // The palette's empty space: drag it up and down (mouse or finger).
+                if (p.X >= CategoryW)
+                    _press = new Press(p, null, null, null, default, false, default) { Touch = touch, PaletteSwipeFrom = _paletteScroll };
                 return;
             }
 
-            var (block, slot) = HitBlock(ToWorld(p));
+            var (block, slot) = HitBlock(ToWorld(p), touch ? 10 : 4);
             _press = block is null
-                ? new Press(p, null, null, null, default, true, new SKPoint(_scrollX, _scrollY))
-                : new Press(p, block, slot, null, default, false, default);
+                ? new Press(p, null, null, null, default, true, new SKPoint(_scrollX, _scrollY)) { Touch = touch }
+                : new Press(p, block, slot, null, default, false, default) { Touch = touch };
         }
 
         public void PointerMove(SKPoint p)
@@ -365,8 +377,24 @@ namespace DanaProcessing.Ide.Blocks
                 return;
             }
 
-            if (SKPoint.Distance(p, press.Start) < DragThreshold)
+            if (press.PaletteSwipeFrom is { } from)
+            {
+                SetPaletteScroll(from + (p.Y - press.Start.Y));
                 return;
+            }
+
+            float dx = p.X - press.Start.X, dy = p.Y - press.Start.Y;
+            if (SKPoint.Distance(p, press.Start) < (press.Touch ? TouchDragThreshold : DragThreshold))
+                return;
+
+            // A finger going up or down over the palette scrolls it; sideways
+            // pulls a block out (a mouse always pulls: it has the wheel).
+            if (press.Touch && press.Template is not null && Math.Abs(dy) > Math.Abs(dx) * 1.2f)
+            {
+                press.PaletteSwipeFrom = _paletteScroll;
+                SetPaletteScroll(_paletteScroll + dy);
+                return;
+            }
 
             if (press.Template is { } template)
                 StartDragFromPalette(template, press.TemplateRect, press.Start);
@@ -411,9 +439,7 @@ namespace DanaProcessing.Ide.Blocks
             }
             if (p.X < PaletteW)
             {
-                float content = _paletteItems.Count == 0 ? 0 : _paletteItems.Max(i => i.Rect.Bottom) - _paletteScroll + 40;
-                _paletteScroll = Math.Clamp(_paletteScroll + dy * 40, Math.Min(0, ViewHeight - content), 0);
-                LayoutPalette();
+                SetPaletteScroll(_paletteScroll + dy * 40);
             }
             else
             {
@@ -422,8 +448,54 @@ namespace DanaProcessing.Ide.Blocks
             Invalidated?.Invoke();
         }
 
+        private void SetPaletteScroll(float scroll)
+        {
+            float content = _paletteItems.Count == 0 ? 0 : _paletteItems.Max(i => i.Rect.Bottom) - _paletteScroll + 40;
+            _paletteScroll = Math.Clamp(scroll, Math.Min(0, ViewHeight - content), 0);
+            LayoutPalette();
+            Invalidated?.Invoke();
+        }
+
+        internal float PaletteScroll => _paletteScroll;
+        internal float Zoom => _zoom;
+
+        // =================================================================
+        // Two fingers: pinch to zoom, move both to pan
+        // =================================================================
+
+        private (float Distance, SKPoint Mid, float Zoom, SKPoint WorldAtMid)? _pinch;
+
+        /// <summary>
+        /// A second finger came down: whatever the first one was doing (a tap
+        /// or a pan, not a block being carried) gives way to pinching.
+        /// Returns false while a block is being dragged (then it's ignored).
+        /// </summary>
+        public bool PinchStart(SKPoint a, SKPoint b)
+        {
+            if (_drag is not null)
+                return false;
+            _press = null;
+            var mid = new SKPoint((a.X + b.X) / 2, (a.Y + b.Y) / 2);
+            _pinch = (Math.Max(1, SKPoint.Distance(a, b)), mid, _zoom, ToWorld(mid));
+            return true;
+        }
+
+        public void PinchMove(SKPoint a, SKPoint b)
+        {
+            if (_pinch is not { } pinch)
+                return;
+            var mid = new SKPoint((a.X + b.X) / 2, (a.Y + b.Y) / 2);
+            _zoom = Math.Clamp(pinch.Zoom * SKPoint.Distance(a, b) / pinch.Distance, 0.5f, 2f);
+            // Keep the point that was under the fingers under them.
+            _scrollX = pinch.WorldAtMid.X - (mid.X - PaletteW) / _zoom;
+            _scrollY = pinch.WorldAtMid.Y - mid.Y / _zoom;
+            Relayout();
+        }
+
+        public void PinchEnd() => _pinch = null;
+
         /// <summary>The innermost block under <paramref name="world"/>, and the slot under it if any.</summary>
-        private (Block? Block, string? Slot) HitBlock(SKPoint world)
+        private (Block? Block, string? Slot) HitBlock(SKPoint world, float slotSlack = 4)
         {
             foreach (var stack in Enumerable.Reverse(Program.Stacks))
             {
@@ -435,7 +507,7 @@ namespace DanaProcessing.Ide.Blocks
                     foreach (var slot in v.Slots)
                     {
                         var r = slot.Rect;
-                        r.Inflate(4, 4); // forgiving for small hands
+                        r.Inflate(slotSlack, slotSlack); // forgiving for small hands (more for fingers)
                         if (r.Contains(world))
                             return (v.Block, slot.Name);
                     }

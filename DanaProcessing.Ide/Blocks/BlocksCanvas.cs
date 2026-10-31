@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using System.Linq;
 using System;
 using Avalonia;
 using Avalonia.Controls;
@@ -80,37 +82,102 @@ namespace DanaProcessing.Ide.Blocks
             return new SKPoint((float)p.X, (float)p.Y);
         }
 
+        // Fingers on the canvas right now (touch screens), by pointer id. One
+        // finger works like the mouse; a second one switches to pinch/pan
+        // until both are lifted.
+        private readonly Dictionary<int, SKPoint> _fingers = new();
+        private int? _primary;
+        private bool _pinching;
+
         protected override void OnPointerPressed(PointerPressedEventArgs e)
         {
             base.OnPointerPressed(e);
             Focus();
-            if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+            bool touch = e.Pointer.Type is PointerType.Touch or PointerType.Pen;
+            if (!touch && !e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
                 return;
             e.Pointer.Capture(this);
-            Workspace.PointerDown(Pos(e, this));
             e.Handled = true;
+            var p = Pos(e, this);
+
+            if (e.Pointer.Type == PointerType.Touch)
+            {
+                _fingers[e.Pointer.Id] = p;
+                if (_fingers.Count == 2 && !_pinching)
+                {
+                    var two = _fingers.Values.Take(2).ToArray();
+                    _pinching = Workspace.PinchStart(two[0], two[1]);
+                    return;
+                }
+                if (_fingers.Count > 1 || _pinching)
+                    return; // a third finger, or one landing while a block is carried
+            }
+            _primary = e.Pointer.Id;
+            Workspace.PointerDown(p, touch);
         }
 
         protected override void OnPointerMoved(PointerEventArgs e)
         {
             base.OnPointerMoved(e);
-            Workspace.PointerMove(Pos(e, this));
+            var p = Pos(e, this);
+            if (e.Pointer.Type == PointerType.Touch && _fingers.ContainsKey(e.Pointer.Id))
+            {
+                _fingers[e.Pointer.Id] = p;
+                if (_pinching)
+                {
+                    var two = _fingers.Values.Take(2).ToArray();
+                    if (two.Length == 2)
+                        Workspace.PinchMove(two[0], two[1]);
+                    return;
+                }
+            }
+            if (_primary is null || _primary == e.Pointer.Id || e.Pointer.Type == PointerType.Mouse)
+                Workspace.PointerMove(p);
         }
 
         protected override void OnPointerReleased(PointerReleasedEventArgs e)
         {
             base.OnPointerReleased(e);
-            Workspace.PointerUp(Pos(e, this));
             e.Pointer.Capture(null);
             e.Handled = true;
+            var p = Pos(e, this);
+            if (e.Pointer.Type == PointerType.Touch)
+            {
+                _fingers.Remove(e.Pointer.Id);
+                if (_pinching)
+                {
+                    // Lifting one of two fingers ends the pinch; the other one
+                    // does nothing more until it's lifted too.
+                    if (_fingers.Count < 2)
+                        Workspace.PinchEnd();
+                    if (_fingers.Count == 0)
+                        _pinching = false;
+                    _primary = null;
+                    return;
+                }
+            }
+            if (_primary is null || _primary == e.Pointer.Id)
+            {
+                Workspace.PointerUp(p);
+                _primary = null;
+            }
         }
 
         protected override void OnPointerCaptureLost(PointerCaptureLostEventArgs e)
         {
             base.OnPointerCaptureLost(e);
+            _fingers.Remove(e.Pointer.Id);
+            if (_fingers.Count == 0 && _pinching)
+            {
+                Workspace.PinchEnd();
+                _pinching = false;
+            }
             // The window lost the pointer mid-drag (alt-tab...): finish where it is.
-            if (Workspace.IsDragging)
+            if (Workspace.IsDragging && (_primary is null || _primary == e.Pointer.Id))
+            {
                 Workspace.PointerUp(new SKPoint(Workspace.PaletteW + 200, 200));
+                _primary = null;
+            }
         }
 
         protected override void OnPointerWheelChanged(PointerWheelEventArgs e)
