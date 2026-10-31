@@ -82,6 +82,36 @@ public class ChallengeTests
         "paint" => Program(c, (BlockCatalog.Forever, new[] { Of(BlockCatalog.Circle, "place", "mouse") })),
         "points" => Program(c, (BlockCatalog.Click, new[] { Of(BlockCatalog.ScoreAdd) }),
                                (BlockCatalog.Forever, new[] { Of(BlockCatalog.Background), Of(BlockCatalog.ScoreShow) })),
+        "hexagon" => Program(c, Start(Rep(6, F(75), R(60)))),
+        "windmill" => Program(c, Start(Rep(4, Rep(4, F(50), R(90)), R(90)))),
+        "house" => Program(c, Start(F(100), R(30), F(100), R(120), F(100), R(30), F(100), R(90), F(100))),
+        "rock" => Program(c, (BlockCatalog.MusicLoop, new[]
+        {
+            Of(BlockCatalog.Drum, "drum", "kick"), Of(BlockCatalog.Wait, "beats", "0.5"),
+            Of(BlockCatalog.Drum, "drum", "hat"), Of(BlockCatalog.Wait, "beats", "0.5"),
+            Of(BlockCatalog.Drum, "drum", "snare"), Of(BlockCatalog.Wait, "beats", "0.5"),
+            Of(BlockCatalog.Drum, "drum", "hat"), Of(BlockCatalog.Wait, "beats", "0.5"),
+        })),
+        "scale" => Program(c, (BlockCatalog.MusicLoop, new[] { "C4", "D4", "E4", "F4", "G4" }
+            .SelectMany(n => new[] { Of(BlockCatalog.Note, "note", n), Of(BlockCatalog.Wait, "beats", "0.5") }).ToArray())),
+        "duet" => Program(c,
+            (BlockCatalog.MusicLoop, new[] { Of(BlockCatalog.Drum, "drum", "kick"), Of(BlockCatalog.Wait, "beats", "1") }),
+            (BlockCatalog.MusicLoop, new[] { Of(BlockCatalog.Note, "note", "E4"), Of(BlockCatalog.Wait, "beats", "1") })),
+        "spiral" => Program(c, Start(
+            new B(BlockCatalog.VarSet, new() { ["value"] = "10", ["var"] = "lado" }),
+            Rep(12, new B(BlockCatalog.Forward, new() { ["steps"] = "var:lado" }), R(90),
+                    new B(BlockCatalog.VarChange, new() { ["var"] = "lado", ["amount"] = "10" })))),
+        "two-squares" => Program(c,
+            Start(Of(BlockCatalog.Call), Of(BlockCatalog.PenUp), R(90), F(75), L(90), Of(BlockCatalog.PenDown), Of(BlockCatalog.Call)),
+            (BlockCatalog.Define, new[] { Rep(4, F(50), R(90)) })),
+        "flower" => Program(c,
+            Start(Rep(12, Of(BlockCatalog.Call), R(30))),
+            (BlockCatalog.Define, new[] { Rep(4, F(75), R(90)) })),
+        "arrows" => Program(c, (BlockCatalog.Forever, new[]
+        {
+            new B(BlockCatalog.If, new() { ["cond"] = "right" }, new[] { F(10) }),
+            new B(BlockCatalog.If, new() { ["cond"] = "left" }, new[] { L(30) }),
+        })),
         _ => throw new Exception("no answer written for " + c.Id),
     };
 

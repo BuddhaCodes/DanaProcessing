@@ -16,7 +16,7 @@ public class WebAndDataTests : IDisposable
         public override void Draw() { }
     }
 
-    private readonly HttpListener _server = new();
+    private HttpListener _server = new();
     private readonly string _base;
     private int _hits;
     private volatile bool _down;
@@ -38,7 +38,11 @@ public class WebAndDataTests : IDisposable
                 _base = $"http://127.0.0.1:{port}/";
                 break;
             }
-            catch (HttpListenerException) when (attempt < 20) { }
+            catch (HttpListenerException) when (attempt < 20)
+            {
+                // A port in use leaves the listener disposed: start over with a fresh one.
+                _server = new HttpListener();
+            }
         }
         Task.Run(Serve);
     }
