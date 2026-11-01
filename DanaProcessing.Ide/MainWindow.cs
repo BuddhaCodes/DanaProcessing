@@ -1452,7 +1452,9 @@ namespace DanaProcessing.Ide
         }
 
         private void OpenSamples() =>
-            new SamplesWindow(source => _ = ReplaceContextIfConfirmedAsync(() => _editorView.ReplaceAllTabs(null, source))).ShowDialog(this);
+            new SamplesWindow(
+                source => _ = ReplaceContextIfConfirmedAsync(() => _editorView.ReplaceAllTabs(null, source)),
+                program => _editorView.AddBlocksTab(program)).ShowDialog(this);
 
         /// <summary>
         /// Sketch > Create reel: one window per IDE (re-focused if already open).

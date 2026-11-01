@@ -52,6 +52,7 @@ namespace DanaProcessing.Ide
         }
 
         private readonly Action<string> _onLoad;
+        private readonly Action<DanaProcessing.Ide.Blocks.BlockProgram>? _onLoadBlocks;
         private readonly List<Entry> _entries;
         private readonly List<Entry> _visible = new();
         private readonly HashSet<SampleTag> _activeTags = new();
@@ -76,9 +77,11 @@ namespace DanaProcessing.Ide
         private readonly ScrollViewer _codeScroll;
 
         /// <param name="onLoad">Called with the chosen sample's source once the user picks one. The window closes itself right after.</param>
-        public SamplesWindow(Action<string> onLoad)
+        /// <param name="onLoadBlocks">Called with a blocks example's program (it opens as blocks, in a new tab).</param>
+        public SamplesWindow(Action<string> onLoad, Action<DanaProcessing.Ide.Blocks.BlockProgram>? onLoadBlocks = null)
         {
             _onLoad = onLoad;
+            _onLoadBlocks = onLoadBlocks;
 
             Title = Loc.Tr("Ejemplos", "Examples");
             Width = 1040;
@@ -540,7 +543,10 @@ namespace DanaProcessing.Ide
 
         private void Load(Entry entry)
         {
-            _onLoad(entry.Sample.Source);
+            if (entry.Sample.Blocks is { } blocks && _onLoadBlocks is not null)
+                _onLoadBlocks(blocks());
+            else
+                _onLoad(entry.Sample.Source);
             Close();
         }
 

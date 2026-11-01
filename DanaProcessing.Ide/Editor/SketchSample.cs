@@ -1,3 +1,4 @@
+using System;
 ﻿using Avalonia.Animation;
 using Avalonia.Markup.Xaml.MarkupExtensions;
 using DanaProcessing.Ide.Localization;
@@ -7,7 +8,11 @@ using Silk.NET.Maths;
 namespace DanaProcessing.Ide.Editor
 {
     /// <summary>One entry in the Samples window: a name, a one-line description, the source to load into a new tab, and the tags that say what it's about.</summary>
-    public sealed record SketchSample(string Name, string Description, string Source, SampleTag[] Tags);
+    public sealed record SketchSample(string Name, string Description, string Source, SampleTag[] Tags)
+    {
+        /// <summary>For a blocks example: the program, opened as blocks (Source is its C#, for the preview).</summary>
+        public Func<DanaProcessing.Ide.Blocks.BlockProgram>? Blocks { get; init; }
+    }
 
     /// <summary>
     /// What a sample is about -- shown as chips on each card and used as
@@ -16,6 +21,7 @@ namespace DanaProcessing.Ide.Editor
     /// </summary>
     public enum SampleTag
     {
+        Blocks,
         Basics,
         TwoD,
         ThreeD,
@@ -78,6 +84,7 @@ namespace DanaProcessing.Ide.Editor
             SampleTag.Text => "Texto / tipografía",
             SampleTag.Images => "Imágenes / píxeles",
             SampleTag.Hardware => "Hardware / sensores",
+            SampleTag.Blocks => "Bloques",
             _ => tag.ToString(),
         };
 
@@ -100,6 +107,7 @@ namespace DanaProcessing.Ide.Editor
             SampleTag.Text => "Text / typography",
             SampleTag.Images => "Images / pixels",
             SampleTag.Hardware => "Hardware / sensors",
+            SampleTag.Blocks => "Blocks",
             _ => Spanish(tag),
         };
     }
@@ -114,7 +122,7 @@ namespace DanaProcessing.Ide.Editor
     public static partial class SketchSamples
     {
         /// <summary>Every sample: this file's catalog, then SketchSamples.Extras.cs, then the ones that use public web APIs (SketchSamples.Apis.cs).</summary>
-        public static SketchSample[] All => _all ??= Catalog.Concat(Extras).Concat(Apis).ToArray();
+        public static SketchSample[] All => _all ??= DanaProcessing.Ide.Blocks.BlockSamples.All.Concat(Catalog).Concat(Extras).Concat(Apis).ToArray();
         private static SketchSample[]? _all;
 
         private static readonly SketchSample[] Catalog =
