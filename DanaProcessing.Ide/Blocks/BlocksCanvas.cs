@@ -121,6 +121,14 @@ namespace DanaProcessing.Ide.Blocks
             base.OnPointerMoved(e);
             var p = Pos(e, this);
             _lastPointer = p;
+            // The mouse resting on something (no button down): its description,
+            // a moment later. Fingers don't hover.
+            if (e.Pointer.Type == PointerType.Mouse && !e.GetCurrentPoint(this).Properties.IsLeftButtonPressed && Workspace.Hover(p))
+            {
+                InvalidateVisual();
+                _hoverTimer.Stop();
+                _hoverTimer.Start();
+            }
             if (e.Pointer.Type == PointerType.Touch && _fingers.ContainsKey(e.Pointer.Id))
             {
                 _fingers[e.Pointer.Id] = p;
@@ -177,6 +185,27 @@ namespace DanaProcessing.Ide.Blocks
         }
 
         private bool _releasing;
+
+        private DispatcherTimer? _hoverTimerField;
+        private DispatcherTimer _hoverTimer => _hoverTimerField ??= MakeHoverTimer();
+
+        private DispatcherTimer MakeHoverTimer()
+        {
+            var t = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(BlocksWorkspace.HoverDelayMs + 30) };
+            t.Tick += (_, _) =>
+            {
+                t.Stop();
+                InvalidateVisual();
+            };
+            return t;
+        }
+
+        protected override void OnPointerExited(PointerEventArgs e)
+        {
+            base.OnPointerExited(e);
+            Workspace.HoverEnd();
+            InvalidateVisual();
+        }
         private SKPoint _lastPointer;
 
         protected override void OnPointerCaptureLost(PointerCaptureLostEventArgs e)

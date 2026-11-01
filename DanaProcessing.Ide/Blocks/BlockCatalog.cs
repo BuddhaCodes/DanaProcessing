@@ -264,19 +264,25 @@ namespace DanaProcessing.Ide.Blocks
 
         private static readonly Dictionary<SlotKind, IReadOnlyList<SlotChoice>> Choices = new()
         {
-            [SlotKind.Steps] = new[] { Num("10"), Num("25"), Num("50"), Num("75"), Num("100"), Num("150"), Num("200"),
+            [SlotKind.Steps] = new[] { Num("5"), Num("10"), Num("20"), Num("25"), Num("30"), Num("40"), Num("50"), Num("60"), Num("75"), Num("80"),
+                                       Num("100"), Num("120"), Num("150"), Num("200"), Num("250"), Num("300"),
                                        new SlotChoice("random", "al azar", "random", "Random(10, 150)") }.Concat(VariableUses()).ToArray(),
-            [SlotKind.Angle] = new[] { Num("30", "30°"), Num("45", "45°"), Num("60", "60°"), Num("72", "72°"), Num("90", "90°"), Num("120", "120°"), Num("144", "144°"), Num("180", "180°"),
+            [SlotKind.Angle] = new[] { Num("10", "10°"), Num("15", "15°"), Num("20", "20°"), Num("30", "30°"), Num("36", "36°"), Num("40", "40°"), Num("45", "45°"),
+                                       Num("60", "60°"), Num("72", "72°"), Num("90", "90°"), Num("120", "120°"), Num("135", "135°"), Num("144", "144°"),
+                                       Num("150", "150°"), Num("180", "180°"), Num("270", "270°"), Num("360", "360°"),
                                        new SlotChoice("random", "al azar", "random", "Random(0, 360)") }.Concat(VariableUses()).ToArray(),
-            [SlotKind.Count] = new[] { Num("2"), Num("3"), Num("4"), Num("5"), Num("6"), Num("8"), Num("10"), Num("12"), Num("36"),
+            [SlotKind.Count] = new[] { Num("1"), Num("2"), Num("3"), Num("4"), Num("5"), Num("6"), Num("7"), Num("8"), Num("9"), Num("10"),
+                                       Num("12"), Num("15"), Num("18"), Num("20"), Num("24"), Num("36"), Num("50"),
                                        new SlotChoice("random", "al azar", "random", "(int)Random(2, 11)") }.Concat(VariableUses()).ToArray(),
             [SlotKind.Variable] = Variables,
-            [SlotKind.Number] = new[] { Num("0"), Num("1"), Num("5"), Num("10"), Num("20"), Num("50"), Num("100"),
+            [SlotKind.Number] = new[] { Num("0"), Num("1"), Num("2"), Num("5"), Num("10"), Num("15"), Num("20"), Num("25"), Num("50"), Num("75"), Num("100"),
                                         new SlotChoice("random", "al azar", "random", "Random(1, 100)") },
             [SlotKind.Amount] = new[]
             {
-                new SlotChoice("1", "+1", "+1", "1"), new SlotChoice("5", "+5", "+5", "5"), new SlotChoice("10", "+10", "+10", "10"),
-                new SlotChoice("-1", "−1", "−1", "-1"), new SlotChoice("-5", "−5", "−5", "-5"), new SlotChoice("-10", "−10", "−10", "-10"),
+                new SlotChoice("1", "+1", "+1", "1"), new SlotChoice("2", "+2", "+2", "2"), new SlotChoice("5", "+5", "+5", "5"),
+                new SlotChoice("10", "+10", "+10", "10"), new SlotChoice("20", "+20", "+20", "20"),
+                new SlotChoice("-1", "−1", "−1", "-1"), new SlotChoice("-2", "−2", "−2", "-2"), new SlotChoice("-5", "−5", "−5", "-5"),
+                new SlotChoice("-10", "−10", "−10", "-10"), new SlotChoice("-20", "−20", "−20", "-20"),
             },
             // Names for the child's own blocks; the code is the method's name.
             [SlotKind.Function] = new[]
@@ -290,8 +296,9 @@ namespace DanaProcessing.Ide.Blocks
             },
             [SlotKind.Thickness] = new[]
             {
-                new SlotChoice("1", "finito", "thin", "1"), new SlotChoice("3", "normal", "normal", "3"),
-                new SlotChoice("6", "gordo", "thick", "6"), new SlotChoice("12", "gordísimo", "very thick", "12"),
+                new SlotChoice("1", "finito", "very thin", "1"), new SlotChoice("2", "fino", "thin", "2"), new SlotChoice("3", "normal", "normal", "3"),
+                new SlotChoice("6", "gordo", "thick", "6"), new SlotChoice("9", "muy gordo", "very thick", "9"),
+                new SlotChoice("12", "gordísimo", "extra thick", "12"), new SlotChoice("20", "enorme", "huge", "20"),
             },
             [SlotKind.Color] = new[]
             {
@@ -300,11 +307,17 @@ namespace DanaProcessing.Ide.Blocks
                 Col("blue", "azul", "blue", 50, 120, 220), Col("purple", "violeta", "purple", 140, 80, 200),
                 Col("pink", "rosa", "pink", 245, 130, 190), Col("brown", "marrón", "brown", 140, 90, 50),
                 Col("black", "negro", "black", 30, 30, 30), Col("white", "blanco", "white", 255, 255, 255),
+                Col("gray", "gris", "gray", 150, 150, 150), Col("sky", "celeste", "sky blue", 120, 200, 245),
+                Col("teal", "turquesa", "turquoise", 40, 190, 180), Col("lime", "verde lima", "lime", 160, 220, 60),
+                Col("gold", "dorado", "gold", 225, 175, 30), Col("navy", "azul marino", "navy", 30, 50, 120),
+                Col("magenta", "fucsia", "magenta", 225, 40, 150),
             },
             [SlotKind.Size] = new[]
             {
-                new SlotChoice("20", "chico", "small", "20"), new SlotChoice("50", "mediano", "medium", "50"),
-                new SlotChoice("100", "grande", "big", "100"), new SlotChoice("200", "gigante", "huge", "200"),
+                new SlotChoice("10", "diminuto", "tiny", "10"), new SlotChoice("20", "chico", "small", "20"),
+                new SlotChoice("50", "mediano", "medium", "50"), new SlotChoice("100", "grande", "big", "100"),
+                new SlotChoice("150", "muy grande", "very big", "150"), new SlotChoice("200", "gigante", "huge", "200"),
+                new SlotChoice("300", "enorme", "enormous", "300"),
             },
             [SlotKind.Place] = new[]
             {
@@ -313,6 +326,8 @@ namespace DanaProcessing.Ide.Blocks
                 new SlotChoice("random", "cualquier lado", "anywhere", "Random(Width), Random(Height)"),
                 new SlotChoice("top", "arriba", "the top", "Width / 2, Height / 4"),
                 new SlotChoice("bottom", "abajo", "the bottom", "Width / 2, Height * 3 / 4"),
+                new SlotChoice("left", "la izquierda", "the left", "Width / 4, Height / 2"),
+                new SlotChoice("right", "la derecha", "the right", "Width * 3 / 4, Height / 2"),
             },
             [SlotKind.Note] = new[]
             {
@@ -333,6 +348,7 @@ namespace DanaProcessing.Ide.Blocks
                 new SlotChoice("0.5", "medio tiempo", "half a beat", "0.5"),
                 new SlotChoice("1", "un tiempo", "one beat", "1"),
                 new SlotChoice("2", "dos tiempos", "two beats", "2"),
+                new SlotChoice("4", "cuatro tiempos", "four beats", "4"),
             },
             [SlotKind.Instrument] = new[]
             {
@@ -341,6 +357,7 @@ namespace DanaProcessing.Ide.Blocks
                 new SlotChoice("Square", "videojuego", "video game", "Synth.Square"),
                 new SlotChoice("Saw", "robot", "robot", "Synth.Saw"),
                 new SlotChoice("Sine", "silbido", "whistle", "Synth.Sine"),
+                new SlotChoice("Noise", "viento", "wind", "Synth.Noise"),
             },
             [SlotKind.Condition] = new[]
             {

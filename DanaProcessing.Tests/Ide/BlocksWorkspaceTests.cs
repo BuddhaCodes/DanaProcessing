@@ -415,6 +415,48 @@ public class BlocksWorkspaceMovingTests
     }
 }
 
+public class BlocksWorkspaceHoverTests
+{
+    [Theory]
+    [MemberData(nameof(BlocksWorkspaceTests.Views), MemberType = typeof(BlocksWorkspaceTests))]
+    public void Resting_the_mouse_on_a_block_a_value_or_the_palette_explains_it(BlockView view)
+    {
+        var p = new BlockProgram { View = view };
+        var stack = p.AddStack(40, 40, BlockCatalog.Start, BlockCatalog.Forward);
+        var ws = new BlocksWorkspace(p) { ViewWidth = 1200, ViewHeight = 760 };
+        using var surface = SKSurface.Create(new SKImageInfo(1200, 760));
+        ws.Paint(surface.Canvas);
+
+        var slot = ws.ScreenRectOfSlot(stack.Blocks[1].Id, "steps")!.Value;
+        Assert.True(ws.Hover(new SKPoint(slot.MidX, slot.MidY)));
+        Assert.Contains("100", ws.HoverText);                       // the value it has now
+        Assert.False(ws.Hover(new SKPoint(slot.MidX + 1, slot.MidY))); // same thing: nothing changes
+
+        var block = ws.ScreenRectOf(stack.Blocks[1].Id)!.Value;
+        ws.Hover(new SKPoint(block.Left + 8, block.Top + 8));
+        Assert.Equal(BlockHelp.For(BlockCatalog.Forward), ws.HoverText);
+
+        ws.ShowCategory(BlockCategory.Turtle);
+        ws.Paint(surface.Canvas);
+        var item = ws.PaletteRectOf(BlockCatalog.PenUp)!.Value;
+        ws.Hover(new SKPoint(item.MidX, item.MidY));
+        Assert.StartsWith(BlockHelp.For(BlockCatalog.PenUp), ws.HoverText);
+
+        Assert.True(ws.Hover(new SKPoint(900, 700)));                 // empty space: nothing
+        Assert.Null(ws.HoverText);
+        ws.Paint(surface.Canvas);                                      // painting with or without a bubble never throws
+    }
+
+    [Fact]
+    public void Every_block_and_category_has_its_own_description()
+    {
+        foreach (var def in BlockCatalog.All)
+            Assert.NotEqual(def.Label, BlockHelp.For(def.Type));
+        foreach (var c in BlockCatalog.Categories)
+            Assert.NotEqual(BlockCatalog.CategoryName(c), BlockHelp.For(c));
+    }
+}
+
 public class BlocksWorkspaceNewWordsTests
 {
     [Theory]

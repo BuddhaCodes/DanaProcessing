@@ -293,6 +293,7 @@ namespace DanaProcessing.Ide.Blocks
 
         public void PointerDown(SKPoint p, bool touch = false)
         {
+            _hover = null;
             if (_picker is { } picker)
             {
                 foreach (var (choice, rect) in picker.Options)
@@ -706,6 +707,128 @@ namespace DanaProcessing.Ide.Blocks
 
             if (_picker is { } picker)
                 PaintPicker(canvas, picker);
+            PaintHover(canvas);
+        }
+
+        // =================================================================
+        // Hover: what's under the mouse, in words
+        // =================================================================
+
+        /// <summary>How long the mouse has to rest on something before its description shows.</summary>
+        public const int HoverDelayMs = 450;
+
+        private (string Text, SKRect Anchor, long Since)? _hover;
+
+        /// <summary>The description being shown (or about to be), for tests.</summary>
+        internal string? HoverText => _hover?.Text;
+
+        /// <summary>
+        /// The mouse moved to <paramref name="p"/> with no button down. Returns
+        /// true if what's under it changed (the canvas then repaints, and again
+        /// once <see cref="HoverDelayMs"/> has passed).
+        /// </summary>
+        public bool Hover(SKPoint p)
+        {
+            var found = _drag is null && _press is null ? HelpAt(p) : null;
+            if (found is null)
+            {
+                bool had = _hover is not null;
+                _hover = null;
+                return had;
+            }
+            if (_hover is { } current && current.Text == found.Value.Text && current.Anchor == found.Value.Anchor)
+                return false;
+            _hover = (found.Value.Text, found.Value.Anchor, Environment.TickCount64);
+            return true;
+        }
+
+        public void HoverEnd() => _hover = null;
+
+        private (string Text, SKRect Anchor)? HelpAt(SKPoint p)
+        {
+            if (_picker is { } picker)
+            {
+                foreach (var (choice, rect) in picker.Options)
+                    if (rect.Contains(p))
+                        return (choice.Label, rect);
+                return null;
+            }
+            foreach (var (action, rect) in _buttons)
+                if (rect.Contains(p))
+                    return (action switch
+                    {
+                        "zoom+" => Loc.Tr("Acercar", "Zoom in"),
+                        "zoom-" => Loc.Tr("Alejar", "Zoom out"),
+                        _ => Loc.Tr("Volver al tamaño normal y al principio", "Back to normal size and to the start"),
+                    }, rect);
+            if (p.X < PaletteW)
+            {
+                foreach (var (category, rect) in _categoryRects)
+                    if (rect.Contains(p))
+                        return (BlockHelp.For(category), rect);
+                foreach (var (template, rect) in _paletteItems)
+                    if (rect.Contains(p))
+                        return (BlockHelp.For(template.Type) + " " + Loc.Tr("Arrastralo a la derecha para usarlo.", "Drag it to the right to use it."), rect);
+                return null;
+            }
+            var world = ToWorld(p);
+            var (block, slot) = HitBlock(world);
+            if (block is null || Program.Locate(block.Id) is not { } where || !_scene.Stacks.TryGetValue(where.Stack, out var visuals))
+                return null;
+            var visual = visuals.FirstOrDefault(v => ReferenceEquals(v.Block, block));
+            if (visual is null)
+                return null;
+            if (slot is not null && visual.Slots.FirstOrDefault(s => s.Name == slot) is { } box)
+            {
+                var kind = block.Def.Slot(slot).Kind;
+                return (BlockHelp.ForSlot(kind, SlotChoices.Get(kind, block.Value(slot))), ToScreen(box.Rect));
+            }
+            return (BlockHelp.For(block.Type), ToScreen(visual.Hit));
+        }
+
+        private void PaintHover(SKCanvas canvas)
+        {
+            if (_hover is not { } hover || Environment.TickCount64 - hover.Since < HoverDelayMs || _drag is not null)
+                return;
+            var font = _renderer.Style.TextLight;
+            const float maxW = 300, pad = 12, lineH = 21;
+            var lines = Wrap(hover.Text, font, maxW);
+            float w = lines.Max(l => font.MeasureText(l)) + pad * 2;
+            float h = lines.Count * lineH + pad * 2 - 4;
+            float x = Math.Clamp(hover.Anchor.MidX - w / 2, 6, Math.Max(6, ViewWidth - w - 6));
+            float y = hover.Anchor.Bottom + 10;
+            if (y + h > ViewHeight - 6)
+                y = Math.Max(6, hover.Anchor.Top - h - 10);
+            var box = new SKRect(x, y, x + w, y + h);
+            using (var shadow = new SKPaint { Color = new SKColor(0, 0, 0, 50), ImageFilter = SKImageFilter.CreateBlur(10, 10) })
+                canvas.DrawRoundRect(SKRect.Inflate(box, 1, 1), 12, 12, shadow);
+            using (var bg = new SKPaint { Color = new SKColor(43, 38, 32), IsAntialias = true })
+                canvas.DrawRoundRect(box, 12, 12, bg);
+            using var ink = new SKPaint { Color = new SKColor(250, 246, 238), IsAntialias = true };
+            for (int i = 0; i < lines.Count; i++)
+                canvas.DrawText(lines[i], box.Left + pad, BlockStyle.Baseline(font, box.Top + pad + lineH / 2 - 2 + i * lineH), SKTextAlign.Left, font, ink);
+        }
+
+        private static List<string> Wrap(string text, SKFont font, float maxWidth)
+        {
+            var lines = new List<string>();
+            var line = "";
+            foreach (var word in text.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+            {
+                var next = line.Length == 0 ? word : line + " " + word;
+                if (line.Length > 0 && font.MeasureText(next) > maxWidth)
+                {
+                    lines.Add(line);
+                    line = word;
+                }
+                else
+                {
+                    line = next;
+                }
+            }
+            if (line.Length > 0)
+                lines.Add(line);
+            return lines.Count == 0 ? new List<string> { "" } : lines;
         }
 
         /// <summary>Blocks that ran within the last moment, plus the trays and start blocks around them.</summary>

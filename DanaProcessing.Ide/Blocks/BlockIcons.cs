@@ -353,6 +353,8 @@ namespace DanaProcessing.Ide.Blocks
                         case "center": canvas.DrawCircle(frame.MidX, frame.MidY, 4, fill); break;
                         case "top": canvas.DrawCircle(frame.MidX, frame.Top + 6, 4, fill); break;
                         case "bottom": canvas.DrawCircle(frame.MidX, frame.Bottom - 6, 4, fill); break;
+                        case "left": canvas.DrawCircle(frame.Left + 8, frame.MidY, 4, fill); break;
+                        case "right": canvas.DrawCircle(frame.Right - 8, frame.MidY, 4, fill); break;
                         case "random":
                             canvas.DrawCircle(frame.Left + 9, frame.Top + 7, 3, fill);
                             canvas.DrawCircle(frame.MidX, frame.MidY, 3, fill);
