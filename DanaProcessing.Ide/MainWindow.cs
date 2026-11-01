@@ -13,7 +13,6 @@ using Avalonia.Threading;
 using DanaProcessing;
 using DanaProcessing.Audio;
 using DanaProcessing.AvaloniaHost;
-using DanaProcessing.Ide.Blocks;
 using DanaProcessing.Ide.Compilation;
 using DanaProcessing.Ide.CrashReporting;
 using DanaProcessing.Ide.Compilation.PackageManagement;
@@ -198,7 +197,6 @@ namespace DanaProcessing.Ide
             _editorView.ReferencesFound += UpdateReferencesFound;
             _editorView.StatusMessageRequested += ShowTransientStatus;
             _editorView.TabSaved += OnTabSaved;
-            WireBlocksView();
             _editorView.TypingActivityChanged += OnTypingActivityChanged;
             // A running sketch keeps running -- while you type, on the "Code"
             // pane of a narrow window, minimized -- in step with its sound,
@@ -1282,12 +1280,6 @@ namespace DanaProcessing.Ide
             var fileMenu = BuildTextMenu(Loc.Tr("Archivo", "File"), new Control[]
             {
                 BuildMenuItem("＋", Loc.Tr("Nuevo", "New"), "Ctrl+N", NewSketch),
-                BuildMenuItem("🧩", Loc.Tr("Nuevo con bloques", "New with blocks"), null, NewBlocksProgram),
-                BuildMenuItem("🏆", Loc.Tr("Retos con bloques...", "Block challenges..."), null, OpenChallenges),
-                BuildMenuItem("📝", Loc.Tr("Crear un reto con estos bloques...", "Create a challenge from these blocks..."), null, CreateChallenge),
-                BuildMenuItem("🔤", Loc.Tr("Ordenar el código...", "Put the code in order..."), null, () => new ParsonsWindow().Show(this)),
-                BuildMenuItem("🧩", Loc.Tr("Pasar este código a bloques", "Turn this code into blocks"), null, () => _ = CodeToBlocksAsync()),
-                BuildMenuItem("🏫", Loc.Tr("Modo aula...", "Classroom..."), null, OpenClassroom),
                 BuildMenuItem("📂", Loc.Tr("Abrir...", "Open..."), "Ctrl+O", () => _ = _editorView.OpenFileAsync()),
                 MenuSeparator(),
                 BuildMenuItem("💾", Loc.Tr("Guardar", "Save"), "Ctrl+S", () => _ = _editorView.SaveActiveTabAsync()),
@@ -1359,126 +1351,6 @@ namespace DanaProcessing.Ide
         }
 
         private void NewSketch() => _ = ReplaceContextIfConfirmedAsync(() => _editorView.ReplaceAllTabs());
-
-        // ================================================================
-        // BLOCKS MODE
-        // ================================================================
-
-        private void WireBlocksView()
-        {
-            var blocks = _editorView.BlocksView;
-            blocks.RunRequested += () => _ = RunCurrentSketchAsync();
-            blocks.StopRequested += StopCurrentSketch;
-            blocks.ConvertToCodeRequested += code => _editorView.AddNewTab(null, code);
-            blocks.ChallengesRequested += OpenChallenges;
-            blocks.ChallengeRequested += OpenChallenge;
-        }
-
-        /// <summary>A new tab with an empty block program (just "al empezar", to start from), shown the way picked for its age.</summary>
-        private void NewBlocksProgram() => _ = NewBlocksProgramAsync();
-
-        private async Task NewBlocksProgramAsync()
-        {
-            if (await NewBlocksDialog.ShowAsync(this) is not { } view)
-                return;
-            var program = new BlockProgram { Name = Loc.Tr("Mi programa", "My program"), View = view };
-            program.AddStack(40, 40, BlockCatalog.Start);
-            _editorView.AddBlocksTab(program);
-        }
-
-        private void OpenChallenges()
-        {
-            var window = new ChallengesWindow();
-            window.ChallengeChosen += OpenChallenge;
-            window.Show(this);
-        }
-
-        /// <summary>
-        /// For teachers: the blocks tab on screen is the answer; a dialog asks
-        /// for the name, goal and hint and saves it as a .danareto challenge.
-        /// </summary>
-        private void CreateChallenge()
-        {
-            if (_editorView.ActiveTab?.Blocks is not { } program)
-            {
-                ShowTransientStatus(Loc.Tr("Primero abrí una pestaña de bloques con tu solución.", "First open a blocks tab with your answer."));
-                return;
-            }
-            var dialog = new CreateChallengeDialog(program);
-            dialog.Closed += (_, _) =>
-            {
-                if (dialog.SavedPath is not null)
-                    ShowTransientStatus(Loc.Tr("Reto guardado. Está en Retos con bloques → Retos de tu docente.", "Challenge saved. It's in Block challenges → Your teacher's challenges."));
-            };
-            dialog.ShowDialog(this);
-        }
-
-        /// <summary>
-        /// The way back from "Pasar a código": the code tab on screen, as blocks
-        /// in a new tab (Renglones, so each sentence sits by its line of C#).
-        /// Lines with no block are listed first, and the child decides.
-        /// </summary>
-        private async Task CodeToBlocksAsync()
-        {
-            if (_editorView.ActiveTab is not { Blocks: null } tab)
-            {
-                ShowTransientStatus(Loc.Tr("Abrí una pestaña de código para pasarla a bloques.", "Open a code tab to turn it into blocks."));
-                return;
-            }
-            var result = CodeToBlocks.Convert(tab.Document.Text, BlockView.Lines);
-            if (result.BlockCount == 0 || result.Program.Stacks.Count == 0)
-            {
-                ShowTransientStatus(Loc.Tr("No encontré nada en este código que tenga bloques.", "Nothing in this code has blocks."));
-                return;
-            }
-            if (!result.Exact)
-            {
-                var sb = new System.Text.StringBuilder();
-                if (result.Skipped.Count > 0)
-                {
-                    sb.AppendLine(Loc.Tr("Estas líneas no tienen bloque y van a quedar afuera:", "These lines have no block and will be left out:"));
-                    foreach (var (line, code) in result.Skipped.Take(8))
-                        sb.AppendLine($"  {Loc.Tr("línea", "line")} {line}: {code}");
-                    if (result.Skipped.Count > 8)
-                        sb.AppendLine($"  … {Loc.Tr("y", "and")} {result.Skipped.Count - 8} {Loc.Tr("más", "more")}");
-                }
-                if (result.Rounded.Count > 0)
-                {
-                    sb.AppendLine(Loc.Tr("Estos números no están en los bloques; usé el más cercano:", "These numbers aren't on the blocks; I used the closest:"));
-                    sb.AppendLine("  " + string.Join(", ", result.Rounded.Take(8)));
-                }
-                if (!await ConfirmDialog.ShowAsync(this, Loc.Tr("Pasar a bloques", "Turn into blocks"), sb.ToString().TrimEnd(),
-                        Loc.Tr("Pasar igual", "Turn it anyway"), Loc.Tr("Cancelar", "Cancel")))
-                    return;
-            }
-            result.Program.Name = System.IO.Path.GetFileNameWithoutExtension(tab.FilePath) is { Length: > 0 } file ? file : result.Program.Name;
-            _editorView.AddBlocksTab(result.Program);
-        }
-
-        /// <summary>Modo aula: hand in progress, the class gallery, the teacher's summary. All files, no server.</summary>
-        private void OpenClassroom()
-        {
-            var window = new ClassroomWindow(() => _editorView.ActiveTab?.Blocks);
-            window.OpenProgram += program => _editorView.AddBlocksTab(program);
-            window.Show(this);
-        }
-
-        /// <summary>Opens a challenge -- or switches to the tab already working on it.</summary>
-        private void OpenChallenge(Challenge challenge)
-        {
-            if (!_editorView.ActivateChallengeTab(challenge.Id))
-                _editorView.AddBlocksTab(challenge.NewProgram());
-        }
-
-        /// <summary>A sketch just started in the canvas: if it came from the blocks tab on screen, its blocks light up as they run.</summary>
-        private void NotifyBlocksView(Sketch sketch)
-        {
-            var blocks = _editorView.BlocksView;
-            if (_editorView.ActiveTab is { Blocks: not null } tab && ReferenceEquals(blocks.Tab, tab))
-                blocks.SketchStarted(sketch);
-            else
-                blocks.SketchStopped();
-        }
 
         private void OpenSamples() =>
             new SamplesWindow(source => _ = ReplaceContextIfConfirmedAsync(() => _editorView.ReplaceAllTabs(null, source))).ShowDialog(this);
@@ -1727,8 +1599,7 @@ namespace DanaProcessing.Ide
         /// </summary>
         private async Task<CompileResult?> ResolveAndCompileActiveSketchAsync()
         {
-            // A blocks tab runs its program with the lines that light blocks up.
-            var source = _editorView.ActiveRunSource;
+            var source = _editorView.ActiveSourceText;
             if (string.IsNullOrWhiteSpace(source))
                 return null;
 
@@ -2187,8 +2058,6 @@ namespace DanaProcessing.Ide
                 }
 
                 var plan = _canvas.HotReloadSketch(result.Sketch!);
-                if (plan.CanApply)
-                    NotifyBlocksView(result.Sketch!); // the new instance is the one running now
 
                 if (!plan.CanApply)
                 {
@@ -2572,7 +2441,6 @@ namespace DanaProcessing.Ide
                 return;
             _canvas.Stop();
             AudioEngine.StopEverything();
-            _editorView.BlocksView.SketchStopped();
             _runningTab = null; // nothing live to hot-reload into any more
             UpdateHotReloadButtonEnabled();
             _statusDot.Fill = ClayTheme.TextMuted;

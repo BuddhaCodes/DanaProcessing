@@ -46,7 +46,6 @@ namespace DanaProcessing.Ide
             if (tweaks != null)
                 sketch.ApplyTweakLiterals(tweaks);
             _canvas.LoadSketch(sketch);
-            NotifyBlocksView(sketch);
         }
 
         private string SeedSuffix() =>
