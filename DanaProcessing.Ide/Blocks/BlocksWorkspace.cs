@@ -578,7 +578,8 @@ namespace DanaProcessing.Ide.Blocks
         {
             if (drag.Pointer.X < PaletteW)
                 return null;
-            var pointer = ToWorld(drag.Pointer);
+            if (DraggedBounds(drag) is not { } dragged)
+                return null;
             SnapTarget? best = null;
             float bestDistance = _renderer.SnapRadius;
             foreach (var t in _scene.Targets)
@@ -586,7 +587,7 @@ namespace DanaProcessing.Ide.Blocks
                 // A column starting with "al empezar" & co. only goes on top of a column that has none.
                 if (drag.StartsWithHat && !t.Prepend)
                     continue;
-                float d = _renderer.SnapDistance(pointer, t);
+                float d = _renderer.SnapDistance(dragged, t);
                 if (d < bestDistance)
                 {
                     best = t;
@@ -886,9 +887,32 @@ namespace DanaProcessing.Ide.Blocks
                   .SelectMany(v => v.Slots).Where(s => s.Name == slot).Select(s => (SKRect?)ToScreen(s.Rect)).FirstOrDefault();
 
         /// <summary>Where the pointer has to be (on screen) to drop into <paramref name="list"/> before <paramref name="index"/>.</summary>
-        internal SKPoint? ScreenPointOfTarget(List<Block> list, int index, bool prepend = false) =>
-            _scene.Targets.Where(t => ReferenceEquals(t.List, list) && t.Index == index && t.Prepend == prepend)
-                  .Select(t => (SKPoint?)ToScreen(t.Point)).FirstOrDefault();
+        /// <summary>
+        /// Where the pointer has to go for the column being carried to land on
+        /// that place (its edge on the place); with nothing carried, the place itself.
+        /// </summary>
+        internal SKPoint? ScreenPointOfTarget(List<Block> list, int index, bool prepend = false)
+        {
+            var target = _scene.Targets.FirstOrDefault(t => ReferenceEquals(t.List, list) && t.Index == index && t.Prepend == prepend);
+            if (target is null)
+                return null;
+            if (_drag is not { } drag || DraggedBounds(drag) is not { } dragged)
+                return ToScreen(target.Point);
+            var anchor = _renderer.SnapAnchor(dragged, prepend);
+            var pointer = ToWorld(drag.Pointer);
+            return ToScreen(new SKPoint(target.Point.X + pointer.X - anchor.X, target.Point.Y + pointer.Y - anchor.Y));
+        }
+
+        private SKRect? DraggedBounds(Drag drag)
+        {
+            var visuals = _renderer.LayoutLoose(drag.Blocks, DragTopLeft(drag));
+            if (visuals.Count == 0)
+                return null;
+            var r = visuals[0].Bounds;
+            foreach (var v in visuals)
+                r.Union(v.Bounds);
+            return r;
+        }
 
         internal IReadOnlyList<(SlotChoice Choice, SKRect Rect)> PickerOptions => _picker?.Options ?? new();
 

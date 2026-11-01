@@ -26,7 +26,7 @@ namespace DanaProcessing.Ide.Blocks
         public BlockStyle Style => _style;
 
         public BlockView Kind => BlockView.Tiles;
-        public float SnapRadius => 64;
+        public float SnapRadius => 46;
 
         private static float SlotWidth(SlotKind kind) => kind switch
         {
@@ -163,10 +163,15 @@ namespace DanaProcessing.Ide.Blocks
             into.Add(tile);
         }
 
-        public float SnapDistance(SKPoint pointer, SnapTarget target)
+        public SKPoint SnapAnchor(SKRect dragged, bool prepend) =>
+            // In front of a column: the carried tiles' right edge meets it.
+            // Anywhere else: their left edge goes into the gap.
+            new(prepend ? dragged.Right + Gap / 2 : dragged.Left - Gap / 2, dragged.Top + TileH / 2f);
+
+        public float SnapDistance(SKRect dragged, SnapTarget target)
         {
-            // Horizontal distance matters most: the caret sits between two tiles.
-            float dx = pointer.X - target.Point.X, dy = (pointer.Y - target.Point.Y) * 0.6f;
+            var a = SnapAnchor(dragged, target.Prepend);
+            float dx = a.X - target.Point.X, dy = (a.Y - target.Point.Y) * 0.6f;
             return MathF.Sqrt(dx * dx + dy * dy);
         }
 

@@ -74,7 +74,16 @@ namespace DanaProcessing.Ide.Blocks
         /// <summary>A column that isn't part of the program (being dragged), laid out from <paramref name="topLeft"/>.</summary>
         List<BlockVisual> LayoutLoose(List<Block> blocks, SKPoint topLeft);
 
-        float SnapDistance(SKPoint pointer, SnapTarget target);
+        /// <summary>
+        /// How far the column being carried (its <paramref name="dragged"/> bounds,
+        /// world units) is from <paramref name="target"/>: measured from the
+        /// column's own edge, not the pointer, so it only snaps when the block
+        /// itself is next to the place -- anywhere else it can be put down loose.
+        /// </summary>
+        float SnapDistance(SKRect dragged, SnapTarget target);
+
+        /// <summary>The point of the carried column that has to meet a target's point (the same one <see cref="SnapDistance"/> measures from).</summary>
+        SKPoint SnapAnchor(SKRect dragged, bool prepend);
 
         /// <summary>Where a column dropped on nothing should go, given where its top-left ended up.</summary>
         (double X, double Y) NewStackPosition(BlockProgram program, SceneLayout layout, SKPoint topLeft, SKPoint pointer);

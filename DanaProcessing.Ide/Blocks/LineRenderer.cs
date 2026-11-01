@@ -35,7 +35,7 @@ namespace DanaProcessing.Ide.Blocks
         public BlockStyle Style => _style;
 
         public BlockView Kind => BlockView.Lines;
-        public float SnapRadius => 34;
+        public float SnapRadius => 28;
 
         private enum RowKind { Header, End, Empty }
 
@@ -232,10 +232,15 @@ namespace DanaProcessing.Ide.Blocks
             return moved;
         }
 
-        public float SnapDistance(SKPoint pointer, SnapTarget target)
+        public SKPoint SnapAnchor(SKRect dragged, bool prepend) =>
+            // Above a column: the carried lines' bottom meets its top. Anywhere
+            // else: their first line goes into the gap, as deep as it's pushed.
+            new(dragged.Left + 6, prepend ? dragged.Bottom : dragged.Top);
+
+        public float SnapDistance(SKRect dragged, SnapTarget target)
         {
-            // Mostly the gap between two lines; how far right says how deep.
-            float dy = pointer.Y - target.Point.Y, dx = (pointer.X - target.Point.X) * 0.35f;
+            var a = SnapAnchor(dragged, target.Prepend);
+            float dy = a.Y - target.Point.Y, dx = (a.X - target.Point.X) * 0.4f;
             return MathF.Sqrt(dx * dx + dy * dy);
         }
 

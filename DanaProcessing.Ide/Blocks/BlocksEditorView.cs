@@ -54,6 +54,7 @@ namespace DanaProcessing.Ide.Blocks
         private bool _slow, _codeVisible;
         private readonly Button _tilesButton, _linesButton;
         private readonly DispatcherTimer _checkTimer;
+        private readonly DispatcherTimer _liveRestart;
 
         private EditorTab? _tab;
         private GeneratedCode? _clean;
@@ -90,7 +91,11 @@ namespace DanaProcessing.Ide.Blocks
             run.Click += (_, _) => RunRequested?.Invoke();
             var stop = BlocksChrome.Button(BlocksChrome.Icons.Stop, null);
             ToolTip.SetTip(stop, Loc.Tr("Detener", "Stop"));
-            stop.Click += (_, _) => StopRequested?.Invoke();
+            stop.Click += (_, _) =>
+            {
+                _liveRestart.Stop();
+                StopRequested?.Invoke();
+            };
 
             _slowToggle = BlocksChrome.Button(BlocksChrome.Icons.Turtle, Loc.Tr("Lento", "Slow"));
             ToolTip.SetTip(_slowToggle, Loc.Tr("La tortuga camina despacito, para ver cada paso", "The turtle walks slowly so you can see each step"));
@@ -394,6 +399,18 @@ namespace DanaProcessing.Ide.Blocks
             _stepTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(80) };
             _stepTimer.Tick += (_, _) => ShowStep();
 
+            _liveRestart = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(450) };
+            _liveRestart.Tick += (_, _) =>
+            {
+                _liveRestart.Stop();
+                if (_workspace.IsDragging)
+                {
+                    _liveRestart.Start(); // still carrying a block: wait until it's put down
+                    return;
+                }
+                RunRequested?.Invoke();
+            };
+
             _checkTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(250) };
             _checkTimer.Tick += (_, _) => PollTurtleChallenge();
 
@@ -495,6 +512,14 @@ namespace DanaProcessing.Ide.Blocks
         {
             if (_tab is null)
                 return;
+            // Changing the blocks while the program runs keeps it running: a
+            // moment after the last change it starts again with the new blocks,
+            // so the child sees what the change does (live, like a toy).
+            if (_running is not null)
+            {
+                _liveRestart.Stop();
+                _liveRestart.Start();
+            }
             _tab.Blocks = _workspace.Program;
             _tab.RefreshFromBlocks();
             _resultBanner.IsVisible = false;

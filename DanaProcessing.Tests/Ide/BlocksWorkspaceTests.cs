@@ -370,6 +370,51 @@ public class BlocksWorkspacePaintTests
     }
 }
 
+public class BlocksWorkspaceMovingTests
+{
+    [Theory]
+    [MemberData(nameof(BlocksWorkspaceTests.Views), MemberType = typeof(BlocksWorkspaceTests))]
+    public void A_block_carried_away_from_its_column_stays_where_it_is_put(BlockView view)
+    {
+        var p = new BlockProgram { View = view };
+        var stack = p.AddStack(40, 40, BlockCatalog.Start, BlockCatalog.Forward, BlockCatalog.Right);
+        var ws = new BlocksWorkspace(p) { ViewWidth = 1200, ViewHeight = 760 };
+        using var surface = SKSurface.Create(new SKImageInfo(1200, 760));
+        ws.Paint(surface.Canvas);
+
+        var r = ws.ScreenRectOf(stack.Blocks[2].Id)!.Value;
+        var from = new SKPoint(r.MidX, r.MidY);
+        var to = new SKPoint(r.MidX + 260, r.MidY + 300);           // well away from the column
+        ws.PointerDown(from);
+        for (int i = 1; i <= 8; i++)
+            ws.PointerMove(new SKPoint(from.X + (to.X - from.X) * i / 8, from.Y + (to.Y - from.Y) * i / 8));
+        ws.PointerUp(to);
+
+        Assert.Equal(2, p.Stacks.Count);                              // a loose block, not snapped back
+        Assert.Equal(2, p.Stacks[0].Blocks.Count);
+        Assert.Equal(BlockCatalog.Right, p.Stacks[1].Blocks[0].Type);
+    }
+
+    [Theory]
+    [MemberData(nameof(BlocksWorkspaceTests.Views), MemberType = typeof(BlocksWorkspaceTests))]
+    public void A_block_dropped_on_the_palette_is_deleted(BlockView view)
+    {
+        var p = new BlockProgram { View = view };
+        var stack = p.AddStack(40, 40, BlockCatalog.Start, BlockCatalog.Forward, BlockCatalog.Right);
+        var ws = new BlocksWorkspace(p) { ViewWidth = 1200, ViewHeight = 760 };
+        using var surface = SKSurface.Create(new SKImageInfo(1200, 760));
+        ws.Paint(surface.Canvas);
+        var r = ws.ScreenRectOf(stack.Blocks[2].Id)!.Value;
+        ws.PointerDown(new SKPoint(r.MidX, r.MidY));
+        ws.PointerMove(new SKPoint(r.MidX - 40, r.MidY + 10));
+        ws.PointerMove(new SKPoint(100, 400));
+        ws.PointerUp(new SKPoint(100, 400));
+        Assert.Equal(2, ws.Program.AllBlocks().Count());
+        ws.Undo();
+        Assert.Equal(3, ws.Program.AllBlocks().Count());
+    }
+}
+
 public class BlocksWorkspaceNewWordsTests
 {
     [Theory]

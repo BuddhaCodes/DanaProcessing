@@ -120,6 +120,7 @@ namespace DanaProcessing.Ide.Blocks
         {
             base.OnPointerMoved(e);
             var p = Pos(e, this);
+            _lastPointer = p;
             if (e.Pointer.Type == PointerType.Touch && _fingers.ContainsKey(e.Pointer.Id))
             {
                 _fingers[e.Pointer.Id] = p;
@@ -138,30 +139,45 @@ namespace DanaProcessing.Ide.Blocks
         protected override void OnPointerReleased(PointerReleasedEventArgs e)
         {
             base.OnPointerReleased(e);
-            e.Pointer.Capture(null);
             e.Handled = true;
             var p = Pos(e, this);
-            if (e.Pointer.Type == PointerType.Touch)
+            // Drop FIRST, then let go of the pointer: releasing the capture
+            // raises CaptureLost, which (with a drag still going) would put the
+            // block down at a fallback spot -- that's what made "drop here to
+            // delete" bring the block back instead of deleting it.
+            _releasing = true;
+            try
             {
-                _fingers.Remove(e.Pointer.Id);
-                if (_pinching)
+                if (e.Pointer.Type == PointerType.Touch)
                 {
-                    // Lifting one of two fingers ends the pinch; the other one
-                    // does nothing more until it's lifted too.
-                    if (_fingers.Count < 2)
-                        Workspace.PinchEnd();
-                    if (_fingers.Count == 0)
-                        _pinching = false;
+                    _fingers.Remove(e.Pointer.Id);
+                    if (_pinching)
+                    {
+                        // Lifting one of two fingers ends the pinch; the other one
+                        // does nothing more until it's lifted too.
+                        if (_fingers.Count < 2)
+                            Workspace.PinchEnd();
+                        if (_fingers.Count == 0)
+                            _pinching = false;
+                        _primary = null;
+                        return;
+                    }
+                }
+                if (_primary is null || _primary == e.Pointer.Id)
+                {
+                    Workspace.PointerUp(p);
                     _primary = null;
-                    return;
                 }
             }
-            if (_primary is null || _primary == e.Pointer.Id)
+            finally
             {
-                Workspace.PointerUp(p);
-                _primary = null;
+                e.Pointer.Capture(null);
+                _releasing = false;
             }
         }
+
+        private bool _releasing;
+        private SKPoint _lastPointer;
 
         protected override void OnPointerCaptureLost(PointerCaptureLostEventArgs e)
         {
@@ -173,9 +189,9 @@ namespace DanaProcessing.Ide.Blocks
                 _pinching = false;
             }
             // The window lost the pointer mid-drag (alt-tab...): finish where it is.
-            if (Workspace.IsDragging && (_primary is null || _primary == e.Pointer.Id))
+            if (!_releasing && Workspace.IsDragging && (_primary is null || _primary == e.Pointer.Id))
             {
-                Workspace.PointerUp(new SKPoint(Workspace.PaletteW + 200, 200));
+                Workspace.PointerUp(_lastPointer);
                 _primary = null;
             }
         }
