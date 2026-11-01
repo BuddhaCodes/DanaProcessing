@@ -42,6 +42,9 @@ namespace DanaProcessing.Ide.Blocks
         private sealed record Row(float Top, int Depth, RowKind Kind, Block? Block, BlockStack Stack, bool Loose, string Code);
 
         /// <summary>The scene plus what only this view needs: every line, and where the C# column starts.</summary>
+        /// <summary>Where the code column starts in this scene (world units).</summary>
+        internal float? CodeColumnX(SceneLayout layout) => (layout as LineScene)?.CodeX;
+
         private sealed class LineScene : SceneLayout
         {
             public List<Row> Rows { get; } = new();

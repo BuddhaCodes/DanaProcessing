@@ -1000,6 +1000,46 @@ namespace DanaProcessing.Ide.Blocks
         internal SKRect? ScreenRectOf(int blockId) =>
             _scene.Stacks.Values.SelectMany(v => v).Where(v => v.Block.Id == blockId).Select(v => (SKRect?)ToScreen(v.Hit)).FirstOrDefault();
 
+        /// <summary>Width of the category buttons' strip at the left.</summary>
+        internal float CategoryWidth => CategoryW;
+
+        /// <summary>Where the palette's entries are (below them, nothing).</summary>
+        internal SKRect PaletteItemsRect =>
+            _paletteItems.Count == 0 ? new SKRect(CategoryW, 0, PaletteW, ViewHeight)
+                : new SKRect(CategoryW, 0, PaletteW, Math.Min(ViewHeight, _paletteItems.Max(i => i.Rect.Bottom) + 16));
+
+        /// <summary>A whole column (its blocks and everything inside them) on screen.</summary>
+        internal SKRect? ScreenRectOfStack(BlockStack stack)
+        {
+            if (!_scene.Stacks.TryGetValue(stack, out var visuals) || visuals.Count == 0)
+                return null;
+            var r = visuals[0].Bounds;
+            foreach (var v in visuals)
+                r.Union(v.Bounds);
+            return ToScreen(r);
+        }
+
+        /// <summary>Everything inside the first "repetir"/"si" of the program, on screen (null if there's none with blocks in it).</summary>
+        internal SKRect? ScreenRectOfFirstInside()
+        {
+            var c = Program.AllBlocks().FirstOrDefault(b => b.Def.Shape == BlockShape.CBlock && b.Body is { Count: > 0 });
+            if (c is null)
+                return null;
+            var inner = c.Body!.SelectMany(b => b.SelfAndDescendants()).Select(b => b.Id).ToHashSet();
+            var visuals = _scene.Stacks.Values.SelectMany(v => v).Where(v => inner.Contains(v.Block.Id)).ToList();
+            if (visuals.Count == 0)
+                return null;
+            var r = visuals[0].Bounds;
+            foreach (var v in visuals)
+                r.Union(v.Bounds);
+            return ToScreen(r);
+        }
+
+        /// <summary>The C# column of the Lines view on screen (null in Tiles).</summary>
+        internal SKRect? CodeColumnRect => _renderer is LineRenderer lines && lines.CodeColumnX(_scene) is { } x
+            ? new SKRect(Math.Max(PaletteW, ToScreen(new SKPoint(x - 20, 0)).X), 0, ViewWidth, ViewHeight)
+            : null;
+
         /// <summary>Where a palette entry of <paramref name="type"/> is on screen (null if not on the current page).</summary>
         internal SKRect? PaletteRectOf(string type) =>
             _paletteItems.Where(p => p.Template.Type == type).Select(p => (SKRect?)p.Rect).FirstOrDefault();

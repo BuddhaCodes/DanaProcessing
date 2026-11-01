@@ -65,6 +65,7 @@ namespace DanaProcessing.Ide.Blocks
             public const string Steps = "M8 17c-1.6 0-2.8-1.6-2.8-4.2S6.4 7.5 8 7.5s2.8 2.4 2.8 5.1S9.6 17 8 17z M6.5 20.5h3 M16 13c-1.6 0-2.8-1.6-2.8-4.2S14.4 3.5 16 3.5s2.8 2.4 2.8 5.1S17.6 13 16 13z M14.5 16.5h3";
             public const string NextStep = "M5 5v14 M9 6.5v11l9-5.5z";
             public const string Speaker = "M4 9.5h3.5L12 5.5v13l-4.5-4H4z M15.5 9a4 4 0 0 1 0 6 M18 6.5a7.5 7.5 0 0 1 0 11";
+            public const string Help = "M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18 M9.4 9.2a2.7 2.7 0 1 1 3.7 2.5c-.7.3-1.1.9-1.1 1.6v.7 M12 16.8h.01";
             public const string Retry = "M20 12a8 8 0 1 1-2.6-5.9 M20 4v5h-5";
         }
 

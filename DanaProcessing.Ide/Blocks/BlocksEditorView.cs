@@ -47,6 +47,10 @@ namespace DanaProcessing.Ide.Blocks
         private int _stepShown = -1;
         private readonly Button[] _compactable;
         private readonly StackPanel _toolbarLeft, _toolbarRight;
+        private readonly Button _helpButton, _runButton;
+        private readonly Control _viewSwitch;
+        private readonly TourOverlay _tour;
+        private BlockView? _shownView;
         private readonly Button _listenButton;
         private readonly DispatcherTimer _speechTimer;
         private bool _readAloud;
@@ -158,6 +162,12 @@ namespace DanaProcessing.Ide.Blocks
                                            "Opens this program as ordinary C# so you can keep writing it"));
             convert.Click += (_, _) => ConvertToCodeRequested?.Invoke(BlockCodeGenerator.Generate(_workspace.Program).Source);
 
+            _helpButton = BlocksChrome.Button(BlocksChrome.Icons.Help, null);
+            ToolTip.SetTip(_helpButton, Loc.Tr("¿Cómo funciona? Un paseo corto por esta pantalla", "How does it work? A short tour of this screen"));
+            _helpButton.Click += (_, _) => StartTour();
+            _runButton = run;
+            _viewSwitch = viewSwitch;
+
             var left = _toolbarLeft = new StackPanel
             {
                 Orientation = Orientation.Horizontal, Spacing = 6,
@@ -166,7 +176,7 @@ namespace DanaProcessing.Ide.Blocks
             var right = _toolbarRight = new StackPanel
             {
                 Orientation = Orientation.Horizontal, Spacing = 6, HorizontalAlignment = HorizontalAlignment.Right,
-                Children = { viewSwitch, BlocksChrome.Divider(), challenges, _codeToggle, convert },
+                Children = { viewSwitch, BlocksChrome.Divider(), challenges, _codeToggle, convert, _helpButton },
             };
             // On a narrow window the secondary buttons keep only their icons.
             _compactable = new[] { _slowToggle, _stepToggle, challenges, _codeToggle };
@@ -394,7 +404,8 @@ namespace DanaProcessing.Ide.Blocks
             root.Children.Add(toolbar);
             root.Children.Add(_challengeCard);
             root.Children.Add(content);
-            Content = root;
+            _tour = new TourOverlay();
+            Content = new Grid { Children = { root, _tour } };
 
             _stepTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(80) };
             _stepTimer.Tick += (_, _) => ShowStep();
@@ -451,6 +462,7 @@ namespace DanaProcessing.Ide.Blocks
                 return;
             SketchStopped();
             _tab = tab;
+            _shownView = null; // a tab shown: its view's tour, if it wasn't seen yet
             var program = tab.Blocks!;
             var challenge = ChallengeCatalog.Get(program.ChallengeId);
             _workspace.Load(program, challenge?.Palette);
@@ -459,8 +471,79 @@ namespace DanaProcessing.Ide.Blocks
             RefreshCode();
         }
 
+        // =================================================================
+        // The tour
+        // =================================================================
+
+        /// <summary>The first time each view is seen, its tour starts by itself (once the screen is laid out).</summary>
+        private void OfferTour()
+        {
+            if (!AutoTour || BlocksTour.Seen(_workspace.View) || _tour.IsRunning)
+                return;
+            DispatcherTimer.RunOnce(() =>
+            {
+                if (_tab is not null && IsEffectivelyVisible && Bounds.Width > 0 && !BlocksTour.Seen(_workspace.View))
+                    StartTour();
+            }, TimeSpan.FromMilliseconds(600));
+        }
+
+        /// <summary>False in tests and screenshots that don't want the tour popping up.</summary>
+        internal static bool AutoTour { get; set; } = true;
+
+        internal void StartTour()
+        {
+            var view = _workspace.View;
+            _workspace.HoverEnd();
+            _tour.Start(BlocksTour.Steps(view), TourRect, () => BlocksTour.MarkSeen(view));
+        }
+
+        /// <summary>Where a tour step's target is, in this view's coordinates (null: skip that step).</summary>
+        private Rect? TourRect(TourTarget target)
+        {
+            Rect? Canvas(SkiaSharp.SKRect? r) =>
+                r is { } k && _canvas.TranslatePoint(new Point(k.Left, k.Top), this) is { } p
+                    ? new Rect(p.X, p.Y, Math.Max(1, k.Width), Math.Max(1, k.Height)).Intersect(new Rect(_canvas.TranslatePoint(default, this) ?? default, _canvas.Bounds.Size))
+                    : null;
+            Rect? Control(Control c) => c.IsEffectivelyVisible && c.TranslatePoint(default, this) is { } p ? new Rect(p, c.Bounds.Size) : null;
+            var program = _workspace.Program;
+            switch (target)
+            {
+                case TourTarget.Categories:
+                    return Canvas(new SkiaSharp.SKRect(0, 0, _workspace.CategoryWidth, (float)_canvas.Bounds.Height));
+                case TourTarget.Palette:
+                case TourTarget.Trash:
+                    return Canvas(_workspace.PaletteItemsRect);
+                case TourTarget.FirstColumn:
+                    return program.Scripts().FirstOrDefault() is { } script ? Canvas(_workspace.ScreenRectOfStack(script)) : null;
+                case TourTarget.Value:
+                    foreach (var b in program.Scripts().SelectMany(st => st.Blocks).SelectMany(b => b.SelfAndDescendants()))
+                        if (b.Def.Slots.Count > 0)
+                            return Canvas(_workspace.ScreenRectOfSlot(b.Id, b.Def.Slots[0].Name));
+                    return null;
+                case TourTarget.Indent:
+                    return Canvas(_workspace.ScreenRectOfFirstInside());
+                case TourTarget.CodeColumn:
+                    return Canvas(_workspace.CodeColumnRect);
+                case TourTarget.Run:
+                    return Control(_runButton);
+                case TourTarget.Steps:
+                    return Control(_runButton) is { } a && Control(_stepToggle) is { } b2 ? a.Union(b2) : Control(_runButton);
+                case TourTarget.ViewSwitch:
+                    return Control(_viewSwitch);
+                case TourTarget.Help:
+                    return Control(_helpButton);
+                default:
+                    return null;
+            }
+        }
+
         private void ShowViewButtons()
         {
+            if (_tab is not null && _shownView != _workspace.View)
+            {
+                _shownView = _workspace.View;
+                OfferTour();
+            }
             ShowToggle(_tilesButton, _workspace.View == BlockView.Tiles);
             ShowToggle(_linesButton, _workspace.View == BlockView.Lines);
             // The challenge speaks in the same letters as the blocks.
