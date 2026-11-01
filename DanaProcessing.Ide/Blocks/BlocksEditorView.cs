@@ -74,6 +74,8 @@ namespace DanaProcessing.Ide.Blocks
         public event Action<string>? ConvertToCodeRequested;
         /// <summary>"🏆 Retos": show the list of challenges.</summary>
         public event Action? ChallengesRequested;
+        /// <summary>"Crear un reto con este programa": a grown-up turns these blocks into a challenge.</summary>
+        public event Action? CreateChallengeRequested;
         /// <summary>"Siguiente reto": open this challenge.</summary>
         public event Action<Challenge>? ChallengeRequested;
 
@@ -143,7 +145,12 @@ namespace DanaProcessing.Ide.Blocks
             };
 
             var challenges = BlocksChrome.Button(BlocksChrome.Icons.Trophy, Loc.Tr("Retos", "Challenges"));
-            challenges.Click += (_, _) => ChallengesRequested?.Invoke();
+            // Retos: pick one -- or, for a grown-up, turn this program into one.
+            var pick = new MenuItem { Header = Loc.Tr("Elegir un reto…", "Pick a challenge…") };
+            pick.Click += (_, _) => ChallengesRequested?.Invoke();
+            var make = new MenuItem { Header = Loc.Tr("Crear un reto con este programa… (docentes y familias)", "Create a challenge from this program… (teachers and families)") };
+            make.Click += (_, _) => CreateChallengeRequested?.Invoke();
+            challenges.Flyout = new MenuFlyout { Items = { pick, make } };
 
             _codeToggle = BlocksChrome.Button(BlocksChrome.Icons.Code, Loc.Tr("Código", "Code"));
             ToolTip.SetTip(_codeToggle, Loc.Tr("Mostrar u ocultar el programa completo en C#", "Show or hide the whole program in C#"));

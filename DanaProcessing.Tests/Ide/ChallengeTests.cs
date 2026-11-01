@@ -112,8 +112,48 @@ public class ChallengeTests
             new B(BlockCatalog.If, new() { ["cond"] = "right" }, new[] { F(10) }),
             new B(BlockCatalog.If, new() { ["cond"] = "left" }, new[] { L(30) }),
         })),
+        "octagon" => Program(c, Start(Rep(8, F(50), R(45)))),
+        "circle" => Program(c, Start(Rep(36, F(10), R(10)))),
+        "sun" => Program(c, Start(Rep(12, F(100), new B(BlockCatalog.Back, new() { ["steps"] = "100" }), R(30)))),
+        "big-star" => Program(c, Start(Rep(8, F(100), R(135)))),
+        "zigzag" => Program(c, Start(R(135), Rep(3, F(40), L(90), F(40), R(90)))),
+        "two-houses" => Program(c, Start(Rep(4, F(50), R(90)), Of(BlockCatalog.PenUp), R(90), F(75), L(90), Of(BlockCatalog.PenDown), Rep(4, F(50), R(90)))),
+        "drum-loop" => Program(c, (BlockCatalog.MusicLoop, new[]
+        {
+            Rep(4, Of(BlockCatalog.Drum, "drum", "hat"), Of(BlockCatalog.Wait, "beats", "0.25")),
+            Of(BlockCatalog.Drum, "drum", "kick"), Of(BlockCatalog.Wait, "beats", "1"),
+        })),
+        "lullaby" => Program(c, (BlockCatalog.MusicLoop, new[]
+        {
+            Of(BlockCatalog.Instrument, "instrument", "Triangle"),
+            Of(BlockCatalog.Note, "note", "E4"), Of(BlockCatalog.Wait, "beats", "2"),
+            Of(BlockCatalog.Note, "note", "D4"), Of(BlockCatalog.Wait, "beats", "2"),
+            Of(BlockCatalog.Note, "note", "C4"), Of(BlockCatalog.Wait, "beats", "2"),
+        })),
+        "counter" => Program(c,
+            (BlockCatalog.Click, new[] { new B(BlockCatalog.VarChange, new() { ["var"] = "contador", ["amount"] = "1" }) }),
+            (BlockCatalog.Forever, new[] { Of(BlockCatalog.Background), new B(BlockCatalog.VarShow, new() { ["var"] = "contador" }) })),
+        "polygon-word" => ProgramWithWord(c, "trick", new[] { Rep(5, F(50), R(72)) }, Start(Rep(3, new B(BlockCatalog.Call, new() { ["fn"] = "trick" }), R(120)))),
+        "growing-squares" => Program(c, Start(
+            new B(BlockCatalog.VarSet, new() { ["value"] = "25", ["var"] = "lado" }),
+            Rep(4, Rep(4, new B(BlockCatalog.Forward, new() { ["steps"] = "var:lado" }), R(90)),
+                   new B(BlockCatalog.VarChange, new() { ["var"] = "lado", ["amount"] = "20" }),
+                   new B(BlockCatalog.VarChange, new() { ["var"] = "lado", ["amount"] = "5" })))),
+        "random-stars" => Program(c,
+            Start(Of(BlockCatalog.Background, "color", "navy")),
+            (BlockCatalog.Click, new[] { new B(BlockCatalog.Circle, new() { ["color"] = "yellow", ["size"] = "10", ["place"] = "random" }) })),
         _ => throw new Exception("no answer written for " + c.Id),
     };
+
+    /// <summary>A program with a "to make {fn}" column too.</summary>
+    private static BlockProgram ProgramWithWord(Challenge c, string fn, B[] word, params (string, B[])[] scripts)
+    {
+        var p = Program(c, scripts);
+        var define = p.AddStack(0, 900, BlockCatalog.Define);
+        define.Blocks[0].Values["fn"] = fn;
+        define.Blocks.AddRange(word.Select(b => Make(p, b)));
+        return p;
+    }
 
     public static IEnumerable<object[]> Ids() => ChallengeCatalog.All.Select(c => new object[] { c.Id });
 

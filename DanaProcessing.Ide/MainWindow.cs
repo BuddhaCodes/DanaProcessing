@@ -1369,6 +1369,7 @@ namespace DanaProcessing.Ide
             blocks.StopRequested += StopCurrentSketch;
             blocks.ConvertToCodeRequested += code => _editorView.AddNewTab(null, code);
             blocks.ChallengesRequested += OpenChallenges;
+            blocks.CreateChallengeRequested += CreateChallenge;
             blocks.ChallengeRequested += OpenChallenge;
         }
 
@@ -1386,8 +1387,9 @@ namespace DanaProcessing.Ide
 
         private void OpenChallenges()
         {
-            var window = new ChallengesWindow();
+            var window = new ChallengesWindow(() => _editorView.ActiveTab?.Blocks);
             window.ChallengeChosen += OpenChallenge;
+            window.NewSolutionRequested += NewChallengeSolution;
             window.Show(this);
         }
 
@@ -1397,9 +1399,9 @@ namespace DanaProcessing.Ide
         /// </summary>
         private void CreateChallenge()
         {
-            if (_editorView.ActiveTab?.Blocks is not { } program)
+            if (_editorView.ActiveTab?.Blocks is not { } program || !program.Scripts().Any(st => st.Blocks.Count > 1))
             {
-                ShowTransientStatus(Loc.Tr("Primero abrí una pestaña de bloques con tu solución.", "First open a blocks tab with your answer."));
+                NewChallengeSolution();
                 return;
             }
             var dialog = new CreateChallengeDialog(program);
@@ -1417,6 +1419,19 @@ namespace DanaProcessing.Ide
             var window = new ClassroomWindow(() => _editorView.ActiveTab?.Blocks);
             window.OpenProgram += program => _editorView.AddBlocksTab(program);
             window.Show(this);
+        }
+
+        /// <summary>
+        /// A grown-up wants to make a challenge but has no answer yet: an empty
+        /// blocks tab to build it in, and where to go once it's built.
+        /// </summary>
+        private void NewChallengeSolution()
+        {
+            var program = new BlockProgram { Name = Loc.Tr("Solución de mi reto", "My challenge's answer"), View = BlockView.Tiles };
+            program.AddStack(40, 40, BlockCatalog.Start);
+            _editorView.AddBlocksTab(program);
+            ShowTransientStatus(Loc.Tr("Armá acá la solución del reto. Después: Archivo → Crear un reto con estos bloques.",
+                                       "Build the challenge's answer here. Then: File → Create a challenge from these blocks."));
         }
 
         /// <summary>Opens a challenge -- or switches to the tab already working on it.</summary>

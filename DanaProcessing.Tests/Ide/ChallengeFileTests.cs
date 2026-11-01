@@ -144,4 +144,50 @@ public class ChallengeFileTests : IDisposable
         var loaded = ChallengeFile.FromJson(file.ToJson());
         Assert.Equal(new[] { BlockCatalog.Start, BlockCatalog.Forward }, loaded.Palette);
     }
+
+    [Fact]
+    public void A_family_shares_all_its_challenges_in_one_file_and_they_come_back_once()
+    {
+        var a = ChallengeFile.FromSolution(Pentagon(), "El pentágono", "Dibujá un pentágono.", "", ChallengeCheck.Shape, BlockView.Tiles, "Mamá");
+        var song = new BlockProgram();
+        song.AddStack(0, 0, BlockCatalog.MusicLoop, BlockCatalog.Note, BlockCatalog.Wait);
+        var b = ChallengeFile.FromSolution(song, "Una nota", "Tocá una nota.", "", ChallengeCheck.Blocks, BlockView.Tiles, "Papá");
+        ChallengeFiles.SaveToFolder(a);
+        ChallengeFiles.SaveToFolder(b);
+        var pack = ChallengeFiles.ExportPack();
+
+        // Another computer: an empty folder.
+        Directory.Delete(_folder, true);
+        var shared = Path.Combine(Path.GetTempPath(), "pack-" + Guid.NewGuid().ToString("N") + ChallengeFiles.PackExtension);
+        File.WriteAllText(shared, pack);
+        try
+        {
+            var imported = ChallengeFiles.ImportAny(shared);
+            Assert.Equal(2, imported.Count);
+            Assert.Equal("Mamá", ChallengeCatalog.Teacher.Single(c => c.Title == "El pentágono").Author);
+            ChallengeFiles.ImportAny(shared);                         // twice: replaced, not doubled
+            Assert.Equal(2, ChallengeCatalog.Teacher.Count);
+            Assert.Throws<InvalidDataException>(() => { File.WriteAllText(shared, "{\"challenges\": []}"); ChallengeFiles.ImportAny(shared); });
+        }
+        finally
+        {
+            File.Delete(shared);
+        }
+    }
+
+    [Fact]
+    public void Editing_a_challenge_keeps_its_id_and_removing_it_takes_it_off_the_list()
+    {
+        var file = ChallengeFile.FromSolution(Pentagon(), "Pentágono", "Dibujá.", "", ChallengeCheck.Shape, BlockView.Tiles);
+        ChallengeFiles.SaveToFolder(file);
+        ChallengeCatalog.ReloadTeacher();
+        var challenge = Assert.Single(ChallengeCatalog.Teacher);
+
+        var loaded = ChallengeFiles.Load(challenge)!;
+        Assert.Equal(file.Id, loaded.Id);
+        Assert.Equal(3, loaded.SolutionBlockCount());                 // the answer comes back to be edited
+
+        ChallengeFiles.Delete(challenge);
+        Assert.Empty(ChallengeCatalog.Teacher);
+    }
 }

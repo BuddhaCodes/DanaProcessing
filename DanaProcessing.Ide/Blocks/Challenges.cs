@@ -44,8 +44,11 @@ namespace DanaProcessing.Ide.Blocks
         /// </summary>
         public Func<IReadOnlyList<TurtleLine>>? Target { get; init; }
 
-        /// <summary>Where it came from: null for the built-in ones, the .danareto file for a teacher's.</summary>
+        /// <summary>Where it came from: null for the built-in ones, the .danareto file for a teacher's or a family's.</summary>
         public string? SourceFile { get; init; }
+
+        /// <summary>Who made it ("la seño Ana", "papá"), for challenges made by someone; null for the built-in ones.</summary>
+        public string? Author { get; init; }
 
         /// <summary>Blocks that must be used (e.g. "repetir" in the challenge about repeating).</summary>
         public IReadOnlyList<string> Required { get; init; } = Array.Empty<string>();
@@ -368,6 +371,79 @@ namespace DanaProcessing.Ide.Blocks
             },
             new Challenge
             {
+                Id = "octagon", Icon = "⯃",
+                TitleEs = "La señal de pare", TitleEn = "The stop sign",
+                GoalEs = "Dibujá un octógono: ocho lados iguales, como una señal de pare.",
+                GoalEn = "Draw an octagon: eight equal sides, like a stop sign.",
+                HintEs = "Repetir 8 veces: avanzar 50 y girar 45.",
+                HintEn = "Repeat 8 times: move 50 and turn 45.",
+                Palette = WalkTurnRepeat, BestBlockCount = 3,
+                Shape = t => { for (int i = 0; i < 8; i++) { t.Forward(50); t.TurnRight(45); } },
+            },
+            new Challenge
+            {
+                Id = "circle", Icon = "◯",
+                TitleEs = "Casi un círculo", TitleEn = "Almost a circle",
+                GoalEs = "Dibujá un círculo con pasitos cortos y giros chiquitos.",
+                GoalEn = "Draw a circle with tiny steps and tiny turns.",
+                HintEs = "36 veces: avanzar 10 y girar 10. ¡36 por 10 es una vuelta entera!",
+                HintEn = "36 times: move 10 and turn 10. 36 times 10 is a whole turn!",
+                Palette = WalkTurnRepeat, BestBlockCount = 3,
+                Shape = t => { for (int i = 0; i < 36; i++) { t.Forward(10); t.TurnRight(10); } },
+            },
+            new Challenge
+            {
+                Id = "sun", Icon = "☀",
+                TitleEs = "El sol", TitleEn = "The sun",
+                GoalEs = "Dibujá los rayos de un sol: doce rayitas que salen del centro.",
+                GoalEn = "Draw the rays of a sun: twelve lines coming out of the middle.",
+                HintEs = "Cada rayo: avanzar 100 y retroceder 100. Después girar 30.",
+                HintEn = "Each ray: move 100 and move back 100. Then turn 30.",
+                Palette = new[] { BlockCatalog.Start, BlockCatalog.Forward, BlockCatalog.Back, BlockCatalog.Right, BlockCatalog.Repeat },
+                BestBlockCount = 4,
+                Shape = t => { for (int i = 0; i < 12; i++) { t.Forward(100); t.Back(100); t.TurnRight(30); } },
+            },
+            new Challenge
+            {
+                Id = "big-star", Icon = "✴",
+                TitleEs = "Estrella de ocho puntas", TitleEn = "Eight-pointed star",
+                GoalEs = "Dibujá una estrella con ocho puntas.",
+                GoalEn = "Draw a star with eight points.",
+                HintEs = "Ocho veces: avanzar 100 y girar 135.",
+                HintEn = "Eight times: move 100 and turn 135.",
+                Palette = WalkTurnRepeat, BestBlockCount = 3,
+                Shape = t => { for (int i = 0; i < 8; i++) { t.Forward(100); t.TurnRight(135); } },
+            },
+            new Challenge
+            {
+                Id = "zigzag", Icon = "⚡",
+                TitleEs = "El rayo", TitleEn = "The zigzag",
+                GoalEs = "Dibujá un zigzag que baja en diagonal, como un rayo.",
+                GoalEn = "Draw a zigzag going down diagonally, like lightning.",
+                HintEs = "Empezá girando 135. Después repetí: avanzar, girar a la izquierda 90, avanzar, girar a la derecha 90.",
+                HintEn = "Start by turning 135. Then repeat: move, turn left 90, move, turn right 90.",
+                Palette = WalkTurnRepeat, BestBlockCount = 6,
+                Shape = t => { t.TurnRight(135); for (int i = 0; i < 3; i++) { t.Forward(40); t.TurnLeft(90); t.Forward(40); t.TurnRight(90); } },
+            },
+            new Challenge
+            {
+                Id = "two-houses", Icon = "🏘",
+                TitleEs = "Dos cuadrados separados", TitleEn = "Two squares apart",
+                GoalEs = "Dibujá dos cuadrados, uno al lado del otro, sin línea entre ellos.",
+                GoalEn = "Draw two squares side by side, with no line between them.",
+                HintEs = "Un cuadrado, levantá el lápiz, cruzá, bajá el lápiz y otro cuadrado.",
+                HintEn = "A square, lift the pen, cross over, put the pen down and another square.",
+                Palette = new[] { BlockCatalog.Start, BlockCatalog.Forward, BlockCatalog.Right, BlockCatalog.Left, BlockCatalog.Repeat, BlockCatalog.PenUp, BlockCatalog.PenDown },
+                BestBlockCount = 12,
+                Shape = t =>
+                {
+                    for (int i = 0; i < 4; i++) { t.Forward(50); t.TurnRight(90); }
+                    t.PenUp(); t.TurnRight(90); t.Forward(75); t.TurnLeft(90); t.PenDown();
+                    for (int i = 0; i < 4; i++) { t.Forward(50); t.TurnRight(90); }
+                },
+            },
+            new Challenge
+            {
                 Id = "beat", Icon = "🥁",
                 TitleEs = "Mi primer ritmo", TitleEn = "My first beat",
                 GoalEs = "Hacé un ritmo que se repita: bombo, esperar, caja, esperar.",
@@ -485,6 +561,54 @@ namespace DanaProcessing.Ide.Blocks
                         return Loc.Tr("Usá las dos \"música que se repite\": una para cada cosa.", "Use both \"music that repeats\": one for each part.");
                     if (!drums || !melody)
                         return Loc.Tr("Una con tambores y la otra con notas.", "One with drums and the other with notes.");
+                    return null;
+                },
+            },
+            new Challenge
+            {
+                Id = "drum-loop", Icon = "🔁",
+                TitleEs = "Repetí el ritmo", TitleEn = "Repeat the beat",
+                GoalEs = "Tocá el platillo cuatro veces rápido, y después el bombo, usando \"repetir\".",
+                GoalEn = "Play the hi-hat four times fast, then the kick, using \"repeat\".",
+                HintEs = "Adentro de repetir 4: platillo y esperar un cuartito. Después: bombo y esperar.",
+                HintEn = "Inside repeat 4: hi-hat and wait a quarter. Then: kick and wait.",
+                Palette = new[] { BlockCatalog.MusicLoop, BlockCatalog.Drum, BlockCatalog.Wait, BlockCatalog.Repeat },
+                BestBlockCount = 5,
+                Required = new[] { BlockCatalog.Repeat },
+                Start = () => Challenge.StartWith(BlockCatalog.MusicLoop),
+                Rule = p =>
+                {
+                    var loops = In(p, BlockCatalog.MusicLoop).ToList();
+                    var rep = loops.FirstOrDefault(b => b.Type == BlockCatalog.Repeat);
+                    if (rep is null || !(rep.Body ?? new List<Block>()).Any(b => b.Type == BlockCatalog.Drum && b.Value("drum") == "hat"))
+                        return Loc.Tr("Poné el platillo adentro de \"repetir\".", "Put the hi-hat inside \"repeat\".");
+                    if (!loops.Any(b => b.Type == BlockCatalog.Drum && b.Value("drum") == "kick"))
+                        return Loc.Tr("Falta el bombo.", "The kick is missing.");
+                    if (!loops.Any(b => b.Type == BlockCatalog.Wait))
+                        return Loc.Tr("Poné \"esperar\" entre los golpes.", "Put \"wait\" between the hits.");
+                    return null;
+                },
+            },
+            new Challenge
+            {
+                Id = "lullaby", Icon = "🌙",
+                TitleEs = "Una canción de cuna", TitleEn = "A lullaby",
+                GoalEs = "Hacé una melodía tranquila con flauta: notas largas de dos tiempos.",
+                GoalEn = "Make a calm melody on the flute: long two-beat notes.",
+                HintEs = "Elegí el instrumento \"flauta\" y esperá \"dos tiempos\" después de cada nota.",
+                HintEn = "Pick the \"flute\" instrument and wait \"two beats\" after each note.",
+                Palette = new[] { BlockCatalog.MusicLoop, BlockCatalog.Note, BlockCatalog.Wait, BlockCatalog.Instrument },
+                BestBlockCount = 7,
+                Start = () => Challenge.StartWith(BlockCatalog.MusicLoop),
+                Rule = p =>
+                {
+                    var blocks = In(p, BlockCatalog.MusicLoop).ToList();
+                    if (!blocks.Any(b => b.Type == BlockCatalog.Instrument && b.Value("instrument") == "Triangle"))
+                        return Loc.Tr("Elegí la flauta con el bloque \"instrumento\".", "Pick the flute with the \"instrument\" block.");
+                    if (blocks.Count(b => b.Type == BlockCatalog.Note) < 3)
+                        return Loc.Tr("Tocá por lo menos tres notas.", "Play at least three notes.");
+                    if (blocks.Count(b => b.Type == BlockCatalog.Wait && double.TryParse(b.Value("beats"), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var beats) && beats >= 2) < 3)
+                        return Loc.Tr("Las notas de una canción de cuna son largas: esperá dos tiempos después de cada una.", "Lullaby notes are long: wait two beats after each one.");
                     return null;
                 },
             },
@@ -612,6 +736,91 @@ namespace DanaProcessing.Ide.Blocks
                         return Loc.Tr("Falta: si la flecha → está apretada, avanzar.", "Missing: if the → arrow is pressed, move.");
                     if (!ifs.Any(b => b.Value("cond") == "left" && Moves(b, BlockCatalog.Left, BlockCatalog.Right)))
                         return Loc.Tr("Falta: si la flecha ← está apretada, girar.", "Missing: if the ← arrow is pressed, turn.");
+                    return null;
+                },
+            },
+            new Challenge
+            {
+                Id = "counter", View = BlockView.Lines, Icon = "🔢",
+                TitleEs = "El contador de clics", TitleEn = "The click counter",
+                GoalEs = "Cada clic suma 1 al \"contador\", y el contador se ve todo el tiempo.",
+                GoalEn = "Every click adds 1 to the \"counter\", and the counter is always shown.",
+                HintEs = "\"al hacer clic\": cambiar contador en +1. \"siempre\": pintar el fondo y mostrar contador.",
+                HintEn = "\"when clicked\": change counter by +1. \"forever\": paint the background and show counter.",
+                Palette = new[] { BlockCatalog.Forever, BlockCatalog.Click, BlockCatalog.Background, BlockCatalog.VarSet, BlockCatalog.VarChange, BlockCatalog.VarShow },
+                BestBlockCount = 3,
+                Start = () =>
+                {
+                    var p = Challenge.StartWith(BlockCatalog.Click);
+                    p.AddStack(40, 220, BlockCatalog.Forever);
+                    return p;
+                },
+                Rule = p =>
+                {
+                    if (!In(p, BlockCatalog.Click).Any(b => b.Type == BlockCatalog.VarChange && b.Value("var") == "contador" && b.Value("amount") == "1"))
+                        return Loc.Tr("Al hacer clic, cambiá el contador en +1.", "When clicked, change the counter by +1.");
+                    if (!In(p, BlockCatalog.Forever).Any(b => b.Type == BlockCatalog.VarShow && b.Value("var") == "contador"))
+                        return Loc.Tr("Mostrá el contador dentro de \"siempre\".", "Show the counter inside \"forever\".");
+                    return null;
+                },
+            },
+            new Challenge
+            {
+                Id = "polygon-word", View = BlockView.Lines, Icon = "⬠",
+                TitleEs = "Una palabra para el pentágono", TitleEn = "A word for the pentagon",
+                GoalEs = "Enseñale a la tortuga \"mi truco\": un pentágono. Usalo tres veces, girando 120 entre cada uno.",
+                GoalEn = "Teach the turtle \"my trick\": a pentagon. Use it three times, turning 120 between each.",
+                HintEs = "\"para hacer mi truco\": repetir 5 (avanzar 50, girar 72). \"al empezar\": repetir 3 (hacer mi truco, girar 120).",
+                HintEn = "\"to make my trick\": repeat 5 (move 50, turn 72). \"when it starts\": repeat 3 (make my trick, turn 120).",
+                Palette = new[] { BlockCatalog.Start, BlockCatalog.Define, BlockCatalog.Call, BlockCatalog.Forward, BlockCatalog.Right, BlockCatalog.Repeat },
+                BestBlockCount = 6,
+                Required = new[] { BlockCatalog.Define, BlockCatalog.Call },
+                Start = () =>
+                {
+                    var p = Challenge.StartWith(BlockCatalog.Start);
+                    var define = p.AddStack(40, 320, BlockCatalog.Define);
+                    define.Blocks[0].Values["fn"] = "trick";
+                    return p;
+                },
+                Shape = t => { for (int j = 0; j < 3; j++) { for (int i = 0; i < 5; i++) { t.Forward(50); t.TurnRight(72); } t.TurnRight(120); } },
+            },
+            new Challenge
+            {
+                Id = "growing-squares", View = BlockView.Lines, Icon = "⧉",
+                TitleEs = "Cuadrados que crecen", TitleEn = "Growing squares",
+                GoalEs = "Dibujá cuatro cuadrados, uno adentro del otro, que empiezan en la misma esquina: de 25, 50, 75 y 100 pasos.",
+                GoalEn = "Draw four squares, one inside the other, from the same corner: 25, 50, 75 and 100 steps.",
+                HintEs = "Guardá 25 en \"lado\". Repetí 4 veces: un cuadrado de \"lado\" pasos y después cambiá \"lado\" en +25... ¿cómo sumás 25? ¡Con +20 y +5!",
+                HintEn = "Store 25 in \"side\". Repeat 4 times: a square of \"side\" steps, then change \"side\" by +25... how do you add 25? With +20 and +5!",
+                Palette = new[] { BlockCatalog.Start, BlockCatalog.Forward, BlockCatalog.Right, BlockCatalog.Repeat, BlockCatalog.VarSet, BlockCatalog.VarChange },
+                BestBlockCount = 7,
+                Required = new[] { BlockCatalog.VarChange },
+                Shape = t => { for (int s = 25; s <= 100; s += 25) for (int i = 0; i < 4; i++) { t.Forward(s); t.TurnRight(90); } },
+            },
+            new Challenge
+            {
+                Id = "random-stars", View = BlockView.Lines, Icon = "✨",
+                TitleEs = "Cielo de estrellas", TitleEn = "Starry sky",
+                GoalEs = "Con cada clic aparece un círculo amarillo chiquito en cualquier lado, sobre un fondo azul marino.",
+                GoalEn = "Every click puts a tiny yellow circle anywhere, on a navy background.",
+                HintEs = "\"al empezar\": pintar el fondo azul marino. \"al hacer clic\": círculo amarillo diminuto en cualquier lado.",
+                HintEn = "\"when it starts\": paint the background navy. \"when clicked\": tiny yellow circle anywhere.",
+                Palette = new[] { BlockCatalog.Start, BlockCatalog.Click, BlockCatalog.Background, BlockCatalog.Circle },
+                BestBlockCount = 2,
+                Start = () =>
+                {
+                    var p = Challenge.StartWith(BlockCatalog.Start);
+                    p.AddStack(40, 220, BlockCatalog.Click);
+                    return p;
+                },
+                Rule = p =>
+                {
+                    if (!In(p, BlockCatalog.Start).Any(b => b.Type == BlockCatalog.Background && b.Value("color") == "navy"))
+                        return Loc.Tr("Al empezar, pintá el fondo azul marino.", "When it starts, paint the background navy.");
+                    if (!In(p, BlockCatalog.Click).Any(b => b.Type == BlockCatalog.Circle && b.Value("place") == "random" && b.Value("color") is "yellow" or "gold"))
+                        return Loc.Tr("Al hacer clic, un círculo amarillo en \"cualquier lado\".", "When clicked, a yellow circle \"anywhere\".");
+                    if (In(p, BlockCatalog.Click).Any(b => b.Type == BlockCatalog.Background))
+                        return Loc.Tr("Si pintás el fondo en cada clic, se borran las estrellas.", "Painting the background on every click wipes the stars.");
                     return null;
                 },
             },

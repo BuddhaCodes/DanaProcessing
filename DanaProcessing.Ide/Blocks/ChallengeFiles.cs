@@ -155,6 +155,7 @@ namespace DanaProcessing.Ide.Blocks
                 Start = () => start.StartProgram(),
                 Target = Check == ChallengeCheck.Shape ? () => HeadlessBlockRunner.Run(solution).TurtleLines : null,
                 SourceFile = sourceFile,
+                Author = string.IsNullOrWhiteSpace(Author) ? null : Author,
             };
         }
     }
@@ -214,13 +215,101 @@ namespace DanaProcessing.Ide.Blocks
             return path;
         }
 
-        /// <summary>Copies a challenge file someone shared into the folder (checking it first). Returns the challenge.</summary>
-        public static Challenge Import(string path)
+        /// <summary>A set of challenges in one file, to share them all at once.</summary>
+        public const string PackExtension = ".danaretos";
+
+        private sealed class Pack
         {
-            var file = ChallengeFile.FromJson(File.ReadAllText(path));
-            var saved = SaveToFolder(file);
+            public int Format { get; set; } = 1;
+            public List<JsonElement> Challenges { get; set; } = new();
+        }
+
+        /// <summary>Every challenge in the folder, in one file (JSON), for a whole class or a sibling.</summary>
+        public static string ExportPack()
+        {
+            var pack = new Pack();
+            if (Directory.Exists(Folder))
+                foreach (var path in Directory.GetFiles(Folder, "*" + ChallengeFile.Extension).OrderBy(p => p, StringComparer.OrdinalIgnoreCase))
+                {
+                    try
+                    {
+                        var file = ChallengeFile.FromJson(File.ReadAllText(path));
+                        pack.Challenges.Add(JsonDocument.Parse(file.ToJson()).RootElement.Clone());
+                    }
+                    catch (Exception) { }
+                }
+            return JsonSerializer.Serialize(pack, new JsonSerializerOptions { WriteIndented = true, PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+        }
+
+        /// <summary>
+        /// Copies what someone shared into the folder, checking it first: one
+        /// challenge (.danareto) or a set (.danaretos). Returns the challenges
+        /// it brought, in order; throws <see cref="InvalidDataException"/> if
+        /// it has none.
+        /// </summary>
+        public static IReadOnlyList<Challenge> ImportAny(string path)
+        {
+            var text = File.ReadAllText(path);
+            var files = new List<ChallengeFile>();
+            try
+            {
+                using var doc = JsonDocument.Parse(text);
+                if (doc.RootElement.ValueKind == JsonValueKind.Object && doc.RootElement.TryGetProperty("challenges", out var list) && list.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var item in list.EnumerateArray())
+                    {
+                        try { files.Add(ChallengeFile.FromJson(item.GetRawText())); }
+                        catch (InvalidDataException) { }
+                    }
+                }
+                else
+                {
+                    files.Add(ChallengeFile.FromJson(text));
+                }
+            }
+            catch (JsonException)
+            {
+                throw new InvalidDataException(Loc.Tr("No es un archivo de retos válido.", "That isn't a valid challenge file."));
+            }
+            if (files.Count == 0)
+                throw new InvalidDataException(Loc.Tr("No hay retos en ese archivo.", "There are no challenges in that file."));
+            foreach (var file in files)
+            {
+                // Importing again replaces the old copy instead of doubling it.
+                foreach (var old in FilesWithId(file.Id))
+                    File.Delete(old);
+                SaveToFolder(file);
+            }
             ChallengeCatalog.ReloadTeacher();
-            return ChallengeCatalog.Get(IdPrefix + file.Id) ?? file.ToChallenge(saved);
+            return files.Select(f => ChallengeCatalog.Get(IdPrefix + f.Id)).OfType<Challenge>().ToList();
+        }
+
+        /// <summary>Copies one shared challenge into the folder. Returns it.</summary>
+        public static Challenge Import(string path) => ImportAny(path)[0];
+
+        /// <summary>Removes a challenge someone made (its file). Stars earned in it are kept, in case it comes back.</summary>
+        public static void Delete(Challenge challenge)
+        {
+            if (challenge.SourceFile is { } path && File.Exists(path))
+                File.Delete(path);
+            ChallengeCatalog.ReloadTeacher();
+        }
+
+        /// <summary>The saved challenge behind <paramref name="challenge"/>, to edit it.</summary>
+        public static ChallengeFile? Load(Challenge challenge) =>
+            challenge.SourceFile is { } path && File.Exists(path) ? ChallengeFile.FromJson(File.ReadAllText(path)) : null;
+
+        private static IEnumerable<string> FilesWithId(string id)
+        {
+            if (!Directory.Exists(Folder))
+                yield break;
+            foreach (var path in Directory.GetFiles(Folder, "*" + ChallengeFile.Extension))
+            {
+                string? fileId = null;
+                try { fileId = ChallengeFile.FromJson(File.ReadAllText(path)).Id; } catch (Exception) { }
+                if (fileId == id)
+                    yield return path;
+            }
         }
 
         internal static string SafeName(string title)

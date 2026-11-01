@@ -49,6 +49,8 @@ namespace DanaProcessing.Ide.Blocks
         {
             public string StudentName { get; set; } = "";
             public string? GalleryFolder { get; set; }
+            /// <summary>Who makes challenges on this computer ("la seño Ana", "papá"): filled in for the next one.</summary>
+            public string? ChallengeAuthor { get; set; }
             [JsonIgnore] public string Gallery => string.IsNullOrWhiteSpace(GalleryFolder) ? DefaultGalleryFolder : GalleryFolder!;
         }
 
