@@ -120,15 +120,13 @@ namespace DanaProcessing.Ide.Blocks
             var progress = ChallengeProgress.Load();
             int solved = progress.Count(kv => kv.Value > 0 && !kv.Key.StartsWith("parsons:", StringComparison.Ordinal));
             int stars = progress.Where(kv => !kv.Key.StartsWith("parsons:", StringComparison.Ordinal)).Sum(kv => kv.Value);
-            int puzzles = progress.Count(kv => kv.Key.StartsWith("parsons:", StringComparison.Ordinal));
             var summary = new StackPanel
             {
                 Orientation = Orientation.Horizontal, Spacing = 8, Margin = new Thickness(0, 4, 0, 0),
                 Children =
                 {
                     new StrokeIcon(BlocksChrome.Icons.Star, 20, filled: true) { Foreground = BlocksChrome.Gold },
-                    Text(Loc.Tr($"{stars} estrellas · {solved} retos resueltos · {puzzles} códigos ordenados",
-                                $"{stars} stars · {solved} challenges solved · {puzzles} code puzzles"), 16, BlocksChrome.InkSoft, bold: true),
+                    Text(Loc.Tr($"{stars} estrellas · {solved} retos resueltos", $"{stars} stars · {solved} challenges solved"), 16, BlocksChrome.InkSoft, bold: true),
                 },
             };
 

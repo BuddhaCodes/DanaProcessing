@@ -32,13 +32,10 @@ namespace DanaProcessing.Ide.Blocks
             ("Flor", "MakeFlower"),
             ("Salto", "MakeJump"),
             ("MiTruco", "MyTrick"),
-            ("OrdenarElCodigo", "PutTheCodeInOrder"),
         };
 
         private static readonly Dictionary<string, string> ToEn = Words.ToDictionary(w => w.Es, w => w.En, StringComparer.Ordinal);
-        private static readonly Dictionary<string, string> ToEs = Words.ToDictionary(w => w.En, w => w.Es, StringComparer.Ordinal);
         private static readonly Regex MusicEs = new(@"^Musica(\d+)$", RegexOptions.CultureInvariant);
-        private static readonly Regex MusicEn = new(@"^Music(\d+)$", RegexOptions.CultureInvariant);
 
         public static bool English => Loc.Current != AppLanguage.Spanish;
 
@@ -46,9 +43,6 @@ namespace DanaProcessing.Ide.Blocks
         public static string Localize(string code) => English ? ToEnglish(code) : code;
 
         public static string ToEnglish(string code) => Rename(code, w => ToEn.TryGetValue(w, out var en) ? en : MusicEs.Match(w) is { Success: true } m ? "Music" + m.Groups[1].Value : null);
-
-        /// <summary>English names back to the Spanish ones the IDE keeps (Spanish code passes through unchanged).</summary>
-        public static string ToSpanish(string code) => Rename(code, w => ToEs.TryGetValue(w, out var es) ? es : MusicEn.Match(w) is { Success: true } m ? "Musica" + m.Groups[1].Value : null);
 
         /// <summary>One word (an identifier) in the IDE's language.</summary>
         public static string Word(string spanish) => English && ToEn.TryGetValue(spanish, out var en) ? en : spanish;

@@ -55,17 +55,5 @@ public class CodeWordsTests
         const string code = "tortuga.Forward(lado); Text(\"lado: \" + lado, 1, 2); // tortuga\nladoExtra = 1; Musica12(); Musicas();";
         var en = CodeWords.ToEnglish(code);
         Assert.Equal("turtle.Forward(side); Text(\"lado: \" + side, 1, 2); // tortuga\nladoExtra = 1; Music12(); Musicas();", en);
-        Assert.Equal(code, CodeWords.ToSpanish(en));
-        Assert.Equal(code, CodeWords.ToSpanish(code));               // Spanish passes through
-    }
-
-    [Fact]
-    public void English_code_turns_back_into_the_same_blocks()
-    {
-        var p = Everything();
-        var back = CodeToBlocks.Convert(BlockCodeGenerator.Generate(p, english: true).Source);
-        Assert.True(back.Exact, string.Join(" | ", back.Skipped.Select(s => s.Code)) + string.Join(",", back.Rounded));
-        back.Program.Name = p.Name;
-        Assert.Equal(BlockCodeGenerator.Generate(p, english: false).Source, BlockCodeGenerator.Generate(back.Program, english: false).Source);
     }
 }

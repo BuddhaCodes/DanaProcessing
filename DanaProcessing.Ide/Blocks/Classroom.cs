@@ -129,7 +129,7 @@ namespace DanaProcessing.Ide.Blocks
             public int Format { get; set; } = 1;
             public string Student { get; set; } = "";
             public DateTime Created { get; set; } = DateTime.Now;
-            /// <summary>Challenge id (and "parsons:...") -> best stars.</summary>
+            /// <summary>Challenge id -> best stars.</summary>
             public Dictionary<string, int> Stars { get; set; } = new();
             /// <summary>Challenge id -> the program that passed it (as .danablocks JSON).</summary>
             public Dictionary<string, string> Programs { get; set; } = new();
@@ -144,7 +144,7 @@ namespace DanaProcessing.Ide.Blocks
                 return report;
             }
 
-            public int TotalStars => Stars.Where(kv => !kv.Key.StartsWith("parsons:", StringComparison.Ordinal)).Sum(kv => kv.Value);
+            public int TotalStars => Stars.Sum(kv => kv.Value);
 
             public BlockProgram? Program(string challengeId) =>
                 Programs.TryGetValue(challengeId, out var json) ? BlockProgram.FromJson(json) : null;
@@ -154,7 +154,8 @@ namespace DanaProcessing.Ide.Blocks
         public static ProgressReport CurrentReport(string student) => new()
         {
             Student = student.Trim(),
-            Stars = ChallengeProgress.Load(),
+            // (Stars from the old "put the code in order" puzzles aren't challenges: left out.)
+            Stars = ChallengeProgress.Load().Where(kv => !kv.Key.StartsWith("parsons:", StringComparison.Ordinal)).ToDictionary(kv => kv.Key, kv => kv.Value),
             Programs = LoadSolutions().ToDictionary(kv => kv.Key, kv => kv.Value.ToJson()),
         };
 
@@ -197,7 +198,7 @@ namespace DanaProcessing.Ide.Blocks
             return rows.Values.OrderBy(r => r.Student, StringComparer.CurrentCultureIgnoreCase).ToList();
         }
 
-        /// <summary>The columns of the summary: built-in challenges, then any other the class has stars in (a teacher's, puzzles).</summary>
+        /// <summary>The columns of the summary: built-in challenges, then any other the class has stars in (a teacher's or a family's).</summary>
         public static List<(string Id, string Title)> Columns(IEnumerable<StudentRow> rows)
         {
             var columns = ChallengeCatalog.All.Select(c => (c.Id, c.Title)).ToList();
@@ -206,8 +207,7 @@ namespace DanaProcessing.Ide.Blocks
             {
                 if (known.Contains(id))
                     continue;
-                string title = ChallengeCatalog.Get(id)?.Title
-                    ?? (id.StartsWith("parsons:", StringComparison.Ordinal) && ParsonsCatalog.Get(id["parsons:".Length..]) is { } p ? Loc.Tr("Ordenar: ", "Order: ") + p.Title : id);
+                string title = ChallengeCatalog.Get(id)?.Title ?? id;
                 columns.Add((id, title));
                 known.Add(id);
             }

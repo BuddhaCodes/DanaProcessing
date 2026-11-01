@@ -55,7 +55,8 @@ public class ClassroomTests : IDisposable
         var report = Classroom.CurrentReport("  Ana  ");
         Assert.Equal("Ana", report.Student);
         Assert.Equal(3, report.Stars["repeat"]);
-        Assert.Equal(3, report.TotalStars);                         // puzzles aren't challenge stars
+        Assert.Equal(3, report.TotalStars);                         // old puzzle stars aren't handed in
+        Assert.DoesNotContain("parsons:square", report.Stars.Keys);
         var back = Classroom.ProgressReport.FromJson(report.ToJson());
         var program = back.Program("repeat")!;
         Assert.Equal(BlockCatalog.Repeat, program.Stacks[0].Blocks[1].Type);
@@ -75,7 +76,7 @@ public class ClassroomTests : IDisposable
 
         HandIn("ana-1.danaavance", "Ana", new DateTime(2026, 10, 1), ("first-step", 3));
         HandIn("ana-2.danaavance", "ana", new DateTime(2026, 10, 8), ("first-step", 3), ("corner", 2));
-        HandIn("pendrive/beto.danaavance", "Beto, el \"rápido\"", new DateTime(2026, 10, 7), ("parsons:corner", 3), ("file:abc", 1));
+        HandIn("pendrive/beto.danaavance", "Beto, el \"rápido\"", new DateTime(2026, 10, 7), ("file:abc", 1));
         File.WriteAllText(Path.Combine(folder, "roto.danaavance"), "no es json");
 
         var rows = Classroom.LoadClass(folder, out var broken);
@@ -84,8 +85,7 @@ public class ClassroomTests : IDisposable
         Assert.Equal("roto.danaavance", Assert.Single(broken));
 
         var columns = Classroom.Columns(rows);
-        Assert.Equal(ChallengeCatalog.All.Count + 2, columns.Count);
-        Assert.Contains(columns, c => c.Id == "parsons:corner" && c.Title.Contains("esquina", StringComparison.OrdinalIgnoreCase));
+        Assert.Equal(ChallengeCatalog.All.Count + 1, columns.Count);
 
         var csv = Classroom.ClassCsv(rows).Split('\n');
         Assert.StartsWith("Alumno,Entregado,", csv[0]);

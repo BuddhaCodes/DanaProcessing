@@ -1285,8 +1285,6 @@ namespace DanaProcessing.Ide
                 BuildMenuItem("🧩", Loc.Tr("Nuevo con bloques", "New with blocks"), null, NewBlocksProgram),
                 BuildMenuItem("🏆", Loc.Tr("Retos con bloques...", "Block challenges..."), null, OpenChallenges),
                 BuildMenuItem("📝", Loc.Tr("Crear un reto con estos bloques...", "Create a challenge from these blocks..."), null, CreateChallenge),
-                BuildMenuItem("🔤", Loc.Tr("Ordenar el código...", "Put the code in order..."), null, () => new ParsonsWindow().Show(this)),
-                BuildMenuItem("🧩", Loc.Tr("Pasar este código a bloques", "Turn this code into blocks"), null, () => _ = CodeToBlocksAsync()),
                 BuildMenuItem("🏫", Loc.Tr("Modo aula...", "Classroom..."), null, OpenClassroom),
                 BuildMenuItem("📂", Loc.Tr("Abrir...", "Open..."), "Ctrl+O", () => _ = _editorView.OpenFileAsync()),
                 MenuSeparator(),
@@ -1324,7 +1322,7 @@ namespace DanaProcessing.Ide
                 MenuSeparator(),
                 .. BuildSeedMenuItems(),
                 MenuSeparator(),
-                BuildMenuItem("🧩", Loc.Tr("Ejemplos...", "Examples..."), null, OpenSamples),
+                BuildMenuItem("🎨", Loc.Tr("Ejemplos...", "Examples..."), null, OpenSamples),
                 BuildMenuItem("🎬", Loc.Tr("Crear reel...", "Create reel..."), null, OpenReelWindow),
                 BuildMenuItem("📦", Loc.Tr("Paquetes NuGet...", "NuGet Packages..."), null, OpenNuGetPackages),
                 MenuSeparator(),
@@ -1411,48 +1409,6 @@ namespace DanaProcessing.Ide
                     ShowTransientStatus(Loc.Tr("Reto guardado. Está en Retos con bloques → Retos de tu docente.", "Challenge saved. It's in Block challenges → Your teacher's challenges."));
             };
             dialog.ShowDialog(this);
-        }
-
-        /// <summary>
-        /// The way back from "Pasar a código": the code tab on screen, as blocks
-        /// in a new tab (Renglones, so each sentence sits by its line of C#).
-        /// Lines with no block are listed first, and the child decides.
-        /// </summary>
-        private async Task CodeToBlocksAsync()
-        {
-            if (_editorView.ActiveTab is not { Blocks: null } tab)
-            {
-                ShowTransientStatus(Loc.Tr("Abrí una pestaña de código para pasarla a bloques.", "Open a code tab to turn it into blocks."));
-                return;
-            }
-            var result = CodeToBlocks.Convert(tab.Document.Text, BlockView.Lines);
-            if (result.BlockCount == 0 || result.Program.Stacks.Count == 0)
-            {
-                ShowTransientStatus(Loc.Tr("No encontré nada en este código que tenga bloques.", "Nothing in this code has blocks."));
-                return;
-            }
-            if (!result.Exact)
-            {
-                var sb = new System.Text.StringBuilder();
-                if (result.Skipped.Count > 0)
-                {
-                    sb.AppendLine(Loc.Tr("Estas líneas no tienen bloque y van a quedar afuera:", "These lines have no block and will be left out:"));
-                    foreach (var (line, code) in result.Skipped.Take(8))
-                        sb.AppendLine($"  {Loc.Tr("línea", "line")} {line}: {code}");
-                    if (result.Skipped.Count > 8)
-                        sb.AppendLine($"  … {Loc.Tr("y", "and")} {result.Skipped.Count - 8} {Loc.Tr("más", "more")}");
-                }
-                if (result.Rounded.Count > 0)
-                {
-                    sb.AppendLine(Loc.Tr("Estos números no están en los bloques; usé el más cercano:", "These numbers aren't on the blocks; I used the closest:"));
-                    sb.AppendLine("  " + string.Join(", ", result.Rounded.Take(8)));
-                }
-                if (!await ConfirmDialog.ShowAsync(this, Loc.Tr("Pasar a bloques", "Turn into blocks"), sb.ToString().TrimEnd(),
-                        Loc.Tr("Pasar igual", "Turn it anyway"), Loc.Tr("Cancelar", "Cancel")))
-                    return;
-            }
-            result.Program.Name = System.IO.Path.GetFileNameWithoutExtension(tab.FilePath) is { Length: > 0 } file ? file : result.Program.Name;
-            _editorView.AddBlocksTab(result.Program);
         }
 
         /// <summary>Modo aula: hand in progress, the class gallery, the teacher's summary. All files, no server.</summary>
