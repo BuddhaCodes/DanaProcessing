@@ -1,0 +1,111 @@
+{
+  "name": "danaprocessing",
+  "displayName": "%displayName%",
+  "description": "%description%",
+  "version": "1.0.0",
+  "publisher": "buddhacodes",
+  "license": "MIT",
+  "icon": "media/icon.png",
+  "homepage": "https://buddhacodes.github.io/DanaProcessing/",
+  "repository": { "type": "git", "url": "https://github.com/BuddhaCodes/DanaProcessing", "directory": "vscode-extension" },
+  "bugs": { "url": "https://github.com/BuddhaCodes/DanaProcessing/issues" },
+  "engines": { "vscode": "^1.90.0" },
+  "categories": ["Programming Languages", "Snippets", "Education", "Visualization", "Other"],
+  "keywords": ["processing", "creative coding", "sketch", "csharp", "generative art", "dotnet"],
+  "main": "./out/src/extension.js",
+  "l10n": "./l10n",
+  "activationEvents": ["workspaceContains:**/*.csproj", "onLanguage:csharp"],
+  "contributes": {
+    "commands": [
+      { "command": "danaProcessing.newSketch", "title": "%cmd.newSketch%", "category": "DanaProcessing", "icon": "$(new-file)" },
+      { "command": "danaProcessing.openExample", "title": "%cmd.openExample%", "category": "DanaProcessing", "icon": "$(library)" },
+      { "command": "danaProcessing.run", "title": "%cmd.run%", "category": "DanaProcessing", "icon": "$(play)" },
+      { "command": "danaProcessing.live", "title": "%cmd.live%", "category": "DanaProcessing", "icon": "$(zap)" },
+      { "command": "danaProcessing.stop", "title": "%cmd.stop%", "category": "DanaProcessing", "icon": "$(debug-stop)" },
+      { "command": "danaProcessing.export", "title": "%cmd.export%", "category": "DanaProcessing", "icon": "$(package)" },
+      { "command": "danaProcessing.addPackage", "title": "%cmd.addPackage%", "category": "DanaProcessing" },
+      { "command": "danaProcessing.makeRunnable", "title": "%cmd.makeRunnable%", "category": "DanaProcessing" },
+      { "command": "danaProcessing.openReference", "title": "%cmd.openReference%", "category": "DanaProcessing", "icon": "$(book)" },
+      { "command": "danaProcessing.openInIde", "title": "%cmd.openInIde%", "category": "DanaProcessing" }
+    ],
+    "menus": {
+      "editor/title": [
+        { "command": "danaProcessing.run", "when": "danaProcessing.inProject && !danaProcessing.running", "group": "navigation@1" },
+        { "command": "danaProcessing.live", "when": "danaProcessing.inProject && !danaProcessing.running", "group": "navigation@2" },
+        { "command": "danaProcessing.stop", "when": "danaProcessing.running", "group": "navigation@1" },
+        { "command": "danaProcessing.makeRunnable", "when": "danaProcessing.looseSketch", "group": "navigation@1" }
+      ],
+      "editor/context": [
+        { "command": "danaProcessing.openReference", "when": "editorLangId == csharp && danaProcessing.inProject", "group": "danaProcessing@1" },
+        { "command": "danaProcessing.openInIde", "when": "editorLangId == csharp && (danaProcessing.inProject || danaProcessing.looseSketch)", "group": "danaProcessing@2" }
+      ],
+      "explorer/context": [
+        { "command": "danaProcessing.run", "when": "resourceExtname == .csproj", "group": "danaProcessing@1" },
+        { "command": "danaProcessing.export", "when": "resourceExtname == .csproj", "group": "danaProcessing@2" },
+        { "command": "danaProcessing.makeRunnable", "when": "resourceExtname == .cs", "group": "danaProcessing@3" }
+      ],
+      "commandPalette": [
+        { "command": "danaProcessing.stop", "when": "danaProcessing.running" }
+      ]
+    },
+    "keybindings": [
+      { "command": "danaProcessing.run", "key": "ctrl+alt+r", "mac": "cmd+alt+r", "when": "danaProcessing.inProject" },
+      { "command": "danaProcessing.live", "key": "ctrl+alt+l", "mac": "cmd+alt+l", "when": "danaProcessing.inProject" },
+      { "command": "danaProcessing.stop", "key": "ctrl+alt+s", "mac": "cmd+alt+s", "when": "danaProcessing.running" },
+      { "command": "danaProcessing.openReference", "key": "ctrl+alt+h", "mac": "cmd+alt+h", "when": "editorTextFocus && danaProcessing.inProject" }
+    ],
+    "configuration": {
+      "title": "DanaProcessing",
+      "properties": {
+        "danaProcessing.packageVersion": { "type": "string", "default": "1.*", "markdownDescription": "%config.packageVersion%" },
+        "danaProcessing.dotnetPath": { "type": "string", "default": "dotnet", "markdownDescription": "%config.dotnetPath%" },
+        "danaProcessing.idePath": { "type": "string", "default": "", "markdownDescription": "%config.idePath%" },
+        "danaProcessing.openProjectIn": {
+          "type": "string", "default": "ask", "enum": ["ask", "currentWindow", "newWindow", "addToWorkspace"],
+          "enumDescriptions": ["%config.openProjectIn.ask%", "%config.openProjectIn.currentWindow%", "%config.openProjectIn.newWindow%", "%config.openProjectIn.addToWorkspace%"],
+          "markdownDescription": "%config.openProjectIn%"
+        },
+        "danaProcessing.showStatusBar": { "type": "boolean", "default": true, "markdownDescription": "%config.showStatusBar%" },
+        "danaProcessing.referenceHover": { "type": "boolean", "default": true, "markdownDescription": "%config.referenceHover%" }
+      }
+    },
+    "taskDefinitions": [
+      {
+        "type": "dana",
+        "required": ["kind", "project"],
+        "properties": {
+          "kind": { "type": "string", "enum": ["run", "live"], "description": "%task.kind%" },
+          "project": { "type": "string", "description": "%task.project%" }
+        }
+      }
+    ],
+    "snippets": [ { "language": "csharp", "path": "./snippets/dana.code-snippets" } ],
+    "walkthroughs": [
+      {
+        "id": "danaprocessing.start",
+        "title": "%walk.title%",
+        "description": "%walk.description%",
+        "steps": [
+          { "id": "dotnet", "title": "%walk.dotnet.title%", "description": "%walk.dotnet.description%", "media": { "image": "media/icon.png", "altText": "DanaProcessing" } },
+          { "id": "create", "title": "%walk.create.title%", "description": "%walk.create.description%", "media": { "image": "media/icon.png", "altText": "DanaProcessing" }, "completionEvents": ["onCommand:danaProcessing.newSketch", "onCommand:danaProcessing.openExample"] },
+          { "id": "run", "title": "%walk.run.title%", "description": "%walk.run.description%", "media": { "image": "media/icon.png", "altText": "DanaProcessing" }, "completionEvents": ["onCommand:danaProcessing.run", "onCommand:danaProcessing.live"] },
+          { "id": "share", "title": "%walk.share.title%", "description": "%walk.share.description%", "media": { "image": "media/icon.png", "altText": "DanaProcessing" }, "completionEvents": ["onCommand:danaProcessing.export"] }
+        ]
+      }
+    ]
+  },
+  "scripts": {
+    "compile": "tsc -p .",
+    "watch": "tsc -watch -p .",
+    "test": "tsc -p . && node --test out/test/*.test.js",
+    "reference-index": "node scripts/build-reference-index.mjs",
+    "package": "vsce package --no-dependencies",
+    "vscode:prepublish": "tsc -p ."
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/vscode": "~1.90.0",
+    "@vscode/vsce": "^3.2.0",
+    "typescript": "^5.6.0"
+  }
+}

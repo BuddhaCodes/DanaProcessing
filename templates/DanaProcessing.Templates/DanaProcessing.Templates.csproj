@@ -1,0 +1,56 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    dotnet new templates for DanaProcessing. Packs content/ as a template
+    package: `dotnet new install DanaProcessing.Templates`, then
+    `dotnet new dana-sketch -n MySketch`.
+  -->
+  <PropertyGroup>
+    <PackageType>Template</PackageType>
+    <PackageId>DanaProcessing.Templates</PackageId>
+    <Version>1.0.0</Version>
+    <Title>DanaProcessing templates</Title>
+    <Description>dotnet new templates for DanaProcessing: dana-sketch, a ready-to-run creative-coding sketch project (2D, 3D, sound) for Windows, macOS and Linux.</Description>
+    <PackageTags>dotnet-new;templates;creative-coding;processing;sketch</PackageTags>
+    <TargetFramework>net10.0</TargetFramework>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <NoDefaultExcludes>true</NoDefaultExcludes>
+    <NoWarn>$(NoWarn);NU5128</NoWarn>
+    <EnableDefaultItems>false</EnableDefaultItems>
+    <IncludeSymbols>false</IncludeSymbols>
+  </PropertyGroup>
+
+  <Import Project="..\..\packaging\Package.props" />
+
+  <PropertyGroup>
+    <IncludeSymbols>false</IncludeSymbols>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Visible in the IDE; what's packed is the stamped copy below. -->
+    <None Include="content\**\*" Exclude="content\**\bin\**;content\**\obj\**" Pack="false" />
+  </ItemGroup>
+
+  <!--
+    The template's projects reference the DanaProcessing packages of this
+    same version: copy content/ to obj/, put $(Version) in template.json,
+    and pack that copy.
+  -->
+  <Target Name="StampDanaVersion" BeforeTargets="_GetPackageFiles">
+    <PropertyGroup>
+      <_Stamped>$(MSBuildProjectDirectory)/obj/template-stamped/</_Stamped>
+    </PropertyGroup>
+    <ItemGroup>
+      <_TemplateSource Include="content\**\*" Exclude="content\**\bin\**;content\**\obj\**" />
+    </ItemGroup>
+    <RemoveDir Directories="$(_Stamped)" />
+    <Copy SourceFiles="@(_TemplateSource)" DestinationFiles="@(_TemplateSource->'$(_Stamped)%(RecursiveDir)%(Filename)%(Extension)')" />
+    <WriteLinesToFile File="$(_Stamped)dana-sketch/.template.config/template.json"
+                      Lines="$([System.IO.File]::ReadAllText('$(MSBuildProjectDirectory)/content/dana-sketch/.template.config/template.json').Replace('DANA_PACKAGE_VERSION', '$(Version)'))"
+                      Overwrite="true" WriteOnlyWhenDifferent="false" />
+    <ItemGroup>
+      <None Include="$(_Stamped)**\*" Pack="true" PackagePath="content/" />
+    </ItemGroup>
+  </Target>
+
+</Project>

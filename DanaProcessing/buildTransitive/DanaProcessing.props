@@ -1,0 +1,11 @@
+<Project>
+  <!--
+    Sketches written in the DanaProcessing IDE use Sketch, Color, PVector...
+    without "using DanaProcessing;" (the IDE adds it). Projects that use the
+    package get the same, when ImplicitUsings is on. Opt out with
+    <DanaProcessingImplicitUsings>false</DanaProcessingImplicitUsings>.
+  -->
+  <ItemGroup Condition="'$(ImplicitUsings)' == 'enable' and '$(DanaProcessingImplicitUsings)' != 'false'">
+    <Using Include="DanaProcessing" />
+  </ItemGroup>
+</Project>

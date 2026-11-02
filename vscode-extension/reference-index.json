@@ -1,0 +1,1994 @@
+{
+ "Abs": {
+  "href": "reference/math.html",
+  "kind": "method"
+ },
+ "Acos": {
+  "href": "reference/math.html",
+  "kind": "method"
+ },
+ "ActualFrameRate": {
+  "href": "reference/workflow.html#stats",
+  "kind": "property"
+ },
+ "AgentTools": {
+  "href": "reference/ide.html#agent-mode",
+  "kind": "static class"
+ },
+ "Alpha": {
+  "href": "reference/color.html#color-channels",
+  "kind": "method"
+ },
+ "Ambient": {
+  "href": "reference/material-3d.html#ambient-material",
+  "kind": "method"
+ },
+ "AmbientLight": {
+  "href": "reference/lights-3d.html#ambientlight",
+  "kind": "method"
+ },
+ "Append": {
+  "href": "reference/utilities.html#append",
+  "kind": "method"
+ },
+ "ApplyMatrix": {
+  "href": "reference/transform.html#applymatrix",
+  "kind": "method"
+ },
+ "Arc": {
+  "href": "reference/shape-primitives.html#arc",
+  "kind": "method"
+ },
+ "ArcMode": {
+  "href": "reference/enums.html",
+  "kind": "enum"
+ },
+ "ArrayCopy": {
+  "href": "reference/utilities.html#arraycopy",
+  "kind": "method"
+ },
+ "Asin": {
+  "href": "reference/math.html",
+  "kind": "method"
+ },
+ "Atan": {
+  "href": "reference/math.html",
+  "kind": "method"
+ },
+ "Atan2": {
+  "href": "reference/math.html",
+  "kind": "method"
+ },
+ "Attach": {
+  "href": "reference/attached.html#attachedsketch",
+  "kind": "method"
+ },
+ "AttachedSketch": {
+  "href": "reference/attached.html#attachedsketch",
+  "kind": "abstract class"
+ },
+ "AttachLayer": {
+  "href": "reference/attached.html#windowtarget",
+  "kind": "enum"
+ },
+ "AttachMode": {
+  "href": "reference/attached.html#each-window",
+  "kind": "enum"
+ },
+ "AudioSource": {
+  "href": "reference/live.html#listento",
+  "kind": "enum"
+ },
+ "AvaloniaSketchCanvas": {
+  "href": "reference/hosting.html#avaloniasketchcanvas",
+  "kind": "class"
+ },
+ "AvaloniaSketchWindow": {
+  "href": "reference/hosting.html#avaloniasketchwindow",
+  "kind": "class"
+ },
+ "Background": {
+  "href": "reference/color.html#background",
+  "kind": "method"
+ },
+ "Bar": {
+  "href": "reference/live.html#beat",
+  "kind": "method"
+ },
+ "Beat": {
+  "href": "reference/live.html#beat",
+  "kind": "method"
+ },
+ "BeatEase": {
+  "href": "reference/live.html#beat",
+  "kind": "method"
+ },
+ "BeatTween": {
+  "href": "reference/live.html#beat",
+  "kind": "method"
+ },
+ "BeginCamera": {
+  "href": "reference/camera-3d.html#begincamera",
+  "kind": "method"
+ },
+ "BeginContour": {
+  "href": "reference/shape-custom.html#begincontour",
+  "kind": "method"
+ },
+ "BeginDraw": {
+  "href": "reference/pgraphics.html#begindraw",
+  "kind": "method"
+ },
+ "BeginRaw": {
+  "href": "reference/output.html#beginraw",
+  "kind": "method"
+ },
+ "BeginRecord": {
+  "href": "reference/output.html#beginraw",
+  "kind": "method"
+ },
+ "BeginShape": {
+  "href": "reference/shape-custom.html#beginshape",
+  "kind": "method"
+ },
+ "Bezier": {
+  "href": "reference/shape-primitives.html#bezier",
+  "kind": "method"
+ },
+ "BezierDetail": {
+  "href": "reference/shape-primitives.html#bezierdetail",
+  "kind": "method"
+ },
+ "BezierPoint": {
+  "href": "reference/shape-primitives.html#bezierpoint",
+  "kind": "method"
+ },
+ "BezierTangent": {
+  "href": "reference/shape-primitives.html#bezierpoint",
+  "kind": "method"
+ },
+ "BezierVertex": {
+  "href": "reference/shape-custom.html#beziervertex",
+  "kind": "method"
+ },
+ "Binary": {
+  "href": "reference/utilities.html#binary-fn",
+  "kind": "method"
+ },
+ "Blend": {
+  "href": "reference/pixels.html#blend-pixels",
+  "kind": "method"
+ },
+ "BlendMode": {
+  "href": "reference/color.html#blendmode",
+  "kind": "method"
+ },
+ "BlendModeKind": {
+  "href": "reference/enums.html",
+  "kind": "enum"
+ },
+ "Blue": {
+  "href": "reference/color.html#color-channels",
+  "kind": "method"
+ },
+ "Boolean": {
+  "href": "reference/utilities.html#boolean-fn",
+  "kind": "method"
+ },
+ "Box": {
+  "href": "reference/shape-3d-primitives.html#box",
+  "kind": "method"
+ },
+ "Brightness": {
+  "href": "reference/color.html#color-channels",
+  "kind": "method"
+ },
+ "BufferedReader": {
+  "href": "reference/files-data.html#printwriter",
+  "kind": "class"
+ },
+ "Byte": {
+  "href": "reference/utilities.html#byte-fn",
+  "kind": "method"
+ },
+ "Camera": {
+  "href": "reference/camera-3d.html#camera",
+  "kind": "method"
+ },
+ "Ceil": {
+  "href": "reference/math.html",
+  "kind": "method"
+ },
+ "Char": {
+  "href": "reference/utilities.html#char-fn",
+  "kind": "method"
+ },
+ "Circle": {
+  "href": "reference/shape-primitives.html#circle",
+  "kind": "method"
+ },
+ "ClayTheme": {
+  "href": "reference/ide.html#claytheme",
+  "kind": "static class"
+ },
+ "Clear": {
+  "href": "reference/color.html#background",
+  "kind": "method"
+ },
+ "Clip": {
+  "href": "reference/transform.html#clip",
+  "kind": "method"
+ },
+ "Color": {
+  "href": "reference/color.html#color-struct",
+  "kind": "struct"
+ },
+ "Color(...)": {
+  "href": "reference/color.html#color-function",
+  "kind": "method"
+ },
+ "Color.FromHsb": {
+  "href": "reference/color.html#color-struct",
+  "kind": "static method"
+ },
+ "ColorMode": {
+  "href": "reference/color.html#colormode",
+  "kind": "method"
+ },
+ "ColorSpaceMode": {
+  "href": "reference/enums.html",
+  "kind": "enum"
+ },
+ "CommandCount": {
+  "href": "reference/attached.html#shell-signals",
+  "kind": "property"
+ },
+ "CommandFinished": {
+  "href": "reference/attached.html#shell-signals",
+  "kind": "method"
+ },
+ "CompileResult": {
+  "href": "reference/ide.html#sketchcompiler-compile",
+  "kind": "record"
+ },
+ "Concat": {
+  "href": "reference/utilities.html#append",
+  "kind": "method"
+ },
+ "ConnectSignalR": {
+  "href": "reference/streams.html#connectsignalr",
+  "kind": "method"
+ },
+ "ConnectWebSocket": {
+  "href": "reference/streams.html#connectwebsocket",
+  "kind": "method"
+ },
+ "Constrain": {
+  "href": "reference/math.html",
+  "kind": "method"
+ },
+ "Copy": {
+  "href": "reference/pixels.html#copy",
+  "kind": "method"
+ },
+ "Cos": {
+  "href": "reference/math.html",
+  "kind": "method"
+ },
+ "CreateFont": {
+  "href": "reference/typography.html#createfont",
+  "kind": "method"
+ },
+ "CreateGraphics": {
+  "href": "reference/pgraphics.html#creategraphics",
+  "kind": "method"
+ },
+ "CreateInput": {
+  "href": "reference/files-data.html#createoutput",
+  "kind": "method"
+ },
+ "CreateOutput": {
+  "href": "reference/files-data.html#createoutput",
+  "kind": "method"
+ },
+ "CreateReader": {
+  "href": "reference/files-data.html#createwriter",
+  "kind": "method"
+ },
+ "CreateShape": {
+  "href": "reference/pshape.html#createshape",
+  "kind": "method"
+ },
+ "CreateShape3D": {
+  "href": "reference/shape-3d-custom.html#createshape3d",
+  "kind": "method"
+ },
+ "CreateWriter": {
+  "href": "reference/files-data.html#createwriter",
+  "kind": "method"
+ },
+ "Cursor": {
+  "href": "reference/input.html#cursor",
+  "kind": "method"
+ },
+ "CursorKind": {
+  "href": "reference/enums.html",
+  "kind": "enum"
+ },
+ "Curve": {
+  "href": "reference/shape-primitives.html#curve",
+  "kind": "method"
+ },
+ "CurveDetail": {
+  "href": "reference/shape-primitives.html#bezierdetail",
+  "kind": "method"
+ },
+ "CurvePoint": {
+  "href": "reference/shape-primitives.html#curvepoint",
+  "kind": "method"
+ },
+ "CurveTangent": {
+  "href": "reference/shape-primitives.html#curvepoint",
+  "kind": "method"
+ },
+ "CurveTightness": {
+  "href": "reference/shape-primitives.html#curve",
+  "kind": "method"
+ },
+ "CurveVertex": {
+  "href": "reference/shape-custom.html#curvevertex",
+  "kind": "method"
+ },
+ "dana-sketch": {
+  "href": "reference/vscode-nuget.html#dotnet-new-template",
+  "kind": "template"
+ },
+ "DataFolder": {
+  "href": "reference/workflow.html#data-folder",
+  "kind": "property"
+ },
+ "DataPath": {
+  "href": "reference/workflow.html#data-folder",
+  "kind": "method"
+ },
+ "Day": {
+  "href": "reference/input.html#day",
+  "kind": "method"
+ },
+ "Degrees": {
+  "href": "reference/math.html",
+  "kind": "method"
+ },
+ "Delay": {
+  "href": "reference/structure.html#delay",
+  "kind": "method"
+ },
+ "DeltaTime": {
+  "href": "reference/attached.html#eco",
+  "kind": "property"
+ },
+ "Destination": {
+  "href": "reference/geo.html#geo-distance",
+  "kind": "static method"
+ },
+ "DirectionalLight": {
+  "href": "reference/lights-3d.html#directionallight",
+  "kind": "method"
+ },
+ "DisplayDensity": {
+  "href": "reference/structure.html#displaydensity",
+  "kind": "method"
+ },
+ "DisplayHeight": {
+  "href": "reference/structure.html",
+  "kind": "property"
+ },
+ "DisplayWidth": {
+  "href": "reference/structure.html",
+  "kind": "property"
+ },
+ "Dist": {
+  "href": "reference/math.html",
+  "kind": "method"
+ },
+ "DistanceKm": {
+  "href": "reference/geo.html#geo-distance",
+  "kind": "static method"
+ },
+ "Draw": {
+  "href": "reference/structure.html#draw",
+  "kind": "method"
+ },
+ "DrawTime": {
+  "href": "reference/workflow.html#stats",
+  "kind": "property"
+ },
+ "Ease": {
+  "href": "reference/live.html#beat",
+  "kind": "enum"
+ },
+ "Easing": {
+  "href": "reference/live.html#beat",
+  "kind": "class"
+ },
+ "EcoFrameRate": {
+  "href": "reference/attached.html#eco",
+  "kind": "property"
+ },
+ "EcoMode": {
+  "href": "reference/attached.html#eco",
+  "kind": "method"
+ },
+ "Ellipse": {
+  "href": "reference/shape-primitives.html#rect",
+  "kind": "method"
+ },
+ "EllipseMode": {
+  "href": "reference/shape-primitives.html#rectmode",
+  "kind": "method"
+ },
+ "Emissive": {
+  "href": "reference/material-3d.html#emissive",
+  "kind": "method"
+ },
+ "EndCamera": {
+  "href": "reference/camera-3d.html#begincamera",
+  "kind": "method"
+ },
+ "EndContour": {
+  "href": "reference/shape-custom.html#begincontour",
+  "kind": "method"
+ },
+ "EndDraw": {
+  "href": "reference/pgraphics.html#begindraw",
+  "kind": "method"
+ },
+ "EndRaw": {
+  "href": "reference/output.html#beginraw",
+  "kind": "method"
+ },
+ "EndRecord": {
+  "href": "reference/output.html#beginraw",
+  "kind": "method"
+ },
+ "EndShape": {
+  "href": "reference/shape-custom.html#endshape",
+  "kind": "method"
+ },
+ "Equirectangular": {
+  "href": "reference/geo.html#geo-equirectangular",
+  "kind": "static method"
+ },
+ "Exit": {
+  "href": "reference/structure.html#exit",
+  "kind": "method"
+ },
+ "Exp": {
+  "href": "reference/math.html",
+  "kind": "method"
+ },
+ "Expand": {
+  "href": "reference/utilities.html#append",
+  "kind": "method"
+ },
+ "FeatureAt": {
+  "href": "reference/geo.html#geojson",
+  "kind": "method"
+ },
+ "FeedState": {
+  "href": "reference/streams.html#livefeed",
+  "kind": "enum"
+ },
+ "FibonacciSphere": {
+  "href": "reference/geo.html#geo-fibonacci",
+  "kind": "static method"
+ },
+ "Fill": {
+  "href": "reference/color.html#fill",
+  "kind": "method"
+ },
+ "FillHSB": {
+  "href": "reference/color.html#fill",
+  "kind": "method"
+ },
+ "Filter": {
+  "href": "reference/pixels.html#filter",
+  "kind": "method"
+ },
+ "FilterKind": {
+  "href": "reference/enums.html",
+  "kind": "enum"
+ },
+ "Float": {
+  "href": "reference/utilities.html#float-fn",
+  "kind": "method"
+ },
+ "FloatList": {
+  "href": "reference/collections.html#floatlist",
+  "kind": "class"
+ },
+ "Floor": {
+  "href": "reference/math.html",
+  "kind": "method"
+ },
+ "Focused": {
+  "href": "reference/input.html#focused",
+  "kind": "property"
+ },
+ "FrameCount": {
+  "href": "reference/structure.html",
+  "kind": "property"
+ },
+ "FrameRate": {
+  "href": "reference/structure.html#framerate",
+  "kind": "method"
+ },
+ "FromEquirectangular": {
+  "href": "reference/geo.html#geo-equirectangular",
+  "kind": "static method"
+ },
+ "FromSphere": {
+  "href": "reference/geo.html#geo-tosphere",
+  "kind": "static method"
+ },
+ "Frustum": {
+  "href": "reference/camera-3d.html#frustum",
+  "kind": "method"
+ },
+ "FullScreen": {
+  "href": "reference/structure.html#window-management",
+  "kind": "method"
+ },
+ "Geo": {
+  "href": "reference/geo.html#geo-tosphere",
+  "kind": "static class"
+ },
+ "GeoFeature": {
+  "href": "reference/geo.html#geojson",
+  "kind": "class"
+ },
+ "GeoMap": {
+  "href": "reference/geo.html#geojson",
+  "kind": "class"
+ },
+ "GeoRing": {
+  "href": "reference/geo.html#geojson",
+  "kind": "class"
+ },
+ "Get": {
+  "href": "reference/pgraphics.html#pgraphics-get",
+  "kind": "method"
+ },
+ "GraphicsContext": {
+  "href": "reference/intro.html",
+  "kind": "abstract class"
+ },
+ "Green": {
+  "href": "reference/color.html#color-channels",
+  "kind": "method"
+ },
+ "HALF_PI": {
+  "href": "reference/math.html",
+  "kind": "constant"
+ },
+ "Height": {
+  "href": "reference/structure.html",
+  "kind": "property"
+ },
+ "Hex": {
+  "href": "reference/utilities.html#hex-fn",
+  "kind": "method"
+ },
+ "HideStats": {
+  "href": "reference/workflow.html#stats",
+  "kind": "method"
+ },
+ "Hint": {
+  "href": "reference/transform.html#hint",
+  "kind": "method"
+ },
+ "Hour": {
+  "href": "reference/input.html#day",
+  "kind": "method"
+ },
+ "HubMessage": {
+  "href": "reference/streams.html#connectsignalr",
+  "kind": "class"
+ },
+ "Hue": {
+  "href": "reference/color.html#color-channels",
+  "kind": "method"
+ },
+ "Image": {
+  "href": "reference/image.html",
+  "kind": "method"
+ },
+ "ImageMode": {
+  "href": "reference/image.html#imagemode",
+  "kind": "method"
+ },
+ "InstallForPowerShell": {
+  "href": "reference/attached.html#shellsignals",
+  "kind": "static method"
+ },
+ "InstanceNumber": {
+  "href": "reference/attached.html#each-window",
+  "kind": "property"
+ },
+ "Int": {
+  "href": "reference/utilities.html#int",
+  "kind": "method"
+ },
+ "IntList": {
+  "href": "reference/collections.html#floatlist",
+  "kind": "class"
+ },
+ "Invoke": {
+  "href": "reference/streams.html#connectsignalr",
+  "kind": "method"
+ },
+ "IsAttached": {
+  "href": "reference/attached.html#target-state",
+  "kind": "property"
+ },
+ "IsEco": {
+  "href": "reference/attached.html#eco",
+  "kind": "property"
+ },
+ "IsEcoEnabled": {
+  "href": "reference/attached.html#eco",
+  "kind": "property"
+ },
+ "IsKeyPressed": {
+  "href": "reference/input.html",
+  "kind": "property"
+ },
+ "IsLooping": {
+  "href": "reference/structure.html",
+  "kind": "property"
+ },
+ "IsMousePressed": {
+  "href": "reference/input.html",
+  "kind": "property"
+ },
+ "IsTargetFocused": {
+  "href": "reference/attached.html#target-state",
+  "kind": "property"
+ },
+ "IsTargetMoving": {
+  "href": "reference/attached.html#target-motion",
+  "kind": "property"
+ },
+ "Join": {
+  "href": "reference/utilities.html#join",
+  "kind": "method"
+ },
+ "JSONArray": {
+  "href": "reference/files-data.html#loadjsonobject",
+  "kind": "class"
+ },
+ "JSONObject": {
+  "href": "reference/files-data.html#loadjsonobject",
+  "kind": "class"
+ },
+ "Key": {
+  "href": "reference/input.html",
+  "kind": "property"
+ },
+ "KeyCode": {
+  "href": "reference/input.html",
+  "kind": "property"
+ },
+ "KeyPressed": {
+  "href": "reference/input.html",
+  "kind": "method"
+ },
+ "KeyReleased": {
+  "href": "reference/input.html",
+  "kind": "method"
+ },
+ "KeyTyped": {
+  "href": "reference/input.html#keytyped",
+  "kind": "method"
+ },
+ "LastCommandOk": {
+  "href": "reference/attached.html#shell-signals",
+  "kind": "property"
+ },
+ "LastExitCode": {
+  "href": "reference/attached.html#shell-signals",
+  "kind": "property"
+ },
+ "Launch": {
+  "href": "reference/input.html#launch",
+  "kind": "method"
+ },
+ "Lerp": {
+  "href": "reference/math.html",
+  "kind": "method"
+ },
+ "LerpColor": {
+  "href": "reference/color.html#lerpcolor",
+  "kind": "method"
+ },
+ "LightFalloff": {
+  "href": "reference/lights-3d.html#lightfalloff",
+  "kind": "method"
+ },
+ "Lights": {
+  "href": "reference/lights-3d.html#lights",
+  "kind": "method"
+ },
+ "LightSpecular": {
+  "href": "reference/lights-3d.html#lightfalloff",
+  "kind": "method"
+ },
+ "Line": {
+  "href": "reference/shape-primitives.html#line",
+  "kind": "method"
+ },
+ "ListenEvents": {
+  "href": "reference/streams.html#listenevents",
+  "kind": "method"
+ },
+ "ListenTo": {
+  "href": "reference/live.html#listento",
+  "kind": "method"
+ },
+ "ListenToShell": {
+  "href": "reference/attached.html#shell-signals",
+  "kind": "method"
+ },
+ "ListenToTargetKeys": {
+  "href": "reference/attached.html#target-input",
+  "kind": "method"
+ },
+ "ListenToTargetMouse": {
+  "href": "reference/attached.html#target-input",
+  "kind": "method"
+ },
+ "ListenWebhook": {
+  "href": "reference/streams.html#listenwebhook",
+  "kind": "method"
+ },
+ "LiveFeed": {
+  "href": "reference/streams.html#livefeed",
+  "kind": "class"
+ },
+ "LoadBytes": {
+  "href": "reference/files-data.html#loadbytes",
+  "kind": "method"
+ },
+ "LoadFont": {
+  "href": "reference/typography.html#loadfont",
+  "kind": "method"
+ },
+ "LoadGeoJSON": {
+  "href": "reference/geo.html#geojson",
+  "kind": "method"
+ },
+ "LoadImage": {
+  "href": "reference/image.html#loadimage",
+  "kind": "method"
+ },
+ "LoadJSONArray": {
+  "href": "reference/files-data.html#loadjsonobject",
+  "kind": "method"
+ },
+ "LoadJSONObject": {
+  "href": "reference/files-data.html#loadjsonobject",
+  "kind": "method"
+ },
+ "LoadPixels": {
+  "href": "reference/pixels.html#loadpixels",
+  "kind": "method"
+ },
+ "LoadShader": {
+  "href": "reference/pshader.html#loadshader",
+  "kind": "method"
+ },
+ "LoadShape": {
+  "href": "reference/pshape.html#loadshape",
+  "kind": "method"
+ },
+ "LoadStrings": {
+  "href": "reference/files-data.html#loadstrings",
+  "kind": "method"
+ },
+ "LoadTable": {
+  "href": "reference/files-data.html#loadtable",
+  "kind": "method"
+ },
+ "LoadXML": {
+  "href": "reference/files-data.html#loadxml",
+  "kind": "method"
+ },
+ "Log": {
+  "href": "reference/math.html",
+  "kind": "method"
+ },
+ "LogError": {
+  "href": "reference/structure.html#print",
+  "kind": "method"
+ },
+ "LogWarning": {
+  "href": "reference/structure.html#print",
+  "kind": "method"
+ },
+ "Loop": {
+  "href": "reference/structure.html#noloop-loop",
+  "kind": "method"
+ },
+ "Mag": {
+  "href": "reference/math.html",
+  "kind": "method"
+ },
+ "MainWindow": {
+  "href": "reference/ide.html#mainwindow",
+  "kind": "class"
+ },
+ "Map": {
+  "href": "reference/math.html",
+  "kind": "method"
+ },
+ "MapMidi": {
+  "href": "reference/live.html#midi",
+  "kind": "method"
+ },
+ "MapMidiNote": {
+  "href": "reference/live.html#midi",
+  "kind": "method"
+ },
+ "Mask": {
+  "href": "reference/image.html#mask",
+  "kind": "method"
+ },
+ "Match": {
+  "href": "reference/utilities.html#match",
+  "kind": "method"
+ },
+ "MatchAll": {
+  "href": "reference/utilities.html#match",
+  "kind": "method"
+ },
+ "Max": {
+  "href": "reference/math.html",
+  "kind": "method"
+ },
+ "MaxInstances": {
+  "href": "reference/attached.html#each-window",
+  "kind": "constant"
+ },
+ "MicGain": {
+  "href": "reference/live.html#listento",
+  "kind": "property"
+ },
+ "MicLevel": {
+  "href": "reference/live.html#listento",
+  "kind": "property"
+ },
+ "MicStatus": {
+  "href": "reference/live.html#listento",
+  "kind": "property"
+ },
+ "MidiCC": {
+  "href": "reference/live.html#midi",
+  "kind": "method"
+ },
+ "MidiInputs": {
+  "href": "reference/live.html#midi",
+  "kind": "method"
+ },
+ "MidiKind": {
+  "href": "reference/live.html#midi",
+  "kind": "enum"
+ },
+ "MidiMessage": {
+  "href": "reference/live.html#midi",
+  "kind": "struct"
+ },
+ "MidiNoteDown": {
+  "href": "reference/live.html#midi",
+  "kind": "method"
+ },
+ "MidiNoteVelocity": {
+  "href": "reference/live.html#midi",
+  "kind": "method"
+ },
+ "Millis": {
+  "href": "reference/input.html#millis",
+  "kind": "method"
+ },
+ "Min": {
+  "href": "reference/math.html",
+  "kind": "method"
+ },
+ "Minute": {
+  "href": "reference/input.html#day",
+  "kind": "method"
+ },
+ "ModelX": {
+  "href": "reference/coordinates-3d.html#modelxyz",
+  "kind": "method"
+ },
+ "ModelY": {
+  "href": "reference/coordinates-3d.html#modelxyz",
+  "kind": "method"
+ },
+ "ModelZ": {
+  "href": "reference/coordinates-3d.html#modelxyz",
+  "kind": "method"
+ },
+ "Month": {
+  "href": "reference/input.html#day",
+  "kind": "method"
+ },
+ "MouseButton": {
+  "href": "reference/input.html",
+  "kind": "property"
+ },
+ "MouseButtonKind": {
+  "href": "reference/enums.html",
+  "kind": "enum"
+ },
+ "MouseClicked": {
+  "href": "reference/input.html",
+  "kind": "method"
+ },
+ "MouseDragged": {
+  "href": "reference/input.html",
+  "kind": "method"
+ },
+ "MouseMoved": {
+  "href": "reference/input.html",
+  "kind": "method"
+ },
+ "MousePressed": {
+  "href": "reference/input.html",
+  "kind": "method"
+ },
+ "MouseReleased": {
+  "href": "reference/input.html",
+  "kind": "method"
+ },
+ "MouseWheel": {
+  "href": "reference/input.html",
+  "kind": "method"
+ },
+ "MouseX": {
+  "href": "reference/input.html",
+  "kind": "property"
+ },
+ "MouseY": {
+  "href": "reference/input.html",
+  "kind": "property"
+ },
+ "NanoTime": {
+  "href": "reference/input.html#millis",
+  "kind": "method"
+ },
+ "Next": {
+  "href": "reference/streams.html#livefeed",
+  "kind": "method"
+ },
+ "Nf": {
+  "href": "reference/utilities.html#nf",
+  "kind": "method"
+ },
+ "Nfc": {
+  "href": "reference/utilities.html#nfc",
+  "kind": "method"
+ },
+ "Nfp": {
+  "href": "reference/utilities.html#nfp",
+  "kind": "method"
+ },
+ "Nfs": {
+  "href": "reference/utilities.html#nfs",
+  "kind": "method"
+ },
+ "NoClip": {
+  "href": "reference/transform.html#clip",
+  "kind": "method"
+ },
+ "NoCursor": {
+  "href": "reference/input.html#cursor",
+  "kind": "method"
+ },
+ "NoEco": {
+  "href": "reference/attached.html#eco",
+  "kind": "method"
+ },
+ "NoFill": {
+  "href": "reference/color.html#fill",
+  "kind": "method"
+ },
+ "Noise": {
+  "href": "reference/random-noise.html#noise",
+  "kind": "method"
+ },
+ "NoiseDetail": {
+  "href": "reference/random-noise.html#noiseseed",
+  "kind": "method"
+ },
+ "NoiseSeed": {
+  "href": "reference/random-noise.html#noiseseed",
+  "kind": "method"
+ },
+ "NoLights": {
+  "href": "reference/lights-3d.html#lights",
+  "kind": "method"
+ },
+ "NoLoop": {
+  "href": "reference/structure.html#noloop-loop",
+  "kind": "method"
+ },
+ "Norm": {
+  "href": "reference/math.html",
+  "kind": "method"
+ },
+ "Normal": {
+  "href": "reference/shape-3d-custom.html#normal",
+  "kind": "method"
+ },
+ "NoSmooth": {
+  "href": "reference/color.html#smooth",
+  "kind": "method"
+ },
+ "NoStroke": {
+  "href": "reference/color.html#stroke",
+  "kind": "method"
+ },
+ "NoTexture": {
+  "href": "reference/shape-custom.html#texture",
+  "kind": "method"
+ },
+ "NoTint": {
+  "href": "reference/color.html#tint",
+  "kind": "method"
+ },
+ "NuGet packages": {
+  "href": "reference/vscode-nuget.html#nuget-packages",
+  "kind": "packages"
+ },
+ "OnBeat": {
+  "href": "reference/live.html#beat",
+  "kind": "method"
+ },
+ "OnMidi": {
+  "href": "reference/live.html#midi",
+  "kind": "method"
+ },
+ "OnShellSignal": {
+  "href": "reference/attached.html#shell-signals",
+  "kind": "method"
+ },
+ "Orbit": {
+  "href": "reference/geo.html#view3d",
+  "kind": "static method"
+ },
+ "Ortho": {
+  "href": "reference/camera-3d.html#ortho",
+  "kind": "method"
+ },
+ "ParseJSONArray": {
+  "href": "reference/files-data.html#parsejsonobject",
+  "kind": "method"
+ },
+ "ParseJSONObject": {
+  "href": "reference/files-data.html#parsejsonobject",
+  "kind": "method"
+ },
+ "ParseXML": {
+  "href": "reference/files-data.html#parsejsonobject",
+  "kind": "method"
+ },
+ "Perspective": {
+  "href": "reference/camera-3d.html#perspective",
+  "kind": "method"
+ },
+ "PFont": {
+  "href": "reference/typography.html#pfont",
+  "kind": "class"
+ },
+ "PGraphics": {
+  "href": "reference/pgraphics.html",
+  "kind": "class"
+ },
+ "Phase": {
+  "href": "reference/live.html#beat",
+  "kind": "method"
+ },
+ "PI": {
+  "href": "reference/math.html",
+  "kind": "constant"
+ },
+ "PImage": {
+  "href": "reference/image.html",
+  "kind": "class"
+ },
+ "PingPong": {
+  "href": "reference/live.html#beat",
+  "kind": "method"
+ },
+ "PixelDensity": {
+  "href": "reference/structure.html#displaydensity",
+  "kind": "method"
+ },
+ "PixelHeight": {
+  "href": "reference/structure.html#pixelwidth",
+  "kind": "property"
+ },
+ "Pixels": {
+  "href": "reference/pixels.html#loadpixels",
+  "kind": "property"
+ },
+ "PixelWidth": {
+  "href": "reference/structure.html#pixelwidth",
+  "kind": "property"
+ },
+ "PlotterSvg": {
+  "href": "reference/generative.html#print-export",
+  "kind": "class"
+ },
+ "PMouseX": {
+  "href": "reference/input.html",
+  "kind": "property"
+ },
+ "PMouseY": {
+  "href": "reference/input.html",
+  "kind": "property"
+ },
+ "Point": {
+  "href": "reference/shape-primitives.html#line",
+  "kind": "method"
+ },
+ "PointCloud": {
+  "href": "reference/geo.html#pointcloud",
+  "kind": "class"
+ },
+ "PointLight": {
+  "href": "reference/lights-3d.html#pointlight",
+  "kind": "method"
+ },
+ "Points": {
+  "href": "reference/geo.html#pointcloud",
+  "kind": "method"
+ },
+ "Polygon": {
+  "href": "reference/shape-primitives.html#triangle",
+  "kind": "method"
+ },
+ "PopMatrix": {
+  "href": "reference/transform.html#pushmatrix",
+  "kind": "method"
+ },
+ "PopStyle": {
+  "href": "reference/color.html#pushstyle",
+  "kind": "method"
+ },
+ "Pow": {
+  "href": "reference/math.html",
+  "kind": "method"
+ },
+ "Print": {
+  "href": "reference/structure.html#print",
+  "kind": "method"
+ },
+ "PrintArray": {
+  "href": "reference/files-data.html#printarray",
+  "kind": "method"
+ },
+ "PrintCamera": {
+  "href": "reference/camera-3d.html#printcamera",
+  "kind": "method"
+ },
+ "PrintExport": {
+  "href": "reference/generative.html#print-export",
+  "kind": "class"
+ },
+ "Println": {
+  "href": "reference/structure.html#print",
+  "kind": "method"
+ },
+ "PrintMatrix": {
+  "href": "reference/transform.html#printmatrix",
+  "kind": "method"
+ },
+ "PrintProjection": {
+  "href": "reference/camera-3d.html#printcamera",
+  "kind": "method"
+ },
+ "PrintWriter": {
+  "href": "reference/files-data.html#printwriter",
+  "kind": "class"
+ },
+ "Project": {
+  "href": "reference/geo.html#view3d",
+  "kind": "method"
+ },
+ "PShader": {
+  "href": "reference/pshader.html#loadshader",
+  "kind": "class"
+ },
+ "PShape": {
+  "href": "reference/pshape.html",
+  "kind": "class"
+ },
+ "PShapeType": {
+  "href": "reference/enums.html",
+  "kind": "enum"
+ },
+ "Pulse": {
+  "href": "reference/live.html#beat",
+  "kind": "method"
+ },
+ "PushMatrix": {
+  "href": "reference/transform.html#pushmatrix",
+  "kind": "method"
+ },
+ "PushStyle": {
+  "href": "reference/color.html#pushstyle",
+  "kind": "method"
+ },
+ "PVector": {
+  "href": "reference/pvector.html",
+  "kind": "struct"
+ },
+ "PVector.Add": {
+  "href": "reference/pvector.html",
+  "kind": "method"
+ },
+ "PVector.AngleBetween": {
+  "href": "reference/pvector.html",
+  "kind": "static method"
+ },
+ "PVector.Array": {
+  "href": "reference/pvector.html",
+  "kind": "method"
+ },
+ "PVector.Copy": {
+  "href": "reference/pvector.html",
+  "kind": "method"
+ },
+ "PVector.Dist": {
+  "href": "reference/pvector.html",
+  "kind": "static method"
+ },
+ "PVector.Div": {
+  "href": "reference/pvector.html",
+  "kind": "method"
+ },
+ "PVector.Dot": {
+  "href": "reference/pvector.html",
+  "kind": "static method"
+ },
+ "PVector.FromAngle": {
+  "href": "reference/pvector.html",
+  "kind": "static method"
+ },
+ "PVector.Heading": {
+  "href": "reference/pvector.html",
+  "kind": "method"
+ },
+ "PVector.Lerp": {
+  "href": "reference/pvector.html",
+  "kind": "method"
+ },
+ "PVector.Limit": {
+  "href": "reference/pvector.html",
+  "kind": "method"
+ },
+ "PVector.Mag": {
+  "href": "reference/pvector.html",
+  "kind": "method"
+ },
+ "PVector.MagSq": {
+  "href": "reference/pvector.html",
+  "kind": "method"
+ },
+ "PVector.Mult": {
+  "href": "reference/pvector.html",
+  "kind": "method"
+ },
+ "PVector.Normalize": {
+  "href": "reference/pvector.html",
+  "kind": "method"
+ },
+ "PVector.Rotate": {
+  "href": "reference/pvector.html",
+  "kind": "method"
+ },
+ "PVector.Set": {
+  "href": "reference/pvector.html",
+  "kind": "method"
+ },
+ "PVector.SetMag": {
+  "href": "reference/pvector.html",
+  "kind": "method"
+ },
+ "PVector.Sub": {
+  "href": "reference/pvector.html",
+  "kind": "method"
+ },
+ "Quad": {
+  "href": "reference/shape-primitives.html#triangle",
+  "kind": "method"
+ },
+ "QuadraticVertex": {
+  "href": "reference/shape-custom.html#beziervertex",
+  "kind": "method"
+ },
+ "QUARTER_PI": {
+  "href": "reference/math.html",
+  "kind": "constant"
+ },
+ "Radians": {
+  "href": "reference/math.html",
+  "kind": "method"
+ },
+ "Random": {
+  "href": "reference/random-noise.html#random",
+  "kind": "method"
+ },
+ "RandomGaussian": {
+  "href": "reference/random-noise.html#randomgaussian",
+  "kind": "method"
+ },
+ "RandomSeed": {
+  "href": "reference/random-noise.html#randomseed",
+  "kind": "method"
+ },
+ "ReadAll": {
+  "href": "reference/streams.html#livefeed",
+  "kind": "method"
+ },
+ "Rect": {
+  "href": "reference/shape-primitives.html#rect",
+  "kind": "method"
+ },
+ "RectMode": {
+  "href": "reference/shape-primitives.html#rectmode",
+  "kind": "method"
+ },
+ "Red": {
+  "href": "reference/color.html#color-channels",
+  "kind": "method"
+ },
+ "Redraw": {
+  "href": "reference/structure.html#redraw",
+  "kind": "method"
+ },
+ "RefreshMidi": {
+  "href": "reference/live.html#midi",
+  "kind": "method"
+ },
+ "RendererKind": {
+  "href": "reference/enums.html",
+  "kind": "enum"
+ },
+ "Request": {
+  "href": "reference/files-data.html#requesttext",
+  "kind": "class"
+ },
+ "RequestBytes": {
+  "href": "reference/files-data.html#requesttext",
+  "kind": "method"
+ },
+ "RequestGeoJSON": {
+  "href": "reference/geo.html#geojson",
+  "kind": "method"
+ },
+ "RequestImage": {
+  "href": "reference/image.html#requestimage",
+  "kind": "method"
+ },
+ "RequestJSONArray": {
+  "href": "reference/files-data.html#requesttext",
+  "kind": "method"
+ },
+ "RequestJSONObject": {
+  "href": "reference/files-data.html#requesttext",
+  "kind": "method"
+ },
+ "RequestPImage": {
+  "href": "reference/files-data.html#requesttext",
+  "kind": "method"
+ },
+ "RequestStrings": {
+  "href": "reference/files-data.html#requesttext",
+  "kind": "method"
+ },
+ "RequestTable": {
+  "href": "reference/files-data.html#requesttext",
+  "kind": "method"
+ },
+ "RequestText": {
+  "href": "reference/files-data.html#requesttext",
+  "kind": "method"
+ },
+ "RequestXML": {
+  "href": "reference/files-data.html#requesttext",
+  "kind": "method"
+ },
+ "ResetMatrix": {
+  "href": "reference/transform.html#resetmatrix",
+  "kind": "method"
+ },
+ "ResetShader": {
+  "href": "reference/pshader.html#shader",
+  "kind": "method"
+ },
+ "Reverse": {
+  "href": "reference/utilities.html#reverse",
+  "kind": "method"
+ },
+ "RoslynCompletionEngine": {
+  "href": "reference/ide.html#code-navigation",
+  "kind": "class"
+ },
+ "Rotate": {
+  "href": "reference/transform.html#rotate",
+  "kind": "method"
+ },
+ "RotateDegrees": {
+  "href": "reference/transform.html#rotate",
+  "kind": "method"
+ },
+ "RotateX": {
+  "href": "reference/transform-3d.html#rotatexyz",
+  "kind": "method"
+ },
+ "RotateY": {
+  "href": "reference/transform-3d.html#rotatexyz",
+  "kind": "method"
+ },
+ "RotateZ": {
+  "href": "reference/transform-3d.html#rotatexyz",
+  "kind": "method"
+ },
+ "Round": {
+  "href": "reference/math.html",
+  "kind": "method"
+ },
+ "Saturation": {
+  "href": "reference/color.html#color-channels",
+  "kind": "method"
+ },
+ "Save": {
+  "href": "reference/output.html#save",
+  "kind": "method"
+ },
+ "SaveBytes": {
+  "href": "reference/files-data.html#loadbytes",
+  "kind": "method"
+ },
+ "SaveFrame": {
+  "href": "reference/output.html#saveframe",
+  "kind": "method"
+ },
+ "SaveJSONArray": {
+  "href": "reference/files-data.html#loadjsonobject",
+  "kind": "method"
+ },
+ "SaveJSONObject": {
+  "href": "reference/files-data.html#loadjsonobject",
+  "kind": "method"
+ },
+ "SaveStream": {
+  "href": "reference/files-data.html#savestream",
+  "kind": "method"
+ },
+ "SaveStrings": {
+  "href": "reference/files-data.html#loadstrings",
+  "kind": "method"
+ },
+ "SaveTable": {
+  "href": "reference/files-data.html#loadtable",
+  "kind": "method"
+ },
+ "SaveXML": {
+  "href": "reference/files-data.html#loadxml",
+  "kind": "method"
+ },
+ "Scale": {
+  "href": "reference/transform.html#scale",
+  "kind": "method"
+ },
+ "ScreenX": {
+  "href": "reference/coordinates-3d.html#screenxyz",
+  "kind": "method"
+ },
+ "ScreenY": {
+  "href": "reference/coordinates-3d.html#screenxyz",
+  "kind": "method"
+ },
+ "ScreenZ": {
+  "href": "reference/coordinates-3d.html#screenxyz",
+  "kind": "method"
+ },
+ "Second": {
+  "href": "reference/input.html#day",
+  "kind": "method"
+ },
+ "Seed": {
+  "href": "reference/generative.html#seed",
+  "kind": "property"
+ },
+ "SelectFileRequest": {
+  "href": "reference/input.html#selectinput",
+  "kind": "class"
+ },
+ "SelectFolder": {
+  "href": "reference/input.html#selectinput",
+  "kind": "method"
+ },
+ "SelectInput": {
+  "href": "reference/input.html#selectinput",
+  "kind": "method"
+ },
+ "SelectOutput": {
+  "href": "reference/input.html#selectinput",
+  "kind": "method"
+ },
+ "Send": {
+  "href": "reference/streams.html#connectwebsocket",
+  "kind": "method"
+ },
+ "ServerEvent": {
+  "href": "reference/streams.html#listenevents",
+  "kind": "class"
+ },
+ "Set": {
+  "href": "reference/pixels.html#pixels-set",
+  "kind": "method"
+ },
+ "SetCanvas": {
+  "href": "reference/hosting.html#avaloniasketchcanvas",
+  "kind": "method"
+ },
+ "SetLocation": {
+  "href": "reference/structure.html#window-management",
+  "kind": "method"
+ },
+ "SetResizable": {
+  "href": "reference/structure.html#window-management",
+  "kind": "method"
+ },
+ "Settings": {
+  "href": "reference/structure.html#settings",
+  "kind": "method"
+ },
+ "SetTitle": {
+  "href": "reference/structure.html#window-management",
+  "kind": "method"
+ },
+ "Setup": {
+  "href": "reference/structure.html#setup",
+  "kind": "method"
+ },
+ "Shader": {
+  "href": "reference/pshader.html#shader",
+  "kind": "method"
+ },
+ "Shape": {
+  "href": "reference/pshape.html#shape",
+  "kind": "method"
+ },
+ "ShapeAlignMode": {
+  "href": "reference/enums.html",
+  "kind": "enum"
+ },
+ "ShapeKind": {
+  "href": "reference/enums.html",
+  "kind": "enum"
+ },
+ "ShapeMode": {
+  "href": "reference/shape-primitives.html#rectmode",
+  "kind": "method"
+ },
+ "ShearX": {
+  "href": "reference/transform.html#shearx",
+  "kind": "method"
+ },
+ "ShearY": {
+  "href": "reference/transform.html#shearx",
+  "kind": "method"
+ },
+ "ShellSignal": {
+  "href": "reference/attached.html#shellsignals",
+  "kind": "struct"
+ },
+ "ShellSignalKind": {
+  "href": "reference/attached.html#shellsignals",
+  "kind": "enum"
+ },
+ "ShellSignals": {
+  "href": "reference/attached.html#shellsignals",
+  "kind": "static class"
+ },
+ "Shininess": {
+  "href": "reference/material-3d.html#shininess",
+  "kind": "method"
+ },
+ "Shorten": {
+  "href": "reference/utilities.html#reverse",
+  "kind": "method"
+ },
+ "ShowStats": {
+  "href": "reference/workflow.html#stats",
+  "kind": "method"
+ },
+ "SignalRFeed": {
+  "href": "reference/streams.html#connectsignalr",
+  "kind": "class"
+ },
+ "Sin": {
+  "href": "reference/math.html",
+  "kind": "method"
+ },
+ "Size": {
+  "href": "reference/structure.html#size",
+  "kind": "method"
+ },
+ "Sketch": {
+  "href": "reference/intro.html#minimal-sketch",
+  "kind": "class"
+ },
+ "SketchApp": {
+  "href": "reference/hosting.html#sketchapp",
+  "kind": "static class"
+ },
+ "SketchCompiler": {
+  "href": "reference/ide.html#sketchcompiler-compile",
+  "kind": "static class"
+ },
+ "SketchEditorView": {
+  "href": "reference/ide.html#sketcheditorview",
+  "kind": "class"
+ },
+ "SketchFolder": {
+  "href": "reference/workflow.html#data-folder",
+  "kind": "property"
+ },
+ "SketchHotReload": {
+  "href": "reference/ide.html#hot-reload",
+  "kind": "static class"
+ },
+ "SketchPath": {
+  "href": "reference/workflow.html#data-folder",
+  "kind": "method"
+ },
+ "Smooth": {
+  "href": "reference/color.html#smooth",
+  "kind": "method"
+ },
+ "Sort": {
+  "href": "reference/utilities.html#sort",
+  "kind": "method"
+ },
+ "Specular": {
+  "href": "reference/material-3d.html#specular-material",
+  "kind": "method"
+ },
+ "Sphere": {
+  "href": "reference/shape-3d-primitives.html#sphere",
+  "kind": "method"
+ },
+ "SphereDetail": {
+  "href": "reference/shape-3d-primitives.html#spheredetail",
+  "kind": "method"
+ },
+ "Splice": {
+  "href": "reference/utilities.html#splice",
+  "kind": "method"
+ },
+ "Split": {
+  "href": "reference/utilities.html#join",
+  "kind": "method"
+ },
+ "SplitTokens": {
+  "href": "reference/utilities.html#splittokens",
+  "kind": "method"
+ },
+ "SpotLight": {
+  "href": "reference/lights-3d.html#spotlight",
+  "kind": "method"
+ },
+ "Sq": {
+  "href": "reference/math.html",
+  "kind": "method"
+ },
+ "Sqrt": {
+  "href": "reference/math.html",
+  "kind": "method"
+ },
+ "Square": {
+  "href": "reference/shape-primitives.html#square",
+  "kind": "method"
+ },
+ "Str": {
+  "href": "reference/utilities.html#str-fn",
+  "kind": "method"
+ },
+ "StringList": {
+  "href": "reference/collections.html#floatlist",
+  "kind": "class"
+ },
+ "Stroke": {
+  "href": "reference/color.html#stroke",
+  "kind": "method"
+ },
+ "StrokeCap": {
+  "href": "reference/color.html#strokeweight",
+  "kind": "method"
+ },
+ "StrokeCapKind": {
+  "href": "reference/enums.html",
+  "kind": "enum"
+ },
+ "StrokeHSB": {
+  "href": "reference/color.html#stroke",
+  "kind": "method"
+ },
+ "StrokeJoin": {
+  "href": "reference/color.html#strokeweight",
+  "kind": "method"
+ },
+ "StrokeJoinKind": {
+  "href": "reference/enums.html",
+  "kind": "enum"
+ },
+ "StrokeWeight": {
+  "href": "reference/color.html#strokeweight",
+  "kind": "method"
+ },
+ "Subset": {
+  "href": "reference/utilities.html#reverse",
+  "kind": "method"
+ },
+ "Table": {
+  "href": "reference/files-data.html#loadtable",
+  "kind": "class"
+ },
+ "TableRow": {
+  "href": "reference/files-data.html#loadtable",
+  "kind": "class"
+ },
+ "Tan": {
+  "href": "reference/math.html",
+  "kind": "method"
+ },
+ "TargetAcceleration": {
+  "href": "reference/attached.html#target-motion",
+  "kind": "property"
+ },
+ "TargetAccelerationLimit": {
+  "href": "reference/attached.html#target-motion",
+  "kind": "constant"
+ },
+ "TargetBlurred": {
+  "href": "reference/attached.html#target-events",
+  "kind": "method"
+ },
+ "TargetFocused": {
+  "href": "reference/attached.html#target-events",
+  "kind": "method"
+ },
+ "TargetFrameRate": {
+  "href": "reference/structure.html",
+  "kind": "property"
+ },
+ "TargetHidden": {
+  "href": "reference/attached.html#target-events",
+  "kind": "method"
+ },
+ "TargetMoved": {
+  "href": "reference/attached.html#target-events",
+  "kind": "method"
+ },
+ "TargetMovingSpeed": {
+  "href": "reference/attached.html#target-motion",
+  "kind": "constant"
+ },
+ "TargetScale": {
+  "href": "reference/attached.html#target-state",
+  "kind": "property"
+ },
+ "TargetShown": {
+  "href": "reference/attached.html#target-events",
+  "kind": "method"
+ },
+ "TargetVelocity": {
+  "href": "reference/attached.html#target-motion",
+  "kind": "property"
+ },
+ "TargetX": {
+  "href": "reference/attached.html#target-state",
+  "kind": "property"
+ },
+ "TargetY": {
+  "href": "reference/attached.html#target-state",
+  "kind": "property"
+ },
+ "TAU": {
+  "href": "reference/math.html",
+  "kind": "constant"
+ },
+ "Text": {
+  "href": "reference/typography.html#text",
+  "kind": "method"
+ },
+ "TextAlign": {
+  "href": "reference/typography.html#textalign",
+  "kind": "method"
+ },
+ "TextAlignH": {
+  "href": "reference/enums.html",
+  "kind": "enum"
+ },
+ "TextAlignV": {
+  "href": "reference/enums.html",
+  "kind": "enum"
+ },
+ "TextAscent": {
+  "href": "reference/typography.html#textwidth",
+  "kind": "method"
+ },
+ "TextDescent": {
+  "href": "reference/typography.html#textwidth",
+  "kind": "method"
+ },
+ "TextFont": {
+  "href": "reference/typography.html#textsize",
+  "kind": "method"
+ },
+ "TextLeading": {
+  "href": "reference/typography.html#textleading",
+  "kind": "method"
+ },
+ "TextMode": {
+  "href": "reference/typography.html#textmode",
+  "kind": "method"
+ },
+ "TextRenderMode": {
+  "href": "reference/enums.html",
+  "kind": "enum"
+ },
+ "TextSize": {
+  "href": "reference/typography.html#textsize",
+  "kind": "method"
+ },
+ "TextSizeSnap": {
+  "href": "reference/typography.html#textsizesnap",
+  "kind": "method"
+ },
+ "Texture": {
+  "href": "reference/shape-custom.html#texture",
+  "kind": "method"
+ },
+ "TextureMode": {
+  "href": "reference/shape-custom.html#texturemode",
+  "kind": "method"
+ },
+ "TextureModeKind": {
+  "href": "reference/enums.html",
+  "kind": "enum"
+ },
+ "TextureWrap": {
+  "href": "reference/shape-custom.html#texturemode",
+  "kind": "method"
+ },
+ "TextureWrapKind": {
+  "href": "reference/enums.html",
+  "kind": "enum"
+ },
+ "TextWidth": {
+  "href": "reference/typography.html#textwidth",
+  "kind": "method"
+ },
+ "Thread": {
+  "href": "reference/structure.html#thread",
+  "kind": "method"
+ },
+ "Tint": {
+  "href": "reference/color.html#tint",
+  "kind": "method"
+ },
+ "ToSphere": {
+  "href": "reference/geo.html#geo-tosphere",
+  "kind": "static method"
+ },
+ "Translate": {
+  "href": "reference/transform.html#translate",
+  "kind": "method"
+ },
+ "Triangle": {
+  "href": "reference/shape-primitives.html#triangle",
+  "kind": "method"
+ },
+ "Trim": {
+  "href": "reference/utilities.html#trim-fn",
+  "kind": "method"
+ },
+ "TWO_PI": {
+  "href": "reference/math.html",
+  "kind": "constant"
+ },
+ "Unbinary": {
+  "href": "reference/utilities.html#unbinary",
+  "kind": "method"
+ },
+ "Unhex": {
+  "href": "reference/utilities.html#unhex",
+  "kind": "method"
+ },
+ "UpdatePixels": {
+  "href": "reference/pixels.html#loadpixels",
+  "kind": "method"
+ },
+ "VariationRenderer": {
+  "href": "reference/generative.html#variations",
+  "kind": "class"
+ },
+ "Vertex": {
+  "href": "reference/shape-custom.html#vertex",
+  "kind": "method"
+ },
+ "View3D": {
+  "href": "reference/geo.html#view3d",
+  "kind": "class"
+ },
+ "VS Code": {
+  "href": "reference/vscode-nuget.html#vscode-extension",
+  "kind": "extension"
+ },
+ "WebhookCall": {
+  "href": "reference/streams.html#listenwebhook",
+  "kind": "class"
+ },
+ "WebSocketFeed": {
+  "href": "reference/streams.html#connectwebsocket",
+  "kind": "class"
+ },
+ "Width": {
+  "href": "reference/structure.html",
+  "kind": "property"
+ },
+ "WindowMove": {
+  "href": "reference/structure.html#window-management",
+  "kind": "method"
+ },
+ "WindowRatio": {
+  "href": "reference/structure.html#window-management",
+  "kind": "method"
+ },
+ "WindowResizable": {
+  "href": "reference/structure.html#window-management",
+  "kind": "method"
+ },
+ "WindowResize": {
+  "href": "reference/structure.html#window-management",
+  "kind": "method"
+ },
+ "WindowResized": {
+  "href": "reference/structure.html#windowresized",
+  "kind": "method"
+ },
+ "WindowTarget": {
+  "href": "reference/attached.html#windowtarget",
+  "kind": "class"
+ },
+ "WindowTitle": {
+  "href": "reference/structure.html#window-management",
+  "kind": "method"
+ },
+ "XML": {
+  "href": "reference/files-data.html#loadxml",
+  "kind": "class"
+ },
+ "Year": {
+  "href": "reference/input.html#day",
+  "kind": "method"
+ }
+}

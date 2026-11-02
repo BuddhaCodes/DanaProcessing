@@ -1,0 +1,44 @@
+<!--meta {"title": "VS Code & NuGet", "nav": "VS Code & NuGet", "summary": "Write and run sketches in VS Code, or put them in any .NET project with the NuGet packages.", "tags": ["vscode", "nuget", "dotnet new", "template", "package", "export", "SketchApp"]} -->
+<p class="section-intro">The IDE is one way to write sketches. The same sketches also run from <strong>VS Code</strong> with the DanaProcessing extension, and inside <strong>any .NET project</strong> with the NuGet packages. A sketch file copied out of the IDE runs as it is in both.</p>
+
+<h3 class="entry-title" id="vscode-extension">The VS Code extension</h3>
+<p class="entry-desc">Install <strong>DanaProcessing</strong> from the Extensions view (or the <code class="inline">.vsix</code> from the <a href="https://github.com/BuddhaCodes/DanaProcessing/releases">releases</a>), plus the <a href="https://dotnet.microsoft.com/download/dotnet/10.0">.NET 10 SDK</a> and the C# extension. Then, from the Command Palette (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>), type <em>DanaProcessing</em>:</p>
+<ul>
+  <li><strong>New Sketch</strong> creates a project ready to run; <strong>Open an Example</strong> turns any of the IDE's examples into one, with its NuGet packages.</li>
+  <li><strong>Run Sketch</strong> (▶, <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>R</kbd>) opens it in its own window. <strong>Live</strong> (⚡, <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>L</kbd>) keeps it running with <code class="inline">dotnet watch</code> and applies your edits when you save. <strong>Stop</strong> is <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>S</kbd>. Errors land in the Problems panel.</li>
+  <li><strong>Export as an App</strong> makes one file per system (Windows, macOS, Linux) that runs without .NET installed, in <code class="inline">export/&lt;platform&gt;/</code>, with the <code class="inline">data/</code> folder.</li>
+  <li><code class="inline">// nuget: NAudio, 2.2.1</code> lines, as the IDE writes them, become package references when you run. <strong>Make This Sketch Runnable</strong> creates the project for a <code class="inline">.cs</code> saved from the IDE; <strong>Open in the DanaProcessing IDE</strong> goes the other way.</li>
+  <li><strong>Open the Reference</strong> (<kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>H</kbd>) shows the page of the name under the cursor, and hovering a DanaProcessing name links to it. Snippets: <code class="inline">sketch</code>, <code class="inline">setup</code>, <code class="inline">draw</code>, <code class="inline">mousePressed</code>, <code class="inline">keyPressed</code>, <code class="inline">grid</code>, <code class="inline">push</code>, <code class="inline">nuget</code>.</li>
+</ul>
+<div class="note">The extension speaks English and Spanish: it follows VS Code's display language.</div>
+
+<h3 class="entry-title" id="dotnet-new-template">dotnet new dana-sketch</h3>
+<p class="entry-desc">Without VS Code, the template makes the same project from a terminal:</p>
+<pre><code>dotnet new install DanaProcessing.Templates
+dotnet new dana-sketch -n MySketch
+cd MySketch
+dotnet run          # or: dotnet watch run, to live-code</code></pre>
+
+<h3 class="entry-title" id="nuget-packages">The NuGet packages</h3>
+<table>
+  <tr><th>Package</th><th>What it is</th></tr>
+  <tr><td><code class="inline">DanaProcessing</code></td><td>The core: <code class="inline">Sketch</code>, 2D and 3D drawing, sound, <code class="inline">PVector</code>, <code class="inline">PImage</code>, math. No windows: draw off-screen, in tests or on a server.</td></tr>
+  <tr><td><code class="inline">DanaProcessing.AvaloniaHost</code></td><td>The window: <code class="inline">SketchApp.Run()</code> and the <code class="inline">AvaloniaSketchCanvas</code> control. Windows, macOS and Linux.</td></tr>
+  <tr><td><code class="inline">DanaProcessing.Templates</code></td><td>The <code class="inline">dana-sketch</code> template for <code class="inline">dotnet new</code>.</td></tr>
+</table>
+<p class="entry-desc">Add a sketch to a program you already have:</p>
+<pre><code>dotnet add package DanaProcessing.AvaloniaHost</code></pre>
+<pre><code>using DanaProcessing.AvaloniaHost;
+
+SketchApp.Run(new Bubbles());
+
+public class Bubbles : Sketch
+{
+    public override void Setup() =&gt; Size(400, 400);
+    public override void Draw()
+    {
+        Background(20);
+        Circle(MouseX, MouseY, 40);
+    }
+}</code></pre>
+<p class="entry-desc">Projects with <code class="inline">ImplicitUsings</code> get <code class="inline">using DanaProcessing;</code> for free, like the IDE (turn it off with <code class="inline">&lt;DanaProcessingImplicitUsings&gt;false&lt;/DanaProcessingImplicitUsings&gt;</code>). To put a sketch inside your own Avalonia window, see <a href="#avaloniasketchcanvas">AvaloniaSketchCanvas</a>.</p>

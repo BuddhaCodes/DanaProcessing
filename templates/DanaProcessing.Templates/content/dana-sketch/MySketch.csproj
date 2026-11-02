@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <RootNamespace>MySketch</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="DanaProcessing.AvaloniaHost" Version="DANA_VERSION" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Images, fonts, sounds... next to the sketch: LoadImage("cat.png")
+         finds data/cat.png, also in the published app. -->
+    <None Include="data\**" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>
