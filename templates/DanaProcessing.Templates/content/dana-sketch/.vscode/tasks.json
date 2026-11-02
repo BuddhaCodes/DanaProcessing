@@ -1,0 +1,22 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build",
+      "type": "process",
+      "command": "dotnet",
+      "args": [ "build", "${workspaceFolder}/MySketch.csproj" ],
+      "problemMatcher": "$msCompile",
+      "group": { "kind": "build", "isDefault": true }
+    },
+    {
+      "label": "live",
+      "detail": "Runs the sketch and applies your edits while it runs (dotnet watch)",
+      "type": "process",
+      "command": "dotnet",
+      "args": [ "watch", "run", "--project", "${workspaceFolder}/MySketch.csproj" ],
+      "isBackground": true,
+      "problemMatcher": "$msCompile"
+    }
+  ]
+}

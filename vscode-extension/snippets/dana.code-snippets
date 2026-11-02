@@ -1,0 +1,69 @@
+{
+  "DanaProcessing sketch": {
+    "prefix": ["sketch", "dana"],
+    "description": "A sketch class with Setup() and Draw() / Una clase sketch con Setup() y Draw()",
+    "body": [
+      "public class ${1:MySketch} : Sketch",
+      "{",
+      "    public override void Setup()",
+      "    {",
+      "        Size(${2:640}, ${3:480});",
+      "    }",
+      "",
+      "    public override void Draw()",
+      "    {",
+      "        Background(${4:20});",
+      "        $0",
+      "    }",
+      "}"
+    ]
+  },
+  "Setup": {
+    "prefix": "setup",
+    "description": "Setup(): runs once at the start / corre una vez al empezar",
+    "body": ["public override void Setup()", "{", "    Size(${1:640}, ${2:480});", "    $0", "}"]
+  },
+  "Draw": {
+    "prefix": "draw",
+    "description": "Draw(): runs every frame / corre en cada cuadro",
+    "body": ["public override void Draw()", "{", "    Background(${1:20});", "    $0", "}"]
+  },
+  "MousePressed": {
+    "prefix": "mousePressed",
+    "description": "Runs when a mouse button is pressed / Corre al apretar un botón del mouse",
+    "body": ["public override void MousePressed()", "{", "    $0", "}"]
+  },
+  "MouseDragged": {
+    "prefix": "mouseDragged",
+    "description": "Runs while the mouse moves with a button down / Corre al arrastrar el mouse",
+    "body": ["public override void MouseDragged()", "{", "    $0", "}"]
+  },
+  "KeyPressed": {
+    "prefix": "keyPressed",
+    "description": "Runs when a key is pressed / Corre al apretar una tecla",
+    "body": ["public override void KeyPressed()", "{", "    if (Key == '${1:s}')", "    {", "        $0", "    }", "}"]
+  },
+  "Grid loop": {
+    "prefix": "grid",
+    "description": "Nested loops over a grid of cells / Bucles anidados sobre una grilla",
+    "body": [
+      "for (int ${1:y} = 0; $1 < Height; $1 += ${3:20})",
+      "{",
+      "    for (int ${2:x} = 0; $2 < Width; $2 += $3)",
+      "    {",
+      "        ${0:Rect($2, $1, $3, $3);}",
+      "    }",
+      "}"
+    ]
+  },
+  "PushMatrix / PopMatrix": {
+    "prefix": "push",
+    "description": "Transform inside Push/Pop / Transformar dentro de Push/Pop",
+    "body": ["PushMatrix();", "Translate(${1:Width / 2f}, ${2:Height / 2f});", "$0", "PopMatrix();"]
+  },
+  "NuGet package line": {
+    "prefix": "nuget",
+    "description": "A package for the sketch, the IDE way (added to the .csproj on Run) / Un paquete para el sketch, como en el IDE",
+    "body": ["// nuget: ${1:NAudio}, ${2:2.2.1}"]
+  }
+}

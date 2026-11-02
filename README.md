@@ -161,6 +161,19 @@ chmod +x DanaProcessingIde-*.AppImage
 
 Sound on macOS and Linux is new in 1.0 and still experimental: if you hear nothing, please [open an issue](https://github.com/BuddhaCodes/DanaProcessing/issues).
 
+**Prefer VS Code?** Install the **DanaProcessing** extension (the `.vsix` is on the [releases](https://github.com/BuddhaCodes/DanaProcessing/releases) page) and the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0). *New Sketch*, *Open an Example*, ▶ Run, ⚡ Live and *Export as an App* are in the Command Palette, in English and Spanish. Sketches copied out of the IDE run as they are.
+
+**Sketches in your own .NET project?** The NuGet packages do it:
+
+```bash
+dotnet new install DanaProcessing.Templates
+dotnet new dana-sketch -n MySketch && cd MySketch
+dotnet run                     # or add it to an existing program:
+dotnet add package DanaProcessing.AvaloniaHost   # then SketchApp.Run(new MySketch());
+```
+
+More in [VS Code & NuGet](https://buddhacodes.github.io/DanaProcessing/reference/vscode-nuget.html).
+
 **Building from source?** You'll need the [.NET 10 SDK](https://dotnet.microsoft.com/download):
 
 ```bash
@@ -187,6 +200,18 @@ DanaProcessing.AvaloniaHost/   A cross-platform Avalonia control that hosts a ru
 
 DanaProcessing.Ide/            The desktop IDE: editor, live diagnostics, hot reload, NuGet
                                management, example gallery, exporter, settings, localization.
+
+vscode-extension/              The VS Code extension (TypeScript): new sketch, examples, run,
+                               live, export, reference. `npm test`, `npx vsce package`.
+
+templates/                     The `dotnet new dana-sketch` template package.
+
+packaging/                     What the NuGet packages share: metadata, icon, README.
+                               .github/workflows/publish-packages.yml publishes them and the
+                               extension when a `packages-v*` tag is pushed.
+
+tools/                         DanaProcessing.ExamplesExport: the IDE's examples, as the
+                               extension's examples.json.
 ```
 
 <details>

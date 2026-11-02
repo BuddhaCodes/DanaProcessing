@@ -1,0 +1,30 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "BuddhaCodes",
+  "classifications": [ "Creative coding", "Graphics", "Desktop" ],
+  "identity": "DanaProcessing.Sketch",
+  "name": "DanaProcessing sketch",
+  "description": "A DanaProcessing sketch project: a class with Setup() and Draw() that opens in its own window. Works in VS Code with the DanaProcessing extension.",
+  "shortName": "dana-sketch",
+  "sourceName": "MySketch",
+  "preferNameDirectory": true,
+  "tags": { "language": "C#", "type": "project" },
+  "symbols": {
+    "DanaVersion": {
+      "type": "parameter",
+      "datatype": "text",
+      "description": "Version of the DanaProcessing packages to use.",
+      "defaultValue": "DANA_PACKAGE_VERSION",
+      "replaces": "DANA_VERSION"
+    }
+  },
+  "primaryOutputs": [ { "path": "Sketch.cs" } ],
+  "postActions": [
+    {
+      "description": "Restore NuGet packages.",
+      "manualInstructions": [ { "text": "Run 'dotnet restore'" } ],
+      "actionId": "210D431B-A78B-4D2F-B762-4ED3E3EA9025",
+      "continueOnError": true
+    }
+  ]
+}

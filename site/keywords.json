@@ -2468,5 +2468,25 @@
   "name": "EcoFrameRate",
   "kind": "property",
   "target": "eco"
+ },
+ {
+  "name": "SketchApp",
+  "kind": "static class",
+  "target": "sketchapp"
+ },
+ {
+  "name": "dana-sketch",
+  "kind": "template",
+  "target": "dotnet-new-template"
+ },
+ {
+  "name": "VS Code",
+  "kind": "extension",
+  "target": "vscode-extension"
+ },
+ {
+  "name": "NuGet packages",
+  "kind": "packages",
+  "target": "nuget-packages"
  }
 ]
