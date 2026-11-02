@@ -7,7 +7,7 @@ Creative coding in C#, the Processing way, from VS Code. A sketch is a class wit
 ## What it does
 
 - **New sketch**: a ready-to-run project (`.csproj`, `Program.cs`, `Sketch.cs`, tasks and launch settings).
-- **Open an example**: the DanaProcessing IDE's 86 examples (2D, 3D, sound, MIDI, ML.NET, GPU...), searchable by name, topic or description. Each one becomes its own project, with its NuGet packages.
+- **Open an example**: the DanaProcessing IDE's 87 examples (2D, 3D, sound, MIDI, ML.NET, GPU...), searchable by name, topic or description. Each one becomes its own project, with its NuGet packages.
 - **Run** ▶ and **Live** ⚡ from the editor title bar, the status bar, or `Ctrl+Alt+R` / `Ctrl+Alt+L` (`Cmd` on macOS). Live runs `dotnet watch`: save and the running sketch picks up your edits. **Stop** with `Ctrl+Alt+S`. Compile errors go to the Problems panel.
 - **Export as an app**: one self-contained file for Windows, macOS and/or Linux, in `export/<platform>/`, that runs without installing .NET. The `data/` folder goes with it.
 - **IDE sketches run as they are**: `// nuget: NAudio, 2.2.1` lines become PackageReferences on Run, and **Make this sketch runnable** creates the project for a `.cs` file saved from the IDE. **Open in the DanaProcessing IDE** sends the current file to the IDE.
@@ -39,7 +39,7 @@ Creative coding in C#, the Processing way, from VS Code. A sketch is a class wit
 Programación creativa en C#, al estilo Processing, desde VS Code. Un sketch es una clase con `Setup()` (corre una vez) y `Draw()` (corre en cada cuadro); esta extensión los crea, los corre, los programa en vivo y los exporta con los paquetes NuGet de DanaProcessing.
 
 - **Nuevo sketch**: un proyecto listo para correr.
-- **Abrir un ejemplo**: los 86 ejemplos del IDE de DanaProcessing, con búsqueda por nombre, tema o descripción. Cada uno se vuelve su propio proyecto, con sus paquetes NuGet.
+- **Abrir un ejemplo**: los 87 ejemplos del IDE de DanaProcessing, con búsqueda por nombre, tema o descripción. Cada uno se vuelve su propio proyecto, con sus paquetes NuGet.
 - **Correr** ▶ y **En vivo** ⚡ desde la barra del editor, la barra de estado o `Ctrl+Alt+R` / `Ctrl+Alt+L`. En vivo usa `dotnet watch`: guardas y el sketch que corre toma tus cambios. **Detener** con `Ctrl+Alt+S`. Los errores van al panel Problemas.
 - **Exportar como app**: un solo archivo para Windows, macOS o Linux que corre sin instalar .NET, en `export/<plataforma>/`, con la carpeta `data/`.
 - **Los sketches del IDE corren tal cual**: las líneas `// nuget: NAudio, 2.2.1` se vuelven PackageReferences al correr, y **Hacer ejecutable este sketch** crea el proyecto de un `.cs` guardado desde el IDE. **Abrir en el IDE de DanaProcessing** manda el archivo al IDE.

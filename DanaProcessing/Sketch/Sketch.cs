@@ -393,7 +393,7 @@ namespace DanaProcessing
         /// </summary>
         internal void RunStartup(Action<Action, string> run)
         {
-            run(Settings, nameof(Settings));
+            RunSettings(run); // unless the host already ran it to read Widget()
             run(Setup, nameof(Setup));
         }
 

@@ -659,6 +659,14 @@
   "href": "reference/attached.html#target-motion",
   "kind": "property"
  },
+ "IsTransparentWindow": {
+  "href": "reference/structure.html#widget",
+  "kind": "property"
+ },
+ "IsWidget": {
+  "href": "reference/structure.html#widget",
+  "kind": "property"
+ },
  "Join": {
   "href": "reference/utilities.html#join",
   "kind": "method"
@@ -1951,6 +1959,18 @@
   "href": "reference/streams.html#connectwebsocket",
   "kind": "class"
  },
+ "Widget": {
+  "href": "reference/structure.html#widget",
+  "kind": "method"
+ },
+ "WidgetMode": {
+  "href": "reference/structure.html#widget",
+  "kind": "property"
+ },
+ "WidgetOptions": {
+  "href": "reference/structure.html#widget",
+  "kind": "record"
+ },
  "Width": {
   "href": "reference/structure.html",
   "kind": "property"
@@ -1982,6 +2002,14 @@
  "WindowTitle": {
   "href": "reference/structure.html#window-management",
   "kind": "method"
+ },
+ "WindowX": {
+  "href": "reference/structure.html#widget",
+  "kind": "property"
+ },
+ "WindowY": {
+  "href": "reference/structure.html#widget",
+  "kind": "property"
  },
  "XML": {
   "href": "reference/files-data.html#loadxml",

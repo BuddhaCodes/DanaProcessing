@@ -112,6 +112,7 @@ namespace DanaProcessing.Ide.Editor
                 SupersampleScale = 1, // it's small anyway
                 RecordHistory = false,
                 ConnectsAudio = false, // never touch the live loops / OnNote() of the sketch running in the IDE
+                HandsOffWidgets = false, // a widget sample previews here, not as a window on the desktop
             };
             canvas.Crashed += (_, _) => Dispatcher.UIThread.Post(() =>
             {

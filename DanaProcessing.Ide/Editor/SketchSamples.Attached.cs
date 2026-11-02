@@ -72,6 +72,14 @@ namespace DanaProcessing.Ide.Editor
                        "The audio-reactive sample moved onto Windows Terminal: whatever the computer is playing (WasapiLoopbackCapture, no microphone) goes through an FFT with log-spaced bands and moves 40 glowing blobs on stalks along the bottom edge, lows on the left and highs on the right. In silence they come loose and float up; when the music comes back they return to their stalks. Dragging the terminal swings them (inertia); a failed command flings them up in red and one that works sends a wave of light along the row. Capture starts in Setup() and stops in OnStop(). Uses // nuget: NAudio."),
                 TerminalAudio,
                 new[] { SampleTag.Window, SampleTag.Audio, SampleTag.NuGet }),
+
+            // Not an attached sketch, but its sibling: the same idea as a window of its own.
+            new SketchSample(
+                Loc.Tr("Widget de audio: espectro flotante con fondo transparente (NAudio)", "Audio widget: a floating spectrum with a see-through background (NAudio)"),
+                Loc.Tr("El audio reactivo de la terminal como widget de escritorio: Widget() en Settings() y el sketch abre sin bordes ni barra de título, con fondo transparente (lo que deja Clear() muestra el escritorio) y siempre encima. Lo que suena en el equipo (WasapiLoopbackCapture) mueve 40 blobs brillantes sobre tallos; en silencio se sueltan y flotan. Arrástralo a cualquier lado y los blobs se balancean (WindowX/WindowY); la próxima vez abre donde lo dejaste. Clic derecho: siempre encima, cerrar. Donde el sistema no permite transparencia (Linux sin compositor) IsTransparentWindow es false y dibuja su propio fondo. La captura de audio es solo Windows; en macOS y Linux los blobs bailan solos. Usa // nuget: NAudio.",
+                       "The audio-reactive terminal as a desktop widget: Widget() in Settings() and the sketch opens with no borders or title bar, a see-through background (what Clear() leaves shows the desktop) and always on top. Whatever the computer is playing (WasapiLoopbackCapture) moves 40 glowing blobs on stalks; in silence they come loose and float. Drag it anywhere and the blobs swing (WindowX/WindowY); next time it opens where you left it. Right-click: always on top, close. Where the system can't do transparency (Linux without a compositor) IsTransparentWindow is false and it draws its own background. Audio capture is Windows only; on macOS and Linux the blobs dance on their own. Uses // nuget: NAudio."),
+                AudioWidget,
+                new[] { SampleTag.Window, SampleTag.Audio, SampleTag.NuGet }),
         };
 
         private const string TerminalRain =
@@ -1885,6 +1893,272 @@ public class TerminalAudio : AttachedSketch
         catch (Exception ex)
         {
             _status = ""sin audio: "" + ex.Message;
+        }
+    }
+
+    void StopCapture()
+    {
+        try { _capture?.StopRecording(); _capture?.Dispose(); } catch { }
+        _capture = null;
+    }
+
+    // Capture thread: mix to mono, window it, and every FftSize samples run the FFT.
+    void OnAudio(byte[] buffer, int bytes, WaveFormat format)
+    {
+        int bytesPerSample = format.BitsPerSample / 8, channels = format.Channels;
+        int frameSize = bytesPerSample * channels;
+        if (bytesPerSample != 4) return;   // loopback is 32-bit float
+        for (int i = 0; i < bytes / frameSize; i++)
+        {
+            float sum = 0;
+            for (int ch = 0; ch < channels; ch++)
+                sum += BitConverter.ToSingle(buffer, i * frameSize + ch * bytesPerSample);
+            _fft[_fftWritePos].X = (float)(sum / channels * NAudio.Dsp.FastFourierTransform.HammingWindow(_fftWritePos, FftSize));
+            _fft[_fftWritePos].Y = 0;
+            if (++_fftWritePos >= FftSize)
+            {
+                _fftWritePos = 0;
+                NAudio.Dsp.FastFourierTransform.FFT(true, FftLog2, _fft);
+                UpdateBars();
+            }
+        }
+    }
+
+    void UpdateBars()
+    {
+        lock (_lock)
+            for (int b = 0; b < Bars; b++)
+            {
+                int start = BinBoundaries[b], end = BinBoundaries[b + 1];
+                float sum = 0;
+                for (int k = start; k < end; k++)
+                    sum += Mag(_fft[k].X, _fft[k].Y);
+                float value = Sqrt(sum / (end - start)) * Gain * Map(b, 0, Bars, 0.75f, 2.1f);   // a mild ramp: highs are quieter
+                _bars[b] = Math.Max(value, _bars[b] * Decay);
+            }
+    }
+}
+";
+    
+        private const string AudioWidget =
+@"// nuget: NAudio, 2.2.1
+#nullable enable
+
+using System;
+using NAudio.Wave;
+
+// Audio widget: the ""Audio-reactive terminal"" sample as a desktop widget.
+// Whatever your computer is playing moves a row of 40 glowing blobs on
+// stalks -- low notes on the left, high ones on the right -- in a small
+// window with no borders and a see-through background, above your other
+// windows. Same capture (WasapiLoopbackCapture: the system's output, no
+// microphone) and FFT with log-spaced bands.
+//
+// 1. Play some music and press Run: the widget appears in the top-right
+//    corner of the screen (and opens wherever you leave it next time).
+// 2. Drag it anywhere: the blobs swing on their stalks (inertia).
+// 3. In silence the blobs come loose and float; music brings them back.
+// 4. Right-click: always on top, close. Stop in the IDE closes it too.
+//
+// Widget() in Settings() is all it takes. Where the system can't make the
+// window see-through (Linux without a compositor) IsTransparentWindow is
+// false and the sketch draws its own dark background instead. Away from
+// Windows there's no system-audio capture: the blobs dance on their own.
+public class AudioWidget : Sketch
+{
+    const int FftSize = 1024;           // must be a power of two
+    const int FftLog2 = 10;
+    const int Bars = 40;
+    const int MinBin = 1;               // skip bin 0 (DC offset)
+    const int MaxBin = 400;             // ~18.7 kHz at 48 kHz
+    const float Gain = 26f;
+    const float Decay = 0.85f;          // per FFT: bars settle instead of flickering
+    const float SilenceEnter = 0.06f, SilenceExit = 0.08f;   // hysteresis: no flicker in quiet passages
+
+    // Log-spaced bands (like a real spectrum analyzer): BinBoundaries[b]..[b+1] feed bar b.
+    static readonly int[] BinBoundaries = BuildBinBoundaries();
+
+    static int[] BuildBinBoundaries()
+    {
+        var bounds = new int[Bars + 1];
+        for (int b = 0; b <= Bars; b++)
+            bounds[b] = (int)MathF.Round(MinBin * MathF.Pow((float)MaxBin / MinBin, (float)b / Bars));
+        for (int b = 1; b <= Bars; b++)
+            if (bounds[b] <= bounds[b - 1]) bounds[b] = bounds[b - 1] + 1;
+        return bounds;
+    }
+
+    // --- capture thread -> Draw() ---
+    WasapiLoopbackCapture? _capture;
+    readonly NAudio.Dsp.Complex[] _fft = new NAudio.Dsp.Complex[FftSize];
+    int _fftWritePos;
+    readonly float[] _bars = new float[Bars];
+    readonly object _lock = new object();
+    bool _demo;                          // no capture: the blobs dance on noise
+    string _status = """";
+
+    // --- per blob, Draw() only ---
+    readonly float[] _level = new float[Bars];       // smoothed loudness 0..1
+    readonly float[] _ox = new float[Bars], _oy = new float[Bars];   // offset from the stalk tip (flight / swing)
+    readonly float[] _vx = new float[Bars], _vy = new float[Bars];
+    float _free;                         // 0 = on the stalks, 1 = floating free (silence)
+    bool _silent = true;
+    float _lastT;
+
+    // --- the window's own motion, for inertia ---
+    float _lastWx, _lastWy, _wvx, _wvy, _wax, _way;
+    bool _hasWindow;
+
+    public override void Settings()
+    {
+        Size(560, 220);
+        Widget();                        // borderless, see-through, always on top, drag to move
+    }
+
+    public override void Setup()
+    {
+        ColorMode(ColorSpaceMode.HSB, 360, 100, 100, 255);
+        StartCapture();
+    }
+
+    public override void OnStop() => StopCapture();
+
+    public override void Draw()
+    {
+        float t = Millis() / 1000f;
+        float dt = Constrain(t - _lastT, 1 / 240f, 1 / 30f);   // seconds since the last frame
+        _lastT = t;
+
+        // See-through window: clear to nothing and the desktop shows. Opaque
+        // fallback: a dark panel, so the blobs still have something to glow on.
+        if (IsTransparentWindow) Clear();
+        else Background(235, 30, 9);
+
+        TrackWindow(dt);
+
+        float[] snapshot;
+        if (_demo) snapshot = DemoBars(t);
+        else lock (_lock) snapshot = (float[])_bars.Clone();
+
+        float overall = 0;
+        for (int i = 0; i < Bars; i++)
+        {
+            float target = Constrain(snapshot[i], 0, 1);
+            _level[i] = Lerp(_level[i], target, Math.Min(1, dt * (target > _level[i] ? 25 : 8)));   // fast attack, slower release
+            overall += _level[i];
+        }
+        overall /= Bars;
+        if (_silent && overall > SilenceExit) _silent = false;
+        if (!_silent && overall < SilenceEnter) _silent = true;
+        _free = Lerp(_free, _silent ? 1 : 0, Math.Min(1, dt * (_silent ? 1.2f : 3)));
+
+        float gap = Width / (float)Bars;
+        float maxLen = Height * 0.7f;
+
+        for (int i = 0; i < Bars; i++)
+        {
+            // A spring back to the stalk tip (weak while free), a noise wander
+            // while free, and the window's own motion felt as inertia.
+            float spring = Lerp(60, 0.3f, _free);
+            float wander = 200 * _free;
+            float heading = i * 2.4f + (Noise(i * 0.7f, t * 0.35f) - 0.5f) * 8;
+            _vx[i] += (-_wax * 0.3f - _ox[i] * spring + Cos(heading) * wander - _vx[i] * 2.2f) * dt;
+            _vy[i] += (-_way * 0.3f - _oy[i] * spring + Sin(heading) * wander - 160 * _free - _vy[i] * 2.2f) * dt;   // free blobs rise
+            _ox[i] += _vx[i] * dt;
+            _oy[i] += _vy[i] * dt;
+        }
+
+        NoStroke();
+        for (int i = 0; i < Bars; i++)
+        {
+            float baseX = (i + 0.5f) * gap, baseY = Height;
+            float len = Lerp(gap * 0.5f, maxLen, _level[i]);
+            float r = gap * (0.28f + 0.35f * _level[i]);
+            float hx = Constrain(baseX + _ox[i], r, Width - r);
+            float hy = Constrain(baseY - len + _oy[i], r * 2, Height - r);
+            if (hy <= r * 2 && _vy[i] < 0) _vy[i] = -_vy[i] * 0.5f;   // bounce off the top edge
+            float hue = Map(i, 0, Bars, 170, 300);
+
+            // The stalk: a tapered quad from the bottom edge to the head, fading as the blob floats away.
+            float stalk = 1 - _free;
+            if (stalk > 0.02f)
+            {
+                float dx = hx - baseX, dy = hy - baseY, d = Math.Max(1, Sqrt(dx * dx + dy * dy));
+                float nx = -dy / d, ny = dx / d, w0 = gap * 0.18f, w1 = r * 0.5f;
+                Fill(hue, 70, 90, 110 * stalk);
+                Quad(baseX + nx * w0, baseY + ny * w0, hx + nx * w1, hy + ny * w1,
+                     hx - nx * w1, hy - ny * w1, baseX - nx * w0, baseY - ny * w0);
+            }
+
+            // The head: a glow faked the classic 2D way -- the same circle, bigger and fainter.
+            // Over a see-through window the faint rings blend straight into the desktop.
+            for (int k = 3; k >= 1; k--)
+            {
+                Fill(hue, 70, 100, 22 * (0.5f + _level[i]));
+                Circle(hx, hy, r * 2 * (1 + 0.4f * k));
+            }
+            Fill(hue, 45, 100, 235);
+            Circle(hx, hy, r * 2);
+        }
+
+        if (_status.Length > 0)
+        {
+            Fill(0, 0, 100, 170);
+            TextSize(11);
+            TextAlign(TextAlignH.Right, TextAlignV.Top);
+            Text(_status, Width - 8, 6);
+        }
+    }
+
+    // How the widget's window moves (WindowX/WindowY, logical pixels): velocity,
+    // then acceleration, both smoothed -- dragging it swings the blobs.
+    void TrackWindow(float dt)
+    {
+        if (!_hasWindow) { _lastWx = WindowX; _lastWy = WindowY; _hasWindow = true; return; }
+        float vx = (WindowX - _lastWx) / Math.Max(dt, 1e-3f), vy = (WindowY - _lastWy) / Math.Max(dt, 1e-3f);
+        _lastWx = WindowX; _lastWy = WindowY;
+        float ax = (vx - _wvx) / Math.Max(dt, 1e-3f), ay = (vy - _wvy) / Math.Max(dt, 1e-3f);
+        _wvx = Lerp(_wvx, vx, 0.5f); _wvy = Lerp(_wvy, vy, 0.5f);
+        _wax = Constrain(Lerp(_wax, ax, 0.3f), -30000, 30000);
+        _way = Constrain(Lerp(_way, ay, 0.3f), -30000, 30000);
+    }
+
+    // No capture: a slow, music-like swell across the bands, with pauses so
+    // the blobs get to float too.
+    float[] DemoBars(float t)
+    {
+        var bars = new float[Bars];
+        float phrase = Constrain(Sin(t * 0.45f) * 1.6f + 0.4f, 0, 1);   // on for a while, then a breath of silence
+        for (int i = 0; i < Bars; i++)
+        {
+            float beat = Pow(Math.Max(0, Sin(t * 7.5f)), 6) * Map(i, 0, Bars, 1, 0.2f);
+            bars[i] = phrase * (0.25f + 0.55f * Noise(i * 0.18f, t * 0.9f) + 0.35f * beat);
+        }
+        return bars;
+    }
+
+    // --- capture -----------------------------------------------------------------
+
+    void StartCapture()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            _demo = true;
+            _status = UiText.English ? ""demo: system audio is Windows only"" : ""demo: el audio del sistema es solo Windows"";
+            return;
+        }
+        try
+        {
+            var capture = new WasapiLoopbackCapture();
+            capture.DataAvailable += (s, e) => OnAudio(e.Buffer, e.BytesRecorded, capture.WaveFormat);
+            capture.StartRecording();
+            _capture = capture;
+            _status = """";
+        }
+        catch (Exception ex)
+        {
+            _demo = true;
+            _status = (UiText.English ? ""no audio: "" : ""sin audio: "") + ex.Message;
         }
     }
 
