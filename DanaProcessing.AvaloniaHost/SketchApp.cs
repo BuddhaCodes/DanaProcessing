@@ -30,6 +30,9 @@ namespace DanaProcessing.AvaloniaHost
         {
             ArgumentNullException.ThrowIfNull(sketch);
             title ??= sketch.GetType().Name;
+            // The host's own text (a widget's menu, the error card) in the
+            // system's language: Spanish for es-*, English otherwise.
+            UiText.English = !System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName.Equals("es", StringComparison.OrdinalIgnoreCase);
             if (sketch.SketchFolder is null)
                 sketch.SetSketchFolder(SketchFolderFor(Directory.GetCurrentDirectory(), AppContext.BaseDirectory));
 

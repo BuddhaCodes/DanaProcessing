@@ -2488,5 +2488,40 @@
   "name": "NuGet packages",
   "kind": "packages",
   "target": "nuget-packages"
+ },
+ {
+  "name": "Widget",
+  "kind": "method",
+  "target": "widget"
+ },
+ {
+  "name": "IsWidget",
+  "kind": "property",
+  "target": "widget"
+ },
+ {
+  "name": "WidgetMode",
+  "kind": "property",
+  "target": "widget"
+ },
+ {
+  "name": "WidgetOptions",
+  "kind": "record",
+  "target": "widget"
+ },
+ {
+  "name": "IsTransparentWindow",
+  "kind": "property",
+  "target": "widget"
+ },
+ {
+  "name": "WindowX",
+  "kind": "property",
+  "target": "widget"
+ },
+ {
+  "name": "WindowY",
+  "kind": "property",
+  "target": "widget"
  }
 ]

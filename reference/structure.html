@@ -93,6 +93,7 @@
 <li><a href="#pixelwidth"><code>PixelWidth · PixelHeight</code></a></li>
 <li><a href="#settings"><code>Settings</code></a></li>
 <li><a href="#window-management"><code>FullScreen · WindowMove · WindowResize · WindowResizable · WindowTitle · WindowRatio</code></a></li>
+<li><a href="#widget"><code>Widget · IsTransparentWindow · WindowX · WindowY</code></a></li>
 <li><a href="#redraw"><code>Redraw</code></a></li>
 <li><a href="#exit"><code>Exit</code></a></li>
 <li><a href="#print"><code>Print · Println · LogWarning · LogError</code></a></li>
@@ -154,7 +155,7 @@
 </ul></div>
 <p class="topics-all"><a href="a-z.html">All topics &amp; A–Z index</a></p></nav>
   <div class="topic-main">
-<details class="on-this-page-mobile"><summary>On this page · 19 entries</summary><ul><li><a href="#setup"><code>Setup</code></a></li><li><a href="#draw"><code>Draw</code></a></li><li><a href="#size"><code>Size</code></a></li><li><a href="#framerate"><code>FrameRate</code></a></li><li><a href="#noloop-loop"><code>NoLoop</code></a></li><li><a href="#delay"><code>Delay</code></a></li><li><a href="#thread"><code>Thread</code></a></li><li><a href="#tweak"><code>[Tweak] · [Tweak(float min, float max)] · ShowTweaks · HideTweaks</code></a></li><li><a href="#onstop"><code>OnStop</code></a></li><li><a href="#shade"><code>Shade · CreateShader2D · LoadShader2D</code></a></li><li><a href="#windowresized"><code>WindowResized</code></a></li><li><a href="#displaydensity"><code>DisplayDensity · PixelDensity</code></a></li><li><a href="#pixelwidth"><code>PixelWidth · PixelHeight</code></a></li><li><a href="#settings"><code>Settings</code></a></li><li><a href="#window-management"><code>FullScreen · WindowMove · WindowResize · WindowResizable · WindowTitle · WindowRatio</code></a></li><li><a href="#redraw"><code>Redraw</code></a></li><li><a href="#exit"><code>Exit</code></a></li><li><a href="#print"><code>Print · Println · LogWarning · LogError</code></a></li><li><a href="#structure-example">Runnable example</a></li></ul></details>
+<details class="on-this-page-mobile"><summary>On this page · 20 entries</summary><ul><li><a href="#setup"><code>Setup</code></a></li><li><a href="#draw"><code>Draw</code></a></li><li><a href="#size"><code>Size</code></a></li><li><a href="#framerate"><code>FrameRate</code></a></li><li><a href="#noloop-loop"><code>NoLoop</code></a></li><li><a href="#delay"><code>Delay</code></a></li><li><a href="#thread"><code>Thread</code></a></li><li><a href="#tweak"><code>[Tweak] · [Tweak(float min, float max)] · ShowTweaks · HideTweaks</code></a></li><li><a href="#onstop"><code>OnStop</code></a></li><li><a href="#shade"><code>Shade · CreateShader2D · LoadShader2D</code></a></li><li><a href="#windowresized"><code>WindowResized</code></a></li><li><a href="#displaydensity"><code>DisplayDensity · PixelDensity</code></a></li><li><a href="#pixelwidth"><code>PixelWidth · PixelHeight</code></a></li><li><a href="#settings"><code>Settings</code></a></li><li><a href="#window-management"><code>FullScreen · WindowMove · WindowResize · WindowResizable · WindowTitle · WindowRatio</code></a></li><li><a href="#widget"><code>Widget · IsTransparentWindow · WindowX · WindowY</code></a></li><li><a href="#redraw"><code>Redraw</code></a></li><li><a href="#exit"><code>Exit</code></a></li><li><a href="#print"><code>Print · Println · LogWarning · LogError</code></a></li><li><a href="#structure-example">Runnable example</a></li></ul></details>
 <div class="doc">
 <h2 class="entry-title api" id="setup"><code>Setup</code></h2><ul class="sigs" aria-label="Signatures"><li><code>Setup() <span class="sig-return">→ void</span></code></li></ul>
 <p class="entry-desc">Runs once before the first frame. Use it to set the canvas size and any one-time state.</p>
@@ -218,6 +219,28 @@
   </table>
 </div>
 <div class="note"><strong>Host-dependent.</strong> Calling any of these always updates the readable state and raises its event — that part works regardless of host. Whether the actual OS window visibly moves/resizes/retitles depends entirely on whether the host you're running in (the bundled IDE, a custom Avalonia/WPF shell) subscribes to that event and acts on it. A host that doesn't wire these up yet will accept the calls silently rather than throwing.</div>
+
+<h2 class="entry-title api" id="widget"><code>Widget · IsTransparentWindow · WindowX · WindowY</code></h2><ul class="sigs" aria-label="Signatures"><li><code>Widget(<span class="tp">bool</span> transparent = true, <span class="tp">bool</span> alwaysOnTop = true, <span class="tp">bool</span> draggable = true)</code></li><li><code>IsTransparentWindow</code></li><li><code>WindowX</code></li><li><code>WindowY</code></li></ul>
+<p class="entry-desc">Runs the sketch as a desktop widget: no title bar or borders, a see-through background, above other windows, moved by dragging it anywhere. Call it in <code class="inline">Settings()</code>, before the window exists. Right-click opens its menu (always on top, close), and it opens next time where you left it (top-right corner the first time). In the IDE, Run opens it on the desktop and the canvas shows a card; Stop closes it. Exported apps and <a href="vscode-nuget.html#nuget-packages">SketchApp.Run()</a> open as the widget directly.</p>
+<p class="entry-desc">With <code class="inline">transparent</code>, whatever <code class="inline">Clear()</code> leaves (and any fill with alpha below 255) shows the desktop. <code class="inline">IsTransparentWindow</code> says whether the system actually granted it: Windows and macOS do; Linux only with a compositor running. Where it's false those pixels come out black, so draw a <code class="inline">Background()</code> instead. <code class="inline">draggable: false</code> moves it with <kbd>Alt</kbd> + drag and lets left clicks reach <code class="inline">MousePressed()</code>. <code class="inline">WindowX</code>/<code class="inline">WindowY</code> are the window's position on screen (logical pixels): read them to make things swing when it's dragged.</p>
+<pre tabindex="0" aria-label="Code, scrollable"><code>public class Clock : Sketch
+{
+    public override void Settings()
+    {
+        Size(260, 260);
+        Widget();
+    }
+
+    public override void Draw()
+    {
+        if (IsTransparentWindow) Clear(); else Background(20);
+        Translate(Width / 2f, Height / 2f);
+        Stroke(255, 200);
+        StrokeWeight(6);
+        Line(0, 0, Cos(Second() / 60f * TWO_PI - HALF_PI) * 100, Sin(Second() / 60f * TWO_PI - HALF_PI) * 100);
+    }
+}</code></pre>
+<div class="note">The example <strong>Audio widget</strong> (in the IDE's examples and in VS Code) is a full one: the system's audio as glowing blobs on a see-through window.</div>
 
 <h2 class="entry-title api" id="redraw"><code>Redraw</code></h2><ul class="sigs" aria-label="Signatures"><li><code>Redraw() <span class="sig-return">→ void</span></code></li></ul>
 <p class="entry-desc">Requests a single extra frame while <code class="inline">NoLoop()</code> is in effect, raising the <code class="inline">RedrawRequested</code> event. Looping sketches don't need this — they're already rendering continuously.</p>
