@@ -80,7 +80,12 @@ namespace DanaProcessing.AvaloniaHost
             // Frames are paced by a timer: on Windows its default 15.6 ms
             // resolution turns 60 fps into ~32 with stutter -- smooth only
             // while something else (a video, music) happens to raise it.
-            Opened += (_, _) => _fullSpeed = WindowsTimers.KeepFullSpeed();
+            Opened += (_, _) =>
+            {
+                _fullSpeed = WindowsTimers.KeepFullSpeed();
+                Canvas.StartTrace(Sketch.GetType().Name);
+                FrameTrace.Note($"window {Sketch.GetType().Name}: widget={(Widget != null)} transparency={ActualTransparencyLevel} scaling={RenderScaling} size={Width}x{Height} supersample={Canvas.SupersampleScale}x fullSpeedTimers={_fullSpeed} platform={PlatformImpl?.GetType().Name}");
+            };
             Closed += (_, _) =>
             {
                 if (_fullSpeed)
@@ -89,6 +94,7 @@ namespace DanaProcessing.AvaloniaHost
             };
             PositionChanged += (_, e) =>
             {
+                Canvas.Trace?.WindowMoved();
                 var scaling = RenderScaling > 0 ? RenderScaling : 1;
                 Sketch.WindowX = (float)(e.Point.X / scaling);
                 Sketch.WindowY = (float)(e.Point.Y / scaling);

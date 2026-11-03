@@ -222,6 +222,7 @@ namespace DanaProcessing.AvaloniaHost
             SetTimerInterval(sketch.TargetFrameRate);
             _timer.Tick += (s, e) =>
             {
+                _trace?.TimerTick();
                 if (_attachHost != null || _widgetHandedOff)
                 {
                     // The sketch draws on another window, on its own thread:
@@ -286,6 +287,9 @@ namespace DanaProcessing.AvaloniaHost
         // frames come from the compositor's clock, at render priority (above
         // input), once per refresh: each one, the sketch's frame runs if it's
         // due at its own frame rate.
+        private FrameTrace? _trace;
+        private bool _gpuNoted;
+
         private bool _frameLoopRunning;
         private double _nextFrameAt;   // seconds on _frameClock
         private readonly System.Diagnostics.Stopwatch _frameClock = System.Diagnostics.Stopwatch.StartNew();
@@ -307,6 +311,7 @@ namespace DanaProcessing.AvaloniaHost
         private void OnAnimationFrame(TimeSpan _)
         {
             _frameLoopRunning = false;
+            _trace?.AnimationFrame();
             if (_attachHost != null || _widgetHandedOff || CurrentFrameAction() != FrameAction.Render)
                 return; // the timer picks it up again when there's something to show
 
@@ -1205,10 +1210,39 @@ namespace DanaProcessing.AvaloniaHost
                         BlitOffscreen(leasedCanvas, scaling);
                     return;
                 }
-                if (!AdvanceFrame(leasedCanvas, scaling))
+                if (_trace == null)
+                {
+                    if (!AdvanceFrame(leasedCanvas, scaling))
+                        return;
+                    BlitOffscreen(leasedCanvas, scaling);
                     return;
-                BlitOffscreen(leasedCanvas, scaling);
+                }
+                double t0 = _trace.Now;
+                bool ran = AdvanceFrame(leasedCanvas, scaling);
+                double t1 = _trace.Now;
+                if (ran)
+                    BlitOffscreen(leasedCanvas, scaling);
+                _trace.Paint(ran ? t1 - t0 : -1, _trace.Now - t1);
             }
+        }
+
+        /// <summary>Starts the per-second frame log (see FrameTrace) for this canvas, if tracing is on.</summary>
+        internal void StartTrace(string name)
+        {
+            if (FrameTrace.Enabled && _trace == null)
+                _trace = new FrameTrace(name);
+        }
+
+        internal FrameTrace? Trace => _trace;
+
+        /// <summary>Render thread: says once whether Skia draws on the GPU here or in software.</summary>
+        internal void NoteRenderTarget(object? grContext, SKCanvas canvas)
+        {
+            if (_trace == null || _gpuNoted)
+                return;
+            _gpuNoted = true;
+            var m = canvas.TotalMatrix;
+            FrameTrace.Note($"render: {(grContext != null ? "GPU (" + grContext.GetType().Name + ")" : "SOFTWARE (no GPU context)")}, lease matrix scale {m.ScaleX:0.###}x{m.ScaleY:0.###}, supersample {SupersampleScale}x, offscreen {_offscreenWidth * _offscreenScale}x{_offscreenHeight * _offscreenScale}");
         }
 
         /// <summary>
@@ -1733,6 +1767,7 @@ namespace DanaProcessing.AvaloniaHost
 
             using var lease = leaseFeature.Lease();
             var canvas = lease.SkCanvas;
+            _owner.NoteRenderTarget(lease.GrContext, canvas);
 
             // NOTE: unlike WPF, Avalonia's lease canvas coordinate space needs
             // verification against RenderScaling on your actual machine/display.
