@@ -108,6 +108,18 @@ public class WidgetTests : IDisposable
             AvaloniaSketchWindow.DragTarget(start, new Avalonia.PixelPoint(900, 100), new Avalonia.PixelPoint(100, 100)));
     }
 
+    [Theory]
+    [InlineData(1.0, 1)]
+    [InlineData(1.25, 2)]
+    [InlineData(1.5, 2)]
+    [InlineData(2.0, 2)]
+    [InlineData(2.5, 3)]
+    [InlineData(4.0, 3)]
+    public void Widgets_draw_at_the_screen_density(double scaling, int supersample)
+    {
+        Assert.Equal(supersample, AvaloniaSketchWindow.DensityScale(scaling));
+    }
+
     [Fact]
     public void Placeholder_text_wraps_between_words()
     {

@@ -134,6 +134,8 @@ namespace DanaProcessing.AvaloniaHost
         // Where a drag started: the pointer and the window, in screen pixels.
         private PixelPoint _dragPointerStart, _dragWindowStart;
         private bool _dragging;
+        private bool _dragMoveQueued;
+        private PixelPoint _dragTarget;
 
         /// <summary>
         /// Moves the window by hand instead of BeginMoveDrag(): on Windows that
@@ -167,8 +169,20 @@ namespace DanaProcessing.AvaloniaHost
                 if (!_dragging)
                     return;
                 e.Handled = true;
-                var now = this.PointToScreen(e.GetPosition(this));
-                Position = DragTarget(_dragWindowStart, _dragPointerStart, now);
+                // A mouse reports up to 1000 moves a second, and moving a window
+                // is expensive (more so a see-through one): only the latest
+                // target counts, applied once per display refresh.
+                _dragTarget = DragTarget(_dragWindowStart, _dragPointerStart, this.PointToScreen(e.GetPosition(this)));
+                if (!_dragMoveQueued)
+                {
+                    _dragMoveQueued = true;
+                    RequestAnimationFrame(_ =>
+                    {
+                        _dragMoveQueued = false;
+                        if (Position != _dragTarget)
+                            Position = _dragTarget;
+                    });
+                }
             }, RoutingStrategies.Tunnel);
 
             AddHandler(PointerReleasedEvent, (_, e) =>
@@ -183,6 +197,10 @@ namespace DanaProcessing.AvaloniaHost
             PointerCaptureLost += (_, _) => _dragging = false;
         }
 
+        /// <summary>Supersampling that matches the screen: 1 at 100%, 2 at 125-200%, 3 above.</summary>
+        internal static int DensityScale(double renderScaling) =>
+            Math.Clamp((int)Math.Ceiling(renderScaling - 0.01), 1, 3);
+
         /// <summary>Where the window goes: where it started, plus how far the pointer moved.</summary>
         internal static PixelPoint DragTarget(PixelPoint windowStart, PixelPoint pointerStart, PixelPoint pointerNow) =>
             new(windowStart.X + pointerNow.X - pointerStart.X, windowStart.Y + pointerNow.Y - pointerStart.Y);
@@ -194,6 +212,13 @@ namespace DanaProcessing.AvaloniaHost
             WindowDecorations = WindowDecorations.None;
             ShowInTaskbar = false;
             Topmost = options.AlwaysOnTop;
+
+            // Drawn at the screen's own density, not the canvas's default 2x:
+            // on a 100% screen 2x paints four times the pixels for edges you
+            // can't tell apart, and a widget's soft glows made that the whole
+            // frame budget (60 -> ~25 fps here). 150%/200% screens still get 2x.
+            Canvas.SupersampleScale = DensityScale(RenderScaling);
+            ScalingChanged += (_, _) => Canvas.SupersampleScale = DensityScale(RenderScaling);
             LockToSketchSize();
             MoveByDragging(withAlt: !options.Draggable);
 
