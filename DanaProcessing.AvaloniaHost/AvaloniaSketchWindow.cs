@@ -76,6 +76,17 @@ namespace DanaProcessing.AvaloniaHost
 
             Content = Canvas;
             Closed += (_, _) => Canvas.StopSketch(); // the sketch's OnStop(): release cameras, ports, devices
+
+            // Frames are paced by a timer: on Windows its default 15.6 ms
+            // resolution turns 60 fps into ~32 with stutter -- smooth only
+            // while something else (a video, music) happens to raise it.
+            Opened += (_, _) => _fullSpeed = WindowsTimers.KeepFullSpeed();
+            Closed += (_, _) =>
+            {
+                if (_fullSpeed)
+                    WindowsTimers.Release();
+                _fullSpeed = false;
+            };
             PositionChanged += (_, e) =>
             {
                 var scaling = RenderScaling > 0 ? RenderScaling : 1;
@@ -211,15 +222,8 @@ namespace DanaProcessing.AvaloniaHost
                 UpdateTransparency();
                 PlaceWidget();
                 _placed = true; // positions from here on are the person's: worth remembering
-                _fullSpeed = WindowsTimers.KeepFullSpeed();
             };
             Closing += (_, _) => SavePosition();
-            Closed += (_, _) =>
-            {
-                if (_fullSpeed)
-                    WindowsTimers.Release();
-                _fullSpeed = false;
-            };
         }
 
         protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)

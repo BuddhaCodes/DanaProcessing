@@ -3,14 +3,15 @@ using System.Runtime.InteropServices;
 namespace DanaProcessing.AvaloniaHost
 {
     /// <summary>
-    /// A widget is almost never the window in front: you work in other apps
-    /// while it animates. Windows 11 treats a process like that as background
-    /// work -- EcoQoS ("efficiency mode": slower CPU) and coarse timers -- so
-    /// the frame rate sagged until the widget was clicked, then sagged again.
-    /// This opts the process out of both, and asks for 1 ms timers (frames at
-    /// 60 fps need ~16.7 ms ticks, which the default 15.6 ms resolution
-    /// rounds to 31 ms). Counted, so several widgets share it; nothing
-    /// anywhere but Windows.
+    /// Keeps a running sketch window at full speed on Windows. Frames are
+    /// paced by a timer, and Windows' default timer resolution is 15.6 ms:
+    /// 60 fps (16.7 ms) rounds to 31 ms ticks -- about 32 fps, uneven. It
+    /// looked fine only while another app (a video, music) raised the
+    /// resolution for the whole system. This asks for 1 ms timers, and opts
+    /// the process out of power throttling: a widget is almost never the
+    /// window in front, and Windows 11 treats such a process as background
+    /// work (EcoQoS: slower CPU, coarse timers). Counted, so several windows
+    /// share it; nothing anywhere but Windows.
     /// </summary>
     internal static class WindowsTimers
     {
