@@ -253,12 +253,13 @@ namespace DanaProcessing.AvaloniaHost
                 // OS just isn't compositing it) -- checked separately so a
                 // minimized IDE (or an exported standalone sketch) doesn't
                 // keep a heavy sketch running at full tilt in the background.
-                var isMinimized = TopLevel.GetTopLevel(this) is Window { WindowState: WindowState.Minimized };
-                switch (DecideFrame(_sketch.IsLooping, _crashed, IsPaused, _frozen, _stopped,
-                                    visible: IsEffectivelyVisible && !isMinimized, RunsWhenHidden))
+                switch (CurrentFrameAction())
                 {
                     case FrameAction.Render:
-                        InvalidateVisual();
+                        // On screen, frames follow the display (see
+                        // OnAnimationFrame); the timer only starts that loop
+                        // again after a pause, NoLoop() or the canvas hiding.
+                        EnsureFrameLoop();
                         break;
                     case FrameAction.RunHidden:
                         AdvanceHiddenFrame();
@@ -266,6 +267,75 @@ namespace DanaProcessing.AvaloniaHost
                 }
             };
             _timer.Start();
+        }
+
+        private FrameAction CurrentFrameAction()
+        {
+            var isMinimized = TopLevel.GetTopLevel(this) is Window { WindowState: WindowState.Minimized };
+            return DecideFrame(_sketch.IsLooping, _crashed, IsPaused, _frozen, _stopped,
+                               visible: IsEffectivelyVisible && !isMinimized, RunsWhenHidden);
+        }
+
+        // --- Frames on screen: paced by the display, not by the timer ----------
+        // The DispatcherTimer is WM_TIMER on Windows: the lowest-priority
+        // message there is, delivered only when the queue is otherwise empty,
+        // and coalesced while the process looks idle. Dragging a widget (a
+        // flood of mouse and move messages) starved it until release, and a
+        // widget nobody clicks got late ticks -- smooth only while something
+        // else (music playing) kept the process awake. Avalonia's animation
+        // frames come from the compositor's clock, at render priority (above
+        // input), once per refresh: each one, the sketch's frame runs if it's
+        // due at its own frame rate.
+        private bool _frameLoopRunning;
+        private double _nextFrameAt;   // seconds on _frameClock
+        private readonly System.Diagnostics.Stopwatch _frameClock = System.Diagnostics.Stopwatch.StartNew();
+
+        private void EnsureFrameLoop()
+        {
+            if (_frameLoopRunning)
+                return;
+            var top = TopLevel.GetTopLevel(this);
+            if (top == null)
+            {
+                InvalidateVisual(); // not in a window yet: one plain repaint
+                return;
+            }
+            _frameLoopRunning = true;
+            top.RequestAnimationFrame(OnAnimationFrame);
+        }
+
+        private void OnAnimationFrame(TimeSpan _)
+        {
+            _frameLoopRunning = false;
+            if (_attachHost != null || _widgetHandedOff || CurrentFrameAction() != FrameAction.Render)
+                return; // the timer picks it up again when there's something to show
+
+            var (due, next) = PaceFrame(_frameClock.Elapsed.TotalSeconds, _nextFrameAt, _sketch.TargetFrameRate);
+            _nextFrameAt = next;
+            if (due)
+                InvalidateVisual();
+            EnsureFrameLoop();
+        }
+
+        /// <summary>
+        /// One display refresh at <paramref name="now"/> (seconds): is a sketch
+        /// frame due, and when is the one after it. Frames are scheduled on a
+        /// fixed grid (next += interval), so the average is the sketch's own
+        /// frame rate whatever the refresh rate -- 60 fps on a 144 Hz screen
+        /// draws on 2 or 3 refreshes in turn, not every 3rd (48 fps). A frame
+        /// up to a quarter interval early counts (refresh ticks jitter); one
+        /// that fell far behind (a stall) restarts the grid instead of
+        /// catching up in a burst.
+        /// </summary>
+        public static (bool Due, double Next) PaceFrame(double now, double next, int targetFps)
+        {
+            double interval = 1.0 / Math.Clamp(targetFps, 1, 1000);
+            if (now < next - interval * 0.25)
+                return (false, next);
+            next += interval;
+            if (next < now)
+                next = now + interval;
+            return (true, next);
         }
 
         /// <summary>What a timer tick does.</summary>
