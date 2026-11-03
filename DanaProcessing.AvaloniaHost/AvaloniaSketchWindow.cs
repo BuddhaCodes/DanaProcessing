@@ -30,6 +30,7 @@ namespace DanaProcessing.AvaloniaHost
 
         private DispatcherTimer? _savePosition;
         private bool _placed;
+        private bool _fullSpeed;
 
         /// <summary>windowless: no OS title bar/caption buttons at all (see
         /// ExportedSketchRunner/SketchExporter — this is what "gadget mode"
@@ -65,7 +66,11 @@ namespace DanaProcessing.AvaloniaHost
 
             // This window IS the widget, if the sketch asks for one: Settings()
             // runs now (before the window shows) so it can be set up as one.
-            Canvas = new AvaloniaSketchCanvas(sketch) { HandsOffWidgets = false };
+            // No rewind here (that's the IDE's timeline): recording frames would
+            // copy and compress every one of them in the background -- PNG for
+            // a see-through widget -- for nothing, at a real cost in frame rate
+            // and memory.
+            Canvas = new AvaloniaSketchCanvas(sketch) { HandsOffWidgets = false, RecordHistory = false, RecordState = false };
             Canvas.RunSettingsNow();
             Widget = sketch.WidgetMode;
 
@@ -115,14 +120,21 @@ namespace DanaProcessing.AvaloniaHost
             Canvas.SketchSizeChanged += Fit;
         }
 
+        // Where a drag started: the pointer and the window, in screen pixels.
+        private PixelPoint _dragPointerStart, _dragWindowStart;
+        private bool _dragging;
+
         /// <summary>
-        /// Tunnel-only, and marking Handled ourselves: the previous approach
-        /// (listen on Bubble with handledEventsToo, after Canvas's own
-        /// PointerPressed had already run) never actually triggered a drag in
-        /// testing. Tunnel reaches this handler FIRST, before Canvas (or
-        /// anything else) sees the event at all -- a drag press is consumed
-        /// right here and never reaches Canvas; any other press continues on
-        /// to Canvas exactly as before, so sketch interaction is unaffected.
+        /// Moves the window by hand instead of BeginMoveDrag(): on Windows that
+        /// hands the drag to the system's own move loop, which keeps the app's
+        /// loop from running -- the sketch froze for as long as it was held.
+        /// Here every pointer move just sets Position, so Draw() keeps going
+        /// (and WindowX/WindowY follow the drag, for inertia).
+        ///
+        /// Tunnel handlers, marking Handled ourselves: they run before Canvas
+        /// (or anything else) sees the event -- a drag press is consumed right
+        /// here and never reaches Canvas; any other press continues on to
+        /// Canvas exactly as before, so sketch interaction is unaffected.
         /// </summary>
         private void MoveByDragging(bool withAlt)
         {
@@ -133,9 +145,36 @@ namespace DanaProcessing.AvaloniaHost
                 if (withAlt && !e.KeyModifiers.HasFlag(KeyModifiers.Alt))
                     return;
                 e.Handled = true;
-                BeginMoveDrag(e);
+                _dragging = true;
+                _dragPointerStart = this.PointToScreen(e.GetPosition(this));
+                _dragWindowStart = Position;
+                e.Pointer.Capture(this); // moves keep coming even when the pointer outruns the window
             }, RoutingStrategies.Tunnel);
+
+            AddHandler(PointerMovedEvent, (_, e) =>
+            {
+                if (!_dragging)
+                    return;
+                e.Handled = true;
+                var now = this.PointToScreen(e.GetPosition(this));
+                Position = DragTarget(_dragWindowStart, _dragPointerStart, now);
+            }, RoutingStrategies.Tunnel);
+
+            AddHandler(PointerReleasedEvent, (_, e) =>
+            {
+                if (!_dragging)
+                    return;
+                e.Handled = true;
+                _dragging = false;
+                e.Pointer.Capture(null);
+            }, RoutingStrategies.Tunnel);
+
+            PointerCaptureLost += (_, _) => _dragging = false;
         }
+
+        /// <summary>Where the window goes: where it started, plus how far the pointer moved.</summary>
+        internal static PixelPoint DragTarget(PixelPoint windowStart, PixelPoint pointerStart, PixelPoint pointerNow) =>
+            new(windowStart.X + pointerNow.X - pointerStart.X, windowStart.Y + pointerNow.Y - pointerStart.Y);
 
         // --- Widget mode ----------------------------------------------------------
 
@@ -172,8 +211,15 @@ namespace DanaProcessing.AvaloniaHost
                 UpdateTransparency();
                 PlaceWidget();
                 _placed = true; // positions from here on are the person's: worth remembering
+                _fullSpeed = WindowsTimers.KeepFullSpeed();
             };
             Closing += (_, _) => SavePosition();
+            Closed += (_, _) =>
+            {
+                if (_fullSpeed)
+                    WindowsTimers.Release();
+                _fullSpeed = false;
+            };
         }
 
         protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
