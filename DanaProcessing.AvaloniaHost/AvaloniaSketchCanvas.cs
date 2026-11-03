@@ -207,6 +207,7 @@ namespace DanaProcessing.AvaloniaHost
 
         public AvaloniaSketchCanvas(Sketch sketch)
         {
+            RenderClock.EnsureInstalled(); // Windows: frames on a precise clock, foreground or not
             _sketch = sketch;
             _sketch.SizeChanged += OnSketchSizeChanged;
             Focusable = true;

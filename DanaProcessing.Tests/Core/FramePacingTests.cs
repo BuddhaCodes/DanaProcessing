@@ -52,3 +52,34 @@ public class FramePacingTests
         Assert.False(due);
     }
 }
+
+/// <summary>The Windows render clock's schedule: one tick per refresh, on the vblank grid.</summary>
+public class RenderClockTests
+{
+    [Fact]
+    public void Ticks_once_per_refresh_on_the_vblank_grid()
+    {
+        const double period = 1 / 60.0;
+        double vblank = 10.0;
+        double next = DanaProcessing.AvaloniaHost.RenderClock.NextTick(10.003, 0, period, vblank);
+        Assert.InRange(next - vblank, 0.0004, period + 0.0006);   // just after a vblank
+        double after = DanaProcessing.AvaloniaHost.RenderClock.NextTick(next + 0.001, next, period, vblank);
+        Assert.Equal(period, after - next, 4);
+    }
+
+    [Fact]
+    public void A_slow_frame_does_not_cause_a_burst()
+    {
+        const double period = 1 / 60.0;
+        double next = DanaProcessing.AvaloniaHost.RenderClock.NextTick(5.0, 4.0, period, double.NaN);   // a second late
+        Assert.Equal(5.0, next, 6);
+    }
+
+    [Fact]
+    public void Without_vblank_it_keeps_a_steady_period()
+    {
+        const double period = 1 / 60.0;
+        double next = DanaProcessing.AvaloniaHost.RenderClock.NextTick(1.0, 1.0, period, double.NaN);
+        Assert.Equal(1.0 + period, next, 6);
+    }
+}
