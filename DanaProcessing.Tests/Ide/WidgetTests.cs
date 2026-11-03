@@ -97,6 +97,18 @@ public class WidgetTests : IDisposable
     }
 
     [Fact]
+    public void Dragging_moves_the_window_by_as_much_as_the_pointer_moved()
+    {
+        var start = new Avalonia.PixelPoint(696, 24);
+        Assert.Equal(new Avalonia.PixelPoint(296, 224),
+            AvaloniaSketchWindow.DragTarget(start, new Avalonia.PixelPoint(900, 100), new Avalonia.PixelPoint(500, 300)));
+        Assert.Equal(start, AvaloniaSketchWindow.DragTarget(start, new Avalonia.PixelPoint(5, 5), new Avalonia.PixelPoint(5, 5)));
+        // Onto a screen on the left: negative coordinates are fine.
+        Assert.Equal(new Avalonia.PixelPoint(-104, 24),
+            AvaloniaSketchWindow.DragTarget(start, new Avalonia.PixelPoint(900, 100), new Avalonia.PixelPoint(100, 100)));
+    }
+
+    [Fact]
     public void Placeholder_text_wraps_between_words()
     {
         var lines = AvaloniaSketchCanvas.WrapText("Drag it anywhere; right-click for its menu. Stop closes it.", 20).ToList();
