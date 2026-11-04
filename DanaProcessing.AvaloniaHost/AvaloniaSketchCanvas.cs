@@ -1188,6 +1188,16 @@ namespace DanaProcessing.AvaloniaHost
             _offscreenWidth = width;
             _offscreenHeight = height;
             _offscreenScale = scale;
+
+            // The old surface is gone: the sketch draws on the new one from
+            // now on. Without this, a live change -- supersampling following
+            // a widget onto a screen with another scaling, the IDE dropping it
+            // while you type -- left Draw() painting into a disposed canvas,
+            // which takes the whole process down in native code. (Not for the
+            // placeholder cards: an attached sketch or a handed-off widget
+            // draws somewhere else.)
+            if (_offscreenSurface != null && _attachHost == null && !_widgetHandedOff)
+                _sketch.SetCanvas(_offscreenSurface.Canvas, _offscreenSurface);
         }
 
         /// <summary>
