@@ -52,8 +52,17 @@ namespace DanaProcessing.AvaloniaHost
                 var lockField = type.GetField("_timerLock", BindingFlags.Instance | BindingFlags.NonPublic);
                 if (timerField?.GetValue(loop) is not IRenderTimer old || lockField?.GetValue(loop) is not { } gate)
                     return Fail($"unexpected render loop {type.FullName}");
+                // A platform's own (vsync) timer stays. On Windows 10/11 that's
+                // usually the case: WinUI composition is the default, and its
+                // timer (WinUiCompositorConnection, ticking on the compositor's
+                // commits) is also what gets frames on screen -- replaced, the
+                // window still "draws" 60 fps but shows nothing (tried, 2026-11).
                 if (old.GetType() != typeof(DefaultRenderTimer) && setting != "1")
-                    return Fail($"render timer is {old.GetType().Name}, left alone"); // a platform's own (vsync) timer
+                {
+                    if (FrameTrace.Enabled)
+                        CountTicks(loop, timerField, gate, old);
+                    return Fail($"render timer is {old.GetType().Name}, left alone");
+                }
 
                 // IRenderTimer can't be implemented at compile time (Avalonia's
                 // reference assemblies hide it); at run time it's a plain
@@ -76,6 +85,50 @@ namespace DanaProcessing.AvaloniaHost
             catch (Exception ex)
             {
                 return Fail(ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Tracing only: puts a pass-through in front of the platform's timer
+        /// that counts its ticks (vsync= in the trace) and changes nothing
+        /// else -- the platform's timer still runs and still drives frames.
+        /// </summary>
+        private static void CountTicks(object loop, FieldInfo timerField, object gate, IRenderTimer platform)
+        {
+            var counter = DispatchProxy.Create<IRenderTimer, CountingProxy>();
+            ((CountingProxy)(object)counter).Inner = platform;
+            lock (gate)
+            {
+                var tickProperty = typeof(IRenderTimer).GetProperty("Tick")!;
+                var tick = (Action<TimeSpan>?)tickProperty.GetValue(platform);
+                timerField.SetValue(loop, counter);
+                if (tick != null)
+                    tickProperty.SetValue(counter, tick);
+            }
+        }
+
+        /// <summary>IRenderTimer forwarding to the platform's own, counting the ticks it delivers.</summary>
+        public class CountingProxy : DispatchProxy
+        {
+            internal IRenderTimer? Inner;
+            private Action<TimeSpan>? _tick;
+
+            protected override object? Invoke(MethodInfo? method, object?[]? args)
+            {
+                var inner = Inner!;
+                switch (method?.Name)
+                {
+                    case "get_Tick":
+                        return _tick;
+                    case "set_Tick":
+                        var tick = (Action<TimeSpan>?)args![0];
+                        _tick = tick;
+                        Action<TimeSpan>? counted = tick == null ? null : t => { FrameTrace.RenderTick(); tick(t); };
+                        typeof(IRenderTimer).GetProperty("Tick")!.SetValue(inner, counted);
+                        return null;
+                    default:
+                        return method!.Invoke(inner, args);
+                }
             }
         }
 
