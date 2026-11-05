@@ -30,6 +30,7 @@ namespace DanaProcessing.AvaloniaHost
 
         private DispatcherTimer? _savePosition;
         private bool _placed;
+        private bool _fullSpeed;
 
         /// <summary>windowless: no OS title bar/caption buttons at all (see
         /// ExportedSketchRunner/SketchExporter — this is what "gadget mode"
@@ -65,14 +66,35 @@ namespace DanaProcessing.AvaloniaHost
 
             // This window IS the widget, if the sketch asks for one: Settings()
             // runs now (before the window shows) so it can be set up as one.
-            Canvas = new AvaloniaSketchCanvas(sketch) { HandsOffWidgets = false };
+            // No rewind here (that's the IDE's timeline): recording frames would
+            // copy and compress every one of them in the background -- PNG for
+            // a see-through widget -- for nothing, at a real cost in frame rate
+            // and memory.
+            Canvas = new AvaloniaSketchCanvas(sketch) { HandsOffWidgets = false, RecordHistory = false, RecordState = false };
             Canvas.RunSettingsNow();
             Widget = sketch.WidgetMode;
 
             Content = Canvas;
             Closed += (_, _) => Canvas.StopSketch(); // the sketch's OnStop(): release cameras, ports, devices
+
+            // Frames are paced by a timer: on Windows its default 15.6 ms
+            // resolution turns 60 fps into ~32 with stutter -- smooth only
+            // while something else (a video, music) happens to raise it.
+            Opened += (_, _) =>
+            {
+                _fullSpeed = WindowsTimers.KeepFullSpeed();
+                Canvas.StartTrace(Sketch.GetType().Name);
+                FrameTrace.Note($"window {Sketch.GetType().Name}: widget={(Widget != null)} transparency={ActualTransparencyLevel} scaling={RenderScaling} size={Width}x{Height} supersample={Canvas.SupersampleScale}x fullSpeedTimers={_fullSpeed} platform={PlatformImpl?.GetType().Name}");
+            };
+            Closed += (_, _) =>
+            {
+                if (_fullSpeed)
+                    WindowsTimers.Release();
+                _fullSpeed = false;
+            };
             PositionChanged += (_, e) =>
             {
+                Canvas.Trace?.WindowMoved();
                 var scaling = RenderScaling > 0 ? RenderScaling : 1;
                 Sketch.WindowX = (float)(e.Point.X / scaling);
                 Sketch.WindowY = (float)(e.Point.Y / scaling);
@@ -115,14 +137,23 @@ namespace DanaProcessing.AvaloniaHost
             Canvas.SketchSizeChanged += Fit;
         }
 
+        // Where a drag started: the pointer and the window, in screen pixels.
+        private PixelPoint _dragPointerStart, _dragWindowStart;
+        private bool _dragging;
+        private bool _dragMoveQueued;
+        private PixelPoint _dragTarget;
+
         /// <summary>
-        /// Tunnel-only, and marking Handled ourselves: the previous approach
-        /// (listen on Bubble with handledEventsToo, after Canvas's own
-        /// PointerPressed had already run) never actually triggered a drag in
-        /// testing. Tunnel reaches this handler FIRST, before Canvas (or
-        /// anything else) sees the event at all -- a drag press is consumed
-        /// right here and never reaches Canvas; any other press continues on
-        /// to Canvas exactly as before, so sketch interaction is unaffected.
+        /// Moves the window by hand instead of BeginMoveDrag(): on Windows that
+        /// hands the drag to the system's own move loop, which keeps the app's
+        /// loop from running -- the sketch froze for as long as it was held.
+        /// Here every pointer move just sets Position, so Draw() keeps going
+        /// (and WindowX/WindowY follow the drag, for inertia).
+        ///
+        /// Tunnel handlers, marking Handled ourselves: they run before Canvas
+        /// (or anything else) sees the event -- a drag press is consumed right
+        /// here and never reaches Canvas; any other press continues on to
+        /// Canvas exactly as before, so sketch interaction is unaffected.
         /// </summary>
         private void MoveByDragging(bool withAlt)
         {
@@ -133,9 +164,52 @@ namespace DanaProcessing.AvaloniaHost
                 if (withAlt && !e.KeyModifiers.HasFlag(KeyModifiers.Alt))
                     return;
                 e.Handled = true;
-                BeginMoveDrag(e);
+                _dragging = true;
+                _dragPointerStart = this.PointToScreen(e.GetPosition(this));
+                _dragWindowStart = Position;
+                e.Pointer.Capture(this); // moves keep coming even when the pointer outruns the window
             }, RoutingStrategies.Tunnel);
+
+            AddHandler(PointerMovedEvent, (_, e) =>
+            {
+                if (!_dragging)
+                    return;
+                e.Handled = true;
+                // A mouse reports up to 1000 moves a second, and moving a window
+                // is expensive (more so a see-through one): only the latest
+                // target counts, applied once per display refresh.
+                _dragTarget = DragTarget(_dragWindowStart, _dragPointerStart, this.PointToScreen(e.GetPosition(this)));
+                if (!_dragMoveQueued)
+                {
+                    _dragMoveQueued = true;
+                    RequestAnimationFrame(_ =>
+                    {
+                        _dragMoveQueued = false;
+                        if (Position != _dragTarget)
+                            Position = _dragTarget;
+                    });
+                }
+            }, RoutingStrategies.Tunnel);
+
+            AddHandler(PointerReleasedEvent, (_, e) =>
+            {
+                if (!_dragging)
+                    return;
+                e.Handled = true;
+                _dragging = false;
+                e.Pointer.Capture(null);
+            }, RoutingStrategies.Tunnel);
+
+            PointerCaptureLost += (_, _) => _dragging = false;
         }
+
+        /// <summary>Supersampling that matches the screen: 1 at 100%, 2 at 125-200%, 3 above.</summary>
+        internal static int DensityScale(double renderScaling) =>
+            Math.Clamp((int)Math.Ceiling(renderScaling - 0.01), 1, 3);
+
+        /// <summary>Where the window goes: where it started, plus how far the pointer moved.</summary>
+        internal static PixelPoint DragTarget(PixelPoint windowStart, PixelPoint pointerStart, PixelPoint pointerNow) =>
+            new(windowStart.X + pointerNow.X - pointerStart.X, windowStart.Y + pointerNow.Y - pointerStart.Y);
 
         // --- Widget mode ----------------------------------------------------------
 
@@ -144,6 +218,13 @@ namespace DanaProcessing.AvaloniaHost
             WindowDecorations = WindowDecorations.None;
             ShowInTaskbar = false;
             Topmost = options.AlwaysOnTop;
+
+            // Drawn at the screen's own density, not the canvas's default 2x:
+            // on a 100% screen 2x paints four times the pixels for edges you
+            // can't tell apart, and a widget's soft glows made that the whole
+            // frame budget (60 -> ~25 fps here). 150%/200% screens still get 2x.
+            Canvas.SupersampleScale = DensityScale(RenderScaling);
+            ScalingChanged += (_, _) => Canvas.SupersampleScale = DensityScale(RenderScaling);
             LockToSketchSize();
             MoveByDragging(withAlt: !options.Draggable);
 
